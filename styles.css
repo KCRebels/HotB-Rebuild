@@ -315,3 +315,35 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .contact-board .choice{height:47px;font-size:19px}
   .contact-left .choice{height:auto;max-height:53px}
 }
+
+
+/* Refined contact dialog proportions and visual treatment */
+.hit-modal .field-wrap{padding:0 3px}
+.hit-modal .field{width:min(calc(100% + 4px),390px);max-width:none;margin:0 auto}
+.hit-modal .pos{width:34px;height:34px;font-size:17px;border:2px solid #fff;background:linear-gradient(145deg,#263448,#0b111b);box-shadow:0 3px 8px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.22)}
+.hit-modal .p8{left:50%;top:14%}
+.hit-modal .p7{left:23%;top:29%}
+.hit-modal .p9{left:79%;top:31%}
+.hit-modal .p6{left:40%;top:48%}
+.hit-modal .p4{left:61%;top:48%}
+.hit-modal .p5{left:36.5%;top:66%}
+.hit-modal .p3{left:63%;top:66%}
+.hit-modal .p1{left:50%;top:68%}
+.hit-modal .p2{left:50%;top:86%}
+.contact-board{grid-template-columns:minmax(0,1.9fr) minmax(82px,.72fr);gap:12px}
+.contact-board .choice{border:1px solid #c4cdca;background:linear-gradient(180deg,#fff 0%,#f0f3f2 100%);box-shadow:0 3px 0 #c0c8c5,0 5px 9px rgba(20,30,26,.1);transition:transform .08s ease,box-shadow .08s ease,background .08s ease}
+.contact-board .choice:active{transform:translateY(2px);box-shadow:0 1px 0 #aeb8b4,0 2px 4px rgba(20,30,26,.12)}
+.contact-board .choice.active{background:linear-gradient(145deg,#25282c,#08090a);border-color:#08090a;box-shadow:0 3px 0 #000,0 5px 10px rgba(0,0,0,.24);color:#fff}
+.contact-board .choice.blue.active{background:linear-gradient(145deg,#4c79ee,#2448bd);border-color:#2448bd;box-shadow:0 3px 0 #18348d,0 5px 10px rgba(36,72,189,.25)}
+.contact-right .choice{height:57px;font-size:22px;font-weight:950}
+.contact-right{gap:10px}
+.contact-right .side-stack{gap:8px}
+.contact-right .run-stack{margin-top:8px}
+.hit-options>.save-contact{border-radius:12px;background:linear-gradient(180deg,#222,#050505);box-shadow:0 4px 0 #000,0 7px 12px rgba(0,0,0,.2)}
+@media(max-width:560px){
+  .hit-modal .field-wrap{padding:0}
+  .hit-modal .field{width:min(calc(100% + 2px),390px)}
+  .hit-modal .pos{width:34px;height:34px;font-size:17px}
+  .contact-board{grid-template-columns:minmax(0,1.9fr) minmax(80px,.7fr);gap:11px}
+  .contact-right .choice{height:55px;font-size:21px}
+}
