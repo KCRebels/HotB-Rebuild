@@ -405,3 +405,10 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 /* Smaller labels only; button geometry remains unchanged */
 .result.hbp,.result.undo{font-size:20.4px}
 @media(max-width:560px){.result.hbp,.result.undo{font-size:18.7px}}
+
+
+/* Contact save readiness and slightly larger field markers */
+.hit-modal .pos{width:37px;height:37px;font-size:18px}
+.hit-contact #saveContact:not(:disabled){background:linear-gradient(180deg,#4c79ee,#2448bd);border-color:#2448bd;color:#fff;box-shadow:0 4px 0 #17358e,0 7px 12px rgba(36,72,189,.28)}
+.out-contact #saveContact:not(:disabled){background:linear-gradient(180deg,#e4514a,#b91f25);border-color:#b91f25;color:#fff;box-shadow:0 4px 0 #86151a,0 7px 12px rgba(185,31,37,.28)}
+@media(max-width:560px){.hit-modal .pos{width:37px;height:37px;font-size:18px}}
