@@ -229,8 +229,17 @@ function liveView(){
  const nextName=g.battingOrder.length>1?g.battingOrder[(g.currentIdx+1)%g.battingOrder.length]:'';
  const chartName=g.previewNext?nextName:h.name;
  const activeNames=new Set(g.battingOrder);
- const sourcePitches=(g.zoneScope==='TEAM'&&!g.previewNext)?g.pitches.filter(p=>activeNames.has(p.hitter)):g.pitches.filter(p=>p.hitter===chartName);
- const firstPitches=sourcePitches.filter((p,i,a)=>i===0||p.pa!==a[i-1].pa||p.hitter!==a[i-1].hitter);
+ const allChartHitterPitches=g.pitches.filter(p=>p.hitter===chartName);
+ let sourcePitches;
+ if(g.zoneScope==='TEAM'&&!g.previewNext) sourcePitches=g.pitches.filter(p=>activeNames.has(p.hitter));
+ else if(g.previewNext) sourcePitches=allChartHitterPitches;
+ else if(/^AB\d+$/.test(g.historyTab||'')){
+   const n=Number(g.historyTab.slice(2)), completed=aps[n-1];
+   sourcePitches=completed?allChartHitterPitches.filter(p=>p.pa===completed.pa):[];
+ }else if(g.historyTab==='ALL') sourcePitches=allChartHitterPitches;
+ else sourcePitches=allChartHitterPitches.filter(p=>p.pa===g.paNumber);
+ const allActivePitches=g.pitches.filter(p=>activeNames.has(p.hitter));
+ const firstPitches=allActivePitches.filter((p,i,a)=>i===0||p.pa!==a[i-1].pa||p.hitter!==a[i-1].hitter);
  const statsMode=g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL';
  const filter=g.zoneFilter||'K';
  const histPitches=g.firstPitchView?firstPitches:statsMode?sourcePitches.filter(p=>resultGroup(p)===filter):sourcePitches;
@@ -255,7 +264,7 @@ function liveView(){
   <div class="control-card"><div class="cap">OUTS</div><div class="pill-row">${[0,1,2].map(x=>`<button class="pill ${g.outs===x?'active':''}" data-outs="${x}">${x}</button>`).join('')}</div></div>
   <div class="control-card"><div class="cap">RUNNERS</div><div class="pill-row">${[3,2,1].map(x=>`<button class="runner ${g.runners.includes(x)?'active':''}" data-runner="${x}">${x}</button>`).join('')}</div></div>
  </div>
- <div class="live-main"><div class="zone-card">
+ <div class="live-workspace"><div class="zone-card">
   <div class="pitchtypes">${['FB','CH','CV','SC','RS','DP'].map(x=>`<button class="pitchtype ${g.pitchType===x?'active':''}" data-ptype="${x}">${x}</button>`).join('')}</div>
   <div class="zone-layout">
    <button class="zone-scope ${g.zoneScope==='TEAM'?'active':''}" id="zoneScope">${g.zoneScope||'HITTER'}</button>
@@ -271,12 +280,12 @@ function liveView(){
    ${g.showAi?`<div class="ai-suggestions">${suggestions.map((s,i)=>`<div class="ai-box">#${i+1} ${esc(s.label)} &nbsp; ${s.pct}%</div>`).join('')}</div>`:''}
   </div>
  </div>
- <div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div></div>
+ <div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div>
  <div class="tabs" style="--tab-count:${tabNames.length}">${tabNames.map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}</div>
  <div class="results">
   <button class="result hbp" data-result="HBP" ${statsMode?'disabled':''}>HBP</button><button class="result ball ${statsMode&&filter==='B'?'filter-active':''}" data-result="B">B</button><button class="result foul ${statsMode&&filter==='F'?'filter-active':''}" data-result="F">F</button><button class="result hit ${statsMode&&filter==='HIT'?'filter-active':''}" data-result="HIT">HIT</button>
   <button class="result undo" id="undo" ${statsMode?'disabled':''}>Undo</button><button class="result strike ${statsMode&&filter==='K'?'filter-active':''}" data-result="K">K</button><button class="result strike ${statsMode&&filter==='K'?'filter-active':''}" data-result="KL">ꓘ</button><button class="result out ${statsMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
- </div>`;
+ </div></div>`;
 }
 function historyHtml(g,hitter){
  const pitches=g.pitches.filter(p=>p.hitter===hitter);
