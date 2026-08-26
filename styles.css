@@ -403,4 +403,5 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 
 
 /* Smaller labels only; button geometry remains unchanged */
-.result.hbp,.result.undo{font-size:85%}
+.result.hbp,.result.undo{font-size:20.4px}
+@media(max-width:560px){.result.hbp,.result.undo{font-size:18.7px}}
