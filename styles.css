@@ -265,3 +265,53 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .hit-modal .primary-choice-row .choice{min-height:48px;font-size:23px}
   .hit-modal #saveContact{min-height:48px;font-size:23px}
 }
+
+
+/* Locked LIVE/ALL with horizontally scrolling at-bat buttons */
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:14px;overflow:hidden}
+.tabs>.fixed-tab:first-child{grid-column:1}
+.tabs.with-all>.ab-scroll{grid-column:2/4}
+.tabs.with-all>.fixed-tab:last-child{grid-column:4}
+.tabs.without-all>.ab-scroll{grid-column:2/5}
+.ab-scroll{display:flex;gap:4px;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.ab-scroll::-webkit-scrollbar{display:none}
+.tabs.with-all .ab-scroll>.tab{flex:0 0 calc((100% - 4px)/2)}
+.tabs.without-all .ab-scroll>.tab{flex:0 0 calc((100% - 8px)/3)}
+.tabs>.tab,.ab-scroll>.tab{min-width:0;height:100%;padding-left:2px;padding-right:2px}
+
+/* Screenshot-matched field marker geometry */
+.hit-modal .field-wrap{padding:4px 10px}
+.hit-modal .field{width:min(100%,370px);margin:0 auto}
+.hit-modal .pos{width:30px;height:30px;font-size:15px;border-width:2px;transform:translate(-50%,-50%)}
+.hit-modal .p8{left:50%;top:14%}
+.hit-modal .p7{left:27%;top:26%}
+.hit-modal .p9{left:73%;top:27%}
+.hit-modal .p6{left:40%;top:44%}
+.hit-modal .p4{left:60%;top:44%}
+.hit-modal .p5{left:37%;top:59%}
+.hit-modal .p3{left:63%;top:59%}
+.hit-modal .p1{left:50%;top:61%}
+.hit-modal .p2{left:50%;top:79%}
+
+/* Thumb-friendly HIT and H4O grouping */
+.contact-board{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:10px;align-items:start}
+.contact-left,.contact-right{display:grid;gap:8px;min-width:0}
+.compact-three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.compact-four,.bases-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.side-stack{display:grid;gap:5px}
+.run-stack{margin-top:5px}
+.contact-board .choice{width:100%;min-width:0;height:50px;padding:3px 1px;font-size:20px;border-radius:9px}
+.contact-left .choice{aspect-ratio:1.05/1;height:auto;max-height:56px}
+.hit-options>.save-contact{margin-top:9px}
+@media(max-width:560px){
+  .tabs{gap:4px}
+  .tabs.with-all .ab-scroll>.tab{flex-basis:calc((100% - 4px)/2)}
+  .tabs.without-all .ab-scroll>.tab{flex-basis:calc((100% - 8px)/3)}
+  .hit-modal .field-wrap{padding:2px 9px}
+  .hit-modal .field{width:min(100%,360px)}
+  .hit-modal .pos{width:30px;height:30px;font-size:15px}
+  .hit-options{padding-left:8px;padding-right:8px}
+  .contact-board{gap:9px}
+  .contact-board .choice{height:47px;font-size:19px}
+  .contact-left .choice{height:auto;max-height:53px}
+}
