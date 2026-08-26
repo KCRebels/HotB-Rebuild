@@ -82,6 +82,8 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .pill.active{background:#101011;color:#fff;border-color:#101011}
 .pill.red.active{background:#c83731;border-color:#c83731}
 .runner{width:46px;height:46px;border-radius:50%;border:2px solid #cbd3cf;background:#fff;font-weight:900}
+.pill[data-outs]{border-radius:50%}
+.runner{border-radius:10px}
 .runner.active{background:#111;color:#fff}
 .live-main{display:grid;grid-template-columns:minmax(0,1fr) 165px;gap:12px;padding:0 14px}
 .live-workspace{height:calc(100svh - 170px);min-height:520px;max-height:760px;display:grid;grid-template-columns:minmax(0,1fr) 118px;grid-template-rows:auto auto auto;align-content:start;gap:7px;padding:7px;overflow:hidden}
