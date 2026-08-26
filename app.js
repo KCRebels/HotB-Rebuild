@@ -9,8 +9,9 @@ const pct0 = n => `${Math.round(n*100)}%`;
 const requestedPlanPreferences={
  'Lakyn Farley':'IN','Maleah Pena':'IN','Hailey Marsh':'NO','Maia Waddell':'NO',
  'Aniesa Rohleder':'OUT','Makenna Whitaker':'OUT','Brynna Peter':'OUT',
- 'Tayte Stepps':'OUT','Claire Jack':'OUT','Mattingly Hardy':'OUT'
+ 'Tayte Stepps':'OUT','Claire Jack':'OUT','Mattingly Hardy':'OUT','Lydia Copeland':'OUT'
 };
+const heatColors={B:'#3d8c52',F:'#f0c94d',HIT:'#3862db',K:'#cd3a32',H4O:'#cd3a32',FPS:'#101011',REPORT:'#101011'};
 
 const defaultRoster = [
  {name:'Aniesa Rohleder',side:'R',jersey:'9',grad:'2029',positions:'RHP | 1B',gpa:'3.98',interest:'Sports Medicine',school:'Olathe South HS',photo:'Aniesa.jpg'},
@@ -41,9 +42,9 @@ const seed = {
 };
 let db = load();
 // Apply the requested player plans once, then preserve any changes made in the app.
-if((db.planPreferencesVersion||0)<1){
+if((db.planPreferencesVersion||0)<2){
  db.planPreferences={...(db.planPreferences||{}),...requestedPlanPreferences};
- db.planPreferencesVersion=1;
+ db.planPreferencesVersion=2;
  localStorage.setItem(DBKEY,JSON.stringify(db));
 }
 // For now, a refresh abandons only the unfinished game and returns to setup.
@@ -66,6 +67,9 @@ function load(){
    const aliases={'Matti Hardy':'Mattingly Hardy'};
    const savedByName=new Map((d.roster||[]).map(r=>[aliases[r.name]||r.name,r]));
    const roster=defaultRoster.map(profile=>({...savedByName.get(profile.name),...profile,side:savedByName.get(profile.name)?.side||profile.side}));
+   const standardNames=new Set(defaultRoster.map(r=>r.name));
+   const guests=(d.roster||[]).filter(r=>!standardNames.has(aliases[r.name]||r.name)).map(r=>({...r,isGuest:true}));
+   roster.push(...guests);
    return {...seed,...d,roster};
   }
  }catch(e){}
@@ -77,10 +81,32 @@ function save(){
 }
 function go(r){route=r;modal=null;save();render();window.scrollTo(0,0)}
 function currentGame(){return db.currentGame}
+function planFor(name){
+ const saved=db.planPreferences?.[name];
+ if(saved)return saved;
+ return db.roster.find(r=>r.name===name)?.isGuest?'OUT':'IN';
+}
+function mixHexWithWhite(hex,amount){
+ const n=parseInt(hex.slice(1),16), rgb=[n>>16,(n>>8)&255,n&255];
+ const mixed=rgb.map(v=>Math.round(255+(v-255)*amount));
+ return `rgb(${mixed.join(',')})`;
+}
+function heatStyles(values,color){
+ const distinct=[...new Set(Object.values(values).filter(v=>v>0))].sort((a,b)=>a-b);
+ const map={};
+ Object.entries(values).forEach(([zone,value])=>{
+  if(!value){map[zone]='background:#edf2ef;color:#667085';return}
+  const rank=distinct.indexOf(value), strength=distinct.length===1?1:.15+.85*(rank/(distinct.length-1));
+  const bg=strength===1?color:mixHexWithWhite(color,strength);
+  const n=parseInt(color.slice(1),16), light=((n>>16)*299+((n>>8)&255)*587+(n&255)*114)/1000;
+  map[zone]=`background:${bg};color:${strength>.62&&light<155?'#fff':'#111'}`;
+ });
+ return map;
+}
 function createGame(opponent,pitcherName,pitcherNumber,order){
  const g={
   id:crypto.randomUUID(),date:new Date().toISOString(),opponent,pitcherName,pitcherNumber,
-  battingOrder:order,currentIdx:0,inning:1,outs:0,runners:[],plan:db.planPreferences?.[order[0]]||'IN',pitchType:'FB',
+  battingOrder:order,currentIdx:0,inning:1,outs:0,runners:[],plan:planFor(order[0]),pitchType:'FB',
   balls:0,strikes:0,paNumber:1,pitches:[],plateAppearances:[],ended:false,
   pendingZone:null,zoneScope:'HITTER',zoneFilter:'K',previewNext:false,showAi:false,historyTab:'LIVE',firstPitchView:false
  };
@@ -147,7 +173,7 @@ function closePA(outcome,extra={}){
  g.balls=0;g.strikes=0;g.paNumber++;
  g.currentIdx=(g.currentIdx+1)%g.battingOrder.length;
  if(g.currentIdx===0) g.inning++;
- g.plan=db.planPreferences?.[g.battingOrder[g.currentIdx]]||'IN';
+ g.plan=planFor(g.battingOrder[g.currentIdx]);
  g.pitchType='FB';
 }
 function undo(){
@@ -245,7 +271,7 @@ function rosterView(){
 function liveView(){
  const g=currentGame();if(!g)return `<div class="panel"><p>No current game.</p><button class="btn" data-go="new">New Game</button></div>`;
  const h=currentHitter(g);
- const currentPlan=db.planPreferences?.[h.name]||g.plan||'IN';
+ const currentPlan=planFor(h.name);
  const activePitchType=g.pitchType||'FB';
  const aps=g.plateAppearances.filter(p=>p.hitter===h.name);
  const nextName=g.battingOrder.length>1?g.battingOrder[(g.currentIdx+1)%g.battingOrder.length]:'';
@@ -270,6 +296,7 @@ function liveView(){
  const zoneFreq={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0}; const hp=histPitches.length||1;
  histPitches.forEach(p=>{if(zoneFreq[p.zone]!=null)zoneFreq[p.zone]++});
  const showPct = statsMode||g.firstPitchView;
+ const heat=heatStyles(zoneFreq,heatColors[g.firstPitchView?'FPS':filter]||heatColors.K);
  const zoneContent=z=>{
   if(showPct)return `<span class="pct">${Math.round(zoneFreq[z]/hp*100)}%</span>`;
   const pitches=sourcePitches.filter(p=>p.zone===z), horizontal=['T','B'].includes(z), vertical=['L','R'].includes(z);
@@ -297,11 +324,11 @@ function liveView(){
   <div class="pitchtypes">${['FB','CH','RS','DP','CV','SC'].map(x=>`<button class="pitchtype ${activePitchType===x?'active':''}" data-ptype="${x}">${x}</button>`).join('')}</div>
   <div class="zone-layout">
    <button class="zone-scope ${g.zoneScope==='TEAM'?'active':''}" id="zoneScope">${g.zoneScope==='TEAM'?'TM':'HTR'}</button>
-   <div class="zone zone-top ${g.pendingZone==='T'?'selected':''}" data-zone="T">${zoneContent('T')}</div>
-   <div class="zone zone-left ${g.pendingZone==='L'?'selected':''}" data-zone="L">${zoneContent('L')}</div>
-   <div class="core-grid">${['C1','C2','C3','C4'].map(z=>`<div class="zone core ${g.pendingZone===z?'selected':''}" data-zone="${z}">${zoneContent(z)}</div>`).join('')}</div>
-   <div class="zone zone-right ${g.pendingZone==='R'?'selected':''}" data-zone="R">${zoneContent('R')}</div>
-   <div class="zone zone-bottom ${g.pendingZone==='B'?'selected':''}" data-zone="B">${zoneContent('B')}</div>
+   <div class="zone zone-top ${showPct?'heat-zone':''} ${g.pendingZone==='T'?'selected':''}" style="${showPct?heat.T:''}" data-zone="T">${zoneContent('T')}</div>
+   <div class="zone zone-left ${showPct?'heat-zone':''} ${g.pendingZone==='L'?'selected':''}" style="${showPct?heat.L:''}" data-zone="L">${zoneContent('L')}</div>
+   <div class="core-grid">${['C1','C2','C3','C4'].map(z=>`<div class="zone core ${showPct?'heat-zone':''} ${g.pendingZone===z?'selected':''}" style="${showPct?heat[z]:''}" data-zone="${z}">${zoneContent(z)}</div>`).join('')}</div>
+   <div class="zone zone-right ${showPct?'heat-zone':''} ${g.pendingZone==='R'?'selected':''}" style="${showPct?heat.R:''}" data-zone="R">${zoneContent('R')}</div>
+   <div class="zone zone-bottom ${showPct?'heat-zone':''} ${g.pendingZone==='B'?'selected':''}" style="${showPct?heat.B:''}" data-zone="B">${zoneContent('B')}</div>
    <button class="zone-next ${g.previewNext?'active':''}" id="zoneNext" ${nextName?'': 'disabled'}>${g.previewNext?nextInitials:'NXT'}</button>
    <button class="fps ${g.firstPitchView?'active':''}" id="fpsBtn"><span>FPS</span><strong>${pct0(fps(g))}</strong></button>
   </div>
@@ -388,10 +415,11 @@ function sprayReport(pas){
 function zoneReport(pas){
  const ps=allPitches(reportMode==='current').filter(p=>reportFilterHitter==='All Hitters'||p.hitter===reportFilterHitter);
  const z={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0};ps.forEach(p=>z[p.zone]=(z[p.zone]||0)+1);const n=ps.length||1;
+ const heat=heatStyles(z,heatColors.REPORT);
  return `<h3 style="margin-top:22px">ZONE CHART</h3><div class="zone-layout" style="max-width:480px;margin:10px auto">
- <div class="zone zone-top"><span class="pct">${Math.round(z.T/n*100)}%</span></div><div class="zone zone-left"><span class="pct">${Math.round(z.L/n*100)}%</span></div>
- <div class="core-grid">${['C1','C2','C3','C4'].map(k=>`<div class="zone core"><span class="pct">${Math.round(z[k]/n*100)}%</span></div>`).join('')}</div>
- <div class="zone zone-right"><span class="pct">${Math.round(z.R/n*100)}%</span></div><div class="zone zone-bottom"><span class="pct">${Math.round(z.B/n*100)}%</span></div></div>`;
+ <div class="zone zone-top heat-zone" style="${heat.T}"><span class="pct">${Math.round(z.T/n*100)}%</span></div><div class="zone zone-left heat-zone" style="${heat.L}"><span class="pct">${Math.round(z.L/n*100)}%</span></div>
+ <div class="core-grid">${['C1','C2','C3','C4'].map(k=>`<div class="zone core heat-zone" style="${heat[k]}"><span class="pct">${Math.round(z[k]/n*100)}%</span></div>`).join('')}</div>
+ <div class="zone zone-right heat-zone" style="${heat.R}"><span class="pct">${Math.round(z.R/n*100)}%</span></div><div class="zone zone-bottom heat-zone" style="${heat.B}"><span class="pct">${Math.round(z.B/n*100)}%</span></div></div>`;
 }
 function reportsPage(){
  return `<div class="hero"><div class="hero-row"><button class="btn" data-go="home">Home</button><div><div class="kicker">KC REBELS</div><h1>Reports</h1><p>Review saved games and trends.</p></div></div></div>
@@ -535,7 +563,7 @@ function bindNew(){
 function bindRoster(){
  $$('.sidebtn').forEach(b=>b.onclick=()=>{db.roster[+b.dataset.i].side=b.dataset.side;save();render()});
  $$('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Remove this player?')){db.roster.splice(+b.dataset.del,1);save();render()}});
- $('#addPlayer').onclick=()=>{db.roster.push({name:'New Player',side:'R',jersey:'',grad:'',positions:'',gpa:'',interest:'',school:''});save();render();setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),0)};
+ $('#addPlayer').onclick=()=>{db.roster.push({name:'Guest',side:'R',jersey:'',grad:'',positions:'',gpa:'',interest:'',school:'',isGuest:true});save();render();setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),0)};
  $('#saveRoster').onclick=()=>{$$('.roster-name').forEach(inp=>db.roster[+inp.dataset.i].name=inp.value.trim()||'Unnamed Player');save();go('home')};
 }
 function bindLive(){
