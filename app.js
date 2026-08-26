@@ -8,19 +8,19 @@ const pct1 = n => `${(n*100).toFixed(1)}%`;
 const pct0 = n => `${Math.round(n*100)}%`;
 
 const defaultRoster = [
- {name:'Aniesa Rohleder',side:'R',jersey:'9',grad:'2029',positions:'RHP | 1B',gpa:'3.98',interest:'Sports Medicine',school:'Olathe South'},
- {name:'Brooklyn Gering',side:'R',jersey:'16',grad:'2029',positions:'RHP | OF',gpa:'4.0',interest:'Nursing',school:'Spring Hill'},
- {name:'Brynna Peter',side:'R',jersey:'11',grad:'2028',positions:'2B | OF',gpa:'4.1',interest:'Criminal Justice / Film Studies',school:'Olathe Northwest'},
- {name:'Claire Jack',side:'R',jersey:'25',grad:'2029',positions:'1B | 3B',gpa:'4.00',interest:'Biology',school:'Pratt'},
- {name:'Hailey Marsh',side:'L',jersey:'23',grad:'2029',positions:'CF | OF',gpa:'4.0',interest:'Dentist',school:'Louisburg'},
- {name:'Lakyn Farley',side:'R',jersey:'8',grad:'2028',positions:'RHP | OF',gpa:'4.0',interest:'Sports Medicine',school:'Fort Scott'},
- {name:'Lydia Copeland',side:'R',jersey:'27',grad:'2028',positions:'C | 3B',gpa:'4.00',interest:'Child Psychology',school:'Louisburg'},
- {name:'Maia Waddell',side:'L',jersey:'1',grad:'2028',positions:'2B | OF',gpa:'4.1',interest:'Criminal Justice / Film Studies',school:'Olathe Northwest'},
- {name:'Makenna Whitaker',side:'R',jersey:'10',grad:'2029',positions:'RHP | UT',gpa:'4.0',interest:'Undecided',school:'Olathe Northwest'},
- {name:'Maleah Pena',side:'R',jersey:'20',grad:'2028',positions:'3B | 1B',gpa:'3.52',interest:'Sports Medicine',school:'Olathe Northwest'},
- {name:'Matti Hardy',side:'R',jersey:'99',grad:'2029',positions:'OF | UT',gpa:'3.81',interest:'Psychology / Health',school:'Blue Valley'},
- {name:'Megan Ryan',side:'R',jersey:'22',grad:'2028',positions:'RHP | UT',gpa:'4.0',interest:'Sports Medicine',school:'Rock Creek'},
- {name:'Tayte Stepps',side:'R',jersey:'00',grad:'2029',positions:'C | OF',gpa:'3.9',interest:'Sports Medicine',school:'Fort Scott'}
+ {name:'Aniesa Rohleder',side:'R',jersey:'9',grad:'2029',positions:'RHP | 1B',gpa:'3.98',interest:'Sports Medicine',school:'Olathe South HS',photo:'Aniesa.jpg'},
+ {name:'Brooklyn Gering',side:'R',jersey:'16',grad:'2029',positions:'RHP | OF',gpa:'4.0',interest:'Nursing',school:'Spring Hill HS',photo:'Brooklyn.JPEG'},
+ {name:'Brynna Peter',side:'R',jersey:'11',grad:'2028',positions:'SS | UT',gpa:'3.78',interest:'Occupational Therapy',school:'Chanute HS',photo:'Brynna.jpg'},
+ {name:'Claire Jack',side:'R',jersey:'25',grad:'2029',positions:'CIF | OF',gpa:'4.0',interest:'Biology',school:'Pratt HS',photo:'jack.jpg'},
+ {name:'Hailey Marsh',side:'L',jersey:'23',grad:'2029',positions:'CF | OF',gpa:'4.0',interest:'Dentist',school:'Louisburg HS',photo:'Hailey.jpg'},
+ {name:'Lakyn Farley',side:'R',jersey:'8',grad:'2028',positions:'RHP | OF',gpa:'4.0',interest:'Sports Medicine',school:'Fort Scott HS',photo:'lakyn.jpg'},
+ {name:'Lydia Copeland',side:'R',jersey:'27',grad:'2028',positions:'C | CIF',gpa:'4.0',interest:'Child Psychology',school:'Louisburg HS',photo:'Lydia.JPEG'},
+ {name:'Maia Waddell',side:'L',jersey:'1',grad:'2028',positions:'2B | OF',gpa:'4.1',interest:'Criminal Justice / Film',school:'Olathe NW HS',photo:'Maia.jpg'},
+ {name:'Makenna Whitaker',side:'R',jersey:'10',grad:'2029',positions:'RHP | UT',gpa:'4.3',interest:'Undecided',school:'Olathe NW HS',photo:'makenna.jpg'},
+ {name:'Maleah Pena',side:'R',jersey:'20',grad:'2028',positions:'3B | 1B',gpa:'3.52',interest:'Sports Medicine',school:'Olathe NW HS',photo:'Maleah.jpg'},
+ {name:'Mattingly Hardy',side:'R',jersey:'99',grad:'2029',positions:'OF | UT',gpa:'3.81',interest:'Biology',school:'Pembroke Hill HS',photo:'matti.jpg'},
+ {name:'Megan Ryan',side:'R',jersey:'22',grad:'2028',positions:'RHP | UT',gpa:'4.0',interest:'Engineering',school:'Rock Creek HS',photo:'meg.jpg'},
+ {name:'Tayte Stepps',side:'R',jersey:'00',grad:'2029',positions:'C | OF',gpa:'3.9',interest:'Nursing',school:'Fort Scott HS',photo:'Tayte.JPEG'}
 ];
 
 const DBKEY='hotbRebuildDbV1';
@@ -43,7 +43,12 @@ let timerInt=null,timerStart=0,timerElapsed=0;
 function load(){
  try{
   const d=JSON.parse(localStorage.getItem(DBKEY));
-  if(d) return {...seed,...d,roster:d.roster?.length?d.roster:defaultRoster};
+  if(d){
+   const aliases={'Matti Hardy':'Mattingly Hardy'};
+   const savedByName=new Map((d.roster||[]).map(r=>[aliases[r.name]||r.name,r]));
+   const roster=defaultRoster.map(profile=>({...savedByName.get(profile.name),...profile,side:savedByName.get(profile.name)?.side||profile.side}));
+   return {...seed,...d,roster};
+  }
  }catch(e){}
  return structuredClone(seed);
 }
@@ -175,7 +180,7 @@ function render(){
 function homeView(){
  return `<div class="home-hero">
    <div class="home-brand">
-    <div class="home-logo" aria-label="KC Rebels logo"><span>KC</span><small>REBELS</small></div>
+    <img class="home-logo-img" src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="Kansas City Rebels Regional">
     <div class="home-title">KC REBELS REGIONAL LICKEL</div>
    </div>
    <div class="home-actions">
@@ -359,7 +364,7 @@ function evalView(){
  const ms=measurementTypes(player);
  return `<div class="eval-head"><button class="btn" data-go="home">Home</button><div><div class="teamname">KC REBELS REGIONAL LICKEL</div><h1>Player / Team Eval</h1></div><div class="spacer"></div><button class="record" id="recordMeasure">Record</button></div>
  <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
- ${player?`<div class="player-card"><div class="player-photo">${esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span style="color:#c22730">#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span style="color:#111">| ${esc(player.school)}</span></div></div></div>`:
+ ${player?`<div class="player-card"><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span style="color:#c22730">#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span style="color:#111">| ${esc(player.school)}</span></div></div></div>`:
  `<div class="player-card"><div class="player-photo" style="background:#111;color:#fff">KC</div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
   <div class="eval-tile dark" data-guide="HotB+"><h3>HotB+</h3><div class="value">${hotb??'—'}</div><div class="note">${player?'More saved data needed':'Current-team benchmark'}</div></div>
