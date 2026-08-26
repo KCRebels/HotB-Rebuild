@@ -260,7 +260,7 @@ function liveView(){
  histPitches.forEach(p=>{if(zoneFreq[p.zone]!=null)zoneFreq[p.zone]++});
  const showPct = statsMode||g.firstPitchView;
  const zoneContent=z=>showPct?`<span class="pct">${Math.round(zoneFreq[z]/hp*100)}%</span>`:
-   sourcePitches.filter(p=>p.zone===z).slice(-4).map(p=>`<i class="pitch-dot ${pitchMarkClass(p)}"></i>`).join('');
+   sourcePitches.filter(p=>p.zone===z).slice(-16).map(p=>`<i class="pitch-dot ${pitchMarkClass(p)}"></i>`).join('');
  const suggestions=aiSuggestions(g,chartName);
  const nextInitials=nextName?nextName.split(' ').map(x=>x[0]).join(''):'';
  return `<div class="topbar"><div class="brand">KC REBELS</div><button id="openReports">Reports</button><button class="end" id="endGame">End</button><button id="newGame">New</button></div>
@@ -295,7 +295,7 @@ function liveView(){
  <div class="tabs" style="--tab-count:${tabNames.length}">${tabNames.map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}</div>
  <div class="results">
   <button class="result hbp" data-result="HBP" ${statsMode?'disabled':''}>HBP</button><button class="result ball ${statsMode&&filter==='B'?'filter-active':''}" data-result="B">B</button><button class="result foul ${statsMode&&filter==='F'?'filter-active':''}" data-result="F">F</button><button class="result hit ${statsMode&&filter==='HIT'?'filter-active':''}" data-result="HIT">HIT</button>
-  <button class="result undo" id="undo" ${statsMode?'disabled':''}>Undo</button><button class="result strike ${statsMode&&filter==='K'?'filter-active':''}" data-result="K">K</button><button class="result strike ${statsMode&&filter==='K'?'filter-active':''}" data-result="KL">ꓘ</button><button class="result out ${statsMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
+  <button class="result undo" id="undo" ${statsMode?'disabled':''}>Undo</button><button class="result strike ${statsMode&&filter==='K'?'filter-active':''}" data-result="K">K</button><button class="result strike ${statsMode&&filter==='K'?'filter-active':''}" data-result="KL">KL</button><button class="result out ${statsMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
  </div></div>`;
 }
 function historyHtml(g,hitter){
@@ -307,7 +307,7 @@ function historyHtml(g,hitter){
    show=completed?pitches.filter(p=>p.pa===completed.pa):[];
  }else if(tab==='ALL')show=pitches;
  const ordered=[...show].reverse();
- return ordered.map(p=>`<div class="history-chip"><div>${p.result==='KL'?'ꓘ':esc(p.result)} <span>${esc(p.pitchType)}</span></div><div class="mini-zone">
+ return ordered.map(p=>`<div class="history-chip"><div class="history-chip-head"><strong>${esc(p.result)}</strong><span>${esc(p.pitchType)}</span></div><div class="mini-zone">
  ${['T','L','C1','C2','C3','C4','R','B'].map(z=>`<span class="mini-zone-cell mz-${z.toLowerCase()} ${p.zone===z?pitchMarkClass(p):''}"></span>`).join('')}</div></div>`).join('')||'<div class="history-empty" aria-label="Next pitch"></div>';
 }
 function aiSuggestions(g,hitter){
