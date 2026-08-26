@@ -47,6 +47,11 @@ if((db.planPreferencesVersion||0)<2){
  db.planPreferencesVersion=2;
  localStorage.setItem(DBKEY,JSON.stringify(db));
 }
+if((db.planPreferencesVersion||0)<3){
+ db.planPreferences={...(db.planPreferences||{}),'Brooklyn Gering':'OUT','Megan Ryan':'OUT'};
+ db.planPreferencesVersion=3;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+}
 // For now, a refresh abandons only the unfinished game and returns to setup.
 if(db.route==='live'){
  db.currentGame=null;
