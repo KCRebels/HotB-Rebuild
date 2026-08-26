@@ -38,6 +38,7 @@ let route = db.route || 'home';
 let modal = null;
 let reportMode='current', reportSub='spray', reportFilterHitter='All Hitters';
 let evalPlayer='Team';
+let recordType='';
 let timerInt=null,timerStart=0,timerElapsed=0;
 
 function load(){
@@ -299,7 +300,7 @@ function reportModal(){
  const s=statsForPAs(filtered);
  const hitters=[...new Set(source.map(p=>p.hitter))];
  return `<div class="modal-backdrop"><div class="modal">
- <div class="report-tabs"><button class="btn" data-close>Close</button><button class="btn ${reportMode==='current'?'black':''}" data-rmode="current">Current</button><button class="btn ${reportMode==='saved'?'black':''}" data-rmode="saved">Saved</button><button class="btn gold" id="exportReport">Export</button></div>
+ <div class="report-tabs"><button class="btn ${reportMode==='current'?'black':''}" data-rmode="current">Current</button><button class="btn ${reportMode==='saved'?'black':''}" data-rmode="saved">Saved</button><button class="btn gold" id="exportReport">Export</button><button class="btn" data-close>Close</button></div>
  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px"><button class="btn ${reportSub==='spray'?'black':''}" data-rsub="spray">Spray Chart</button><button class="btn ${reportSub==='zone'?'black':''}" data-rsub="zone">Zone Chart</button></div>
  <div class="panel" style="margin:14px 0 0">
  <select class="input" id="reportHitter"><option>All Hitters</option>${db.roster.map(r=>`<option ${reportFilterHitter===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
@@ -364,8 +365,8 @@ function evalView(){
  const ms=measurementTypes(player);
  return `<div class="eval-head"><button class="btn" data-go="home">Home</button><div><div class="teamname">KC REBELS REGIONAL LICKEL</div><h1>Player / Team Eval</h1></div><div class="spacer"></div><button class="record" id="recordMeasure">Record</button></div>
  <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
- ${player?`<div class="player-card"><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span style="color:#c22730">#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span style="color:#111">| ${esc(player.school)}</span></div></div></div>`:
- `<div class="player-card"><div class="player-photo" style="background:#111;color:#fff">KC</div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
+ ${player?`<div class="player-card"><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span style="color:#c22730">#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span style="color:#111">| ${esc(player.school)}</span></div></div><div class="player-portrait"><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="grad-year">${esc(player.grad)}</div></div></div>`:
+ `<div class="player-card"><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div><div class="player-portrait"><div class="player-photo team-photo">KC</div><div class="grad-year">TEAM</div></div></div>`}
  <div class="eval-tiles">
   <div class="eval-tile dark" data-guide="HotB+"><h3>HotB+</h3><div class="value">${hotb??'—'}</div><div class="note">${player?'More saved data needed':'Current-team benchmark'}</div></div>
   <div class="eval-tile" data-guide="Runs Produced"><h3>Runs Produced</h3><div class="value">${s.rp.toFixed(1)}</div><div class="note">${player?`Team player avg ${(teamS.rp/Math.max(1,db.roster.length)).toFixed(1)}`:'Team total'}</div></div>
@@ -389,7 +390,7 @@ function measurementCard(player,type){
  const isTime=['Home to First','Pop Time'].includes(type);
  const vals=rows.map(r=>Number(r.value)).filter(Number.isFinite);
  const best=vals.length?(isTime?Math.min(...vals):Math.max(...vals)):null;
- return `<div class="measure"><h3>${type}</h3><div class="best">${best===null?'—':best}</div><div class="note">${vals.length?`${vals.length} attempt${vals.length===1?'':'s'} recorded`:'No attempts recorded'}</div></div>`;
+ return `<button class="measure" data-measure="${esc(type)}"><h3>${type}</h3><div class="best">${best===null?'—':best}</div><div class="note">${vals.length?`${vals.length} attempt${vals.length===1?'':'s'} recorded`:'Tap to record'}</div></button>`;
 }
 function evalGuide(title){
  const content={
@@ -416,7 +417,7 @@ function recordModal(){
  const types=measurementTypes(player);
  return `<div class="modal-backdrop"><div class="modal"><div class="modal-header"><h2>Record Measurement</h2><button class="btn" data-close>Close</button></div>
  <label class="label">Player</label><select class="input" id="mPlayer">${db.roster.map(r=>`<option ${r.name===p?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
- <label class="label">Measurement</label><select class="input" id="mType">${types.map(t=>`<option>${t}</option>`).join('')}</select>
+ <label class="label">Measurement</label><select class="input" id="mType">${types.map(t=>`<option ${t===recordType?'selected':''}>${t}</option>`).join('')}</select>
  <div class="stopwatch" style="margin-top:18px"><button class="btn green" id="timerStart" style="font-size:28px">Start</button><div style="flex:1;text-align:center"><div class="small">STOPWATCH</div><div class="time" id="timerTime">0.00</div></div></div>
  <label class="label">Manual Time / Value</label><input class="input" id="mValue" inputmode="decimal" placeholder="0.00">
  <label class="label">Date</label><input class="input" id="mDate" type="date" value="${new Date().toISOString().slice(0,10)}">
@@ -509,7 +510,8 @@ function exportCsv(){
 }
 function bindEval(){
  $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};
- $('#recordMeasure').onclick=$('#recordMeasure2').onclick=()=>{modal='record';render()};
+ $('#recordMeasure').onclick=$('#recordMeasure2').onclick=()=>{recordType='';modal='record';render()};
+ $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
  $$('[data-guide]').forEach(x=>x.onclick=()=>{modal='guide:'+x.dataset.guide;render()});
 }
 function bindRecord(){
@@ -525,7 +527,7 @@ function bindRecord(){
  };
  $('#saveMeasurement').onclick=()=>{
   db.measurements.push({id:crypto.randomUUID(),player:$('#mPlayer').value,type:$('#mType').value,value:Number($('#mValue').value),date:$('#mDate').value});
-  save();modal=null;timerElapsed=0;if(timerInt){clearInterval(timerInt);timerInt=null}render();
+  save();modal=null;recordType='';timerElapsed=0;if(timerInt){clearInterval(timerInt);timerInt=null}render();
  };
 }
 render();
