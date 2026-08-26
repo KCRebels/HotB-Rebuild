@@ -100,6 +100,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .zone.selected{background:#fff1ac;border-color:#d4a515;box-shadow:inset 0 0 0 1px #f0cd54}
 .zone.selected .pct{display:none}
 .zone .pct{font-size:24px;color:#666}
+.zone.heat-zone .pct{color:inherit;text-shadow:0 1px 1px rgba(255,255,255,.24)}
 .pitch-dot-grid{position:absolute;inset:2px;display:grid;grid-template-columns:repeat(var(--dot-cols),var(--dot-size));grid-template-rows:repeat(var(--dot-rows),var(--dot-size));gap:var(--dot-gap);place-content:center;place-items:center;overflow:hidden}
 .pitch-dot{display:block;width:var(--dot-size);height:var(--dot-size);border-radius:50%;margin:0;background:#cc3831;border:1px solid rgba(0,0,0,.2);box-shadow:0 1px 1px rgba(0,0,0,.16)}
 .pitch-dot.good{background:#3d8c52}.pitch-dot.foul{background:#f1cc4d}.pitch-dot.hit{background:#3862db}.pitch-dot.bad{background:#cc3831}
