@@ -546,8 +546,15 @@ function bind(){
 function bindNew(){
  const sels=$$('.batting-select');
  const update=()=>{
-  const vals=sels.map(s=>s.value).filter(Boolean);
-  sels.forEach(s=>$$('option',s).forEach(o=>{o.disabled=o.value&&o.value!==s.value&&vals.includes(o.value)}));
+  const selections=sels.map(s=>s.value);
+  sels.forEach((s,i)=>{
+   const current=selections[i];
+   const used=new Set(selections.filter((v,j)=>j!==i&&v));
+   const available=db.roster.filter(r=>!used.has(r.name));
+   s.innerHTML=`<option value="">Select hitter</option>${available.map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('')}`;
+   s.value=current;
+  });
+  const vals=selections.filter(Boolean);
   $('#hitterCount').textContent=`${vals.length} hitters`;
   // A selected hitter is enough to begin; matchup details may be added later.
   $('#startGame').disabled=!vals.length;
