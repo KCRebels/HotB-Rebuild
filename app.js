@@ -455,7 +455,8 @@ function bindNew(){
   const vals=sels.map(s=>s.value).filter(Boolean);
   sels.forEach(s=>$$('option',s).forEach(o=>{o.disabled=o.value&&o.value!==s.value&&vals.includes(o.value)}));
   $('#hitterCount').textContent=`${vals.length} hitters`;
-  $('#startGame').disabled=!$('#opponent').value.trim()||!$('#pitcherName').value.trim()||!vals.length;
+  // A selected hitter is enough to begin; matchup details may be added later.
+  $('#startGame').disabled=!vals.length;
  };
  ['input','change'].forEach(evt=>[$('#opponent'),$('#pitcherName'),$('#pitcherNumber'),...sels].forEach(x=>x?.addEventListener(evt,update)));
  $('#pitcherName').addEventListener('change',()=>{
