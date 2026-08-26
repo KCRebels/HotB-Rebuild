@@ -64,7 +64,7 @@ function createGame(opponent,pitcherName,pitcherNumber,order){
   id:crypto.randomUUID(),date:new Date().toISOString(),opponent,pitcherName,pitcherNumber,
   battingOrder:order,currentIdx:0,inning:1,outs:0,runners:[],plan:'IN',pitchType:'FB',
   balls:0,strikes:0,paNumber:1,pitches:[],plateAppearances:[],ended:false,
-  pendingZone:null,zoneScope:'HITTER',previewNext:false,showAi:false
+  pendingZone:null,zoneScope:'HITTER',zoneFilter:'K',previewNext:false,showAi:false,historyTab:'LIVE',firstPitchView:false
  };
  db.currentGame=g;
  if(opponent&&!db.teams.includes(opponent))db.teams.push(opponent);
@@ -74,6 +74,13 @@ function createGame(opponent,pitcherName,pitcherNumber,order){
 function hitterObj(name){return db.roster.find(r=>r.name===name)||{name,side:'R',jersey:'',grad:'',positions:'',gpa:'',interest:'',school:''}}
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
 function isStrikeResult(r){return ['F','K','KL','HIT','H4O'].includes(r)}
+function resultGroup(p){return p.result==='KL'?'K':p.result}
+function pitchMarkClass(p){
+ if(p.result==='HIT')return 'hit';
+ if(p.result==='H4O'||p.result==='K'||p.result==='KL')return 'bad';
+ if(p.result==='F')return 'foul';
+ return 'good';
+}
 function zoneGroup(z){return ['L'].includes(z)?'IN':['R'].includes(z)?'OUT':['T','B'].includes(z)?'OUT':'IN'}
 function addPitch(result,extra={}){
  const g=currentGame(); if(!g)return;
@@ -221,13 +228,19 @@ function liveView(){
  const aps=g.plateAppearances.filter(p=>p.hitter===h.name);
  const nextName=g.battingOrder.length>1?g.battingOrder[(g.currentIdx+1)%g.battingOrder.length]:'';
  const chartName=g.previewNext?nextName:h.name;
- const sourcePitches=(g.zoneScope==='TEAM'&&!g.previewNext)?g.pitches:g.pitches.filter(p=>p.hitter===chartName);
- const histPitches=g.firstPitchView?sourcePitches.filter((p,i,a)=>i===0||p.pa!==a[i-1].pa||p.hitter!==a[i-1].hitter):sourcePitches;
- const tabNames=['LIVE',...aps.map((p,i)=>`AB${i+1}`),'ALL'].slice(0,4);
+ const activeNames=new Set(g.battingOrder);
+ const sourcePitches=(g.zoneScope==='TEAM'&&!g.previewNext)?g.pitches.filter(p=>activeNames.has(p.hitter)):g.pitches.filter(p=>p.hitter===chartName);
+ const firstPitches=sourcePitches.filter((p,i,a)=>i===0||p.pa!==a[i-1].pa||p.hitter!==a[i-1].hitter);
+ const statsMode=g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL';
+ const filter=g.zoneFilter||'K';
+ const histPitches=g.firstPitchView?firstPitches:statsMode?sourcePitches.filter(p=>resultGroup(p)===filter):sourcePitches;
+ const tabNames=['LIVE',...aps.map((p,i)=>`AB${i+1}`)];
+ if(aps.length>=2)tabNames.push('ALL');
  const zoneFreq={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0}; const hp=histPitches.length||1;
  histPitches.forEach(p=>{if(zoneFreq[p.zone]!=null)zoneFreq[p.zone]++});
- const showPct = g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL';
- const zp=z=>showPct?`<span class="pct">${Math.round(zoneFreq[z]/hp*100)}%</span>`:'';
+ const showPct = statsMode||g.firstPitchView;
+ const zoneContent=z=>showPct?`<span class="pct">${Math.round(zoneFreq[z]/hp*100)}%</span>`:
+   sourcePitches.filter(p=>p.zone===z).slice(-4).map(p=>`<i class="pitch-dot ${pitchMarkClass(p)}"></i>`).join('');
  const suggestions=aiSuggestions(g,chartName);
  const nextInitials=nextName?nextName.split(' ').map(x=>x[0]).join(''):'';
  return `<div class="topbar"><div class="brand">KC REBELS</div><button id="openReports">Reports</button><button class="end" id="endGame">End</button><button id="newGame">New</button></div>
@@ -246,11 +259,11 @@ function liveView(){
   <div class="pitchtypes">${['FB','CH','CV','SC','RS','DP'].map(x=>`<button class="pitchtype ${g.pitchType===x?'active':''}" data-ptype="${x}">${x}</button>`).join('')}</div>
   <div class="zone-layout">
    <button class="zone-scope ${g.zoneScope==='TEAM'?'active':''}" id="zoneScope">${g.zoneScope||'HITTER'}</button>
-   <div class="zone zone-top ${g.pendingZone==='T'?'selected':''}" data-zone="T">${zp('T')}</div>
-   <div class="zone zone-left ${g.pendingZone==='L'?'selected':''}" data-zone="L">${zp('L')}</div>
-   <div class="core-grid">${['C1','C2','C3','C4'].map(z=>`<div class="zone core ${g.pendingZone===z?'selected':''}" data-zone="${z}">${zp(z)}</div>`).join('')}</div>
-   <div class="zone zone-right ${g.pendingZone==='R'?'selected':''}" data-zone="R">${zp('R')}</div>
-   <div class="zone zone-bottom ${g.pendingZone==='B'?'selected':''}" data-zone="B">${zp('B')}</div>
+   <div class="zone zone-top ${g.pendingZone==='T'?'selected':''}" data-zone="T">${zoneContent('T')}</div>
+   <div class="zone zone-left ${g.pendingZone==='L'?'selected':''}" data-zone="L">${zoneContent('L')}</div>
+   <div class="core-grid">${['C1','C2','C3','C4'].map(z=>`<div class="zone core ${g.pendingZone===z?'selected':''}" data-zone="${z}">${zoneContent(z)}</div>`).join('')}</div>
+   <div class="zone zone-right ${g.pendingZone==='R'?'selected':''}" data-zone="R">${zoneContent('R')}</div>
+   <div class="zone zone-bottom ${g.pendingZone==='B'?'selected':''}" data-zone="B">${zoneContent('B')}</div>
    <button class="zone-next ${g.previewNext?'active':''}" id="zoneNext" ${nextName?'': 'disabled'}>${g.previewNext?nextInitials:'NEXT'}</button>
    <button class="fps ${g.firstPitchView?'active':''}" id="fpsBtn"><span>FPS</span><strong>${pct0(fps(g))}</strong></button>
   </div>
@@ -259,21 +272,23 @@ function liveView(){
   </div>
  </div>
  <div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div></div>
- <div class="tabs">${['LIVE','AB1','AB2','ALL'].map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}</div>
+ <div class="tabs" style="--tab-count:${tabNames.length}">${tabNames.map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}</div>
  <div class="results">
-  <button class="result hbp" data-result="HBP">HBP</button><button class="result ball" data-result="B">B</button><button class="result foul" data-result="F">F</button><button class="result hit" data-result="HIT">HIT</button>
-  <button class="result undo" id="undo">Undo</button><button class="result strike" data-result="K">K</button><button class="result strike" data-result="KL">ꓘ</button><button class="result out" data-result="H4O">H4O</button>
+  <button class="result hbp" data-result="HBP" ${statsMode?'disabled':''}>HBP</button><button class="result ball ${statsMode&&filter==='B'?'filter-active':''}" data-result="B">B</button><button class="result foul ${statsMode&&filter==='F'?'filter-active':''}" data-result="F">F</button><button class="result hit ${statsMode&&filter==='HIT'?'filter-active':''}" data-result="HIT">HIT</button>
+  <button class="result undo" id="undo" ${statsMode?'disabled':''}>Undo</button><button class="result strike ${statsMode&&filter==='K'?'filter-active':''}" data-result="K">K</button><button class="result strike ${statsMode&&filter==='K'?'filter-active':''}" data-result="KL">ꓘ</button><button class="result out ${statsMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
  </div>`;
 }
 function historyHtml(g,hitter){
  const pitches=g.pitches.filter(p=>p.hitter===hitter);
  const tab=g.historyTab||'LIVE';
- let show=pitches;
- if(/^AB\d+$/.test(tab)){const n=Number(tab.slice(2));show=pitches.filter(p=>p.pa===n)}
+ let show=pitches.filter(p=>p.pa===g.paNumber);
+ if(/^AB\d+$/.test(tab)){
+   const n=Number(tab.slice(2)), completed=g.plateAppearances.filter(pa=>pa.hitter===hitter)[n-1];
+   show=completed?pitches.filter(p=>p.pa===completed.pa):[];
+ }else if(tab==='ALL')show=pitches;
  const ordered=[...show].reverse();
- return ordered.map(p=>`<div class="history-chip"><div>${esc(p.result)} <span style="color:#718096">${esc(p.pitchType)}</span></div><div class="mini">
- <span class="sq ${p.zone==='C1'?'good':''}"></span><span class="sq ${p.zone==='C2'?'good':''}"></span>
- <span class="sq ${p.zone==='C3'?'good':''}"></span><span class="sq ${p.zone==='C4'?'good':''}"></span></div></div>`).join('')||'<div class="small" style="text-align:center;padding:20px">No pitches yet</div>';
+ return ordered.map(p=>`<div class="history-chip"><div>${p.result==='KL'?'ꓘ':esc(p.result)} <span>${esc(p.pitchType)}</span></div><div class="mini-zone">
+ ${['T','L','C1','C2','C3','C4','R','B'].map(z=>`<span class="mini-zone-cell mz-${z.toLowerCase()} ${p.zone===z?pitchMarkClass(p):''}"></span>`).join('')}</div></div>`).join('')||'<div class="history-empty" aria-label="Next pitch"></div>';
 }
 function aiSuggestions(g,hitter){
  const ps=allPitches(true).filter(p=>p.hitter===hitter&&p.pitchType);
@@ -479,13 +494,16 @@ function bindLive(){
  $$('[data-outs]').forEach(b=>b.onclick=()=>{g.outs=+b.dataset.outs;save();render()});
  $$('[data-runner]').forEach(b=>b.onclick=()=>{const n=+b.dataset.runner;g.runners=g.runners.includes(n)?g.runners.filter(x=>x!==n):[...g.runners,n];save();render()});
  $$('[data-ptype]').forEach(b=>b.onclick=()=>{g.pitchType=b.dataset.ptype;save();render()});
- $$('[data-zone]').forEach(z=>z.onclick=()=>{g.pendingZone=z.dataset.zone;save();render()});
- $$('[data-tab]').forEach(b=>b.onclick=()=>{g.historyTab=b.dataset.tab;save();render()});
- $('#zoneScope').onclick=()=>{g.zoneScope=(g.zoneScope||'HITTER')==='HITTER'?'TEAM':'HITTER';g.previewNext=false;save();render()};
- $('#zoneNext').onclick=()=>{if(g.battingOrder.length<2)return;g.previewNext=!g.previewNext;if(g.previewNext)g.zoneScope='HITTER';save();render()};
- $('#fpsBtn').onclick=()=>{g.firstPitchView=!g.firstPitchView;save();render()};
+ $$('[data-zone]').forEach(z=>z.onclick=()=>{if(g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL'||g.firstPitchView)return;g.pendingZone=z.dataset.zone;save();render()});
+ $$('[data-tab]').forEach(b=>b.onclick=()=>{g.historyTab=b.dataset.tab;g.zoneScope='HITTER';g.previewNext=false;g.firstPitchView=false;save();render()});
+ $('#zoneScope').onclick=()=>{const team=(g.zoneScope||'HITTER')!=='TEAM';g.zoneScope=team?'TEAM':'HITTER';g.zoneFilter='K';g.previewNext=false;g.historyTab='LIVE';g.firstPitchView=false;g.showAi=false;save();render()};
+ $('#zoneNext').onclick=()=>{if(g.battingOrder.length<2)return;g.previewNext=!g.previewNext;g.zoneScope='HITTER';g.zoneFilter='K';g.historyTab='LIVE';g.firstPitchView=false;g.showAi=false;save();render()};
+ $('#fpsBtn').onclick=()=>{g.firstPitchView=!g.firstPitchView;g.zoneScope='HITTER';g.previewNext=false;g.showAi=false;save();render()};
  $$('[data-result]').forEach(b=>b.onclick=()=>{
    const r=b.dataset.result;
+   if(g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL'){
+     if(r!=='HBP'){g.zoneFilter=r==='KL'?'K':r;save();render()}return;
+   }
    if(!g.pendingZone && !['HBP'].includes(r)){alert('Select a pitch location first.');return}
    if(r==='HIT'||r==='H4O'){modal=r;render()} else addPitch(r);
  });
