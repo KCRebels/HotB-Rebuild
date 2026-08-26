@@ -90,7 +90,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .runner::after{transform:rotate(-45deg)}
 .runner{isolation:isolate}
 .runner{color:#111;text-shadow:0 0 2px #fff}
-.runner::first-line{position:relative;z-index:1}
+.runner>span{position:relative;z-index:1}
 .runner.active{background:#111;color:#fff;text-shadow:0 1px 2px #000}
 .live-main{display:grid;grid-template-columns:minmax(0,1fr) 165px;gap:12px;padding:0 14px}
 .live-workspace{height:calc(100svh - 170px);min-height:520px;max-height:760px;display:grid;grid-template-columns:minmax(0,1fr) 118px;grid-template-rows:auto auto auto;align-content:start;gap:7px;padding:7px;overflow:hidden}
