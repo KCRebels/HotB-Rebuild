@@ -364,20 +364,18 @@ function aiSuggestions(g,hitter){
 }
 function hitModal(kind){
  const isOut=kind==='H4O';
- return `<div class="modal-backdrop hit-backdrop"><div class="modal hit-modal">
+ return `<div class="modal-backdrop hit-backdrop"><div class="modal hit-modal ${isOut?'out-contact':'hit-contact'}">
  <div class="topbar"><button class="btn" data-close>Cancel</button><div class="brand" style="text-align:center">${kind}</div><div style="width:94px"></div></div>
- <div style="text-align:center;margin-top:-12px;padding-bottom:8px;background:#111;color:#ddd">Select the fielder</div>
  <div class="field-wrap"><div class="field">${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="pos p${n}" data-fielder="${n}">${n}</button>`).join('')}</div></div>
  <div class="hit-options"><div class="contact-board">
   <div class="contact-left">
    <div class="compact-three">${['HIT','BUNT','SLAP'].map(x=>`<button class="choice" data-contact="${x}">${x}</button>`).join('')}</div>
-   ${isOut?`<div class="compact-four">${['GO','LO','FO','PO'].map(x=>`<button class="choice" data-outtype="${x}">${x}</button>`).join('')}</div>`:
+   ${isOut?`<div class="compact-four out-grid">${['GO','LO','FO','PO'].map(x=>`<button class="choice" data-outtype="${x}">${x}</button>`).join('')}</div>`:
    `<div class="compact-three">${['GB','LD','FB'].map(x=>`<button class="choice" data-batted="${x}">${x}</button>`).join('')}</div>
     <div class="compact-four bases-grid">${['1B','2B','3B','HR'].map(x=>`<button class="choice blue" data-hit="${x}">${x}</button>`).join('')}</div>`}
   </div>
   <div class="contact-right">
-   ${isOut?`<div class="side-stack"><button class="choice" data-qual="SAC">SAC</button><button class="choice" data-qual="RBI">RBI</button><button class="choice" data-qual="RBA">RBA</button></div>`:
-   `<div class="side-stack"><button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button><button class="choice" data-qual="SAC">SAC</button></div><div class="side-stack run-stack"><button class="choice" data-qual="RBI">RBI</button><button class="choice" data-qual="RBA">RBA</button></div>`}
+   <div class="qual-grid">${isOut?'':`<button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button>`}<button class="choice qual-wide" data-qual="SAC">SAC</button><button class="choice" data-qual="RBI">RBI</button><button class="choice" data-qual="RBA">RBA</button></div>
   </div>
  </div><button class="btn block black save-contact" id="saveContact" disabled>${isOut?'Save Out':'Save Hit'}</button></div></div></div>`;
 }
