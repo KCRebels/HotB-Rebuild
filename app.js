@@ -64,7 +64,7 @@ function createGame(opponent,pitcherName,pitcherNumber,order){
   id:crypto.randomUUID(),date:new Date().toISOString(),opponent,pitcherName,pitcherNumber,
   battingOrder:order,currentIdx:0,inning:1,outs:0,runners:[],plan:'IN',pitchType:'FB',
   balls:0,strikes:0,paNumber:1,pitches:[],plateAppearances:[],ended:false,
-  pendingZone:null
+  pendingZone:null,zoneScope:'HITTER',previewNext:false,showAi:false
  };
  db.currentGame=g;
  if(opponent&&!db.teams.includes(opponent))db.teams.push(opponent);
@@ -219,13 +219,17 @@ function liveView(){
  const g=currentGame();if(!g)return `<div class="panel"><p>No current game.</p><button class="btn" data-go="new">New Game</button></div>`;
  const h=currentHitter(g);
  const aps=g.plateAppearances.filter(p=>p.hitter===h.name);
- const histPitches=g.pitches.filter(p=>p.hitter===h.name);
+ const nextName=g.battingOrder.length>1?g.battingOrder[(g.currentIdx+1)%g.battingOrder.length]:'';
+ const chartName=g.previewNext?nextName:h.name;
+ const sourcePitches=(g.zoneScope==='TEAM'&&!g.previewNext)?g.pitches:g.pitches.filter(p=>p.hitter===chartName);
+ const histPitches=g.firstPitchView?sourcePitches.filter((p,i,a)=>i===0||p.pa!==a[i-1].pa||p.hitter!==a[i-1].hitter):sourcePitches;
  const tabNames=['LIVE',...aps.map((p,i)=>`AB${i+1}`),'ALL'].slice(0,4);
  const zoneFreq={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0}; const hp=histPitches.length||1;
  histPitches.forEach(p=>{if(zoneFreq[p.zone]!=null)zoneFreq[p.zone]++});
- const showPct = g.historyTab==='ALL';
+ const showPct = g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL';
  const zp=z=>showPct?`<span class="pct">${Math.round(zoneFreq[z]/hp*100)}%</span>`:'';
- const suggestions=aiSuggestions(g,h.name);
+ const suggestions=aiSuggestions(g,chartName);
+ const nextInitials=nextName?nextName.split(' ').map(x=>x[0]).join(''):'';
  return `<div class="topbar"><div class="brand">KC REBELS</div><button id="openReports">Reports</button><button class="end" id="endGame">End</button><button id="newGame">New</button></div>
  <div class="live-top">
   <div class="statbox hitter-box"><div class="cap">HITTER</div><div class="big">${esc(h.name)}</div><div class="sidebadge">${h.side}</div></div>
@@ -241,18 +245,20 @@ function liveView(){
  <div class="live-main"><div class="zone-card">
   <div class="pitchtypes">${['FB','CH','CV','SC','RS','DP'].map(x=>`<button class="pitchtype ${g.pitchType===x?'active':''}" data-ptype="${x}">${x}</button>`).join('')}</div>
   <div class="zone-layout">
+   <button class="zone-scope ${g.zoneScope==='TEAM'?'active':''}" id="zoneScope">${g.zoneScope||'HITTER'}</button>
    <div class="zone zone-top ${g.pendingZone==='T'?'selected':''}" data-zone="T">${zp('T')}</div>
    <div class="zone zone-left ${g.pendingZone==='L'?'selected':''}" data-zone="L">${zp('L')}</div>
    <div class="core-grid">${['C1','C2','C3','C4'].map(z=>`<div class="zone core ${g.pendingZone===z?'selected':''}" data-zone="${z}">${zp(z)}</div>`).join('')}</div>
    <div class="zone zone-right ${g.pendingZone==='R'?'selected':''}" data-zone="R">${zp('R')}</div>
    <div class="zone zone-bottom ${g.pendingZone==='B'?'selected':''}" data-zone="B">${zp('B')}</div>
+   <button class="zone-next ${g.previewNext?'active':''}" id="zoneNext" ${nextName?'': 'disabled'}>${g.previewNext?nextInitials:'NEXT'}</button>
+   <button class="fps ${g.firstPitchView?'active':''}" id="fpsBtn"><span>FPS</span><strong>${pct0(fps(g))}</strong></button>
   </div>
   <div class="zone-tools"><button class="ai" id="aiBtn">Ai</button>
-   <div class="ai-suggestions">${suggestions.map((s,i)=>`<div class="ai-box">#${i+1} ${esc(s.label)} &nbsp; ${s.pct}%</div>`).join('')}</div>
-   <div class="fps">FPS<br><span style="font-size:23px">${pct0(fps(g))}</span></div>
+   ${g.showAi?`<div class="ai-suggestions">${suggestions.map((s,i)=>`<div class="ai-box">#${i+1} ${esc(s.label)} &nbsp; ${s.pct}%</div>`).join('')}</div>`:''}
   </div>
  </div>
- <div class="history-panel">${historyHtml(g,h.name)}</div></div>
+ <div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div></div>
  <div class="tabs">${['LIVE','AB1','AB2','ALL'].map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}</div>
  <div class="results">
   <button class="result hbp" data-result="HBP">HBP</button><button class="result ball" data-result="B">B</button><button class="result foul" data-result="F">F</button><button class="result hit" data-result="HIT">HIT</button>
@@ -363,10 +369,10 @@ function evalView(){
  const execs=pas.map(p=>p.execution).filter(v=>v!==null);
  const execution=execs.length?execs.filter(Boolean).length/execs.length:null;
  const ms=measurementTypes(player);
- return `<div class="eval-head"><button class="btn" data-go="home">Home</button><div><div class="teamname">KC REBELS REGIONAL LICKEL</div><h1>Player / Team Eval</h1></div><div class="spacer"></div><button class="record" id="recordMeasure">Record</button></div>
+ return `<div class="eval-head"><button class="btn" data-go="home">Home</button><div class="eval-title"><div class="teamname">KC REBELS REGIONAL LICKEL</div><h1>Player / Team Eval</h1></div></div>
  <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
- ${player?`<div class="player-card"><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span style="color:#c22730">#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span style="color:#111">| ${esc(player.school)}</span></div></div><div class="player-portrait"><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="grad-year">${esc(player.grad)}</div></div></div>`:
- `<div class="player-card"><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div><div class="player-portrait"><div class="player-photo team-photo">KC</div><div class="grad-year">TEAM</div></div></div>`}
+ ${player?`<div class="player-card player-profile"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div></div>`:
+ `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
   <div class="eval-tile dark" data-guide="HotB+"><h3>HotB+</h3><div class="value">${hotb??'—'}</div><div class="note">${player?'More saved data needed':'Current-team benchmark'}</div></div>
   <div class="eval-tile" data-guide="Runs Produced"><h3>Runs Produced</h3><div class="value">${s.rp.toFixed(1)}</div><div class="note">${player?`Team player avg ${(teamS.rp/Math.max(1,db.roster.length)).toFixed(1)}`:'Team total'}</div></div>
@@ -474,6 +480,9 @@ function bindLive(){
  $$('[data-ptype]').forEach(b=>b.onclick=()=>{g.pitchType=b.dataset.ptype;save();render()});
  $$('[data-zone]').forEach(z=>z.onclick=()=>{g.pendingZone=z.dataset.zone;save();render()});
  $$('[data-tab]').forEach(b=>b.onclick=()=>{g.historyTab=b.dataset.tab;save();render()});
+ $('#zoneScope').onclick=()=>{g.zoneScope=(g.zoneScope||'HITTER')==='HITTER'?'TEAM':'HITTER';g.previewNext=false;save();render()};
+ $('#zoneNext').onclick=()=>{if(g.battingOrder.length<2)return;g.previewNext=!g.previewNext;if(g.previewNext)g.zoneScope='HITTER';save();render()};
+ $('#fpsBtn').onclick=()=>{g.firstPitchView=!g.firstPitchView;save();render()};
  $$('[data-result]').forEach(b=>b.onclick=()=>{
    const r=b.dataset.result;
    if(!g.pendingZone && !['HBP'].includes(r)){alert('Select a pitch location first.');return}
@@ -483,7 +492,7 @@ function bindLive(){
  $('#openReports').onclick=()=>{modal='reports';reportMode='current';render()};
  $('#endGame').onclick=()=>{if(confirm('End and save this game?')){g.ended=true;db.savedGames.push(structuredClone(g));db.currentGame=null;save();go('home')}};
  $('#newGame').onclick=()=>{if(confirm('Start a new game? Current unsaved game will remain until replaced.'))go('new')};
- $('#aiBtn').onclick=()=>render();
+ $('#aiBtn').onclick=()=>{g.showAi=!g.showAi;save();render()};
 }
 function bindContact(){
  let st={fielder:null,contact:'HIT',batted:null,hitType:null,outType:null,quals:new Set()};
@@ -510,7 +519,7 @@ function exportCsv(){
 }
 function bindEval(){
  $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};
- $('#recordMeasure').onclick=$('#recordMeasure2').onclick=()=>{recordType='';modal='record';render()};
+ $('#recordMeasure2').onclick=()=>{recordType='';modal='record';render()};
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
  $$('[data-guide]').forEach(x=>x.onclick=()=>{modal='guide:'+x.dataset.guide;render()});
 }
