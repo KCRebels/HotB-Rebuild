@@ -11,7 +11,7 @@ const requestedPlanPreferences={
  'Aniesa Rohleder':'OUT','Makenna Whitaker':'OUT','Brynna Peter':'OUT',
  'Tayte Stepps':'OUT','Claire Jack':'OUT','Mattingly Hardy':'OUT','Lydia Copeland':'OUT'
 };
-const heatColors={B:'#3d8c52',F:'#f0c94d',HIT:'#3862db',K:'#cd3a32',H4O:'#cd3a32',FPS:'#101011',REPORT:'#101011'};
+const heatColors={B:'#3d8c52',F:'#f0c94d',HIT:'#3862db',K:'#cd3a32',H4O:'#cd3a32',FPS:'#cd3a32',REPORT:'#101011'};
 
 const defaultRoster = [
  {name:'Aniesa Rohleder',side:'R',jersey:'9',grad:'2029',positions:'RHP | 1B',gpa:'3.98',interest:'Sports Medicine',school:'Olathe South HS',photo:'Aniesa.jpg'},
@@ -288,8 +288,8 @@ function liveView(){
  const statsMode=g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL';
  const filter=g.zoneFilter||'K';
  const histPitches=g.firstPitchView?firstPitches:statsMode?sourcePitches.filter(p=>resultGroup(p)===filter):sourcePitches;
- const tabNames=['LIVE',...aps.map((p,i)=>`AB${i+1}`)];
- if(aps.length>=2)tabNames.push('ALL');
+ const abTabNames=aps.map((p,i)=>`AB${i+1}`);
+ const showAll=aps.length>=2;
  const zoneFreq={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0}; const hp=histPitches.length||1;
  histPitches.forEach(p=>{if(zoneFreq[p.zone]!=null)zoneFreq[p.zone]++});
  const showPct = statsMode||g.firstPitchView;
@@ -338,7 +338,7 @@ function liveView(){
   </div>
  </div>
  <div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div>
- <div class="tabs" style="--tab-count:${tabNames.length}">${tabNames.map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}</div>
+ <div class="tabs ${showAll?'with-all':'without-all'}"><button class="tab fixed-tab ${(g.historyTab||'LIVE')==='LIVE'?'active':''}" data-tab="LIVE">LIVE</button><div class="ab-scroll">${abTabNames.map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}</div>${showAll?`<button class="tab fixed-tab ${(g.historyTab||'LIVE')==='ALL'?'active':''}" data-tab="ALL">ALL</button>`:''}</div>
  <div class="results">
   <button class="result hbp" data-result="HBP" ${statsMode?'disabled':''}>HBP</button><button class="result ball ${statsMode&&filter==='B'?'filter-active':''}" data-result="B">B</button><button class="result foul ${statsMode&&filter==='F'?'filter-active':''}" data-result="F">F</button><button class="result hit ${statsMode&&filter==='HIT'?'filter-active':''}" data-result="HIT">HIT</button>
   <button class="result undo" id="undo" ${statsMode?'disabled':''}>Undo</button><button class="result strike ${statsMode&&filter==='K'?'filter-active':''}" data-result="K">K</button><button class="result strike ${statsMode&&filter==='K'?'filter-active':''}" data-result="KL">KL</button><button class="result out ${statsMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
@@ -368,17 +368,18 @@ function hitModal(kind){
  <div class="topbar"><button class="btn" data-close>Cancel</button><div class="brand" style="text-align:center">${kind}</div><div style="width:94px"></div></div>
  <div style="text-align:center;margin-top:-12px;padding-bottom:8px;background:#111;color:#ddd">Select the fielder</div>
  <div class="field-wrap"><div class="field">${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="pos p${n}" data-fielder="${n}">${n}</button>`).join('')}</div></div>
- <div class="hit-options">
-  <div class="choice-grid primary-choice-row">${['HIT','BUNT','SLAP'].map(x=>`<button class="choice" data-contact="${x}">${x}</button>`).join('')}</div>
-  ${isOut?`<div class="choice-grid four">${['GO','LO','FO','PO'].map(x=>`<button class="choice" data-outtype="${x}">${x}</button>`).join('')}</div>
-  <div class="choice-grid"><button class="choice" data-qual="SAC">SAC</button><button class="choice" data-qual="RBI">RBI</button><button class="choice" data-qual="RBA">RBA</button></div>
-  <button class="btn block black" id="saveContact" disabled>Save Out</button>`:
-  `<div class="choice-grid primary-choice-row">${['GB','LD','FB'].map(x=>`<button class="choice" data-batted="${x}">${x}</button>`).join('')}</div>
-   <div class="choice-grid four primary-choice-row">${['1B','2B','3B','HR'].map(x=>`<button class="choice blue" data-hit="${x}">${x}</button>`).join('')}</div>
-   <div class="choice-grid"><button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button><button class="choice" data-qual="SAC">SAC</button></div>
-   <div class="choice-grid two"><button class="choice" data-qual="RBI">RBI</button><button class="choice" data-qual="RBA">RBA</button></div>
-   <button class="btn block black save-contact" id="saveContact" disabled>Save Hit</button>`}
- </div></div></div>`;
+ <div class="hit-options"><div class="contact-board">
+  <div class="contact-left">
+   <div class="compact-three">${['HIT','BUNT','SLAP'].map(x=>`<button class="choice" data-contact="${x}">${x}</button>`).join('')}</div>
+   ${isOut?`<div class="compact-four">${['GO','LO','FO','PO'].map(x=>`<button class="choice" data-outtype="${x}">${x}</button>`).join('')}</div>`:
+   `<div class="compact-three">${['GB','LD','FB'].map(x=>`<button class="choice" data-batted="${x}">${x}</button>`).join('')}</div>
+    <div class="compact-four bases-grid">${['1B','2B','3B','HR'].map(x=>`<button class="choice blue" data-hit="${x}">${x}</button>`).join('')}</div>`}
+  </div>
+  <div class="contact-right">
+   ${isOut?`<div class="side-stack"><button class="choice" data-qual="SAC">SAC</button><button class="choice" data-qual="RBI">RBI</button><button class="choice" data-qual="RBA">RBA</button></div>`:
+   `<div class="side-stack"><button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button><button class="choice" data-qual="SAC">SAC</button></div><div class="side-stack run-stack"><button class="choice" data-qual="RBI">RBI</button><button class="choice" data-qual="RBA">RBA</button></div>`}
+  </div>
+ </div><button class="btn block black save-contact" id="saveContact" disabled>${isOut?'Save Out':'Save Hit'}</button></div></div></div>`;
 }
 function reportModal(){
  const g=reportMode==='current'?currentGame():null;
@@ -619,7 +620,7 @@ function bindContact(){
  $$('[data-hit]').forEach(b=>b.onclick=()=>{$$('[data-hit]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.hitType=b.dataset.hit;update()});
  $$('[data-outtype]').forEach(b=>b.onclick=()=>{$$('[data-outtype]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.outType=b.dataset.outtype;update()});
  $$('[data-qual]').forEach(b=>b.onclick=()=>{const q=b.dataset.qual;if(st.quals.has(q)){st.quals.delete(q);b.classList.remove('active')}else{st.quals.add(q);b.classList.add('active')}update()});
- const update=()=>{$('#saveContact').disabled=!(st.fielder&&(modal==='H4O'?st.outType:(st.contact&&st.batted&&st.hitType)))};
+ const update=()=>{$('#saveContact').disabled=!(st.fielder&&(modal==='H4O'?(st.contact&&st.outType):(st.contact&&st.batted&&st.hitType)))};
  $('#saveContact').onclick=()=>{const kind=modal;modal=null;addPitch(kind,{fielder:st.fielder,contactType:st.batted||st.outType,hitType:st.hitType||'',bunt:st.contact==='BUNT',slap:st.contact==='SLAP',rbi:st.quals.has('RBI'),rba:st.quals.has('RBA'),sac:st.quals.has('SAC'),error:st.quals.has('E'),fc:st.quals.has('FC'),hhb:st.quals.has('HHB')})};
 }
 function bindReports(){
