@@ -30,10 +30,17 @@ const seed = {
  pitchers:[],
  savedGames:[],
  measurements:[],
+ planPreferences:{},
  currentGame:null,
  route:'home'
 };
 let db = load();
+// For now, a refresh abandons only the unfinished game and returns to setup.
+if(db.route==='live'){
+ db.currentGame=null;
+ db.route='new';
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+}
 let route = db.route || 'home';
 let modal = null;
 let reportMode='current', reportSub='spray', reportFilterHitter='All Hitters';
@@ -62,7 +69,7 @@ function currentGame(){return db.currentGame}
 function createGame(opponent,pitcherName,pitcherNumber,order){
  const g={
   id:crypto.randomUUID(),date:new Date().toISOString(),opponent,pitcherName,pitcherNumber,
-  battingOrder:order,currentIdx:0,inning:1,outs:0,runners:[],plan:'IN',pitchType:'FB',
+  battingOrder:order,currentIdx:0,inning:1,outs:0,runners:[],plan:db.planPreferences?.[order[0]]||'IN',pitchType:'FB',
   balls:0,strikes:0,paNumber:1,pitches:[],plateAppearances:[],ended:false,
   pendingZone:null,zoneScope:'HITTER',zoneFilter:'K',previewNext:false,showAi:false,historyTab:'LIVE',firstPitchView:false
  };
@@ -129,6 +136,8 @@ function closePA(outcome,extra={}){
  g.balls=0;g.strikes=0;g.paNumber++;
  g.currentIdx=(g.currentIdx+1)%g.battingOrder.length;
  if(g.currentIdx===0) g.inning++;
+ g.plan=db.planPreferences?.[g.battingOrder[g.currentIdx]]||'IN';
+ g.pitchType='FB';
 }
 function undo(){
  const g=currentGame(); if(!g||!g.pitches.length)return;
@@ -180,7 +189,7 @@ function fps(g){
 }
 function render(){
  const app=document.getElementById('app');
- app.innerHTML=`<div class="app">${route==='home'?homeView():
+ app.innerHTML=`<div class="app ${route==='live'?'live-app':''}">${route==='home'?homeView():
  route==='new'?newGameView():route==='roster'?rosterView():
  route==='live'?liveView():route==='eval'?evalView():route==='reports'?reportsPage():homeView()}</div>${modal?modalView():''}`;
  bind();
@@ -225,6 +234,8 @@ function rosterView(){
 function liveView(){
  const g=currentGame();if(!g)return `<div class="panel"><p>No current game.</p><button class="btn" data-go="new">New Game</button></div>`;
  const h=currentHitter(g);
+ const currentPlan=db.planPreferences?.[h.name]||g.plan||'IN';
+ const activePitchType=g.pitchType||'FB';
  const aps=g.plateAppearances.filter(p=>p.hitter===h.name);
  const nextName=g.battingOrder.length>1?g.battingOrder[(g.currentIdx+1)%g.battingOrder.length]:'';
  const chartName=g.previewNext?nextName:h.name;
@@ -260,20 +271,20 @@ function liveView(){
   <div class="statbox"><div class="cap">PITCHER</div><div class="big">#${esc(g.pitcherNumber||'')}</div></div>
  </div>
  <div class="control-row">
-  <div class="control-card"><div class="cap">PLAN</div><div class="pill-row">${['IN','OUT','CH','NO'].map(x=>`<button class="pill red ${g.plan===x?'active':''}" data-plan="${x}">${x}</button>`).join('')}</div></div>
-  <div class="control-card"><div class="cap">OUTS</div><div class="pill-row">${[0,1,2].map(x=>`<button class="pill ${g.outs===x?'active':''}" data-outs="${x}">${x}</button>`).join('')}</div></div>
-  <div class="control-card"><div class="cap">RUNNERS</div><div class="pill-row">${[3,2,1].map(x=>`<button class="runner ${g.runners.includes(x)?'active':''}" data-runner="${x}">${x}</button>`).join('')}</div></div>
+  <div class="control-card"><div class="pill-row">${['IN','OUT','CH','NO'].map(x=>`<button class="pill red ${currentPlan===x?'active':''}" data-plan="${x}">${x}</button>`).join('')}</div></div>
+  <div class="control-card"><div class="pill-row">${[0,1,2].map(x=>`<button class="pill ${g.outs===x?'active':''}" data-outs="${x}">${x}</button>`).join('')}</div></div>
+  <div class="control-card"><div class="pill-row">${[3,2,1].map(x=>`<button class="runner ${g.runners.includes(x)?'active':''}" data-runner="${x}">${x}</button>`).join('')}</div></div>
  </div>
  <div class="live-workspace"><div class="zone-card">
-  <div class="pitchtypes">${['FB','CH','CV','SC','RS','DP'].map(x=>`<button class="pitchtype ${g.pitchType===x?'active':''}" data-ptype="${x}">${x}</button>`).join('')}</div>
+  <div class="pitchtypes">${['FB','CH','RS','DP','CV','SC'].map(x=>`<button class="pitchtype ${activePitchType===x?'active':''}" data-ptype="${x}">${x}</button>`).join('')}</div>
   <div class="zone-layout">
-   <button class="zone-scope ${g.zoneScope==='TEAM'?'active':''}" id="zoneScope">${g.zoneScope||'HITTER'}</button>
+   <button class="zone-scope ${g.zoneScope==='TEAM'?'active':''}" id="zoneScope">${g.zoneScope==='TEAM'?'TM':'HTR'}</button>
    <div class="zone zone-top ${g.pendingZone==='T'?'selected':''}" data-zone="T">${zoneContent('T')}</div>
    <div class="zone zone-left ${g.pendingZone==='L'?'selected':''}" data-zone="L">${zoneContent('L')}</div>
    <div class="core-grid">${['C1','C2','C3','C4'].map(z=>`<div class="zone core ${g.pendingZone===z?'selected':''}" data-zone="${z}">${zoneContent(z)}</div>`).join('')}</div>
    <div class="zone zone-right ${g.pendingZone==='R'?'selected':''}" data-zone="R">${zoneContent('R')}</div>
    <div class="zone zone-bottom ${g.pendingZone==='B'?'selected':''}" data-zone="B">${zoneContent('B')}</div>
-   <button class="zone-next ${g.previewNext?'active':''}" id="zoneNext" ${nextName?'': 'disabled'}>${g.previewNext?nextInitials:'NEXT'}</button>
+   <button class="zone-next ${g.previewNext?'active':''}" id="zoneNext" ${nextName?'': 'disabled'}>${g.previewNext?nextInitials:'NXT'}</button>
    <button class="fps ${g.firstPitchView?'active':''}" id="fpsBtn"><span>FPS</span><strong>${pct0(fps(g))}</strong></button>
   </div>
   <div class="zone-tools"><button class="ai" id="aiBtn">Ai</button>
@@ -499,7 +510,12 @@ function bindRoster(){
 }
 function bindLive(){
  const g=currentGame();
- $$('[data-plan]').forEach(b=>b.onclick=()=>{g.plan=b.dataset.plan;save();render()});
+ $$('[data-plan]').forEach(b=>b.onclick=()=>{
+   g.plan=b.dataset.plan;
+   db.planPreferences=db.planPreferences||{};
+   db.planPreferences[currentHitter(g).name]=b.dataset.plan;
+   save();render();
+ });
  $$('[data-outs]').forEach(b=>b.onclick=()=>{g.outs=+b.dataset.outs;save();render()});
  $$('[data-runner]').forEach(b=>b.onclick=()=>{const n=+b.dataset.runner;g.runners=g.runners.includes(n)?g.runners.filter(x=>x!==n):[...g.runners,n];save();render()});
  $$('[data-ptype]').forEach(b=>b.onclick=()=>{g.pitchType=b.dataset.ptype;save();render()});
