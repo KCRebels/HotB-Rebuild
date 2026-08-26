@@ -174,7 +174,10 @@ function render(){
 }
 function homeView(){
  return `<div class="home-hero">
-   <div class="home-title">KC REBELS REGIONAL LICKEL</div>
+   <div class="home-brand">
+    <div class="home-logo" aria-label="KC Rebels logo"><span>KC</span><small>REBELS</small></div>
+    <div class="home-title">KC REBELS REGIONAL LICKEL</div>
+   </div>
    <div class="home-actions">
     <button class="home-card primary" data-go="new"><h3>New Game</h3><p>Set matchup and batting order</p></button>
     <button class="home-card" data-go="roster"><h3>Edit Roster</h3><p>Add, remove, or update hitters</p></button>
