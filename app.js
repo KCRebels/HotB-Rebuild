@@ -465,10 +465,21 @@ function recordModal(){
  <button class="btn block red savebar" id="saveMeasurement" disabled>Save Attempt</button>
  <p class="small">Every attempt is retained. The player page displays the best result.</p></div></div>`;
 }
+function gameActionModal(kind){
+ const g=currentGame();
+ const isEnd=kind==='endGame';
+ const opponent=g?.opponent?.trim()||'this opponent';
+ return `<div class="modal-backdrop"><div class="modal game-action-modal" role="alertdialog" aria-modal="true" aria-label="${isEnd?'End Game':'Unsaved Game'}">
+  <h2>${isEnd?'End Game':'Unsaved Game'}</h2>
+  <p>${isEnd?`Save and End the game against ${esc(opponent)}?`:'To keep this game, select Cancel and then use End Game. Continuing will permanently erase the current game.'}</p>
+  <div class="game-action-buttons"><button class="btn" data-close>Cancel</button><button class="btn red" id="confirmGameAction">${isEnd?'Save & End Game':'Continue Without Saving'}</button></div>
+ </div></div>`;
+}
 function modalView(){
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
  if(modal==='reports')return reportModal();
  if(modal==='record')return recordModal();
+ if(modal==='newWarning'||modal==='endGame')return gameActionModal(modal);
  if(modal?.startsWith('guide:'))return evalGuide(modal.slice(6));
  return '';
 }
@@ -483,6 +494,7 @@ function bind(){
  if(modal==='HIT'||modal==='H4O')bindContact();
  if(modal==='reports')bindReports();
  if(modal==='record')bindRecord();
+ if(modal==='newWarning'||modal==='endGame')bindGameAction();
 }
 function bindNew(){
  const sels=$$('.batting-select');
@@ -534,9 +546,16 @@ function bindLive(){
  });
  $('#undo').onclick=undo;
  $('#openReports').onclick=()=>{modal='reports';reportMode='current';render()};
- $('#endGame').onclick=()=>{if(confirm('End and save this game?')){g.ended=true;db.savedGames.push(structuredClone(g));db.currentGame=null;save();go('home')}};
- $('#newGame').onclick=()=>{if(confirm('Start a new game? Current unsaved game will remain until replaced.'))go('new')};
+ $('#endGame').onclick=()=>{modal='endGame';render()};
+ $('#newGame').onclick=()=>{modal='newWarning';render()};
  $('#aiBtn').onclick=()=>{g.showAi=!g.showAi;save();render()};
+}
+function bindGameAction(){
+ $('#confirmGameAction').onclick=()=>{
+   const g=currentGame();
+   if(modal==='endGame'&&g){g.ended=true;db.savedGames.push(structuredClone(g));db.currentGame=null;modal=null;save();go('home');return}
+   db.currentGame=null;modal=null;save();go('new');
+ };
 }
 function bindContact(){
  let st={fielder:null,contact:'HIT',batted:null,hitType:null,outType:null,quals:new Set()};
