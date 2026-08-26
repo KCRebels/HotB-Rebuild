@@ -6,6 +6,11 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;
 const round3 = n => Number.isFinite(n) ? n.toFixed(3).replace(/^0/,'') : '.000';
 const pct1 = n => `${(n*100).toFixed(1)}%`;
 const pct0 = n => `${Math.round(n*100)}%`;
+const requestedPlanPreferences={
+ 'Lakyn Farley':'IN','Maleah Pena':'IN','Hailey Marsh':'NO','Maia Waddell':'NO',
+ 'Aniesa Rohleder':'OUT','Makenna Whitaker':'OUT','Brynna Peter':'OUT',
+ 'Tayte Stepps':'OUT','Claire Jack':'OUT','Mattingly Hardy':'OUT'
+};
 
 const defaultRoster = [
  {name:'Aniesa Rohleder',side:'R',jersey:'9',grad:'2029',positions:'RHP | 1B',gpa:'3.98',interest:'Sports Medicine',school:'Olathe South HS',photo:'Aniesa.jpg'},
@@ -35,6 +40,12 @@ const seed = {
  route:'home'
 };
 let db = load();
+// Apply the requested player plans once, then preserve any changes made in the app.
+if((db.planPreferencesVersion||0)<1){
+ db.planPreferences={...(db.planPreferences||{}),...requestedPlanPreferences};
+ db.planPreferencesVersion=1;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+}
 // For now, a refresh abandons only the unfinished game and returns to setup.
 if(db.route==='live'){
  db.currentGame=null;
@@ -259,8 +270,15 @@ function liveView(){
  const zoneFreq={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0}; const hp=histPitches.length||1;
  histPitches.forEach(p=>{if(zoneFreq[p.zone]!=null)zoneFreq[p.zone]++});
  const showPct = statsMode||g.firstPitchView;
- const zoneContent=z=>showPct?`<span class="pct">${Math.round(zoneFreq[z]/hp*100)}%</span>`:
-   sourcePitches.filter(p=>p.zone===z).slice(-16).map(p=>`<i class="pitch-dot ${pitchMarkClass(p)}"></i>`).join('');
+ const zoneContent=z=>{
+  if(showPct)return `<span class="pct">${Math.round(zoneFreq[z]/hp*100)}%</span>`;
+  const pitches=sourcePitches.filter(p=>p.zone===z), horizontal=['T','B'].includes(z), vertical=['L','R'].includes(z);
+  const cols=horizontal?8:vertical?2:4, rows=Math.max(1,Math.ceil(pitches.length/cols));
+  const available=horizontal?44:vertical?140:70;
+  const dotSize=Math.max(3,Math.min(16,Math.floor(available/rows)-3));
+  const gap=dotSize<=6?.5:dotSize<=10?1:1.5;
+  return `<span class="pitch-dot-grid" style="--dot-cols:${cols};--dot-rows:${rows};--dot-size:${dotSize}px;--dot-gap:${gap}px">${pitches.map(p=>`<i class="pitch-dot ${pitchMarkClass(p)}"></i>`).join('')}</span>`;
+ };
  const suggestions=aiSuggestions(g,chartName);
  const nextInitials=nextName?nextName.split(' ').map(x=>x[0]).join(''):'';
  return `<div class="topbar"><div class="brand">KC REBELS</div><button id="openReports">Reports</button><button class="end" id="endGame">End</button><button id="newGame">New</button></div>
