@@ -32,14 +32,18 @@ button{cursor:pointer}
 .hero p{font-size:20px;margin:12px 0 0;opacity:.9}
 .hero .spacer{flex:1}
 .hero button{background:#fff;border:0;border-radius:12px;padding:12px 18px;font-size:18px;font-weight:900}
-.home-hero{height:630px;padding:48px 40px 30px;display:flex;flex-direction:column;justify-content:flex-end;background:
-linear-gradient(155deg,rgba(0,0,0,.95) 0 34%,rgba(117,0,16,.82) 34% 62%,rgba(255,255,255,.92) 62% 100%);}
-.home-title{position:absolute;top:155px;left:calc(50% - 310px);max-width:620px;color:#fff;font-size:34px;font-weight:900;letter-spacing:3px}
-.home-actions{width:100%;display:grid;gap:14px}
-.home-card{border-radius:18px;border:3px solid #111;padding:18px 24px;background:#fff;box-shadow:0 8px 0 #111;text-align:left}
+.home-hero{height:630px;padding:30px 40px 24px;display:flex;flex-direction:column;justify-content:flex-end;background:
+linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
+.home-brand{position:absolute;top:54px;left:50%;width:min(640px,calc(100% - 40px));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:14px}
+.home-logo{width:104px;height:104px;border-radius:50%;border:5px solid #fff;background:#a71920;color:#fff;box-shadow:0 0 0 5px #111,0 7px 18px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:.9;font-weight:950;transform:rotate(-3deg)}
+.home-logo span{font-size:46px;letter-spacing:-4px}
+.home-logo small{font-size:13px;letter-spacing:2px;margin-top:7px}
+.home-title{color:#fff;font-size:30px;line-height:1;font-weight:900;letter-spacing:2px;white-space:nowrap;text-align:center}
+.home-actions{width:100%;display:grid;gap:10px}
+.home-card{border-radius:15px;border:3px solid #111;padding:11px 20px;background:#fff;box-shadow:0 5px 0 #111;text-align:left}
 .home-card.primary{background:#cc1f2a;color:#fff;border-color:#7d1017;box-shadow:0 8px 0 #631116}
-.home-card h3{margin:0;font-size:27px}
-.home-card p{margin:7px 0 0;font-weight:700;color:#525252}
+.home-card h3{margin:0;font-size:24px}
+.home-card p{margin:3px 0 0;font-size:14px;font-weight:700;color:#525252}
 .home-card.primary p{color:#ffdadd}
 .home-footer{text-align:center;padding:24px;font-weight:900;letter-spacing:2px;color:#555}
 .panel{background:#fff;border:1px solid #d5dcda;border-radius:22px;margin:20px;padding:22px}
@@ -160,9 +164,13 @@ clip-path:polygon(50% 100%,0 43%,15% 0,85% 0,100% 43%);border:10px solid #c49363
 .stopwatch{border:4px solid #111;border-radius:20px;padding:20px;display:flex;align-items:center;gap:20px}.stopwatch .time{font-size:54px;font-weight:900;flex:1;text-align:center}.savebar{margin-top:20px}
 @media(max-width:560px){
   .app{max-width:none}
-  .home-title{position:static;margin-bottom:auto;font-size:27px}
-  .home-hero{height:calc(100vh - 80px);padding:50px 20px 25px}
-  .home-card{padding:14px 18px}.home-card h3{font-size:22px}
+  .home-brand{top:30px;width:calc(100% - 20px);gap:11px}
+  .home-logo{width:88px;height:88px;border-width:4px;box-shadow:0 0 0 4px #111,0 6px 15px rgba(0,0,0,.35)}
+  .home-logo span{font-size:39px}.home-logo small{font-size:11px;margin-top:6px}
+  .home-title{font-size:clamp(16px,5vw,23px);letter-spacing:1px}
+  .home-hero{height:calc(100vh - 70px);min-height:560px;padding:28px 20px 20px}
+  .home-actions{gap:8px}
+  .home-card{padding:9px 16px;box-shadow:0 4px 0 #111}.home-card.primary{box-shadow:0 4px 0 #631116}.home-card h3{font-size:21px}.home-card p{font-size:13px;margin-top:2px}
   .hero{padding:22px 18px}.hero h1{font-size:38px}
   .grid2{grid-template-columns:1fr 120px}
   .topbar{padding:11px 13px}.topbar .brand{font-size:24px}.topbar button{padding:9px 12px;font-size:16px}
