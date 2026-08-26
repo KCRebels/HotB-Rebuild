@@ -309,7 +309,7 @@ function liveView(){
  };
  const suggestions=aiSuggestions(g,chartName);
  const nextInitials=nextName?nextName.split(' ').map(x=>x[0]).join(''):'';
- return `<div class="topbar"><div class="brand">KC REBELS</div><button id="openReports">Reports</button><button class="end" id="endGame">End</button><button id="newGame">New</button></div>
+ return `<div class="topbar"><div class="brand">KC REBELS</div><button id="openProfile">Profile</button><button id="openReports">Reports</button><button class="end" id="endGame">End</button><button id="newGame">New</button></div>
  <div class="live-top">
   <div class="statbox hitter-box"><div class="cap">HITTER</div><div class="big">${esc(h.name)}</div><div class="sidebadge">${h.side}</div></div>
   <div class="statbox"><div class="cap">INN</div><div class="big">${g.inning}</div></div>
@@ -450,7 +450,7 @@ function evalView(){
  const execs=pas.map(p=>p.execution).filter(v=>v!==null);
  const execution=execs.length?execs.filter(Boolean).length/execs.length:null;
  const ms=measurementTypes(player);
- return `<div class="eval-head"><button class="btn" data-go="home">Home</button><div class="eval-title"><div class="teamname">KC REBELS REGIONAL LICKEL</div><h1>Player / Team Eval</h1></div></div>
+ return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><div class="teamname">KC REBELS REGIONAL LICKEL</div><h1>Player / Team Eval</h1></div></div>
  <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  ${player?`<div class="player-card player-profile"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div></div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
@@ -598,6 +598,7 @@ function bindLive(){
    if(r==='HIT'||r==='H4O'){modal=r;render()} else addPitch(r);
  });
  $('#undo').onclick=undo;
+ $('#openProfile').onclick=()=>{evalPlayer=currentHitter(g).name;go('eval')};
  $('#openReports').onclick=()=>{modal='reports';reportMode='current';render()};
  $('#endGame').onclick=()=>{modal='endGame';render()};
  $('#newGame').onclick=()=>{modal='newWarning';render()};
