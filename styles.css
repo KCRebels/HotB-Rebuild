@@ -377,3 +377,5 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .contact-left{grid-template-rows:repeat(3,50px)}
   .contact-left>.compact-three,.contact-left>.compact-four{height:50px}
 }
+
+.out-contact .contact-left>.out-grid{grid-row:2/4;height:auto}
