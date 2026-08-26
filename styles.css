@@ -57,7 +57,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .batting-num{background:#0e0e0f;color:#fff;display:grid;place-items:center;border-radius:14px 0 0 14px;font-weight:900;font-size:20px}
 .batting-row select{border-radius:0 14px 14px 0}
 .bottom-action{position:sticky;bottom:0;padding:14px 22px 22px;background:linear-gradient(transparent,#f4f6f5 25%)}
-.bottom-action #startGame{min-height:68px;font-size:22px}
+.bottom-action #startGame{min-height:56px;font-size:22px}
 .bottom-action #startGame:not(:disabled){background:#cf2030;color:#fff;border-color:#a81724}
 .btn{border:2px solid #c8cfcc;background:#fff;border-radius:14px;padding:13px 18px;font-weight:900;font-size:19px;color:#111827}
 .btn.block{width:100%}
@@ -154,7 +154,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .field{position:relative;width:100%;aspect-ratio:1;background:url('Field.jpg') center/contain no-repeat;border:0}
 .pos{position:absolute;width:52px;height:52px;border-radius:50%;border:3px solid #fff;background:#151e2c;color:#fff;font-weight:900;font-size:21px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
 .pos.active{background:var(--gold);color:#111}
-.p8{left:46%;top:12%}.p7{left:21%;top:21%}.p9{right:21%;top:21%}.p6{left:38%;top:47%}.p4{right:38%;top:47%}.p5{left:33%;top:59%}.p3{right:33%;top:59%}.p1{left:46%;top:64%}.p2{left:46%;top:82%}
+.p8{left:46%;top:15%}.p7{left:21%;top:24%}.p9{right:21%;top:24%}.p6{left:38%;top:47%}.p4{right:38%;top:47%}.p5{left:33%;top:59%}.p3{right:33%;top:59%}.p1{left:46%;top:61%}.p2{left:46%;top:78%}
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.64);display:grid;place-items:center;z-index:50;padding:18px}
 .modal{width:min(680px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:24px;padding:20px}
 .modal.dark{background:#1c1c1e;color:#fff;border:1px solid #5d5d61}
@@ -169,6 +169,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .game-action-buttons #confirmGameAction{width:100%}
 .choice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
 .choice-grid.four{grid-template-columns:repeat(4,1fr)}
+.choice-grid.two{grid-template-columns:repeat(2,1fr)}
 .choice{padding:14px 8px;border:2px solid #ccd4d0;border-radius:10px;background:#fff;font-weight:900;font-size:20px}
 .choice.active{background:#111;color:#fff}
 .choice.blue.active{background:#3862db}.choice.red.active{background:#cd3a32}.choice.green.active{background:#3d8c52}
@@ -224,7 +225,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .topbar{padding:8px 7px;gap:5px}.topbar .brand{font-size:17px;letter-spacing:.8px}.topbar button{padding:7px 8px;font-size:13px;border-radius:8px}
   .live-top{grid-template-columns:1.55fr .46fr .63fr .54fr;gap:4px;padding:5px}
   .statbox{padding:5px;min-height:50px;border-radius:9px}.statbox .cap{font-size:9px;letter-spacing:.4px}.statbox .big{font-size:17px;line-height:1.1}.sidebadge{right:5px;top:5px;font-size:17px;padding:0 4px}
-  .control-row{gap:4px;padding:5px}.control-card{height:43px;padding:3px;border-radius:10px;display:flex;align-items:center;min-width:0;overflow:hidden}.control-card .cap{display:none}.control-card .pill-row{width:100%;height:100%;gap:3px;margin:0;min-width:0;overflow:hidden}.pill{flex:1;min-width:0;height:35px;padding:3px 1px;font-size:15px;border-radius:7px}.pill[data-outs]{flex:0 0 30px;width:30px;height:30px;margin:auto;border-radius:50%}.runner{flex:1;min-width:0;width:auto;max-width:none;height:35px;font-size:14px;margin:auto;border-radius:7px}
+  .control-row{grid-template-columns:minmax(0,1.6fr) minmax(0,1.1fr) minmax(0,1.1fr);gap:4px;padding:5px}.control-card{height:43px;padding:3px;border-radius:10px;display:flex;align-items:center;min-width:0;overflow:hidden}.control-card .cap{display:none}.control-card .pill-row{width:100%;height:100%;gap:3px;margin:0;min-width:0;overflow:hidden}.pill{flex:1;min-width:0;height:35px;padding:3px 1px;font-size:15px;border-radius:7px}.pill[data-outs]{flex:1 1 0;width:31px;max-width:31px;height:31px;margin:auto;border-radius:50%;font-size:15px}.runner{flex:1 1 0;min-width:0;width:31px;max-width:31px;height:31px;font-size:15px;margin:auto;border-radius:7px}
   .live-main{grid-template-columns:minmax(0,1fr) 98px;gap:6px;padding:0 8px}
   .live-workspace{height:calc(100svh - 150px);min-height:0;max-height:none;grid-template-columns:minmax(0,1fr) 92px;grid-template-rows:auto 33px 94px;align-content:start;gap:5px;padding:5px 6px 7px}
   .zone-card{padding:6px;border-radius:12px}.pitchtypes{gap:3px}.pitchtype{font-size:15px;line-height:1;padding:7px 1px;border-radius:6px}
@@ -241,4 +242,26 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .performance,.athletic{margin:8px;padding:11px;border-radius:12px}.performance h2,.athletic-head h2{font-size:21px}.perf-grid{gap:5px}.perf{padding:10px 2px;border-radius:8px;min-height:61px}.perf b{font-size:22px}.perf span{font-size:12px;margin-top:5px}.measure-grid{gap:6px}.measure{padding:9px;min-height:100px}.measure h3{font-size:14px}.measure .best{font-size:20px;margin-top:10px}.measure .note{font-size:9px;margin-top:8px}
   .roster-editor{padding:8px}.roster-edit-row{grid-template-columns:1fr 42px 42px 42px;gap:4px;margin-bottom:6px}.sidebtn{font-size:14px}.deletebtn{font-size:20px}
   .guide-table{font-size:14px}.guide-table th,.guide-table td{padding:9px 5px}.stopwatch{padding:10px;gap:8px}.stopwatch .time{font-size:34px}
+}
+
+
+/* iPhone contact-entry refinements */
+.hit-modal{padding:0;overflow-y:auto;overflow-x:hidden;max-height:calc(100dvh - 14px);overscroll-behavior:contain}
+.hit-options{padding:0 10px max(12px,env(safe-area-inset-bottom))}
+.hit-modal .topbar{position:sticky;top:0;z-index:12}
+.hit-modal .choice{font-size:22px;line-height:1;padding:13px 5px}
+.hit-modal .primary-choice-row .choice{min-height:52px;font-size:24px}
+.hit-modal #saveContact{min-height:52px;font-size:24px;padding:9px 10px}
+@media(max-width:560px){
+  .bottom-action #startGame{min-height:52px;padding-top:8px;padding-bottom:8px}
+  .hit-backdrop{padding:0;place-items:stretch center}
+  .hit-modal{width:100%;height:100dvh;max-height:100dvh;border-radius:0}
+  .hit-modal .topbar{padding:6px 7px}
+  .hit-modal .field-wrap{padding:4px 24px}
+  .hit-modal .field{width:min(100%,290px);margin:0 auto}
+  .hit-modal .pos{width:38px;height:38px;font-size:18px;border-width:2px}
+  .hit-modal .choice-grid{gap:5px;margin:6px 0}
+  .hit-modal .choice{font-size:20px;padding:9px 3px}
+  .hit-modal .primary-choice-row .choice{min-height:48px;font-size:23px}
+  .hit-modal #saveContact{min-height:48px;font-size:23px}
 }
