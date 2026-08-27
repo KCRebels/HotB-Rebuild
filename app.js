@@ -584,6 +584,7 @@ function bindRoster(){
 }
 function bindLive(){
  const g=currentGame();
+ const percentMode=!g.firstPitchView&&(g.zoneScope==='TEAM'||g.previewNext||(g.historyTab==='ALL'&&(g.allView||'DOTS')==='PCT'));
  $$('[data-plan]').forEach(b=>b.onclick=()=>{
    g.plan=b.dataset.plan;
    db.planPreferences=db.planPreferences||{};
