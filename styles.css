@@ -618,3 +618,62 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
     letter-spacing:-.35px;
   }
 }
+
+
+/* Use remaining iPhone height for larger live header and game information */
+@media(max-width:560px){
+  .live-app>.topbar{
+    min-height:58px;
+    padding:10px 8px;
+    gap:5px;
+    box-sizing:border-box;
+  }
+  .live-app>.topbar .brand{
+    font-size:18px;
+    line-height:1;
+    letter-spacing:.55px;
+    white-space:nowrap;
+  }
+  .live-app>.topbar button{
+    min-height:38px;
+    padding:8px 8px;
+    border-radius:9px;
+    font-size:14px;
+    line-height:1;
+  }
+  .live-app>.live-top{
+    padding:6px 5px;
+  }
+  .live-app .statbox{
+    min-height:56px;
+    padding:6px 5px;
+  }
+  .live-app .statbox .cap{
+    font-size:10px;
+  }
+  .live-app .statbox .big{
+    font-size:19px;
+    line-height:1.08;
+  }
+  .live-app .sidebadge{
+    top:6px;
+    right:5px;
+    font-size:18px;
+  }
+  .control-row>.control-card:first-child .pill[data-plan]{
+    padding-left:0;
+    padding-right:0;
+    font-size:14px;
+    letter-spacing:-.55px;
+  }
+  .fps strong.fps-standard{
+    max-width:calc(100% - 4px);
+    font-size:16px;
+    letter-spacing:-.8px;
+  }
+  .fps strong.fps-compact{
+    max-width:calc(100% - 4px);
+    font-size:13px;
+    letter-spacing:-1.2px;
+  }
+}
