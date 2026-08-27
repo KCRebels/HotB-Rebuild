@@ -452,12 +452,19 @@ function grade(value,metric){
 }
 function evalView(){
  const player=evalPlayer==='Team'?null:hitterObj(evalPlayer);
- const pas=allPAs().filter(p=>!player||p.hitter===player.name);
+ const teamPas=allPAs();
+ const pas=teamPas.filter(p=>!player||p.hitter===player.name);
  const s=statsForPAs(pas);
- const teamS=statsForPAs(allPAs());
+ const teamS=statsForPAs(teamPas);
  const rp100=s.PA?s.rp/s.PA*100:0;
  const teamRate=teamS.PA?teamS.rp/teamS.PA:0;
+ const teamRp100=teamRate*100;
+ const playerTotals=db.roster.map(r=>statsForPAs(teamPas.filter(p=>p.hitter===r.name))).filter(x=>x.PA>0);
+ const avgPlayerRp=playerTotals.length?playerTotals.reduce((sum,x)=>sum+x.rp,0)/playerTotals.length:0;
  const hotb=s.PA&&teamRate?Math.round((s.rp/s.PA)/teamRate*100):null;
+ const signed=(n,digits=1)=>`${n>0?'+':''}${n.toFixed(digits)}`;
+ const deltaClass=n=>n>0?'positive':n<0?'negative':'neutral';
+ const comparison=(value,delta,digits=1)=>`<div class="value compare-value"><span>${value}</span><span class="metric-pipe">|</span><span class="metric-delta ${deltaClass(delta)}">${signed(delta,digits)}</span></div>`;
  const execs=pas.map(p=>p.execution).filter(v=>v!==null);
  const execution=execs.length?execs.filter(Boolean).length/execs.length:null;
  const ms=measurementTypes(player);
@@ -466,9 +473,9 @@ function evalView(){
  ${player?`<div class="player-card player-profile"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div></div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
-  <div class="eval-tile dark" data-guide="HotB+"><h3>HotB+</h3><div class="value">${hotb??'—'}</div><div class="note">${player?'More saved data needed':'Current-team benchmark'}</div></div>
-  <div class="eval-tile" data-guide="Runs Produced"><h3>Runs Produced</h3><div class="value">${s.rp.toFixed(1)}</div><div class="note">${player?`Team player avg ${(teamS.rp/Math.max(1,db.roster.length)).toFixed(1)}`:'Team total'}</div></div>
-  <div class="eval-tile" data-guide="RP / 100 PA"><h3>RP / 100 PA</h3><div class="value">${rp100.toFixed(1)}</div><div class="note">Detailed production rate</div></div>
+  <div class="eval-tile dark" data-guide="HotB+"><h3>HotB+</h3>${player&&hotb!==null?comparison(hotb,hotb-100,0):`<div class="value">${hotb??'—'}</div>`}<div class="note">${player?(hotb===null?'More saved data needed':'100 = team average'):'Current-team benchmark'}</div></div>
+  <div class="eval-tile" data-guide="Runs Produced"><h3>Runs Produced</h3>${player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`}<div class="note">${player?`Player average ${avgPlayerRp.toFixed(1)}`:'Team total'}</div></div>
+  <div class="eval-tile" data-guide="RP / 100 PA"><h3>RP / 100 PA</h3>${player?comparison(rp100.toFixed(1),rp100-teamRp100,1):`<div class="value">${rp100.toFixed(1)}</div>`}<div class="note">${player?`Team average ${teamRp100.toFixed(1)}`:'Team rate'}</div></div>
   <div class="eval-tile" data-guide="Execution"><h3>Execution</h3><div class="value">${execution===null?'—':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
  </div>
  <div class="performance"><h2>Game Performance <span class="small" style="float:right">CUMULATIVE TO DATE</span></h2><div class="perf-grid">
