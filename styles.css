@@ -412,3 +412,9 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .hit-contact #saveContact:not(:disabled){background:linear-gradient(180deg,#4c79ee,#2448bd);border-color:#2448bd;color:#fff;box-shadow:0 4px 0 #17358e,0 7px 12px rgba(36,72,189,.28)}
 .out-contact #saveContact:not(:disabled){background:linear-gradient(180deg,#e4514a,#b91f25);border-color:#b91f25;color:#fff;box-shadow:0 4px 0 #86151a,0 7px 12px rgba(185,31,37,.28)}
 @media(max-width:560px){.hit-modal .pos{width:37px;height:37px;font-size:18px}}
+
+
+/* Continuously centered pitch-dot summaries */
+.pitch-dot-grid{position:absolute;inset:auto;left:50%;top:2px;transform:translateX(-50%);width:min(calc(100% - 4px),var(--dot-wrap));height:calc(100% - 4px);display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:var(--dot-gap);overflow:hidden}
+.pitch-dot{display:grid;place-items:center;flex:0 0 var(--dot-size);width:var(--dot-size);height:var(--dot-size);font-size:var(--dot-font);font-style:normal;font-weight:950;line-height:1;color:#111;text-align:center}
+.pitch-dot.hit,.pitch-dot.bad{color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.45)}
