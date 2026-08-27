@@ -731,11 +731,11 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 
 /* Tighter source photos, each balanced independently */
 .player-profile .player-photo img[src$="Brooklyn.JPEG"]{width:100%;height:auto;left:0;top:0;transform:none}
-.player-profile .player-photo img[src$="jack.jpg"]{width:auto;height:170%;left:59%;top:-9%;transform:translateX(-50%)}
-.player-profile .player-photo img[src$="lakyn.jpg"]{width:auto;height:160%;left:50%;top:-7%;transform:translateX(-50%)}
-.player-profile .player-photo img[src$="Lydia.JPEG"]{width:auto;height:160%;left:50%;top:-7%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="jack.jpg"]{width:auto;height:210%;left:61%;top:-14%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="lakyn.jpg"]{width:auto;height:220%;left:50%;top:-13%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="Lydia.JPEG"]{width:auto;height:210%;left:50%;top:-12%;transform:translateX(-50%)}
 .player-profile .player-photo img[src$="makenna.jpg"]{width:auto;height:100%;left:50%;top:0;transform:translateX(-50%)}
-.player-profile .player-photo img[src$="matti.jpg"]{width:auto;height:122%;left:50%;top:-4%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="matti.jpg"]{width:auto;height:145%;left:50%;top:-7%;transform:translateX(-50%)}
 .player-profile .player-photo img[src$="meg.jpg"]{width:auto;height:103%;left:50%;top:0;transform:translateX(-50%)}
 .player-profile .player-photo img[src$="Tayte.JPEG"]{width:auto;height:103%;left:52%;top:0;transform:translateX(-50%)}
 
