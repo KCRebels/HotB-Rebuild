@@ -65,6 +65,7 @@ let evalPlayer='Team';
 let recordType='';
 let infoPlayerIndex=0;
 let pendingRosterImport=null;
+let recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:''};
 let timerInt=null,timerStart=0,timerElapsed=0;
 
 function load(){
@@ -492,7 +493,7 @@ function evalView(){
  const execution=execs.length?execs.filter(Boolean).length/execs.length:null;
  const ms=measurementTypes(player);
  const metricHead=(title)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${title}">${title}</button><button class="metric-all" data-ranking="${title}">ALL</button></div>`;
- return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div></div>
+ return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><button class="btn eval-email" id="openRecruitingEmail" ${player?'':'disabled'}>Email</button></div>
  <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  ${player?`<div class="player-card player-profile"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div></div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
@@ -625,6 +626,73 @@ function playerInfoModal(){
   <button class="btn black block info-save" id="savePlayerInfo">Save Player Information</button>
  </div></div>`;
 }
+function playerMeasurementLines(player){
+ const units={'Home to First':' sec','Pop Time':' sec','Overhand Throw':' mph','Exit Velocity':' mph','Fastball':' mph','Changeup':' mph','Broad Jump':' in'};
+ return measurementTypes(player).flatMap(type=>{
+  const values=db.measurements.filter(m=>m.player===player.name&&m.type===type).map(m=>Number(m.value)).filter(Number.isFinite);
+  if(!values.length)return [];
+  const best=['Home to First','Pop Time'].includes(type)?Math.min(...values):Math.max(...values);
+  return [`• ${type}: ${best}${units[type]||''}`];
+ });
+}
+function emailSubject(player){
+ const positions=cleanCell(player.positions).replace(/\s*\|\s*/g,'/');
+ return `${player.name} | ${player.grad||'Grad Year'} | ${positions||'Positions'} | ${player.gpa||'—'} GPA | #${player.jersey||'—'}`;
+}
+function buildRecruitingEmail(player,details){
+ const firstName=player.name.split(/\s+/)[0];
+ const profile=[
+  `• Positions: ${cleanCell(player.positions).replace(/\s*\|\s*/g,'/')}`,
+  player.side||player.throws?`• Bats/Throws: ${player.side||'—'}/${player.throws||'—'}`:'',
+  `• Jersey: #${player.jersey||'—'}`,
+  player.school?`• High School: ${player.school}`:'',
+  player.gpa?`• GPA: ${player.gpa}`:'',
+  player.interest?`• Intended Major: ${player.interest}`:'',
+  player.ncaaId?`• NCAA ID: ${player.ncaaId}`:''
+ ].filter(Boolean);
+ const sections=[];
+ const greeting=/^coach\b/i.test(details.coachName)?details.coachName:`Coach ${details.coachName}`;
+ sections.push(`${greeting},`);
+ sections.push(`My name is Dan Lickel, and I am the head coach of KC Rebels 16U Regional Lickel. I would like to introduce you to ${player.name}, a ${player.grad} student-athlete who is interested in learning more about ${details.collegeName} and its softball program.`);
+ if(details.personalNote)sections.push(details.personalNote);
+ sections.push(`𝗣𝗟𝗔𝗬𝗘𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘\n${profile.join('\n')}`);
+ const measurements=playerMeasurementLines(player);if(measurements.length)sections.push(`𝗔𝗧𝗛𝗟𝗘𝗧𝗜𝗖 𝗠𝗘𝗔𝗦𝗨𝗥𝗘𝗠𝗘𝗡𝗧𝗦\n${measurements.join('\n')}`);
+ if(player.recruitingStatement)sections.push(`𝗣𝗟𝗔𝗬𝗘𝗥 𝗦𝗧𝗔𝗧𝗘𝗠𝗘𝗡𝗧\n${player.recruitingStatement}`);
+ if(player.accomplishments)sections.push(`𝗔𝗖𝗖𝗢𝗠𝗣𝗟𝗜𝗦𝗛𝗠𝗘𝗡𝗧𝗦\n${player.accomplishments}`);
+ const links=[];
+ if(player.twitter)links.push(`Twitter/X: ${player.twitter}`);
+ if(player.sportsRecruits)links.push(`SportsRecruits: ${player.sportsRecruits}`);
+ if(player.highlightVideo)links.push(`Highlight Video: ${player.highlightVideo}`);
+ links.push('Full 2026–27 Game Videos on GameChanger: https://web.gc.com/teams/K1E4TcPCwGKj/2027-summer-kc-rebels-16-regional-lickel');
+ if(player.twitter||player.sportsRecruits)links.push(`Individual highlight videos are available through ${firstName}’s Twitter/X and SportsRecruits profiles.`);
+ sections.push(`𝗥𝗘𝗖𝗥𝗨𝗜𝗧𝗜𝗡𝗚 𝗟𝗜𝗡𝗞𝗦\n${links.join('\n')}`);
+ sections.push(`𝗙𝗔𝗟𝗟 𝟮𝟬𝟮𝟲 𝗦𝗖𝗛𝗘𝗗𝗨𝗟𝗘\nOctober 16–18\nTriple Crown St. Louis Showcase\nChesterfield, Missouri\n\nOctober 30–November 1\nTop Gun Select Invite\nKansas City Metro\n\nNovember 6–8\nRecruitLook Showcase\nKansas City Metro`);
+ sections.push(`I believe ${firstName} would be a strong addition to a college program, both as a student-athlete and as a teammate. Please feel free to contact ${firstName} or me if you would like any additional information.`);
+ sections.push('Thank you for your time and consideration.');
+ sections.push('Dan Lickel\nHead Coach\nKC Rebels 16U Regional Lickel\n913-485-6576\nrecruiting@rebelssoftball.org');
+ return {subject:emailSubject(player),body:sections.join('\n\n')};
+}
+function recruitingEmailModal(){
+ const player=hitterObj(evalPlayer);
+ return `<div class="modal-backdrop"><div class="modal recruiting-email-modal"><div class="modal-header"><div><div class="small info-kicker">RECRUITING EMAIL</div><h2>${esc(player.name)}</h2></div><button class="btn" data-close>Cancel</button></div>
+  <p class="email-note">The player will automatically be copied using the email saved in her roster information.</p>
+  <label class="info-field"><span>Coach’s Name</span><input id="emailCoachName" value="${esc(recruitingEmail.coachName)}" placeholder="Example: Coach Smith"></label>
+  <label class="info-field"><span>Coach’s Email</span><input id="emailCoachAddress" type="email" value="${esc(recruitingEmail.coachEmail)}" placeholder="coach@college.edu"></label>
+  <label class="info-field"><span>College Name</span><input id="emailCollegeName" value="${esc(recruitingEmail.collegeName)}" placeholder="College or university"></label>
+  <label class="info-field"><span>Optional Personal Note</span><textarea id="emailPersonalNote" rows="3" placeholder="Add a personal message for this coach if needed.">${esc(recruitingEmail.personalNote)}</textarea></label>
+  <div class="email-copy-row"><span><b>CC:</b> ${esc(player.email||'No player email saved')}</span></div>
+  <button class="btn black block" id="previewRecruitingEmail" disabled>Preview Email</button>
+ </div></div>`;
+}
+function recruitingEmailPreviewModal(){
+ const player=hitterObj(evalPlayer);
+ return `<div class="modal-backdrop"><div class="modal email-preview-modal"><div class="modal-header"><div><div class="small info-kicker">EMAIL PREVIEW</div><h2>${esc(player.name)}</h2></div><button class="btn" id="backToEmailSetup">Back</button></div>
+  <div class="email-addresses"><div><b>To:</b> ${esc(recruitingEmail.coachEmail)}</div><div><b>CC:</b> ${esc(player.email||'None')}</div><div><b>Subject:</b> ${esc(recruitingEmail.subject)}</div></div>
+  <label class="info-field"><span>Email Message — You Can Edit It Here</span><textarea id="emailBodyPreview" class="email-body-preview">${esc(recruitingEmail.body)}</textarea></label>
+  <p class="email-note">Gmail will open a new draft. Confirm that recruiting@rebelssoftball.org is selected in the From field before sending.</p>
+  <button class="btn red block" id="openGmailDraft">Open in Gmail</button>
+ </div></div>`;
+}
 function importRosterModal(){
  const items=pendingRosterImport?.items||[];
  const updates=items.filter(item=>item.kind==='update');
@@ -727,6 +795,8 @@ function modalView(){
  if(modal==='changePitcher')return pitcherChangeModal();
  if(modal==='changeHitter')return hitterChangeModal();
  if(modal==='playerInfo')return playerInfoModal();
+ if(modal==='recruitingEmail')return recruitingEmailModal();
+ if(modal==='recruitingEmailPreview')return recruitingEmailPreviewModal();
  if(modal==='importRoster')return importRosterModal();
  if(modal?.startsWith('ranking:'))return evalRankingModal(modal.slice(8));
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
@@ -751,6 +821,8 @@ function bind(){
  if(modal==='changePitcher')bindPitcherChange();
  if(modal==='changeHitter')bindHitterChange();
  if(modal==='playerInfo')bindPlayerInfo();
+ if(modal==='recruitingEmail')bindRecruitingEmail();
+ if(modal==='recruitingEmailPreview')bindRecruitingEmailPreview();
  if(modal==='importRoster')$('#confirmRosterImport')?.addEventListener('click',applyRosterImport);
 }
 function bindNew(){
@@ -798,6 +870,27 @@ function bindPlayerInfo(){
   if(!['R','L','S'].includes(player.side.toUpperCase()))player.side='R';else player.side=player.side.toUpperCase();
   player.throws=(player.throws||'').toUpperCase();
   save();modal=null;render();
+ };
+}
+function bindRecruitingEmail(){
+ const coachName=$('#emailCoachName'),coachEmail=$('#emailCoachAddress'),collegeName=$('#emailCollegeName'),note=$('#emailPersonalNote'),preview=$('#previewRecruitingEmail');
+ const update=()=>{
+  recruitingEmail.coachName=coachName.value.trim();recruitingEmail.coachEmail=coachEmail.value.trim();recruitingEmail.collegeName=collegeName.value.trim();recruitingEmail.personalNote=note.value.trim();
+  preview.disabled=!recruitingEmail.coachName||!recruitingEmail.coachEmail||!recruitingEmail.collegeName||!coachEmail.validity.valid;
+ };
+ [coachName,coachEmail,collegeName,note].forEach(field=>field.addEventListener('input',update));update();
+ preview.onclick=()=>{
+  update();const player=hitterObj(evalPlayer),built=buildRecruitingEmail(player,recruitingEmail);
+  recruitingEmail.subject=built.subject;recruitingEmail.body=built.body;modal='recruitingEmailPreview';render();
+ };
+}
+function bindRecruitingEmailPreview(){
+ $('#backToEmailSetup').onclick=()=>{recruitingEmail.body=$('#emailBodyPreview').value;modal='recruitingEmail';render()};
+ $('#openGmailDraft').onclick=()=>{
+  const player=hitterObj(evalPlayer),body=$('#emailBodyPreview').value;
+  recruitingEmail.body=body;
+  const cc=player.email?`&cc=${encodeURIComponent(player.email)}`:'';
+  window.location.href=`mailto:${encodeURIComponent(recruitingEmail.coachEmail)}?subject=${encodeURIComponent(recruitingEmail.subject)}${cc}&body=${encodeURIComponent(body)}`;
  };
 }
 function bindLive(){
@@ -911,6 +1004,7 @@ function exportCsv(){
 }
 function bindEval(){
  $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};
+ $('#openRecruitingEmail').onclick=()=>{recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:''};modal='recruitingEmail';render()};
  $('#recordMeasure2').onclick=()=>{recordType='';modal='record';render()};
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
  $$('[data-guide]').forEach(x=>x.onclick=()=>{modal='guide:'+x.dataset.guide;render()});
