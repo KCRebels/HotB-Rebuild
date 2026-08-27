@@ -219,6 +219,9 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .ranking-name{font-weight:850}.ranking-row strong{font-size:20px}
 .ranking-row.selected-player{border-color:#ee5d55;background:#b92f2c}
 .ranking-row.selected-player .ranking-place{background:#fff;color:#b92f2c}
+.pitcher-performance{margin:10px 22px;border:1px solid #ccc;border-radius:14px;background:#111;color:#fff;padding:12px}
+.pitcher-performance h2{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:22px;margin:0 0 10px}.pitcher-performance h2 .small{color:#bbb;font-size:10px;letter-spacing:1px;white-space:nowrap}
+.pitcher-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.pitcher-stat{min-width:0;border-radius:9px;background:#303034;padding:10px 3px;text-align:center}.pitcher-stat b{display:block;overflow:hidden;text-overflow:ellipsis;font-size:22px;line-height:1;white-space:nowrap}.pitcher-stat span{display:block;margin-top:5px;color:#ddd;font-size:11px;font-weight:900}
 .performance{margin:10px 22px;border:1px solid #ccc;border-radius:14px;background:#fff;padding:12px}
 .performance h2{font-size:22px;margin:0 0 10px}.perf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .perf{border:0;background:#f1f1f1;border-radius:9px;padding:10px 3px;text-align:center}.perf b{font-size:22px;line-height:1}.perf span{display:block;margin-top:5px;color:#555;font-size:13px;font-weight:900}
@@ -227,6 +230,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .guide-table{width:100%;border-collapse:collapse;font-size:20px}.guide-table th,.guide-table td{padding:16px 8px;border-bottom:1px solid #555;text-align:left}.excellent{color:#71d6a1}.good{color:#a7e0bc}.acceptable{color:#f0cf66}.concern{color:#ff9995}.serious{color:#ff6262}
 .roster-data-tools{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 20px 0;padding:15px;background:#fff;border:1px solid #d5dcda;border-radius:16px}
 .roster-data-tools .btn{font-size:17px;padding:11px}.roster-data-tools p{grid-column:1/-1;margin:0;color:#566070;font-size:13px;line-height:1.35}
+.info-section-title{margin:20px 0 4px;font-size:20px}.info-section-note{margin:0 0 10px;color:#566070;font-size:12px;line-height:1.35}
 .roster-editor{padding:20px}.roster-edit-row{display:grid;grid-template-columns:minmax(0,1fr) 58px 58px 66px 54px;gap:7px;margin-bottom:10px}.sidebtn,.infobtn{border:2px solid #ccc;border-radius:10px;background:#fff;font-weight:900;font-size:17px}.sidebtn.active{background:#111;color:#fff;border-color:#111}.infobtn{background:#fff4d4;border-color:#d5aa34}.deletebtn{background:#fde8e8;border:2px solid #efb7ba;color:#b0141b;border-radius:10px;font-size:25px;font-weight:900}
 .player-info-modal{width:min(660px,100%)}.info-kicker{color:#a62025!important;letter-spacing:1.5px}.info-privacy,.import-note{padding:10px 12px;border-radius:10px;background:#fff4d4;color:#594817;font-size:13px;font-weight:750;line-height:1.35}
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}.info-field{display:block;margin:10px 0}.info-field>span{display:block;margin:0 0 5px;color:#596579;font-size:12px;font-weight:900;text-transform:uppercase}.info-field input,.info-field textarea{width:100%;border:2px solid #ccd4d0;border-radius:10px;background:#fff;padding:11px;font-size:16px;font-weight:650;color:#111827}.info-field textarea{resize:vertical;line-height:1.35}.info-save{margin-top:14px}
@@ -281,6 +285,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .eval-tile-head{gap:5px;margin-bottom:10px}.metric-title,.metric-all{min-height:29px;padding:3px 6px;border-radius:7px;font-size:12px}
   .ranking-modal{padding:11px}.ranking-list{gap:5px;margin-top:12px}.ranking-row{grid-template-columns:28px minmax(0,1fr) auto;gap:6px;min-height:43px;padding:6px 8px;font-size:14px}.ranking-place{width:25px;height:25px}.ranking-row strong{font-size:17px}
   .performance,.athletic{margin:8px;padding:11px;border-radius:12px}.performance h2,.athletic-head h2{font-size:21px}.perf-grid{gap:5px}.perf{padding:10px 2px;border-radius:8px;min-height:61px}.perf b{font-size:22px}.perf span{font-size:12px;margin-top:5px}.measure-grid{gap:6px}.measure{padding:9px;min-height:100px}.measure h3{font-size:14px}.measure .best{font-size:20px;margin-top:10px}.measure .note{font-size:9px;margin-top:8px}
+  .pitcher-performance{margin:8px;padding:11px;border-radius:12px}.pitcher-performance h2{font-size:21px}.pitcher-stat-grid{gap:5px}.pitcher-stat{padding:10px 2px;min-height:61px}.pitcher-stat b{font-size:22px}.pitcher-stat span{font-size:10px;margin-top:5px}
   .roster-editor{padding:8px}.roster-edit-row{grid-template-columns:1fr 42px 42px 42px;gap:4px;margin-bottom:6px}.sidebtn{font-size:14px}.deletebtn{font-size:20px}
   .roster-hero{min-height:64px;padding:9px 7px}
   .roster-hero::before{left:-5px;top:-13px;font-size:86px;letter-spacing:-6px}

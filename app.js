@@ -138,8 +138,14 @@ const recruitingColumns=[
  ['Twitter / X URL','twitter'],['SportsRecruits URL','sportsRecruits'],['Highlight Video URL','highlightVideo'],['NCAA ID','ncaaId'],
  ['Recruiting Statement','recruitingStatement'],['Accomplishments / Honors','accomplishments'],['Additional Notes','notes']
 ];
+const pitchingColumns=[
+ ['Pitcher IP','pitcherIP'],['Pitcher ERA','pitcherERA'],['Pitcher WHIP','pitcherWHIP'],
+ ['Pitcher K/BB','pitcherKBB'],['Pitcher OBA','pitcherOBA'],['Pitcher Strike %','pitcherStrikePct']
+];
+const playerInfoColumns=[...recruitingColumns,...pitchingColumns];
 function cleanCell(value){return String(value??'').trim()}
 function normalizeName(value){return cleanCell(value).toLowerCase().replace(/\s+/g,' ')}
+function isPitcherProfile(player){return cleanCell(player?.positions).split(/\s*[|,\/]\s*/).some(position=>['P','RHP','LHP','PITCHER'].includes(position.toUpperCase()))}
 function syncRosterNames(){
  $$('.roster-name').forEach(input=>{const player=db.roster[+input.dataset.i];if(player)player.name=input.value.trim()||'Unnamed Player'});
 }
@@ -503,6 +509,9 @@ function evalView(){
   <div class="eval-tile">${metricHead('RP / 100 PA')} ${player?comparison(rp100.toFixed(1),rp100-teamRp100,1):`<div class="value">${rp100.toFixed(1)}</div>`}<div class="note">${player?`Team Average ${teamRp100.toFixed(1)}`:'Team Rate'}</div></div>
   <div class="eval-tile">${metricHead('Execution')}<div class="value">${execution===null?'—':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
  </div>
+ ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><h2>Pitching Performance <span class="small">MANUAL / GAMECHANGER</span></h2><div class="pitcher-stat-grid">
+  ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<div class="pitcher-stat"><b>${esc(player[key]||'—')}</b><span>${label}</span></div>`).join('')}
+ </div></section>`:''}
  <div class="performance"><h2>Game Performance <span class="small" style="float:right">CUMULATIVE TO DATE</span></h2><div class="perf-grid">
  ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],['BB%',pct1(s.bbPct),'BB']].map(([label,val,key])=>`<div class="perf ${s.PA>=25?grade(s[key==='contact'?'contactPct':key==='K'?'kPct':key==='BB'?'bbPct':key],key):''}" data-guide="${label}"><b>${val}</b><span>${label}</span></div>`).join('')}
  </div></div>
@@ -623,6 +632,11 @@ function playerInfoModal(){
    ${input('Jersey #','jersey')}${input('Graduation Year','grad')}${input('Positions','positions')}${input('GPA','gpa')}${input('High School','school')}${input('Intended College Major','interest')}
    ${input('Bats (R, L, or S)','side')}${input('Throws (R or L)','throws')}${input('Player Email','email','email')}${input('Player Phone','phone','tel')}
    ${input('Twitter / X Full Link','twitter','url')}${input('SportsRecruits Full Link','sportsRecruits','url')}${input('Highlight Video Full Link','highlightVideo','url')}${input('NCAA ID','ncaaId')}
+  </div>
+  <h3 class="info-section-title">Pitching Statistics</h3>
+  <p class="info-section-note">Enter these manually or copy them from GameChanger. They appear on Evaluation only when Positions includes P, RHP, LHP, or Pitcher.</p>
+  <div class="info-grid">
+   ${input('Innings Pitched (IP)','pitcherIP')}${input('ERA','pitcherERA')}${input('WHIP','pitcherWHIP')}${input('Strikeout-to-Walk Ratio (K/BB)','pitcherKBB')}${input('Opponent Batting Average (OBA)','pitcherOBA')}${input('Strike Percentage','pitcherStrikePct')}
   </div>
   ${input('Recruiting Statement','recruitingStatement','textarea')}${input('Accomplishments / Honors','accomplishments','textarea')}${input('Additional Notes','notes','textarea')}
   <button class="btn black block info-save" id="savePlayerInfo">Save Player Information</button>
@@ -759,13 +773,13 @@ async function parseRosterWorkbook(file){
   const items=[];
   rows.slice(headerIndex+1).forEach(row=>{
    const data={};
-   recruitingColumns.forEach(([label,key])=>data[key]=cleanCell(row[headers.indexOf(label)]));
+   playerInfoColumns.forEach(([label,key])=>data[key]=headers.includes(label)?cleanCell(row[headers.indexOf(label)]):'');
    if(!data.name)return;
    const matches=db.roster.map((player,index)=>({player,index})).filter(({player})=>normalizeName(player.name)===normalizeName(data.name));
    const exact=matches.find(({player})=>!data.jersey||cleanCell(player.jersey)===data.jersey);
    const match=exact||(matches.length===1?matches[0]:null);
    if(!match){items.push({kind:'add',data});return}
-   const changes=recruitingColumns.filter(([,key])=>data[key]&&cleanCell(match.player[key])!==data[key]).map(([,key])=>key);
+   const changes=playerInfoColumns.filter(([,key])=>data[key]&&cleanCell(match.player[key])!==data[key]).map(([,key])=>key);
    items.push({kind:changes.length?'update':'unchanged',data,player:match.player,index:match.index,changes});
   });
   if(!items.length)throw new Error('No player rows were found in the spreadsheet.');
@@ -775,15 +789,15 @@ function applyRosterImport(){
  (pendingRosterImport?.items||[]).forEach(item=>{
   if(item.kind==='unchanged')return;
   const target=item.kind==='add'?{name:item.data.name,side:item.data.side||'R',isGuest:true}:db.roster[item.index];
-  recruitingColumns.forEach(([,key])=>{if(item.data[key])target[key]=item.data[key]});
+  playerInfoColumns.forEach(([,key])=>{if(item.data[key])target[key]=item.data[key]});
   if(item.kind==='add')db.roster.push(target);
  });
  save();pendingRosterImport=null;modal=null;render();
  alert('Player information imported successfully.');
 }
 function exportRosterWorkbook(){
- const headings=recruitingColumns.map(([label])=>label);
- const rows=db.roster.map(player=>recruitingColumns.map(([,key])=>player[key]||''));
+ const headings=playerInfoColumns.map(([label])=>label);
+ const rows=db.roster.map(player=>playerInfoColumns.map(([,key])=>player[key]||''));
  if(!window.XLSX){
   const csv=[headings,...rows].map(row=>row.map(value=>`"${String(value).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));link.download='HotB_Player_Recruiting_Information.csv';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);return;
