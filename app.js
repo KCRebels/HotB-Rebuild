@@ -498,9 +498,9 @@ function evalView(){
  ${player?`<div class="player-card player-profile"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div></div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
-  <div class="eval-tile dark">${metricHead('HotB+')} ${player&&hotb!==null?comparison(hotb,hotb-100,0):`<div class="value">${hotb??'—'}</div>`}<div class="note">${player?(hotb===null?'More saved data needed':'100 = team average'):'Current-team benchmark'}</div></div>
-  <div class="eval-tile">${metricHead('Runs Produced')} ${player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`}<div class="note">${player?`Player average ${avgPlayerRp.toFixed(1)}`:'Team total'}</div></div>
-  <div class="eval-tile">${metricHead('RP / 100 PA')} ${player?comparison(rp100.toFixed(1),rp100-teamRp100,1):`<div class="value">${rp100.toFixed(1)}</div>`}<div class="note">${player?`Team average ${teamRp100.toFixed(1)}`:'Team rate'}</div></div>
+  <div class="eval-tile dark">${metricHead('HotB+')} ${player&&hotb!==null?comparison(hotb,hotb-100,0):`<div class="value">${hotb??'—'}</div>`}<div class="note">${player?(hotb===null?'More Saved Data Needed':'100 = Team Average'):'Current-Team Benchmark'}</div></div>
+  <div class="eval-tile">${metricHead('Runs Produced')} ${player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`}<div class="note">${player?`Player Average ${avgPlayerRp.toFixed(1)}`:'Team Total'}</div></div>
+  <div class="eval-tile">${metricHead('RP / 100 PA')} ${player?comparison(rp100.toFixed(1),rp100-teamRp100,1):`<div class="value">${rp100.toFixed(1)}</div>`}<div class="note">${player?`Team Average ${teamRp100.toFixed(1)}`:'Team Rate'}</div></div>
   <div class="eval-tile">${metricHead('Execution')}<div class="value">${execution===null?'—':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
  </div>
  <div class="performance"><h2>Game Performance <span class="small" style="float:right">CUMULATIVE TO DATE</span></h2><div class="perf-grid">
@@ -515,6 +515,7 @@ function measurementTypes(player){
  if(player?.positions?.includes('C'))base.push('Pop Time');
  return base;
 }
+const stopwatchMeasurements=['Home to First','Fastball','Changeup','Pop Time'];
 function measurementCard(player,type){
  const rows=db.measurements.filter(m=>(!player||m.player===player.name)&&m.type===type);
  const isTime=['Home to First','Pop Time'].includes(type);
@@ -562,17 +563,18 @@ function evalRankingModal(metric){
  });
  const formatted=value=>value===null?'—':metric==='HotB+'?Math.round(value):metric==='Execution'?pct0(value):value.toFixed(1);
  return `<div class="modal-backdrop"><div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">TEAM RANKINGS</div><h2>${esc(metric)}</h2></div><button class="btn" data-close>Close</button></div>
-  <div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.player.name===evalPlayer?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-number">#${esc(row.player.jersey||'—')}</span><span class="ranking-name">${esc(row.player.name)}</span><strong>${formatted(row.value)}</strong></div>`).join('')}</div>
+  <div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.player.name===evalPlayer?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-name">${esc(row.player.name)}</span><strong>${formatted(row.value)}</strong></div>`).join('')}</div>
  </div></div>`;
 }
 function recordModal(){
  const p=evalPlayer==='Team'?db.roster[0]?.name:evalPlayer;
  const player=hitterObj(p);
  const types=measurementTypes(player);
+ const selectedType=recordType&&types.includes(recordType)?recordType:types[0];
  return `<div class="modal-backdrop"><div class="modal"><div class="modal-header"><h2>Record Measurement</h2><button class="btn" data-close>Close</button></div>
  <label class="label">Player</label><select class="input" id="mPlayer">${db.roster.map(r=>`<option ${r.name===p?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
- <label class="label">Measurement</label><select class="input" id="mType">${types.map(t=>`<option ${t===recordType?'selected':''}>${t}</option>`).join('')}</select>
- <div class="stopwatch" style="margin-top:18px"><button class="btn green" id="timerStart" style="font-size:28px">Start</button><div style="flex:1;text-align:center"><div class="small">STOPWATCH</div><div class="time" id="timerTime">0.00</div></div></div>
+ <label class="label">Measurement</label><select class="input" id="mType">${types.map(t=>`<option ${t===selectedType?'selected':''}>${t}</option>`).join('')}</select>
+ <div class="stopwatch" id="measurementStopwatch" ${stopwatchMeasurements.includes(selectedType)?'':'hidden'} style="margin-top:18px"><button class="btn green" id="timerStart" style="font-size:28px">Start</button><div style="flex:1;text-align:center"><div class="small">STOPWATCH</div><div class="time" id="timerTime">0.00</div></div></div>
  <label class="label">Manual Time / Value</label><input class="input" id="mValue" inputmode="decimal" placeholder="0.00">
  <label class="label">Date</label><input class="input" id="mDate" type="date" value="${new Date().toISOString().slice(0,10)}">
  <button class="btn block red savebar" id="saveMeasurement" disabled>Save Attempt</button>
@@ -1011,10 +1013,17 @@ function bindEval(){
  $$('[data-ranking]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.ranking;render()});
 }
 function bindRecord(){
+ const updateStopwatch=()=>{
+  const show=stopwatchMeasurements.includes($('#mType').value);
+  $('#measurementStopwatch').hidden=!show;
+  if(!show){if(timerInt)clearInterval(timerInt);timerInt=null;timerElapsed=0;$('#timerStart').textContent='Start';$('#timerTime').textContent='0.00'}
+ };
  const updateTypes=()=>{
   const p=hitterObj($('#mPlayer').value); const types=measurementTypes(p);$('#mType').innerHTML=types.map(t=>`<option>${t}</option>`).join('');
+  updateStopwatch();
  };
  $('#mPlayer').onchange=updateTypes;
+ $('#mType').onchange=updateStopwatch;
  $('#mValue').oninput=()=>{$('#saveMeasurement').disabled=!Number.isFinite(Number($('#mValue').value))};
  $('#timerStart').onclick=()=>{
   if(timerInt){clearInterval(timerInt);timerInt=null;$('#timerStart').textContent='Start';$('#mValue').value=(timerElapsed/1000).toFixed(2);$('#saveMeasurement').disabled=false;return}

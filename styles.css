@@ -203,22 +203,22 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .grad-year{width:21px;height:82px;background:#c91f2b;color:#fff;border-radius:7px;display:grid;place-items:center;font-size:12px;font-weight:950;letter-spacing:1px;writing-mode:vertical-rl;transform:rotate(180deg)}
 .player-info .name{font-size:28px;line-height:1.05}.player-info .meta{font-size:13px;font-weight:900;margin-top:6px}.player-info .meta>span{color:#c22730}.player-info .interest{color:#c42730;font-size:13px;font-weight:900;margin-top:6px}.player-info .interest span{color:#111}
 .eval-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 22px}
-.eval-tile{border:1px solid #ccc;border-radius:12px;background:#fff;padding:12px;min-height:112px;text-align:left}
-.eval-tile.dark{background:#111;color:#fff}.eval-tile h3{font-size:17px;margin:0 0 12px}.eval-tile .value{font-size:34px;font-weight:900}.eval-tile .note{margin-top:12px;color:#555;font-size:11px;font-weight:700}.eval-tile.dark .note{color:#ccc}
+.eval-tile{border:1px solid #ccc;border-radius:12px;background:#fff;padding:12px;min-height:112px;text-align:left;display:flex;flex-direction:column}
+.eval-tile.dark{background:#111;color:#fff}.eval-tile h3{font-size:17px;margin:0 0 12px}.eval-tile .value{font-size:34px;font-weight:900}.eval-tile .note{margin-top:auto;padding-top:12px;color:#555;font-size:11px;font-weight:700}.eval-tile.dark .note{color:#ccc}
 .eval-tile-head{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:12px}
 .metric-title,.metric-all{min-height:31px;border:2px solid #111;border-radius:8px;background:#fff;color:#111;padding:4px 8px;font-size:14px;line-height:1;font-weight:950;white-space:nowrap}
 .metric-title{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:clip}
 .metric-all{flex:0 0 auto;background:#111;color:#fff}
 .eval-tile.dark .metric-title{border-color:#fff;background:#111;color:#fff}
-.eval-tile.dark .metric-all{border-color:#d7aa35;background:#d7aa35;color:#111}
+.eval-tile.dark .metric-all{border-color:#fff;background:#fff;color:#111}
 .ranking-modal{width:min(520px,100%)}
 .ranking-kicker{color:#ddd!important;letter-spacing:2px}
 .ranking-list{display:grid;gap:7px;margin-top:16px}
-.ranking-row{display:grid;grid-template-columns:32px 44px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:47px;padding:8px 11px;border:1px solid #555;border-radius:10px;background:#303034;color:#fff;font-size:16px}
+.ranking-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:47px;padding:8px 11px;border:1px solid #555;border-radius:10px;background:#303034;color:#fff;font-size:16px}
 .ranking-place{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#fff;color:#111;font-weight:950}
-.ranking-number{font-weight:950;color:#ddd}.ranking-name{font-weight:850}.ranking-row strong{font-size:20px}
+.ranking-name{font-weight:850}.ranking-row strong{font-size:20px}
 .ranking-row.selected-player{border-color:#ee5d55;background:#b92f2c}
-.ranking-row.selected-player .ranking-place{background:#fff;color:#b92f2c}.ranking-row.selected-player .ranking-number{color:#fff}
+.ranking-row.selected-player .ranking-place{background:#fff;color:#b92f2c}
 .performance{margin:10px 22px;border:1px solid #ccc;border-radius:14px;background:#fff;padding:12px}
 .performance h2{font-size:22px;margin:0 0 10px}.perf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .perf{border:0;background:#f1f1f1;border-radius:9px;padding:10px 3px;text-align:center}.perf b{font-size:22px;line-height:1}.perf span{display:block;margin-top:5px;color:#555;font-size:13px;font-weight:900}
@@ -277,9 +277,9 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .report-tabs{gap:4px}.report-stat-grid{gap:4px;margin:10px 0}.report-stat{padding:7px 1px;border-radius:8px}.report-stat b{font-size:15px}.report-stat span{font-size:8px;margin-top:4px}.count-grid{gap:5px}.count-card{padding:8px;font-size:13px}.count-card b{font-size:17px;margin-right:7px}
   .eval-head{min-height:80px;padding:9px 10px;grid-template-columns:58px 1fr 58px}.eval-head h1{font-size:22px}.eval-head .teamname{font-size:9px}.player-select{margin:10px 8px 8px;width:calc(100% - 16px);padding:10px;font-size:16px;border-radius:10px}
   .player-card{margin:0 8px 7px;min-height:92px;border-radius:12px}.player-profile{grid-template-columns:21px 82px 1fr;gap:7px;padding:9px}.team-profile{grid-template-columns:82px 1fr;gap:10px;padding:9px}.player-info .name{font-size:22px}.player-info .meta,.player-info .interest{font-size:11px;margin-top:5px}.grad-year{font-size:12px}
-  .eval-tiles{gap:7px;margin:8px}.eval-tile{padding:10px;min-height:112px;border-radius:11px}.eval-tile h3{font-size:16px;margin-bottom:13px}.eval-tile .value{font-size:32px}.eval-tile .note{font-size:10px;margin-top:13px}
+  .eval-tiles{gap:7px;margin:8px}.eval-tile{padding:10px;min-height:112px;border-radius:11px}.eval-tile h3{font-size:16px;margin-bottom:13px}.eval-tile .value{font-size:32px}.eval-tile .note{font-size:10px;margin-top:auto;padding-top:13px}
   .eval-tile-head{gap:5px;margin-bottom:10px}.metric-title,.metric-all{min-height:29px;padding:3px 6px;border-radius:7px;font-size:12px}
-  .ranking-modal{padding:11px}.ranking-list{gap:5px;margin-top:12px}.ranking-row{grid-template-columns:28px 40px minmax(0,1fr) auto;gap:6px;min-height:43px;padding:6px 8px;font-size:14px}.ranking-place{width:25px;height:25px}.ranking-row strong{font-size:17px}
+  .ranking-modal{padding:11px}.ranking-list{gap:5px;margin-top:12px}.ranking-row{grid-template-columns:28px minmax(0,1fr) auto;gap:6px;min-height:43px;padding:6px 8px;font-size:14px}.ranking-place{width:25px;height:25px}.ranking-row strong{font-size:17px}
   .performance,.athletic{margin:8px;padding:11px;border-radius:12px}.performance h2,.athletic-head h2{font-size:21px}.perf-grid{gap:5px}.perf{padding:10px 2px;border-radius:8px;min-height:61px}.perf b{font-size:22px}.perf span{font-size:12px;margin-top:5px}.measure-grid{gap:6px}.measure{padding:9px;min-height:100px}.measure h3{font-size:14px}.measure .best{font-size:20px;margin-top:10px}.measure .note{font-size:9px;margin-top:8px}
   .roster-editor{padding:8px}.roster-edit-row{grid-template-columns:1fr 42px 42px 42px;gap:4px;margin-bottom:6px}.sidebtn{font-size:14px}.deletebtn{font-size:20px}
   .roster-hero{min-height:64px;padding:9px 7px}
