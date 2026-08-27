@@ -298,7 +298,7 @@ function liveView(){
  const statsMode=g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL';
  const percentMode=!g.firstPitchView&&(g.zoneScope==='TEAM'||g.previewNext||(g.historyTab==='ALL'&&(g.allView||'DOTS')==='PCT'));
  const filter=g.zoneFilter||'K';
- const histPitches=g.firstPitchView?firstPitches:percentMode?sourcePitches.filter(p=>resultGroup(p)===filter):sourcePitches;
+ const histPitches=g.firstPitchView?firstPitches.filter(p=>p.result!=='B'):percentMode?sourcePitches.filter(p=>resultGroup(p)===filter):sourcePitches;
  const abTabNames=aps.map((p,i)=>`AB${i+1}`);
  const showAll=aps.length>=2;
  const zoneFreq={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0}; const hp=histPitches.length||1;
