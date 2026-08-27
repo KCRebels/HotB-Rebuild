@@ -474,3 +474,73 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
     margin:1px auto 0;
   }
 }
+
+
+/* Structural live columns: History can no longer move left-side controls */
+.live-workspace{
+  grid-template-rows:auto;
+  align-content:start;
+  align-items:stretch;
+}
+.live-left{
+  grid-column:1;
+  grid-row:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+.live-left>.zone-card{
+  width:100%;
+  box-sizing:border-box;
+  min-height:0;
+  align-self:flex-start;
+  overflow:hidden;
+}
+.live-left>.tabs{
+  flex:0 0 auto;
+  margin:0;
+}
+.live-left>.results{
+  box-sizing:border-box;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  flex:0 0 auto;
+  gap:10px;
+  background:#fff;
+  border:2px solid #dbe2e9;
+  border-radius:14px;
+  padding:5px;
+}
+.live-workspace>.history-panel{
+  grid-column:2;
+  grid-row:1;
+  box-sizing:border-box;
+  width:100%;
+  height:auto;
+  max-height:none;
+  min-height:0;
+  align-self:stretch;
+  contain:size layout paint;
+  overflow-x:hidden;
+  overflow-y:auto;
+}
+@media(max-width:560px){
+  .live-app>.live-workspace{
+    grid-template-rows:auto;
+    align-content:start;
+  }
+  .live-left{gap:5px}
+  .live-left>.tabs{
+    height:33px;
+    flex-basis:33px;
+    gap:4px;
+  }
+  .live-left>.results{
+    height:94px;
+    flex-basis:94px;
+    gap:4px;
+    padding:4px;
+    border-radius:12px;
+  }
+}
