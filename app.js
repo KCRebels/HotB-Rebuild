@@ -109,16 +109,24 @@ function heatStyles(values,color){
  return map;
 }
 function createGame(opponent,pitcherName,pitcherNumber,order){
+ const openingPitcher={name:pitcherName,number:pitcherNumber,enteredAt:Date.now(),pitchIndex:0};
  const g={
   id:crypto.randomUUID(),date:new Date().toISOString(),opponent,pitcherName,pitcherNumber,
-  battingOrder:order,currentIdx:0,inning:1,outs:0,runners:[],plan:planFor(order[0]),pitchType:'FB',
+  pitchersUsed:[openingPitcher],battingOrder:order,hittersUsed:[...order],hitterSubstitutions:[],currentIdx:0,inning:1,outs:0,runners:[],plan:planFor(order[0]),pitchType:'FB',
   balls:0,strikes:0,paNumber:1,pitches:[],plateAppearances:[],ended:false,
   pendingZone:null,zoneScope:'HITTER',zoneFilter:'K',previewNext:false,showAi:false,historyTab:'LIVE',allView:'DOTS',firstPitchView:false
  };
  db.currentGame=g;
  if(opponent&&!db.teams.includes(opponent))db.teams.push(opponent);
- if(pitcherName&&!db.pitchers.some(p=>p.name===pitcherName&&p.number===pitcherNumber))db.pitchers.push({name:pitcherName,number:pitcherNumber});
+ rememberPitcher(opponent,pitcherName,pitcherNumber);
  save();return g;
+}
+function rememberPitcher(team,name,number){
+ if(!name&&!number)return;
+ const found=db.pitchers.find(p=>p.name===name&&p.number===number);
+ if(found){
+  found.teams=[...new Set([...(found.teams||[]),...(found.team?[found.team]:[]),...(team?[team]:[])])];
+ }else db.pitchers.push({name,number,teams:team?[team]:[]});
 }
 function hitterObj(name){return db.roster.find(r=>r.name===name)||{name,side:'R',jersey:'',grad:'',positions:'',gpa:'',interest:'',school:''}}
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
@@ -141,7 +149,7 @@ function addPitch(result,extra={}){
  const h=currentHitter(g);
  const pitch={
   id:crypto.randomUUID(),hitter:h.name,pa:g.paNumber,inning:g.inning,ballsBefore:g.balls,strikesBefore:g.strikes,
-  zone:g.pendingZone||'',pitchType:g.pitchType,plan:g.plan,result,ts:Date.now(),...extra
+  zone:g.pendingZone||'',pitchType:g.pitchType,plan:g.plan,result,pitcherName:g.pitcherName||'',pitcherNumber:g.pitcherNumber||'',ts:Date.now(),...extra
  };
  g.pitches.push(pitch);
  let end=null;
@@ -278,12 +286,12 @@ function rosterView(){
 function liveView(){
  const g=currentGame();if(!g)return `<div class="panel"><p>No current game.</p><button class="btn" data-go="new">New Game</button></div>`;
  const h=currentHitter(g);
- const currentPlan=planFor(h.name);
+ const currentPlan=g.plan||planFor(h.name);
  const activePitchType=g.pitchType||'FB';
  const aps=g.plateAppearances.filter(p=>p.hitter===h.name);
  const nextName=g.battingOrder.length>1?g.battingOrder[(g.currentIdx+1)%g.battingOrder.length]:'';
  const chartName=g.previewNext?nextName:h.name;
- const activeNames=new Set(g.battingOrder);
+ const activeNames=new Set(g.hittersUsed||g.battingOrder);
  const allChartHitterPitches=g.pitches.filter(p=>p.hitter===chartName);
  let sourcePitches;
  if(g.zoneScope==='TEAM'&&!g.previewNext) sourcePitches=g.pitches.filter(p=>activeNames.has(p.hitter));
@@ -320,13 +328,13 @@ function liveView(){
  const nextInitials=nextName?nextName.split(' ').map(x=>x[0]).join(''):'';
  return `<div class="topbar"><div class="brand">KC REBELS</div><button id="openProfile">Profile</button><button id="openReports">Reports</button><button class="end" id="endGame">End</button></div>
  <div class="live-top">
-  <div class="statbox hitter-box"><div class="cap">HITTER</div><div class="big">${esc(h.name)}</div><div class="sidebadge">${h.side}</div></div>
+  <button class="statbox hitter-box live-stat-button" id="changeHitter" aria-label="Substitute for ${esc(h.name)}"><div class="cap">HITTER</div><div class="big">${esc(h.name)}</div><div class="sidebadge">${h.side}</div></button>
   <div class="statbox"><div class="cap">INN</div><div class="big">${g.inning}</div></div>
   <div class="statbox"><div class="cap">COUNT</div><div class="big">${g.balls}-${g.strikes}</div></div>
-  <div class="statbox"><div class="cap">PITCHER</div><div class="big">#${esc(g.pitcherNumber||'')}</div></div>
+  <button class="statbox live-stat-button" id="changePitcher" aria-label="Change pitcher"><div class="cap">PITCHER</div><div class="big">#${esc(g.pitcherNumber||'')}</div></button>
  </div>
  <div class="control-row">
-  <div class="control-card"><div class="pill-row">${['IN','OUT','CH','NO'].map(x=>`<button class="pill red ${currentPlan===x?'active':''}" data-plan="${x}">${x}</button>`).join('')}</div></div>
+  <div class="control-card"><div class="pill-row">${['IN','OUT','CH','NO'].map(x=>`<button class="pill red ${g.strikes<2&&currentPlan===x?'active':''}" data-plan="${x}">${x}</button>`).join('')}</div></div>
   <div class="control-card"><div class="pill-row">${[0,1,2].map(x=>`<button class="pill ${g.outs===x?'active':''}" data-outs="${x}">${x}</button>`).join('')}</div></div>
   <div class="control-card"><div class="pill-row">${[3,2,1].map(x=>`<button class="runner ${g.runners.includes(x)?'active':''}" data-runner="${x}"><span>${x}</span></button>`).join('')}</div></div>
  </div>
@@ -543,7 +551,28 @@ function gameActionModal(kind){
   <div class="game-action-buttons end-game-buttons"><button class="btn" data-close>Cancel</button><button class="btn red" id="saveAndExit">Save &amp; Exit</button><button class="btn dark" id="discardGame">End &amp; Don’t Save</button></div>
  </div></div>`;
 }
+function pitcherChangeModal(){
+ const g=currentGame();
+ const known=db.pitchers.filter(p=>!g.opponent||(p.teams||[]).includes(g.opponent)||p.team===g.opponent);
+ return `<div class="modal-backdrop"><div class="modal substitution-modal"><div class="modal-header"><h2>Change Pitcher</h2><button class="btn" data-close>Cancel</button></div>
+  <p class="substitution-note">Enter the new pitcher for ${esc(g.opponent||"this team")}.</p>
+  <label class="label">Pitcher Name</label><input id="subPitcherName" class="input" placeholder="Enter pitcher name" list="subPitcherList"><datalist id="subPitcherList">${known.map(p=>`<option value="${esc(p.name)}"></option>`).join("")}</datalist>
+  <label class="label">Number</label><input id="subPitcherNumber" class="input" placeholder="Enter number" inputmode="numeric">
+  <button class="btn block red savebar" id="savePitcherChange" disabled>Use New Pitcher</button>
+ </div></div>`;
+}
+function hitterChangeModal(){
+ const g=currentGame(), outgoing=currentHitter(g);
+ const inLineup=new Set(g.battingOrder);
+ const available=db.roster.filter(r=>!inLineup.has(r.name));
+ return `<div class="modal-backdrop"><div class="modal substitution-modal"><div class="modal-header"><h2>Substitute Hitter</h2><button class="btn" data-close>Cancel</button></div>
+  <p class="substitution-note">Choose who will bat for <b>${esc(outgoing.name)}</b> in this lineup spot.</p>
+  <div class="substitute-list">${available.length?available.map(r=>`<button class="substitute-player" data-sub-hitter="${esc(r.name)}"><span>${esc(r.name)}</span><strong>${esc(r.side)}</strong></button>`).join(""):`<div class="substitution-empty">Every rostered player is already in the lineup.</div>`}</div>
+ </div></div>`;
+}
 function modalView(){
+ if(modal==='changePitcher')return pitcherChangeModal();
+ if(modal==='changeHitter')return hitterChangeModal();
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
  if(modal==='reports')return reportModal();
  if(modal==='record')return recordModal();
@@ -563,6 +592,8 @@ function bind(){
  if(modal==='reports')bindReports();
  if(modal==='record')bindRecord();
  if(modal==='endGame'||modal==='discardConfirm')bindGameAction();
+ if(modal==='changePitcher')bindPitcherChange();
+ if(modal==='changeHitter')bindHitterChange();
 }
 function bindNew(){
  const sels=$$('.batting-select');
@@ -597,6 +628,10 @@ function bindRoster(){
 }
 function bindLive(){
  const g=currentGame();
+ $('.live-app')?.addEventListener('click',event=>{
+  const button=event.target.closest('button');
+  if(button&&!button.matches('[data-zone],[data-result]')&&g.pendingZone){g.pendingZone=null;save()}
+ },true);
  const percentMode=!g.firstPitchView&&(g.zoneScope==='TEAM'||g.previewNext||(g.historyTab==='ALL'&&(g.allView||'DOTS')==='PCT'));
  $$('[data-plan]').forEach(b=>b.onclick=()=>{
    g.plan=b.dataset.plan;
@@ -624,6 +659,38 @@ function bindLive(){
  $('#openReports').onclick=()=>{modal='reports';reportMode='current';render()};
  $('#endGame').onclick=()=>{modal='endGame';render()};
  $('#aiBtn').onclick=()=>{g.showAi=!g.showAi;save();render()};
+ $('#changePitcher').onclick=()=>{modal='changePitcher';render()};
+ $('#changeHitter').onclick=()=>{modal='changeHitter';render()};
+}
+function bindPitcherChange(){
+ const g=currentGame(), name=$('#subPitcherName'), number=$('#subPitcherNumber'), saveButton=$('#savePitcherChange');
+ const update=()=>{saveButton.disabled=!name.value.trim()&&!number.value.trim()};
+ name.addEventListener('input',update);number.addEventListener('input',update);
+ name.addEventListener('change',()=>{
+  const known=db.pitchers.find(p=>p.name===name.value&&(!g.opponent||(p.teams||[]).includes(g.opponent)||p.team===g.opponent));
+  if(known&&!number.value)number.value=known.number||'';
+  update();
+ });
+ saveButton.onclick=()=>{
+  const pitcherName=name.value.trim(),pitcherNumber=number.value.trim();
+  g.pitcherName=pitcherName;g.pitcherNumber=pitcherNumber;
+  g.pitchersUsed=g.pitchersUsed||[];
+  g.pitchersUsed.push({name:pitcherName,number:pitcherNumber,enteredAt:Date.now(),pitchIndex:g.pitches.length});
+  rememberPitcher(g.opponent,pitcherName,pitcherNumber);
+  modal=null;save();render();
+ };
+}
+function bindHitterChange(){
+ $$("[data-sub-hitter]").forEach(button=>button.onclick=()=>{
+  const g=currentGame(),outgoing=currentHitter(g).name,incoming=button.dataset.subHitter;
+  g.pitches.filter(p=>p.pa===g.paNumber&&p.hitter===outgoing).forEach(p=>p.hitter=incoming);
+  g.battingOrder[g.currentIdx]=incoming;
+  g.hittersUsed=[...new Set([...(g.hittersUsed||g.battingOrder),outgoing,incoming])];
+  g.hitterSubstitutions=g.hitterSubstitutions||[];
+  g.hitterSubstitutions.push({out:outgoing,in:incoming,lineupIndex:g.currentIdx,pa:g.paNumber,ts:Date.now()});
+  g.plan=planFor(incoming);g.pendingZone=null;g.historyTab='LIVE';g.previewNext=false;g.firstPitchView=false;g.showAi=false;
+  modal=null;save();render();
+ });
 }
 function bindGameAction(){
  $('#saveAndExit')?.addEventListener('click',()=>{
