@@ -264,7 +264,7 @@ function newGameView(){
  const opts=db.roster.map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('');
  const rows=Array.from({length:13},(_,i)=>`<div class="batting-row"><div class="batting-num">${i+1}</div>
  <select class="input batting-select" data-idx="${i}"><option value="">Select hitter</option>${opts}</select></div>`).join('');
- return `<div class="hero"><div class="hero-row"><div><div class="kicker">KC REBELS</div><h1>New Game</h1><p>Set the matchup and batting order.</p></div><div class="spacer"></div><button data-go="home">Home</button></div></div>
+ return `<div class="page-match-head"><h1>New Game</h1><button class="page-head-nav" data-go="home">Home</button></div>
  <div class="panel"><div class="section-title">MATCHUP</div>
   <label class="label">Opponent</label><input id="opponent" class="input" placeholder="Select or enter team" list="teamList"><datalist id="teamList">${db.teams.map(t=>`<option>${esc(t)}</option>`).join('')}</datalist>
   <div class="grid2"><div><label class="label">Pitcher Name</label><input id="pitcherName" class="input" placeholder="Select or enter pitcher name" list="pitcherList"><datalist id="pitcherList">${db.pitchers.map(p=>`<option value="${esc(p.name)}"></option>`).join('')}</datalist></div>
@@ -441,7 +441,7 @@ function zoneReport(pas){
  <div class="zone zone-right heat-zone" style="${heat.R}"><span class="pct">${Math.round(z.R/n*100)}%</span></div><div class="zone zone-bottom heat-zone" style="${heat.B}"><span class="pct">${Math.round(z.B/n*100)}%</span></div></div>`;
 }
 function reportsPage(){
- return `<div class="hero"><div class="hero-row"><button class="btn" data-go="home">Home</button><div><div class="kicker">KC REBELS</div><h1>Reports</h1><p>Review saved games and trends.</p></div></div></div>
+ return `<div class="page-match-head page-head-centered"><button class="page-head-nav" data-go="home">Home</button><h1>Reports</h1><span class="page-head-spacer"></span></div>
  <div class="panel"><button class="btn black block" id="openSavedReports">Open Saved Reports</button>
  <div style="margin-top:20px">${db.savedGames.length?db.savedGames.map(g=>`<div class="count-card" style="margin-bottom:10px"><b>${new Date(g.date).toLocaleDateString()}</b> ${esc(g.opponent||'Opponent')} · ${g.plateAppearances.length} PA</div>`).join(''):'No saved games yet.'}</div></div>`;
 }
@@ -476,7 +476,7 @@ function evalView(){
  const execs=pas.map(p=>p.execution).filter(v=>v!==null);
  const execution=execs.length?execs.filter(Boolean).length/execs.length:null;
  const ms=measurementTypes(player);
- return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Player Eval</h1></div></div>
+ return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div></div>
  <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  ${player?`<div class="player-card player-profile"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div></div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}

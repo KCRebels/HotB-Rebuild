@@ -218,6 +218,11 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .roster-hero h1{margin:0;text-align:center;font-size:56px;line-height:1;font-weight:850;letter-spacing:-2px;white-space:nowrap}
 .roster-nav{min-height:66px;border:0;border-radius:17px;padding:10px 16px;font-size:25px;font-weight:900;box-shadow:0 2px 2px rgba(0,0,0,.14)}
 .roster-cancel{background:#fff;color:#111827}.roster-save{background:#d9aa2b;color:#111827}
+.page-match-head{position:relative;min-height:118px;padding:18px 22px;overflow:hidden;display:flex;align-items:center;gap:18px;background:linear-gradient(110deg,#250001 0%,#69050c 48%,#e00528 100%);color:#fff;isolation:isolate}
+.page-match-head::before{content:"KC REBELS";position:absolute;z-index:-1;left:-8px;top:-26px;color:rgba(255,255,255,.13);font-size:120px;line-height:1.15;font-weight:950;letter-spacing:-8px;white-space:nowrap;pointer-events:none}
+.page-match-head h1{flex:1;margin:0;font-size:56px;line-height:1;font-weight:850;letter-spacing:-2px;white-space:nowrap}
+.page-head-centered{display:grid;grid-template-columns:130px 1fr 130px}.page-head-centered h1{text-align:center}.page-head-spacer{display:block}
+.page-head-nav{min-height:66px;border:0;border-radius:17px;padding:10px 16px;background:#fff;color:#111827;font-size:25px;font-weight:900}
 .stopwatch{border:4px solid #111;border-radius:20px;padding:20px;display:flex;align-items:center;gap:20px}.stopwatch .time{font-size:54px;font-weight:900;flex:1;text-align:center}.savebar{margin-top:20px}
 @media(max-width:560px){
   .app{max-width:none}
@@ -255,11 +260,16 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .eval-tiles{gap:7px;margin:8px}.eval-tile{padding:10px;min-height:112px;border-radius:11px}.eval-tile h3{font-size:16px;margin-bottom:13px}.eval-tile .value{font-size:32px}.eval-tile .note{font-size:10px;margin-top:13px}
   .performance,.athletic{margin:8px;padding:11px;border-radius:12px}.performance h2,.athletic-head h2{font-size:21px}.perf-grid{gap:5px}.perf{padding:10px 2px;border-radius:8px;min-height:61px}.perf b{font-size:22px}.perf span{font-size:12px;margin-top:5px}.measure-grid{gap:6px}.measure{padding:9px;min-height:100px}.measure h3{font-size:14px}.measure .best{font-size:20px;margin-top:10px}.measure .note{font-size:9px;margin-top:8px}
   .roster-editor{padding:8px}.roster-edit-row{grid-template-columns:1fr 42px 42px 42px;gap:4px;margin-bottom:6px}.sidebtn{font-size:14px}.deletebtn{font-size:20px}
-  .roster-hero{min-height:92px;padding:16px 14px}
-  .roster-hero::before{left:-6px;top:-13px;font-size:91px;letter-spacing:-6px}
-  .roster-hero-row{grid-template-columns:84px minmax(0,1fr) 72px;gap:9px;min-height:60px}
+  .roster-hero{min-height:64px;padding:9px 7px}
+  .roster-hero::before{left:-5px;top:-13px;font-size:86px;letter-spacing:-6px}
+  .roster-hero-row{grid-template-columns:84px minmax(0,1fr) 72px;gap:9px;min-height:46px}
   .roster-hero h1{font-size:clamp(30px,9vw,40px);letter-spacing:-1.5px}
-  .roster-nav{min-height:48px;border-radius:12px;padding:7px 8px;font-size:17px}
+  .roster-nav{min-height:46px;border-radius:9px;padding:8px 9px;font-size:16px}
+  .page-match-head{min-height:64px;padding:9px 7px;gap:5px}
+  .page-match-head::before{left:-5px;top:-13px;font-size:86px;letter-spacing:-6px}
+  .page-match-head h1{font-size:clamp(30px,9vw,40px);letter-spacing:-1.5px}
+  .page-head-centered{grid-template-columns:84px 1fr 84px}
+  .page-head-nav{min-height:46px;border-radius:9px;padding:8px 9px;font-size:16px}
   .guide-table{font-size:14px}.guide-table th,.guide-table td{padding:9px 5px}.stopwatch{padding:10px;gap:8px}.stopwatch .time{font-size:34px}
 }
 
@@ -793,7 +803,15 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .chart-head::before,.eval-head::before{left:-5px;top:-13px;font-size:86px;letter-spacing:-6px}
   .live-app>.chart-head .brand,.eval-head h1,.roster-hero h1{font-size:clamp(30px,9vw,40px);line-height:1;letter-spacing:-1.5px}
   .live-app>.chart-head button{min-height:46px;padding:8px 9px;font-size:16px}
-  .eval-head{min-height:92px;padding:16px 14px;grid-template-columns:84px 1fr 84px}
-  .eval-head>.eval-nav{min-height:48px;border-radius:12px;padding:7px 8px;font-size:17px}
+  .eval-head{min-height:64px;padding:9px 7px;grid-template-columns:84px 1fr 84px}
+  .eval-head>.eval-nav{min-height:46px;border-radius:9px;padding:8px 9px;font-size:16px}
   .grad-year{font-size:15px}
+}
+
+/* Larger End Game dialog text without changing button dimensions */
+.game-action-buttons .btn{font-size:17px;line-height:1.05}
+.confirm-discard-buttons .btn{font-size:20px}
+@media(max-width:560px){
+  .end-game-buttons .btn{font-size:15px;line-height:1.05}
+  .confirm-discard-buttons .btn{font-size:19px}
 }
