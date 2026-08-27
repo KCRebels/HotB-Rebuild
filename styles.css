@@ -723,7 +723,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .player-profile .player-photo img[src$="Maia.jpg"],
 .player-profile .player-photo img[src$="Maleah.jpg"]{
   width:auto;
-  height:350%;
+  height:450%;
   left:50%;
   top:-8%;
   transform:translateX(-50%);
