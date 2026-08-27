@@ -113,7 +113,7 @@ function createGame(opponent,pitcherName,pitcherNumber,order){
   id:crypto.randomUUID(),date:new Date().toISOString(),opponent,pitcherName,pitcherNumber,
   battingOrder:order,currentIdx:0,inning:1,outs:0,runners:[],plan:planFor(order[0]),pitchType:'FB',
   balls:0,strikes:0,paNumber:1,pitches:[],plateAppearances:[],ended:false,
-  pendingZone:null,zoneScope:'HITTER',zoneFilter:'K',previewNext:false,showAi:false,historyTab:'LIVE',firstPitchView:false
+  pendingZone:null,zoneScope:'HITTER',zoneFilter:'K',previewNext:false,showAi:false,historyTab:'LIVE',allView:'DOTS',firstPitchView:false
  };
  db.currentGame=g;
  if(opponent&&!db.teams.includes(opponent))db.teams.push(opponent);
@@ -296,7 +296,7 @@ function liveView(){
  const allActivePitches=g.pitches.filter(p=>activeNames.has(p.hitter));
  const firstPitches=allActivePitches.filter((p,i,a)=>i===0||p.pa!==a[i-1].pa||p.hitter!==a[i-1].hitter);
  const statsMode=g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL';
- const percentMode=g.zoneScope==='TEAM'&&!g.firstPitchView;
+ const percentMode=!g.firstPitchView&&(g.zoneScope==='TEAM'||g.previewNext||(g.historyTab==='ALL'&&(g.allView||'DOTS')==='PCT'));
  const filter=g.zoneFilter||'K';
  const histPitches=g.firstPitchView?firstPitches:percentMode?sourcePitches.filter(p=>resultGroup(p)===filter):sourcePitches;
  const abTabNames=aps.map((p,i)=>`AB${i+1}`);
@@ -347,10 +347,10 @@ function liveView(){
   </div>
  </div>
  <div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div>
- <div class="tabs ${showAll?'with-all':'without-all'}"><button class="tab fixed-tab ${(g.historyTab||'LIVE')==='LIVE'?'active':''}" data-tab="LIVE">LIVE</button><div class="ab-scroll">${abTabNames.map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}</div>${showAll?`<button class="tab fixed-tab ${(g.historyTab||'LIVE')==='ALL'?'active':''}" data-tab="ALL">ALL</button>`:''}</div>
+ <div class="tabs ${showAll?'with-all':'without-all'}"><button class="tab fixed-tab ${(g.historyTab||'LIVE')==='LIVE'?'active':''}" data-tab="LIVE">LIVE</button><div class="ab-scroll">${abTabNames.map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}</div>${showAll?`<button class="tab fixed-tab ${(g.historyTab||'LIVE')==='ALL'?'active':''}" data-tab="ALL">${g.historyTab==='ALL'&&(g.allView||'DOTS')==='DOTS'?'%':'ALL'}</button>`:''}</div>
  <div class="results">
-  <button class="result hbp" data-result="HBP" ${statsMode?'disabled':''}>HBP</button><button class="result ball ${statsMode&&filter==='B'?'filter-active':''}" data-result="B">B</button><button class="result foul ${statsMode&&filter==='F'?'filter-active':''}" data-result="F">F</button><button class="result hit ${statsMode&&filter==='HIT'?'filter-active':''}" data-result="HIT">HIT</button>
-  <button class="result undo" id="undo" ${statsMode?'disabled':''}>Undo</button><button class="result strike ${statsMode&&filter==='K'?'filter-active':''}" data-result="K">K</button><button class="result strike ${statsMode&&filter==='K'?'filter-active':''}" data-result="KL">KL</button><button class="result out ${statsMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
+  <button class="result hbp" data-result="HBP" ${statsMode?'disabled':''}>HBP</button><button class="result ball ${percentMode&&filter==='B'?'filter-active':''}" data-result="B">B</button><button class="result foul ${percentMode&&filter==='F'?'filter-active':''}" data-result="F">F</button><button class="result hit ${percentMode&&filter==='HIT'?'filter-active':''}" data-result="HIT">HIT</button>
+  <button class="result undo" id="undo" ${statsMode?'disabled':''}>Undo</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="K">K</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="KL">KL</button><button class="result out ${percentMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
  </div></div>`;
 }
 function historyHtml(g,hitter){
@@ -594,15 +594,14 @@ function bindLive(){
  $$('[data-runner]').forEach(b=>b.onclick=()=>{const n=+b.dataset.runner;g.runners=g.runners.includes(n)?g.runners.filter(x=>x!==n):[...g.runners,n];save();render()});
  $$('[data-ptype]').forEach(b=>b.onclick=()=>{g.pitchType=b.dataset.ptype;save();render()});
  $$('[data-zone]').forEach(z=>z.onclick=()=>{if(g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL'||g.firstPitchView)return;g.pendingZone=z.dataset.zone;save();render()});
- $$('[data-tab]').forEach(b=>b.onclick=()=>{g.historyTab=b.dataset.tab;g.zoneScope='HITTER';g.previewNext=false;g.firstPitchView=false;save();render()});
+ $('[data-tab]').forEach(b=>b.onclick=()=>{const tab=b.dataset.tab;if(tab==='ALL'){if(g.historyTab!=='ALL'){g.historyTab='ALL';g.allView='DOTS'}else{g.allView=(g.allView||'DOTS')==='DOTS'?'PCT':'DOTS';if(g.allView==='PCT')g.zoneFilter='K'}}else{g.historyTab=tab}g.zoneScope='HITTER';g.previewNext=false;g.firstPitchView=false;save();render()});
  $('#zoneScope').onclick=()=>{const team=(g.zoneScope||'HITTER')!=='TEAM';g.zoneScope=team?'TEAM':'HITTER';g.zoneFilter='K';g.previewNext=false;g.historyTab='LIVE';g.firstPitchView=false;g.showAi=false;save();render()};
  $('#zoneNext').onclick=()=>{if(g.battingOrder.length<2)return;g.previewNext=!g.previewNext;g.zoneScope='HITTER';g.zoneFilter='K';g.historyTab='LIVE';g.firstPitchView=false;g.showAi=false;save();render()};
  $('#fpsBtn').onclick=()=>{g.firstPitchView=!g.firstPitchView;g.zoneScope='HITTER';g.previewNext=false;g.showAi=false;save();render()};
  $$('[data-result]').forEach(b=>b.onclick=()=>{
    const r=b.dataset.result;
-   if(g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL'){
-     if(r!=='HBP'){g.zoneFilter=r==='KL'?'K':r;save();render()}return;
-   }
+   if(percentMode){if(r!=='HBP'){g.zoneFilter=r==='KL'?'K':r;save();render()}return}
+   if(g.previewNext||g.historyTab==='ALL'||g.firstPitchView)return;
    if(!g.pendingZone && !['HBP'].includes(r)){alert('Select a pitch location first.');return}
    if(r==='HIT'||r==='H4O'){modal=r;render()} else addPitch(r);
  });
