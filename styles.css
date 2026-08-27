@@ -418,3 +418,16 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .pitch-dot-grid{position:absolute;inset:auto;left:50%;top:2px;transform:translateX(-50%);width:min(calc(100% - 4px),var(--dot-wrap));height:calc(100% - 4px);display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:var(--dot-gap);overflow:hidden}
 .pitch-dot{display:grid;place-items:center;flex:0 0 var(--dot-size);width:var(--dot-size);height:var(--dot-size);font-size:var(--dot-font);font-style:normal;font-weight:950;line-height:1;color:#111;text-align:center}
 .pitch-dot.hit,.pitch-dot.bad{color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.45)}
+
+
+/* Simplified FPS readout and three-choice End Game flow */
+.fps{display:flex;align-items:center;justify-content:center;grid-template-rows:none}
+.fps strong{font-size:clamp(20px,5.5vw,24px);line-height:1;letter-spacing:0}
+.end-game-buttons{grid-template-columns:.72fr 1fr 1.28fr}
+.end-game-buttons .btn{min-width:0;white-space:normal;line-height:1.05;padding-left:6px;padding-right:6px}
+.confirm-discard-buttons{grid-template-columns:1fr 1fr}
+@media(max-width:560px){
+  .fps strong{font-size:22px}
+  .end-game-buttons{gap:6px}
+  .end-game-buttons .btn{font-size:12px;padding:10px 4px}
+}
