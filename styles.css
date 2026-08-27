@@ -573,3 +573,48 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .fps strong.fps-compact{font-size:15px}
   .history-ab-divider{margin:6px 2px 8px}
 }
+
+
+/* Only LIVE is locked; AB tabs and ALL share one scrolling strip */
+.tabs.with-all>.ab-scroll,
+.tabs.without-all>.ab-scroll{
+  grid-column:2/5;
+}
+.tabs .ab-scroll>.tab{
+  flex:0 0 calc((100% - 8px)/3);
+}
+
+/* Screenshot-matched Ai suggestion cards */
+.ai-box{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  justify-content:stretch;
+  gap:5px;
+  height:54px;
+  min-width:0;
+  padding:5px 7px;
+  background:#fff0f1;
+  border:2px solid #e5b2b8;
+  border-radius:12px;
+  color:#111;
+  text-align:left;
+  font-size:17px;
+  font-weight:950;
+  line-height:1;
+  white-space:nowrap;
+}
+.ai-rank{color:#a91f32;font:inherit}
+.ai-pitch{min-width:0;overflow:hidden;text-overflow:clip;font:inherit}
+.ai-pct{color:#111;font:inherit;text-align:right}
+@media(max-width:560px){
+  .ai-suggestions{gap:5px}
+  .ai-box{
+    height:42px;
+    gap:3px;
+    padding:3px 5px;
+    border-radius:9px;
+    font-size:15px;
+    letter-spacing:-.35px;
+  }
+}
