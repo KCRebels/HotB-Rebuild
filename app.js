@@ -476,15 +476,16 @@ function evalView(){
  const execs=pas.map(p=>p.execution).filter(v=>v!==null);
  const execution=execs.length?execs.filter(Boolean).length/execs.length:null;
  const ms=measurementTypes(player);
+ const metricHead=(title)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${title}">${title}</button><button class="metric-all" data-ranking="${title}">ALL</button></div>`;
  return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div></div>
  <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  ${player?`<div class="player-card player-profile"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div></div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
-  <div class="eval-tile dark" data-guide="HotB+"><h3>HotB+</h3>${player&&hotb!==null?comparison(hotb,hotb-100,0):`<div class="value">${hotb??'—'}</div>`}<div class="note">${player?(hotb===null?'More saved data needed':'100 = team average'):'Current-team benchmark'}</div></div>
-  <div class="eval-tile" data-guide="Runs Produced"><h3>Runs Produced</h3>${player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`}<div class="note">${player?`Player average ${avgPlayerRp.toFixed(1)}`:'Team total'}</div></div>
-  <div class="eval-tile" data-guide="RP / 100 PA"><h3>RP / 100 PA</h3>${player?comparison(rp100.toFixed(1),rp100-teamRp100,1):`<div class="value">${rp100.toFixed(1)}</div>`}<div class="note">${player?`Team average ${teamRp100.toFixed(1)}`:'Team rate'}</div></div>
-  <div class="eval-tile" data-guide="Execution"><h3>Execution</h3><div class="value">${execution===null?'—':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
+  <div class="eval-tile dark">${metricHead('HotB+')} ${player&&hotb!==null?comparison(hotb,hotb-100,0):`<div class="value">${hotb??'—'}</div>`}<div class="note">${player?(hotb===null?'More saved data needed':'100 = team average'):'Current-team benchmark'}</div></div>
+  <div class="eval-tile">${metricHead('Runs Produced')} ${player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`}<div class="note">${player?`Player average ${avgPlayerRp.toFixed(1)}`:'Team total'}</div></div>
+  <div class="eval-tile">${metricHead('RP / 100 PA')} ${player?comparison(rp100.toFixed(1),rp100-teamRp100,1):`<div class="value">${rp100.toFixed(1)}</div>`}<div class="note">${player?`Team average ${teamRp100.toFixed(1)}`:'Team rate'}</div></div>
+  <div class="eval-tile">${metricHead('Execution')}<div class="value">${execution===null?'—':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
  </div>
  <div class="performance"><h2>Game Performance <span class="small" style="float:right">CUMULATIVE TO DATE</span></h2><div class="perf-grid">
  ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],['BB%',pct1(s.bbPct),'BB']].map(([label,val,key])=>`<div class="perf ${s.PA>=25?grade(s[key==='contact'?'contactPct':key==='K'?'kPct':key==='BB'?'bbPct':key],key):''}" data-guide="${label}"><b>${val}</b><span>${label}</span></div>`).join('')}
@@ -523,6 +524,30 @@ function evalGuide(title){
   'K%':[['Excellent','Under 10%'],['Good','10–15%'],['Acceptable','15.1–20%'],['Concern','20.1–25%'],['Serious concern','Over 25%']]
  }[title];
  return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>${metricMap[title]}</h2></div><button class="btn" data-close>Close</button></div><table class="guide-table"><thead><tr><th>Rating</th><th>${title.replace('CONTACT','Contact%')}</th></tr></thead><tbody>${table.map(([r,v],i)=>`<tr><td class="${['excellent','good','acceptable','concern','serious'][i]}">${r}</td><td><b>${v}</b></td></tr>`).join('')}</tbody></table><p class="small" style="color:#ddd">The app begins color-grading a player after 25 saved plate appearances.</p></div></div>`;
+}
+function evalRankingModal(metric){
+ const teamPas=allPAs();
+ const teamStats=statsForPAs(teamPas);
+ const teamRate=teamStats.PA?teamStats.rp/teamStats.PA:0;
+ const rows=db.roster.map(player=>{
+  const pas=teamPas.filter(pa=>pa.hitter===player.name);
+  const stats=statsForPAs(pas);
+  const execs=pas.map(pa=>pa.execution).filter(value=>value===true||value===false);
+  let value=null;
+  if(metric==='HotB+')value=stats.PA&&teamRate?(stats.rp/stats.PA)/teamRate*100:null;
+  else if(metric==='Runs Produced')value=stats.PA?stats.rp:null;
+  else if(metric==='RP / 100 PA')value=stats.PA?stats.rp/stats.PA*100:null;
+  else if(metric==='Execution')value=execs.length?execs.filter(Boolean).length/execs.length:null;
+  return {player,value};
+ }).sort((a,b)=>{
+  if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
+  if(a.value===null)return 1;if(b.value===null)return-1;
+  return b.value-a.value||a.player.name.localeCompare(b.player.name);
+ });
+ const formatted=value=>value===null?'—':metric==='HotB+'?Math.round(value):metric==='Execution'?pct0(value):value.toFixed(1);
+ return `<div class="modal-backdrop"><div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">TEAM RANKINGS</div><h2>${esc(metric)}</h2></div><button class="btn" data-close>Close</button></div>
+  <div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.player.name===evalPlayer?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-number">#${esc(row.player.jersey||'—')}</span><span class="ranking-name">${esc(row.player.name)}</span><strong>${formatted(row.value)}</strong></div>`).join('')}</div>
+ </div></div>`;
 }
 function recordModal(){
  const p=evalPlayer==='Team'?db.roster[0]?.name:evalPlayer;
@@ -573,6 +598,7 @@ function hitterChangeModal(){
 function modalView(){
  if(modal==='changePitcher')return pitcherChangeModal();
  if(modal==='changeHitter')return hitterChangeModal();
+ if(modal?.startsWith('ranking:'))return evalRankingModal(modal.slice(8));
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
  if(modal==='reports')return reportModal();
  if(modal==='record')return recordModal();
@@ -740,6 +766,7 @@ function bindEval(){
  $('#recordMeasure2').onclick=()=>{recordType='';modal='record';render()};
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
  $$('[data-guide]').forEach(x=>x.onclick=()=>{modal='guide:'+x.dataset.guide;render()});
+ $$('[data-ranking]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.ranking;render()});
 }
 function bindRecord(){
  const updateTypes=()=>{
