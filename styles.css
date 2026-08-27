@@ -677,3 +677,31 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
     letter-spacing:-1.2px;
   }
 }
+
+
+/* Inline team-average comparisons for evaluation metrics */
+.eval-tile .compare-value{
+  display:flex;
+  align-items:baseline;
+  gap:7px;
+  max-width:100%;
+  font-size:27px;
+  line-height:1;
+  white-space:nowrap;
+}
+.metric-pipe{color:#9aa09d;font-weight:700}
+.metric-delta{font-size:.78em;font-weight:950}
+.metric-delta.positive{color:#2e8b4d}
+.metric-delta.negative{color:#c83731}
+.metric-delta.neutral{color:#737a77}
+.eval-tile.dark .metric-pipe{color:#7d8581}
+.eval-tile.dark .metric-delta.positive{color:#63d381}
+.eval-tile.dark .metric-delta.negative{color:#ff6b64}
+.eval-tile.dark .metric-delta.neutral{color:#c8cfcc}
+@media(max-width:560px){
+  .eval-tile .compare-value{
+    gap:5px;
+    font-size:25px;
+    letter-spacing:-.35px;
+  }
+}
