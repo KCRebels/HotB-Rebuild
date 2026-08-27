@@ -544,3 +544,32 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
     border-radius:12px;
   }
 }
+
+
+/* Value-fitting FPS percentage and ALL-view at-bat separators */
+.fps strong.fps-standard{
+  max-width:100%;
+  font-size:20px;
+  line-height:1;
+  letter-spacing:-.5px;
+  white-space:nowrap;
+}
+.fps strong.fps-compact{
+  max-width:100%;
+  font-size:16px;
+  line-height:1;
+  letter-spacing:-1px;
+  white-space:nowrap;
+}
+.history-ab-divider{
+  height:2px;
+  background:#c8cecb;
+  border:0;
+  margin:7px 2px 9px;
+  border-radius:2px;
+}
+@media(max-width:560px){
+  .fps strong.fps-standard{font-size:19px}
+  .fps strong.fps-compact{font-size:15px}
+  .history-ab-divider{margin:6px 2px 8px}
+}
