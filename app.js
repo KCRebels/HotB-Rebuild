@@ -665,7 +665,7 @@ function buildRecruitingEmail(player,details){
  if(player.highlightVideo)links.push(`Highlight Video: ${player.highlightVideo}`);
  links.push('Full 2026–27 Game Videos on GameChanger: https://web.gc.com/teams/K1E4TcPCwGKj/2027-summer-kc-rebels-16-regional-lickel');
  if(player.twitter||player.sportsRecruits)links.push(`Individual highlight videos are available through ${firstName}’s Twitter/X and SportsRecruits profiles.`);
- sections.push(`𝗥𝗘𝗖𝗥𝗨𝗜𝗧𝗜𝗡𝗚 𝗟𝗜𝗡𝗞𝗦\n${links.join('\n')}`);
+ sections.push(`𝗥𝗘𝗖𝗥𝗨𝗜𝗧𝗜𝗡𝗚 𝗟𝗜𝗡𝗞𝗦\n${links.map(link=>`  • ${link}`).join('\n')}`);
  sections.push(`𝗙𝗔𝗟𝗟 𝟮𝟬𝟮𝟲 𝗦𝗖𝗛𝗘𝗗𝗨𝗟𝗘\nOctober 16–18\nTriple Crown St. Louis Showcase\nChesterfield, Missouri\n\nOctober 30–November 1\nTop Gun Select Invite\nKansas City Metro\n\nNovember 6–8\nRecruitLook Showcase\nKansas City Metro`);
  sections.push(`I believe ${firstName} would be a strong addition to a college program, both as a student-athlete and as a teammate. Please feel free to contact ${firstName} or me if you would like any additional information.`);
  sections.push('Thank you for your time and consideration.');
