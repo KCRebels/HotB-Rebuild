@@ -330,7 +330,7 @@ function liveView(){
   <div class="control-card"><div class="pill-row">${[0,1,2].map(x=>`<button class="pill ${g.outs===x?'active':''}" data-outs="${x}">${x}</button>`).join('')}</div></div>
   <div class="control-card"><div class="pill-row">${[3,2,1].map(x=>`<button class="runner ${g.runners.includes(x)?'active':''}" data-runner="${x}"><span>${x}</span></button>`).join('')}</div></div>
  </div>
- <div class="live-workspace"><div class="zone-card">
+ <div class="live-workspace"><div class="live-left"><div class="zone-card">
   <div class="pitchtypes">${['FB','CH','RS','DP','CV','SC'].map(x=>`<button class="pitchtype ${activePitchType===x?'active':''}" data-ptype="${x}">${x}</button>`).join('')}</div>
   <div class="zone-layout">
    <button class="zone-scope ${g.zoneScope==='TEAM'?'active':''}" id="zoneScope">${g.zoneScope==='TEAM'?'HTR':'TM'}</button>
@@ -346,12 +346,11 @@ function liveView(){
    ${g.showAi?`<div class="ai-suggestions">${suggestions.map((s,i)=>`<div class="ai-box">#${i+1} ${esc(s.label)} &nbsp; ${s.pct}%</div>`).join('')}</div>`:''}
   </div>
  </div>
- <div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div>
  <div class="tabs ${showAll?'with-all':'without-all'}"><button class="tab fixed-tab ${(g.historyTab||'LIVE')==='LIVE'?'active':''}" data-tab="LIVE">LIVE</button><div class="ab-scroll">${abTabNames.map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}</div>${showAll?`<button class="tab fixed-tab ${(g.historyTab||'LIVE')==='ALL'?'active':''}" data-tab="ALL">${g.historyTab==='ALL'&&(g.allView||'DOTS')==='DOTS'?'%':'ALL'}</button>`:''}</div>
  <div class="results">
   <button class="result hbp" data-result="HBP" ${statsMode?'disabled':''}>HBP</button><button class="result ball ${percentMode&&filter==='B'?'filter-active':''}" data-result="B">B</button><button class="result foul ${percentMode&&filter==='F'?'filter-active':''}" data-result="F">F</button><button class="result hit ${percentMode&&filter==='HIT'?'filter-active':''}" data-result="HIT">HIT</button>
   <button class="result undo" id="undo" ${statsMode?'disabled':''}>Undo</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="K">K</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="KL">KL</button><button class="result out ${percentMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
- </div></div>`;
+ </div></div><div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div></div>`;
 }
 function historyHtml(g,hitter){
  const pitches=g.pitches.filter(p=>p.hitter===hitter);
