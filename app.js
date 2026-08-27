@@ -274,7 +274,7 @@ function newGameView(){
  <div class="bottom-action"><button class="btn block black" id="startGame" disabled>START GAME</button></div>`;
 }
 function rosterView(){
- return `<div class="hero" style="padding:18px 22px"><div class="hero-row"><button class="btn" data-go="home">Cancel</button><div style="flex:1;text-align:center"><div class="kicker">KC REBELS</div><h1 style="font-size:34px">Edit Roster</h1></div><button class="btn gold" id="saveRoster">Save</button></div></div>
+ return `<div class="roster-hero"><div class="roster-hero-row"><button class="roster-nav roster-cancel" data-go="home">Cancel</button><h1>Edit Roster</h1><button class="roster-nav roster-save" id="saveRoster">Save</button></div></div>
  <div class="roster-editor">${db.roster.map((r,i)=>`<div class="roster-edit-row">
  <input class="input roster-name" data-i="${i}" value="${esc(r.name)}">
  <button class="sidebtn ${r.side==='R'?'active':''}" data-side="R" data-i="${i}">R</button>

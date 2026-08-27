@@ -212,6 +212,12 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .athletic-head{display:flex;align-items:center}.athletic-head h2{font-size:28px;flex:1}.measure-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.measure{width:100%;color:inherit;text-align:left;background:#fff;border:2px solid #ddd;border-radius:14px;padding:16px;min-height:145px}.measure h3{margin:0;font-size:21px}.measure .best{font-size:28px;font-weight:900;margin-top:18px}.measure .note{font-size:12px;color:#777;font-weight:800;margin-top:16px}
 .guide-table{width:100%;border-collapse:collapse;font-size:20px}.guide-table th,.guide-table td{padding:16px 8px;border-bottom:1px solid #555;text-align:left}.excellent{color:#71d6a1}.good{color:#a7e0bc}.acceptable{color:#f0cf66}.concern{color:#ff9995}.serious{color:#ff6262}
 .roster-editor{padding:20px}.roster-edit-row{display:grid;grid-template-columns:1fr 70px 70px 70px;gap:8px;margin-bottom:10px}.sidebtn{border:2px solid #ccc;border-radius:10px;background:#fff;font-weight:900;font-size:18px}.sidebtn.active{background:#111;color:#fff;border-color:#111}.deletebtn{background:#fde8e8;border:2px solid #efb7ba;color:#b0141b;border-radius:10px;font-size:25px;font-weight:900}
+.roster-hero{position:relative;min-height:166px;padding:34px 28px;overflow:hidden;background:linear-gradient(110deg,#250001 0%,#69050c 48%,#e00528 100%);color:#fff}
+.roster-hero::before{content:"KC REBELS";position:absolute;left:-12px;top:-31px;color:rgba(255,255,255,.13);font-size:166px;line-height:1.15;font-weight:950;letter-spacing:-10px;white-space:nowrap;pointer-events:none}
+.roster-hero-row{position:relative;z-index:1;display:grid;grid-template-columns:130px minmax(0,1fr) 130px;align-items:center;gap:22px;min-height:98px}
+.roster-hero h1{margin:0;text-align:center;font-size:56px;line-height:1;font-weight:850;letter-spacing:-2px;white-space:nowrap}
+.roster-nav{min-height:66px;border:0;border-radius:17px;padding:10px 16px;font-size:25px;font-weight:900;box-shadow:0 2px 2px rgba(0,0,0,.14)}
+.roster-cancel{background:#fff;color:#111827}.roster-save{background:#d9aa2b;color:#111827}
 .stopwatch{border:4px solid #111;border-radius:20px;padding:20px;display:flex;align-items:center;gap:20px}.stopwatch .time{font-size:54px;font-weight:900;flex:1;text-align:center}.savebar{margin-top:20px}
 @media(max-width:560px){
   .app{max-width:none}
@@ -249,6 +255,11 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .eval-tiles{gap:7px;margin:8px}.eval-tile{padding:10px;min-height:112px;border-radius:11px}.eval-tile h3{font-size:16px;margin-bottom:13px}.eval-tile .value{font-size:32px}.eval-tile .note{font-size:10px;margin-top:13px}
   .performance,.athletic{margin:8px;padding:11px;border-radius:12px}.performance h2,.athletic-head h2{font-size:21px}.perf-grid{gap:5px}.perf{padding:10px 2px;border-radius:8px;min-height:61px}.perf b{font-size:22px}.perf span{font-size:12px;margin-top:5px}.measure-grid{gap:6px}.measure{padding:9px;min-height:100px}.measure h3{font-size:14px}.measure .best{font-size:20px;margin-top:10px}.measure .note{font-size:9px;margin-top:8px}
   .roster-editor{padding:8px}.roster-edit-row{grid-template-columns:1fr 42px 42px 42px;gap:4px;margin-bottom:6px}.sidebtn{font-size:14px}.deletebtn{font-size:20px}
+  .roster-hero{min-height:92px;padding:16px 14px}
+  .roster-hero::before{left:-6px;top:-13px;font-size:91px;letter-spacing:-6px}
+  .roster-hero-row{grid-template-columns:84px minmax(0,1fr) 72px;gap:9px;min-height:60px}
+  .roster-hero h1{font-size:clamp(30px,9vw,40px);letter-spacing:-1.5px}
+  .roster-nav{min-height:48px;border-radius:12px;padding:7px 8px;font-size:17px}
   .guide-table{font-size:14px}.guide-table th,.guide-table td{padding:9px 5px}.stopwatch{padding:10px;gap:8px}.stopwatch .time{font-size:34px}
 }
 
