@@ -318,7 +318,7 @@ function liveView(){
  };
  const suggestions=aiSuggestions(g,chartName);
  const nextInitials=nextName?nextName.split(' ').map(x=>x[0]).join(''):'';
- return `<div class="topbar"><div class="brand">KC REBELS</div><button id="openProfile">Profile</button><button id="openReports">Reports</button><button class="end" id="endGame">End</button><button id="newGame">New</button></div>
+ return `<div class="topbar"><div class="brand">KC REBELS</div><button id="openProfile">Profile</button><button id="openReports">Reports</button><button class="end" id="endGame">End</button></div>
  <div class="live-top">
   <div class="statbox hitter-box"><div class="cap">HITTER</div><div class="big">${esc(h.name)}</div><div class="sidebadge">${h.side}</div></div>
   <div class="statbox"><div class="cap">INN</div><div class="big">${g.inning}</div></div>
@@ -340,7 +340,7 @@ function liveView(){
    <div class="zone zone-right ${showPct?'heat-zone':''} ${g.pendingZone==='R'?'selected':''}" style="${showPct?heat.R:''}" data-zone="R">${zoneContent('R')}</div>
    <div class="zone zone-bottom ${showPct?'heat-zone':''} ${g.pendingZone==='B'?'selected':''}" style="${showPct?heat.B:''}" data-zone="B">${zoneContent('B')}</div>
    <button class="zone-next ${g.previewNext?'active':''}" id="zoneNext" ${nextName?'': 'disabled'}>${g.previewNext?nextInitials:'NXT'}</button>
-   <button class="fps ${g.firstPitchView?'active':''}" id="fpsBtn"><span>FPS</span><strong>${pct0(fps(g))}</strong></button>
+   <button class="fps ${g.firstPitchView?'active':''}" id="fpsBtn" aria-label="First-pitch strike percentage"><strong>${Math.round(fps(g)*100)}</strong></button>
   </div>
   <div class="zone-tools"><button class="ai" id="aiBtn">Ai</button>
    ${g.showAi?`<div class="ai-suggestions">${suggestions.map((s,i)=>`<div class="ai-box">#${i+1} ${esc(s.label)} &nbsp; ${s.pct}%</div>`).join('')}</div>`:''}
@@ -522,19 +522,23 @@ function recordModal(){
 }
 function gameActionModal(kind){
  const g=currentGame();
- const isEnd=kind==='endGame';
  const opponent=g?.opponent?.trim()||'this opponent';
- return `<div class="modal-backdrop"><div class="modal game-action-modal" role="alertdialog" aria-modal="true" aria-label="${isEnd?'End Game':'Unsaved Game'}">
-  <h2>${isEnd?'End Game':'Unsaved Game'}</h2>
-  <p>${isEnd?`Save and End the game against ${esc(opponent)}?`:'To keep this game, select Cancel and then use End Game. Continuing will permanently erase the current game.'}</p>
-  <div class="game-action-buttons"><button class="btn" data-close>Cancel</button><button class="btn red" id="confirmGameAction">${isEnd?'Save & End Game':'Continue Without Saving'}</button></div>
+ if(kind==='discardConfirm')return `<div class="modal-backdrop"><div class="modal game-action-modal" role="alertdialog" aria-modal="true" aria-label="Are You Sure">
+  <h2>Are You Sure</h2>
+  <p>End this game without saving? This will permanently erase the current game.</p>
+  <div class="game-action-buttons confirm-discard-buttons"><button class="btn" id="cancelDiscard">No</button><button class="btn red" id="confirmDiscard">Yes</button></div>
+ </div></div>`;
+ return `<div class="modal-backdrop"><div class="modal game-action-modal" role="alertdialog" aria-modal="true" aria-label="End Game">
+  <h2>End Game</h2>
+  <p>Save and end the game against ${esc(opponent)}?</p>
+  <div class="game-action-buttons end-game-buttons"><button class="btn" data-close>Cancel</button><button class="btn red" id="saveAndExit">Save &amp; Exit</button><button class="btn dark" id="discardGame">End &amp; Don’t Save</button></div>
  </div></div>`;
 }
 function modalView(){
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
  if(modal==='reports')return reportModal();
  if(modal==='record')return recordModal();
- if(modal==='newWarning'||modal==='endGame')return gameActionModal(modal);
+ if(modal==='endGame'||modal==='discardConfirm')return gameActionModal(modal);
  if(modal?.startsWith('guide:'))return evalGuide(modal.slice(6));
  return '';
 }
@@ -549,7 +553,7 @@ function bind(){
  if(modal==='HIT'||modal==='H4O')bindContact();
  if(modal==='reports')bindReports();
  if(modal==='record')bindRecord();
- if(modal==='newWarning'||modal==='endGame')bindGameAction();
+ if(modal==='endGame'||modal==='discardConfirm')bindGameAction();
 }
 function bindNew(){
  const sels=$$('.batting-select');
@@ -610,15 +614,27 @@ function bindLive(){
  $('#openProfile').onclick=()=>{evalPlayer=currentHitter(g).name;go('eval')};
  $('#openReports').onclick=()=>{modal='reports';reportMode='current';render()};
  $('#endGame').onclick=()=>{modal='endGame';render()};
- $('#newGame').onclick=()=>{modal='newWarning';render()};
  $('#aiBtn').onclick=()=>{g.showAi=!g.showAi;save();render()};
 }
 function bindGameAction(){
- $('#confirmGameAction').onclick=()=>{
+ $('#saveAndExit')?.addEventListener('click',()=>{
    const g=currentGame();
-   if(modal==='endGame'&&g){g.ended=true;db.savedGames.push(structuredClone(g));db.currentGame=null;modal=null;save();go('home');return}
-   db.currentGame=null;modal=null;save();go('new');
- };
+   if(!g)return;
+   g.ended=true;
+   db.savedGames.push(structuredClone(g));
+   db.currentGame=null;
+   modal=null;
+   save();
+   go('home');
+ });
+ $('#discardGame')?.addEventListener('click',()=>{modal='discardConfirm';render()});
+ $('#cancelDiscard')?.addEventListener('click',()=>{modal='endGame';render()});
+ $('#confirmDiscard')?.addEventListener('click',()=>{
+   db.currentGame=null;
+   modal=null;
+   save();
+   go('home');
+ });
 }
 function bindContact(){
  let st={fielder:null,contact:null,batted:null,hitType:null,outType:null,quals:new Set()};
