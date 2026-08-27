@@ -130,6 +130,11 @@ function pitchMarkClass(p){
  if(p.result==='F')return 'foul';
  return 'good';
 }
+function pitchDotLabel(p){
+ if(p.result==='HIT')return ({'1B':'1','2B':'2','3B':'3','HR':'4'})[p.hitType]||'';
+ if(p.result==='H4O')return p.fielder||'';
+ return '';
+}
 function zoneGroup(z){return ['L'].includes(z)?'IN':['R'].includes(z)?'OUT':['T','B'].includes(z)?'OUT':'IN'}
 function addPitch(result,extra={}){
  const g=currentGame(); if(!g)return;
@@ -291,26 +296,25 @@ function liveView(){
  const allActivePitches=g.pitches.filter(p=>activeNames.has(p.hitter));
  const firstPitches=allActivePitches.filter((p,i,a)=>i===0||p.pa!==a[i-1].pa||p.hitter!==a[i-1].hitter);
  const statsMode=g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL';
+ const percentMode=g.zoneScope==='TEAM'&&!g.firstPitchView;
  const filter=g.zoneFilter||'K';
- const histPitches=g.firstPitchView?firstPitches:statsMode?sourcePitches.filter(p=>resultGroup(p)===filter):sourcePitches;
+ const histPitches=g.firstPitchView?firstPitches:percentMode?sourcePitches.filter(p=>resultGroup(p)===filter):sourcePitches;
  const abTabNames=aps.map((p,i)=>`AB${i+1}`);
  const showAll=aps.length>=2;
  const zoneFreq={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0}; const hp=histPitches.length||1;
  histPitches.forEach(p=>{if(zoneFreq[p.zone]!=null)zoneFreq[p.zone]++});
- const showPct = statsMode||g.firstPitchView;
- const heat=heatStyles(zoneFreq,heatColors[g.firstPitchView?'FPS':filter]||heatColors.K);
+ const showPct=percentMode;
+ const heat=heatStyles(zoneFreq,heatColors[filter]||heatColors.K);
  const zoneContent=z=>{
   if(showPct)return `<span class="pct">${Math.round(zoneFreq[z]/hp*100)}%</span>`;
-  const pitches=sourcePitches.filter(p=>p.zone===z), horizontal=['T','B'].includes(z), vertical=['L','R'].includes(z);
+  const pitches=histPitches.filter(p=>p.zone===z), horizontal=['T','B'].includes(z), vertical=['L','R'].includes(z);
   const cols=horizontal?8:vertical?2:4, rows=Math.max(1,Math.ceil(pitches.length/cols));
   const available=horizontal?44:vertical?140:70;
   const dotSize=Math.max(3,Math.min(16,Math.floor(available/rows)-3));
   const gap=dotSize<=6?.5:dotSize<=10?1:1.5;
-  const cells=Array.from({length:cols*rows},(_,i)=>({col:i%cols+1,row:Math.floor(i/cols)+1})).sort((a,b)=>{
-    const da=Math.hypot(a.col-(cols+1)/2,a.row-(rows+1)/2),db=Math.hypot(b.col-(cols+1)/2,b.row-(rows+1)/2);
-    return da-db||a.row-b.row||a.col-b.col;
-  });
-  return `<span class="pitch-dot-grid" style="--dot-cols:${cols};--dot-rows:${rows};--dot-size:${dotSize}px;--dot-gap:${gap}px">${pitches.map((p,i)=>`<i class="pitch-dot ${pitchMarkClass(p)}" style="grid-column:${cells[i].col};grid-row:${cells[i].row}"></i>`).join('')}</span>`;
+  const wrap=cols*dotSize+(cols-1)*gap;
+  const dotFont=Math.max(5,Math.min(11,Math.floor(dotSize*.65)));
+  return `<span class="pitch-dot-grid" style="--dot-size:${dotSize}px;--dot-gap:${gap}px;--dot-wrap:${wrap}px;--dot-font:${dotFont}px">${pitches.map(p=>`<i class="pitch-dot ${pitchMarkClass(p)}">${pitchDotLabel(p)}</i>`).join('')}</span>`;
  };
  const suggestions=aiSuggestions(g,chartName);
  const nextInitials=nextName?nextName.split(' ').map(x=>x[0]).join(''):'';
