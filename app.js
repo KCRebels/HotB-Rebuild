@@ -63,6 +63,8 @@ let modal = null;
 let reportMode='current', reportSub='spray', reportFilterHitter='All Hitters';
 let evalPlayer='Team';
 let recordType='';
+let infoPlayerIndex=0;
+let pendingRosterImport=null;
 let timerInt=null,timerStart=0,timerElapsed=0;
 
 function load(){
@@ -129,6 +131,17 @@ function rememberPitcher(team,name,number){
  }else db.pitchers.push({name,number,teams:team?[team]:[]});
 }
 function hitterObj(name){return db.roster.find(r=>r.name===name)||{name,side:'R',jersey:'',grad:'',positions:'',gpa:'',interest:'',school:''}}
+const recruitingColumns=[
+ ['Player Name','name'],['Jersey #','jersey'],['Grad Year','grad'],['Positions','positions'],['GPA','gpa'],['High School','school'],
+ ['Intended College Major','interest'],['Bats','side'],['Throws','throws'],['Player Email','email'],['Player Phone','phone'],
+ ['Twitter / X URL','twitter'],['SportsRecruits URL','sportsRecruits'],['Highlight Video URL','highlightVideo'],['NCAA ID','ncaaId'],
+ ['Recruiting Statement','recruitingStatement'],['Accomplishments / Honors','accomplishments'],['Additional Notes','notes']
+];
+function cleanCell(value){return String(value??'').trim()}
+function normalizeName(value){return cleanCell(value).toLowerCase().replace(/\s+/g,' ')}
+function syncRosterNames(){
+ $$('.roster-name').forEach(input=>{const player=db.roster[+input.dataset.i];if(player)player.name=input.value.trim()||'Unnamed Player'});
+}
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
 function isStrikeResult(r){return ['F','K','KL','HIT','H4O'].includes(r)}
 function resultGroup(p){return p.result==='KL'?'K':p.result}
@@ -275,10 +288,12 @@ function newGameView(){
 }
 function rosterView(){
  return `<div class="roster-hero"><div class="roster-hero-row"><button class="roster-nav roster-cancel" data-go="home">Cancel</button><h1>Edit Roster</h1><button class="roster-nav roster-save" id="saveRoster">Save</button></div></div>
+ <div class="roster-data-tools"><button class="btn black" id="importRosterInfo">Import Info</button><button class="btn" id="exportRosterInfo">Export Info</button><input id="rosterInfoFile" type="file" accept=".xlsx,.xls" hidden><p>Import the Excel template for larger updates, or tap <b>Info</b> beside one player for a quick change. Blank imported cells leave saved information unchanged.</p></div>
  <div class="roster-editor">${db.roster.map((r,i)=>`<div class="roster-edit-row">
  <input class="input roster-name" data-i="${i}" value="${esc(r.name)}">
  <button class="sidebtn ${r.side==='R'?'active':''}" data-side="R" data-i="${i}">R</button>
  <button class="sidebtn ${r.side==='L'?'active':''}" data-side="L" data-i="${i}">L</button>
+ <button class="infobtn" data-info="${i}">Info</button>
  <button class="deletebtn" data-del="${i}">×</button>
  </div>`).join('')}
  <button class="btn black block" id="addPlayer">+ Add Player</button></div>`;
@@ -595,9 +610,84 @@ function hitterChangeModal(){
   <div class="substitute-list">${available.length?available.map(r=>`<button class="substitute-player" data-sub-hitter="${esc(r.name)}"><span>${esc(r.name)}</span><strong>${esc(r.side)}</strong></button>`).join(""):`<div class="substitution-empty">Every rostered player is already in the lineup.</div>`}</div>
  </div></div>`;
 }
+function playerInfoModal(){
+ const player=db.roster[infoPlayerIndex];
+ if(!player)return '';
+ const input=(label,key,type='text')=>`<label class="info-field"><span>${label}</span>${type==='textarea'?`<textarea data-info-field="${key}" rows="4">${esc(player[key]||'')}</textarea>`:`<input data-info-field="${key}" type="${type}" value="${esc(player[key]||'')}">`}</label>`;
+ return `<div class="modal-backdrop"><div class="modal player-info-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER INFORMATION</div><h2>${esc(player.name)}</h2></div><button class="btn" data-close>Cancel</button></div>
+  <p class="info-privacy">This information is saved only in HotB on this device. It is not added to the public website code.</p>
+  <div class="info-grid">
+   ${input('Jersey #','jersey')}${input('Graduation Year','grad')}${input('Positions','positions')}${input('GPA','gpa')}${input('High School','school')}${input('Intended College Major','interest')}
+   ${input('Bats (R, L, or S)','side')}${input('Throws (R or L)','throws')}${input('Player Email','email','email')}${input('Player Phone','phone','tel')}
+   ${input('Twitter / X Full Link','twitter','url')}${input('SportsRecruits Full Link','sportsRecruits','url')}${input('Highlight Video Full Link','highlightVideo','url')}${input('NCAA ID','ncaaId')}
+  </div>
+  ${input('Recruiting Statement','recruitingStatement','textarea')}${input('Accomplishments / Honors','accomplishments','textarea')}${input('Additional Notes','notes','textarea')}
+  <button class="btn black block info-save" id="savePlayerInfo">Save Player Information</button>
+ </div></div>`;
+}
+function importRosterModal(){
+ const items=pendingRosterImport?.items||[];
+ const updates=items.filter(item=>item.kind==='update');
+ const additions=items.filter(item=>item.kind==='add');
+ const unchanged=items.filter(item=>item.kind==='unchanged');
+ return `<div class="modal-backdrop"><div class="modal import-preview-modal"><div class="modal-header"><div><div class="small info-kicker">IMPORT PREVIEW</div><h2>Player Information</h2></div><button class="btn" data-close>Cancel</button></div>
+  <div class="import-counts"><div><b>${updates.length}</b><span>Players Updated</span></div><div><b>${additions.length}</b><span>Players Added</span></div><div><b>${unchanged.length}</b><span>No Changes</span></div></div>
+  <p class="import-note">Blank cells will not erase information already saved in HotB.</p>
+  <div class="import-player-list">${items.map(item=>`<div class="import-player ${item.kind}"><span>#${esc(item.data.jersey||item.player?.jersey||'—')}</span><b>${esc(item.data.name||item.player?.name)}</b><small>${item.kind==='update'?`${item.changes.length} field${item.changes.length===1?'':'s'} changing`:item.kind==='add'?'New player':'No changes'}</small></div>`).join('')}</div>
+  <button class="btn black block" id="confirmRosterImport" ${updates.length||additions.length?'':'disabled'}>Import These Changes</button>
+ </div></div>`;
+}
+function parseRosterWorkbook(file){
+ return file.arrayBuffer().then(buffer=>{
+  if(!window.XLSX)throw new Error('The Excel reader did not load. Check your internet connection and try again.');
+  const workbook=XLSX.read(buffer,{type:'array'});
+  const sheet=workbook.Sheets.Players||workbook.Sheets[workbook.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false});
+  const headerIndex=rows.findIndex(row=>row.some(cell=>cleanCell(cell)==='Player Name'));
+  if(headerIndex<0)throw new Error('The Player Name header was not found. Please use the HotB template.');
+  const headers=rows[headerIndex].map(cleanCell);
+  const missing=recruitingColumns.filter(([label])=>!headers.includes(label)).map(([label])=>label);
+  if(missing.length)throw new Error(`The spreadsheet is missing: ${missing.join(', ')}.`);
+  const items=[];
+  rows.slice(headerIndex+1).forEach(row=>{
+   const data={};
+   recruitingColumns.forEach(([label,key])=>data[key]=cleanCell(row[headers.indexOf(label)]));
+   if(!data.name)return;
+   const matches=db.roster.map((player,index)=>({player,index})).filter(({player})=>normalizeName(player.name)===normalizeName(data.name));
+   const exact=matches.find(({player})=>!data.jersey||cleanCell(player.jersey)===data.jersey);
+   const match=exact||(matches.length===1?matches[0]:null);
+   if(!match){items.push({kind:'add',data});return}
+   const changes=recruitingColumns.filter(([,key])=>data[key]&&cleanCell(match.player[key])!==data[key]).map(([,key])=>key);
+   items.push({kind:changes.length?'update':'unchanged',data,player:match.player,index:match.index,changes});
+  });
+  if(!items.length)throw new Error('No player rows were found in the spreadsheet.');
+  return {items};
+ });
+}
+function applyRosterImport(){
+ (pendingRosterImport?.items||[]).forEach(item=>{
+  if(item.kind==='unchanged')return;
+  const target=item.kind==='add'?{name:item.data.name,side:item.data.side||'R',isGuest:true}:db.roster[item.index];
+  recruitingColumns.forEach(([,key])=>{if(item.data[key])target[key]=item.data[key]});
+  if(item.kind==='add')db.roster.push(target);
+ });
+ save();pendingRosterImport=null;modal=null;render();
+ alert('Player information imported successfully.');
+}
+function exportRosterWorkbook(){
+ if(!window.XLSX){alert('The Excel exporter did not load. Check your internet connection and try again.');return}
+ const headings=recruitingColumns.map(([label])=>label);
+ const rows=db.roster.map(player=>recruitingColumns.map(([,key])=>player[key]||''));
+ const sheet=XLSX.utils.aoa_to_sheet([['HOTB PLAYER RECRUITING INFORMATION'],['Blank imported cells leave existing HotB information unchanged.'],[],headings,...rows]);
+ sheet['!cols']=headings.map(label=>({wch:Math.min(48,Math.max(12,label.length+2))}));
+ const workbook=XLSX.utils.book_new();XLSX.utils.book_append_sheet(workbook,sheet,'Players');
+ XLSX.writeFile(workbook,'HotB_Player_Recruiting_Information.xlsx');
+}
 function modalView(){
  if(modal==='changePitcher')return pitcherChangeModal();
  if(modal==='changeHitter')return hitterChangeModal();
+ if(modal==='playerInfo')return playerInfoModal();
+ if(modal==='importRoster')return importRosterModal();
  if(modal?.startsWith('ranking:'))return evalRankingModal(modal.slice(8));
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
  if(modal==='reports')return reportModal();
@@ -620,6 +710,8 @@ function bind(){
  if(modal==='endGame'||modal==='discardConfirm')bindGameAction();
  if(modal==='changePitcher')bindPitcherChange();
  if(modal==='changeHitter')bindHitterChange();
+ if(modal==='playerInfo')bindPlayerInfo();
+ if(modal==='importRoster')$('#confirmRosterImport')?.addEventListener('click',applyRosterImport);
 }
 function bindNew(){
  const sels=$$('.batting-select');
@@ -649,8 +741,24 @@ function bindNew(){
 function bindRoster(){
  $$('.sidebtn').forEach(b=>b.onclick=()=>{db.roster[+b.dataset.i].side=b.dataset.side;save();render()});
  $$('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Remove this player?')){db.roster.splice(+b.dataset.del,1);save();render()}});
+ $$('[data-info]').forEach(b=>b.onclick=()=>{syncRosterNames();infoPlayerIndex=+b.dataset.info;save();modal='playerInfo';render()});
  $('#addPlayer').onclick=()=>{db.roster.push({name:'Guest',side:'R',jersey:'',grad:'',positions:'',gpa:'',interest:'',school:'',isGuest:true});save();render();setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),0)};
- $('#saveRoster').onclick=()=>{$$('.roster-name').forEach(inp=>db.roster[+inp.dataset.i].name=inp.value.trim()||'Unnamed Player');save();go('home')};
+ $('#saveRoster').onclick=()=>{syncRosterNames();save();go('home')};
+ $('#importRosterInfo').onclick=()=>{syncRosterNames();save();$('#rosterInfoFile').click()};
+ $('#rosterInfoFile').onchange=async event=>{
+  const file=event.target.files?.[0];if(!file)return;
+  try{pendingRosterImport=await parseRosterWorkbook(file);modal='importRoster';render()}catch(error){alert(error.message||'HotB could not read that spreadsheet.')}
+ };
+ $('#exportRosterInfo').onclick=()=>{syncRosterNames();save();exportRosterWorkbook()};
+}
+function bindPlayerInfo(){
+ $('#savePlayerInfo').onclick=()=>{
+  const player=db.roster[infoPlayerIndex];if(!player)return;
+  $$('[data-info-field]').forEach(field=>player[field.dataset.infoField]=field.value.trim());
+  if(!['R','L','S'].includes(player.side.toUpperCase()))player.side='R';else player.side=player.side.toUpperCase();
+  player.throws=(player.throws||'').toUpperCase();
+  save();modal=null;render();
+ };
 }
 function bindLive(){
  const g=currentGame();
