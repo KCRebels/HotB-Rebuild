@@ -762,3 +762,38 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .player-info .name{font-size:clamp(24px,7vw,28px);line-height:1.02;letter-spacing:-.35px}
   .player-info .meta,.player-info .interest{font-size:clamp(12.5px,3.4vw,13.5px);line-height:1.12;margin-top:6px;letter-spacing:-.08px;white-space:nowrap}
 }
+
+/* Matching Hit Chart, Edit Roster, and Player Eval headers */
+.chart-head,.eval-head{position:relative;overflow:hidden;background:linear-gradient(110deg,#250001 0%,#69050c 48%,#e00528 100%);isolation:isolate}
+.chart-head::before,.eval-head::before{content:"KC REBELS";position:absolute;z-index:-1;left:-8px;top:-26px;color:rgba(255,255,255,.13);font-size:120px;line-height:1.15;font-weight:950;letter-spacing:-8px;white-space:nowrap;pointer-events:none}
+.chart-head .brand,.eval-head h1,.roster-hero h1{font-size:56px;line-height:1;font-weight:850;letter-spacing:-2px}
+.chart-head .brand{color:#fff;white-space:nowrap}
+.eval-head{min-height:118px;padding:18px 22px;grid-template-columns:130px 1fr 130px}
+.eval-head h1{margin:0;color:#fff;white-space:nowrap}
+.eval-head>.eval-nav{min-height:66px;border:0;border-radius:17px;background:#fff;color:#111827;font-size:25px;font-weight:900}
+.grad-year{font-size:15px}
+
+/* Individually balanced evaluation portraits */
+.player-profile .player-photo img[src$="Aniesa.jpg"]{width:auto;height:600%;left:50%;top:-52%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="Brooklyn.JPEG"]{width:104%;height:auto;left:-2%;top:-6%;transform:none}
+.player-profile .player-photo img[src$="Brynna.jpg"]{width:auto;height:600%;left:50%;top:-28%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="Claire-headshot.png"]{width:auto;height:118%;left:48%;top:-7%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="Hailey.jpg"]{width:auto;height:600%;left:50%;top:-27%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="lakyn.jpg"]{width:auto;height:220%;left:50%;top:-5%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="Lydia.JPEG"]{width:auto;height:230%;left:50%;top:-17%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="Maia.jpg"]{width:auto;height:600%;left:50%;top:-52%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="makenna.jpg"]{width:auto;height:100%;left:50%;top:4%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="Maleah.jpg"]{width:auto;height:600%;left:50%;top:-52%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="matti.jpg"]{width:auto;height:145%;left:50%;top:0;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="meg.jpg"]{width:auto;height:115%;left:50%;top:-5%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="Tayte.JPEG"]{width:auto;height:115%;left:52%;top:-5%;transform:translateX(-50%)}
+
+@media(max-width:560px){
+  .live-app>.chart-head{min-height:64px;padding:9px 7px}
+  .chart-head::before,.eval-head::before{left:-5px;top:-13px;font-size:86px;letter-spacing:-6px}
+  .live-app>.chart-head .brand,.eval-head h1,.roster-hero h1{font-size:clamp(30px,9vw,40px);line-height:1;letter-spacing:-1.5px}
+  .live-app>.chart-head button{min-height:46px;padding:8px 9px;font-size:16px}
+  .eval-head{min-height:92px;padding:16px 14px;grid-template-columns:84px 1fr 84px}
+  .eval-head>.eval-nav{min-height:48px;border-radius:12px;padding:7px 8px;font-size:17px}
+  .grad-year{font-size:15px}
+}
