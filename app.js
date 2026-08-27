@@ -288,7 +288,7 @@ function newGameView(){
 }
 function rosterView(){
  return `<div class="roster-hero"><div class="roster-hero-row"><button class="roster-nav roster-cancel" data-go="home">Cancel</button><h1>Edit Roster</h1><button class="roster-nav roster-save" id="saveRoster">Save</button></div></div>
- <div class="roster-data-tools"><button class="btn black" id="importRosterInfo">Import Info</button><button class="btn" id="exportRosterInfo">Export Info</button><input id="rosterInfoFile" type="file" accept=".xlsx,.xls" hidden><p>Import the Excel template for larger updates, or tap <b>Info</b> beside one player for a quick change. Blank imported cells leave saved information unchanged.</p></div>
+ <div class="roster-data-tools"><button class="btn black" id="importRosterInfo">Import Info</button><button class="btn" id="exportRosterInfo">Export Info</button><input id="rosterInfoFile" type="file" accept=".xlsx,.csv" hidden><p>Import the Excel template for larger updates, or tap <b>Info</b> beside one player for a quick change. Blank imported cells leave saved information unchanged.</p></div>
  <div class="roster-editor">${db.roster.map((r,i)=>`<div class="roster-edit-row">
  <input class="input roster-name" data-i="${i}" value="${esc(r.name)}">
  <button class="sidebtn ${r.side==='R'?'active':''}" data-side="R" data-i="${i}">R</button>
@@ -637,12 +637,50 @@ function importRosterModal(){
   <button class="btn black block" id="confirmRosterImport" ${updates.length||additions.length?'':'disabled'}>Import These Changes</button>
  </div></div>`;
 }
-function parseRosterWorkbook(file){
- return file.arrayBuffer().then(buffer=>{
-  if(!window.XLSX)throw new Error('The Excel reader did not load. Check your internet connection and try again.');
-  const workbook=XLSX.read(buffer,{type:'array'});
-  const sheet=workbook.Sheets.Players||workbook.Sheets[workbook.SheetNames[0]];
-  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false});
+async function unzipWorkbook(buffer){
+ const bytes=new Uint8Array(buffer),view=new DataView(buffer);let end=-1;
+ for(let i=bytes.length-22;i>=Math.max(0,bytes.length-65557);i--){if(view.getUint32(i,true)===0x06054b50){end=i;break}}
+ if(end<0)throw new Error('That does not appear to be a valid Excel file.');
+ const count=view.getUint16(end+10,true),decoder=new TextDecoder(),files={};let offset=view.getUint32(end+16,true);
+ for(let i=0;i<count;i++){
+  if(view.getUint32(offset,true)!==0x02014b50)break;
+  const method=view.getUint16(offset+10,true),size=view.getUint32(offset+20,true),nameLength=view.getUint16(offset+28,true),extraLength=view.getUint16(offset+30,true),commentLength=view.getUint16(offset+32,true),local=view.getUint32(offset+42,true);
+  const name=decoder.decode(bytes.slice(offset+46,offset+46+nameLength));
+  if(name==='xl/sharedStrings.xml'||name==='xl/worksheets/sheet1.xml'){
+   const localName=view.getUint16(local+26,true),localExtra=view.getUint16(local+28,true),start=local+30+localName+localExtra,compressed=bytes.slice(start,start+size);
+   if(method===0)files[name]=compressed;
+   else if(method===8){const stream=new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'));files[name]=new Uint8Array(await new Response(stream).arrayBuffer())}
+   else throw new Error('This Excel compression format is not supported.');
+  }
+  offset+=46+nameLength+extraLength+commentLength;
+ }
+ return Object.fromEntries(Object.entries(files).map(([name,data])=>[name,decoder.decode(data)]));
+}
+function spreadsheetRowsFromXml(files){
+ const parser=new DOMParser(),shared=[];
+ if(files['xl/sharedStrings.xml'])parser.parseFromString(files['xl/sharedStrings.xml'],'application/xml').querySelectorAll('si').forEach(si=>shared.push([...si.querySelectorAll('t')].map(t=>t.textContent).join('')));
+ const xml=files['xl/worksheets/sheet1.xml'];if(!xml)throw new Error('The first worksheet could not be read.');
+ const rows=[];parser.parseFromString(xml,'application/xml').querySelectorAll('sheetData row').forEach(row=>{
+  const values=[];row.querySelectorAll('c').forEach(cell=>{
+   const ref=cell.getAttribute('r')||'',letters=(ref.match(/[A-Z]+/)||['A'])[0];let column=0;for(const letter of letters)column=column*26+letter.charCodeAt(0)-64;column--;
+   const type=cell.getAttribute('t'),raw=cell.querySelector('v')?.textContent??'',inline=cell.querySelector('is t')?.textContent??'';
+   values[column]=type==='s'?(shared[Number(raw)]??''):type==='inlineStr'?inline:raw;
+  });rows.push(values);
+ });return rows;
+}
+function csvRows(text){
+ const rows=[];let row=[],value='',quoted=false;
+ for(let i=0;i<text.length;i++){const char=text[i];if(char==='"'){if(quoted&&text[i+1]==='"'){value+='"';i++}else quoted=!quoted}else if(char===','&&!quoted){row.push(value);value=''}else if((char==='\n'||char==='\r')&&!quoted){if(char==='\r'&&text[i+1]==='\n')i++;row.push(value);rows.push(row);row=[];value=''}else value+=char}
+ if(value||row.length){row.push(value);rows.push(row)}return rows;
+}
+async function parseRosterWorkbook(file){
+ let rows;
+ if(file.name.toLowerCase().endsWith('.csv'))rows=csvRows(await file.text());
+ else{
+  const buffer=await file.arrayBuffer();
+  if(window.XLSX){const workbook=XLSX.read(buffer,{type:'array'}),sheet=workbook.Sheets.Players||workbook.Sheets[workbook.SheetNames[0]];rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false})}
+  else rows=spreadsheetRowsFromXml(await unzipWorkbook(buffer));
+ }
   const headerIndex=rows.findIndex(row=>row.some(cell=>cleanCell(cell)==='Player Name'));
   if(headerIndex<0)throw new Error('The Player Name header was not found. Please use the HotB template.');
   const headers=rows[headerIndex].map(cleanCell);
@@ -662,7 +700,6 @@ function parseRosterWorkbook(file){
   });
   if(!items.length)throw new Error('No player rows were found in the spreadsheet.');
   return {items};
- });
 }
 function applyRosterImport(){
  (pendingRosterImport?.items||[]).forEach(item=>{
@@ -675,9 +712,12 @@ function applyRosterImport(){
  alert('Player information imported successfully.');
 }
 function exportRosterWorkbook(){
- if(!window.XLSX){alert('The Excel exporter did not load. Check your internet connection and try again.');return}
  const headings=recruitingColumns.map(([label])=>label);
  const rows=db.roster.map(player=>recruitingColumns.map(([,key])=>player[key]||''));
+ if(!window.XLSX){
+  const csv=[headings,...rows].map(row=>row.map(value=>`"${String(value).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));link.download='HotB_Player_Recruiting_Information.csv';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);return;
+ }
  const sheet=XLSX.utils.aoa_to_sheet([['HOTB PLAYER RECRUITING INFORMATION'],['Blank imported cells leave existing HotB information unchanged.'],[],headings,...rows]);
  sheet['!cols']=headings.map(label=>({wch:Math.min(48,Math.max(12,label.length+2))}));
  const workbook=XLSX.utils.book_new();XLSX.utils.book_append_sheet(workbook,sheet,'Players');
