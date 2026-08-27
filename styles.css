@@ -708,24 +708,36 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 
 
 /* Player-specific evaluation headshots: keep each full head centered in the fixed 82px frame */
-.player-profile .player-photo img{object-fit:cover}
+.player-profile .player-photo{position:relative}
+.player-profile .player-photo img{
+  position:absolute;
+  max-width:none;
+  object-fit:contain;
+  object-position:center;
+}
+
+/* Full-body studio portraits */
 .player-profile .player-photo img[src$="Aniesa.jpg"],
 .player-profile .player-photo img[src$="Brynna.jpg"],
 .player-profile .player-photo img[src$="Hailey.jpg"],
 .player-profile .player-photo img[src$="Maia.jpg"],
 .player-profile .player-photo img[src$="Maleah.jpg"]{
-  object-position:50% 14%;
-  transform:scale(2.7);
-  transform-origin:50% 8%;
+  width:auto;
+  height:300%;
+  left:50%;
+  top:-8%;
+  transform:translateX(-50%);
 }
-.player-profile .player-photo img[src$="Brooklyn.JPEG"]{object-position:50% 39%;transform:scale(1.02);transform-origin:50% 39%}
-.player-profile .player-photo img[src$="jack.jpg"]{object-position:61% 25%;transform:scale(1.55);transform-origin:61% 25%}
-.player-profile .player-photo img[src$="lakyn.jpg"]{object-position:50% 23%;transform:scale(1.75);transform-origin:50% 20%}
-.player-profile .player-photo img[src$="Lydia.JPEG"]{object-position:50% 24%;transform:scale(1.48);transform-origin:50% 22%}
-.player-profile .player-photo img[src$="makenna.jpg"]{object-position:50% 34%;transform:scale(1.02);transform-origin:50% 34%}
-.player-profile .player-photo img[src$="matti.jpg"]{object-position:50% 31%;transform:scale(1.15);transform-origin:50% 31%}
-.player-profile .player-photo img[src$="meg.jpg"]{object-position:50% 39%;transform:scale(1.03);transform-origin:50% 39%}
-.player-profile .player-photo img[src$="Tayte.JPEG"]{object-position:52% 40%;transform:scale(1.02);transform-origin:52% 40%}
+
+/* Tighter source photos, each balanced independently */
+.player-profile .player-photo img[src$="Brooklyn.JPEG"]{width:100%;height:auto;left:0;top:0;transform:none}
+.player-profile .player-photo img[src$="jack.jpg"]{width:auto;height:170%;left:59%;top:-9%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="lakyn.jpg"]{width:auto;height:160%;left:50%;top:-7%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="Lydia.JPEG"]{width:auto;height:160%;left:50%;top:-7%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="makenna.jpg"]{width:auto;height:100%;left:50%;top:0;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="matti.jpg"]{width:auto;height:122%;left:50%;top:-4%;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="meg.jpg"]{width:auto;height:103%;left:50%;top:0;transform:translateX(-50%)}
+.player-profile .player-photo img[src$="Tayte.JPEG"]{width:auto;height:103%;left:52%;top:0;transform:translateX(-50%)}
 
 @media(max-width:560px){
   .player-info .name{font-size:clamp(24px,7vw,28px);line-height:1.02;letter-spacing:-.35px}
