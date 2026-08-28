@@ -61,6 +61,8 @@ if(db.route==='live'){
 let route = db.route || 'home';
 let modal = null;
 let reportMode='current', reportSub='spray', reportFilterHitter='All Hitters';
+let reportGameId=null;
+let selectedSeason=currentSeasonLabel(), dateFilterMode='full', customDateStart='', customDateEnd='';
 let evalPlayer='Team';
 let recordType='';
 let infoPlayerIndex=0;
@@ -342,6 +344,55 @@ function allPitches(includeCurrent=true){
  if(includeCurrent&&db.currentGame)arr.push(...db.currentGame.pitches);
  return arr;
 }
+function seasonMeta(value){
+ const date=new Date(value);
+ if(Number.isNaN(date.getTime()))return {season:'',segment:''};
+ const year=date.getFullYear(),month=date.getMonth()+1,day=date.getDate();
+ if((month===7&&day>=31)||month===8)return {season:'',segment:'Dead Period'};
+ const startYear=month>=9?year:year-1;
+ const season=`${startYear}–${String(startYear+1).slice(-2)}`;
+ let segment='Off Season';
+ if(month>=9&&month<=11)segment='Fall';
+ else if((month===5&&day>=20)||month===6||(month===7&&day<=30))segment='Summer';
+ return {season,segment};
+}
+function currentSeasonLabel(now=new Date()){
+ const year=now.getFullYear(),month=now.getMonth()+1,day=now.getDate();
+ const startYear=(month>=9||month===8||(month===7&&day>=31))?year:year-1;
+ return `${startYear}–${String(startYear+1).slice(-2)}`;
+}
+function availableSeasons(){
+ return [...new Set([selectedSeason,currentSeasonLabel(),...db.savedGames.map(game=>seasonMeta(game.date).season),...(db.currentGame?[seasonMeta(db.currentGame.date).season]:[])].filter(Boolean))].sort().reverse();
+}
+function gameMatchesDateFilter(game){
+ const time=new Date(game.date).getTime();
+ if(Number.isNaN(time))return false;
+ if(dateFilterMode==='custom'){
+  const start=customDateStart?new Date(`${customDateStart}T00:00:00`).getTime():-Infinity;
+  const end=customDateEnd?new Date(`${customDateEnd}T23:59:59.999`).getTime():Infinity;
+  return time>=start&&time<=end;
+ }
+ const meta=seasonMeta(game.date);
+ if(meta.season!==selectedSeason)return false;
+ if(dateFilterMode==='full')return meta.segment!=='Dead Period';
+ return meta.segment===({fall:'Fall',summer:'Summer',offseason:'Off Season'}[dateFilterMode]);
+}
+function filteredGames(includeCurrent=true){return [...db.savedGames,...(includeCurrent&&db.currentGame?[db.currentGame]:[])].filter(gameMatchesDateFilter)}
+function filteredPAs(includeCurrent=true){return filteredGames(includeCurrent).flatMap(game=>game.plateAppearances||[])}
+function filteredPitches(includeCurrent=true){return filteredGames(includeCurrent).flatMap(game=>game.pitches||[])}
+function activeDateFilterLabel(){
+ if(dateFilterMode==='custom')return customDateStart||customDateEnd?`${customDateStart||'Beginning'} to ${customDateEnd||'Today'}`:'Custom Dates';
+ return `${selectedSeason} · ${{full:'Full Season',fall:'Fall',summer:'Summer',offseason:'Off Season'}[dateFilterMode]}`;
+}
+function dateFilterControls(prefix){
+ return `<div class="date-filter-controls"><select class="input" id="${prefix}SeasonFilter" aria-label="Season">${availableSeasons().map(season=>`<option ${season===selectedSeason?'selected':''}>${season}</option>`).join('')}</select><select class="input" id="${prefix}DateRange" aria-label="Date range"><option value="full" ${dateFilterMode==='full'?'selected':''}>Full Season</option><option value="fall" ${dateFilterMode==='fall'?'selected':''}>Fall</option><option value="summer" ${dateFilterMode==='summer'?'selected':''}>Summer</option><option value="offseason" ${dateFilterMode==='offseason'?'selected':''}>Off Season</option><option value="custom" ${dateFilterMode==='custom'?'selected':''}>Custom Dates</option></select>${dateFilterMode==='custom'?`<label>Start<input class="input" id="${prefix}DateStart" type="date" value="${customDateStart}"></label><label>End<input class="input" id="${prefix}DateEnd" type="date" value="${customDateEnd}"></label>`:''}</div>`;
+}
+function bindDateFilters(prefix){
+ $(`#${prefix}SeasonFilter`)?.addEventListener('change',event=>{selectedSeason=event.target.value;render()});
+ $(`#${prefix}DateRange`)?.addEventListener('change',event=>{dateFilterMode=event.target.value;render()});
+ $(`#${prefix}DateStart`)?.addEventListener('change',event=>{customDateStart=event.target.value;render()});
+ $(`#${prefix}DateEnd`)?.addEventListener('change',event=>{customDateEnd=event.target.value;render()});
+}
 function gameStats(g){return statsForPAs(g?.plateAppearances||[])}
 function fps(g){
  const seen=new Set();
@@ -532,17 +583,19 @@ function hitModal(kind){
  </div><button class="btn block black save-contact" id="saveContact" disabled>${isOut?'Save Out':'Save Hit'}</button></div></div></div>`;
 }
 function reportModal(){
- const g=reportMode==='current'?currentGame():null;
- const source=reportMode==='current'?(g?.plateAppearances||[]):allPAs(false);
+ const g=reportMode==='current'?currentGame():reportMode==='game'?db.savedGames.find(game=>game.id===reportGameId):null;
+ const reportGames=reportMode==='saved'?filteredGames(false):(g?[g]:[]);
+ const source=reportGames.flatMap(game=>game.plateAppearances||[]);
  const filtered=reportFilterHitter==='All Hitters'?source:source.filter(p=>p.hitter===reportFilterHitter);
  const s=statsForPAs(filtered);
  const hitters=[...new Set(source.map(p=>p.hitter))];
  return `<div class="modal-backdrop"><div class="modal">
- <div class="report-tabs"><button class="btn ${reportMode==='current'?'black':''}" data-rmode="current">Current</button><button class="btn ${reportMode==='saved'?'black':''}" data-rmode="saved">Saved</button><button class="btn gold" id="exportReport">Export</button><button class="btn" data-close>Close</button></div>
+ <div class="report-tabs"><button class="btn ${reportMode==='current'?'black':''}" data-rmode="current">Current</button><button class="btn ${reportMode!=='current'?'black':''}" data-rmode="saved">Saved</button><button class="btn gold" id="exportReport">Export</button><button class="btn" data-close>Close</button></div>
  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px"><button class="btn ${reportSub==='spray'?'black':''}" data-rsub="spray">Spray Chart</button><button class="btn ${reportSub==='zone'?'black':''}" data-rsub="zone">Zone Chart</button></div>
  <div class="panel" style="margin:14px 0 0">
+ ${reportMode==='saved'?dateFilterControls('report'):''}
  <select class="input" id="reportHitter"><option>All Hitters</option>${db.roster.map(r=>`<option ${reportFilterHitter===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
- <div style="font-size:26px;margin-top:14px">${reportMode==='saved'?db.savedGames.length+' Saved Games':'Current Game'}</div>
+ <div style="font-size:26px;margin-top:14px">${reportMode==='saved'?`${reportGames.length} Saved Games · ${esc(activeDateFilterLabel())}`:reportMode==='game'?`${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}`:'Current Game'}</div>
  <div class="report-stat-grid">${[['PA',s.PA],['AVG',round3(s.AVG)],['OBP',round3(s.OBP)],['SLG',round3(s.SLG)],['OPS',round3(s.OPS)],['RBI',s.RBI],['HHB',s.HHB],['WEAK',s.WEAK]].map(([k,v])=>`<div class="report-stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
  <h3>COUNT PERFORMANCE <span style="color:#3762db">H</span> | <span style="color:#c83832">H4O</span> | <span style="color:#c83832">K</span> | AVE</h3>
  <div class="count-grid">${['0-0','0-2','1-2','2-2','3-2','6+'].map(c=>countCard(filtered,c)).join('')}</div>
@@ -565,7 +618,7 @@ function sprayReport(pas){
  }).join('')}</div>`;
 }
 function zoneReport(pas){
- const pitchSource=reportMode==='current'?(currentGame()?.pitches||[]):allPitches(false);
+ const pitchSource=reportMode==='current'?(currentGame()?.pitches||[]):reportMode==='game'?(db.savedGames.find(game=>game.id===reportGameId)?.pitches||[]):filteredPitches(false);
  const ps=pitchSource.filter(p=>reportFilterHitter==='All Hitters'||p.hitter===reportFilterHitter);
  const z={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0};ps.forEach(p=>z[p.zone]=(z[p.zone]||0)+1);const n=ps.length||1;
  const heat=heatStyles(z,heatColors.REPORT);
@@ -575,10 +628,11 @@ function zoneReport(pas){
  <div class="zone zone-right heat-zone" style="${heat.R}"><span class="pct">${Math.round(z.R/n*100)}%</span></div><div class="zone zone-bottom heat-zone" style="${heat.B}"><span class="pct">${Math.round(z.B/n*100)}%</span></div></div>`;
 }
 function reportsPage(){
+ const games=filteredGames(false);
  return `<div class="page-match-head page-head-centered"><button class="page-head-nav" data-go="home">Home</button><h1>Reports</h1><span class="page-head-spacer"></span></div>
  <div class="panel"><button class="btn black block" id="openSavedReports">Open Saved Reports</button>
  <div class="roster-data-tools backup-tools"><button class="btn black" id="exportFullBackup">Export Full Backup</button><button class="btn" id="restoreFullBackup">Restore Backup</button><input id="fullBackupFile" type="file" accept=".json,application/json" hidden><p>A full backup preserves games, pitches, roster information, measurements, pitchers and app preferences.</p></div>
- <div style="margin-top:20px">${db.savedGames.length?db.savedGames.map(g=>`<div class="count-card" style="margin-bottom:10px"><b>${new Date(g.date).toLocaleDateString()}</b> ${esc(g.opponent||'Opponent')} · ${g.plateAppearances.length} PA</div>`).join(''):'No saved games yet.'}</div></div>`;
+ ${dateFilterControls('saved')}<div class="saved-game-list">${games.length?games.map(g=>{const meta=seasonMeta(g.date);return `<div class="saved-game-card"><div><b>${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}</b><span>${esc(meta.season)} · ${esc(meta.segment)} · ${(g.plateAppearances||[]).length} PA</span></div><div class="saved-game-actions"><button class="btn black" data-view-game="${g.id}">View</button><button class="btn red" data-delete-game="${g.id}">Delete</button></div></div>`}).join(''):'No saved games match this date range.'}</div></div>`;
 }
 function exportFullBackup(){
  const payload={format:'HotB Full Backup',version:1,exportedAt:new Date().toISOString(),db};
@@ -609,7 +663,7 @@ function grade(value,metric){
 }
 function evalView(){
  const player=evalPlayer==='Team'?null:hitterObj(evalPlayer);
- const teamPas=allPAs();
+ const teamPas=filteredPAs();
  const pas=teamPas.filter(p=>!player||p.hitter===player.name);
  const s=statsForPAs(pas);
  const teamS=statsForPAs(teamPas);
@@ -627,6 +681,7 @@ function evalView(){
  const metricHead=(metric,label=metric)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${metric}">${label}</button><button class="metric-all" data-ranking="${metric}">ALL</button></div>`;
  return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><button class="btn eval-email" id="openRecruitingEmail" ${player?'':'disabled'}>Email</button></div>
  <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
+ ${dateFilterControls('eval')}
  ${player?`<div class="player-card player-profile"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div></div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
@@ -634,7 +689,7 @@ function evalView(){
   <div class="eval-tile">${metricHead('Runs Produced','RP')} ${s.PA?(player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`):emptyComparison()}<div class="note">Runs Produced</div></div>
   <div class="eval-tile">${metricHead('Execution','HP%')}<div class="value">${execution===null?'—%':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
  </div>
- <div class="performance"><h2>Hitting Results <span class="small" style="float:right">CUMULATIVE TO DATE</span></h2><div class="perf-grid">
+ <div class="performance"><h2>Hitting Results <span class="small" style="float:right">${esc(activeDateFilterLabel())}</span></h2><div class="perf-grid">
  ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],['BB%',pct1(s.bbPct),'BB']].map(([label,val,key])=>`<div class="perf ${s.PA>=25?grade(s[key==='contact'?'contactPct':key==='K'?'kPct':key==='BB'?'bbPct':key],key):''}" data-guide="${label}"><b>${val}</b><span>${label}</span></div>`).join('')}
  </div></div>
  ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2><div class="pitcher-stat-grid">
@@ -686,7 +741,7 @@ function evalGuide(title){
  return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>${metricMap[title]}</h2></div><button class="btn" data-close>Close</button></div><table class="guide-table"><thead><tr><th>Rating</th><th>${title.replace('CONTACT','Contact%')}</th></tr></thead><tbody>${table.map(([r,v],i)=>`<tr><td class="${['excellent','good','acceptable','concern','serious'][i]}">${r}</td><td><b>${v}</b></td></tr>`).join('')}</tbody></table><p class="small" style="color:#ddd">The app begins color-grading a player after 25 saved plate appearances.</p></div></div>`;
 }
 function evalRankingModal(metric){
- const teamPas=allPAs();
+ const teamPas=filteredPAs();
  const teamStats=statsForPAs(teamPas);
  const teamRate=teamStats.PA?teamStats.rp/teamStats.PA:0;
  const rows=db.roster.map(player=>{
@@ -1021,6 +1076,13 @@ function bindNew(){
 }
 function bindReportsPage(){
  $('#openSavedReports')?.addEventListener('click',()=>{modal='reports';reportMode='saved';render()});
+ bindDateFilters('saved');
+ $$('[data-view-game]').forEach(button=>button.onclick=()=>{reportGameId=button.dataset.viewGame;reportMode='game';reportFilterHitter='All Hitters';modal='reports';render()});
+ $$('[data-delete-game]').forEach(button=>button.onclick=()=>{
+  const game=db.savedGames.find(item=>item.id===button.dataset.deleteGame);if(!game)return;
+  if(!confirm(`Delete the saved game against ${game.opponent||'Opponent'} from ${new Date(game.date).toLocaleDateString()}? This cannot be undone.`))return;
+  db.savedGames=db.savedGames.filter(item=>item.id!==game.id);save();render();
+ });
  $('#exportFullBackup')?.addEventListener('click',exportFullBackup);
  $('#restoreFullBackup')?.addEventListener('click',()=>$('#fullBackupFile').click());
  $('#fullBackupFile')?.addEventListener('change',async event=>{
@@ -1173,19 +1235,21 @@ function bindContact(){
  $('#saveContact').onclick=()=>{const kind=st.quals.has('E')?'E':st.quals.has('FC')?'FC':st.quals.has('SAC')?'SAC':modal;modal=null;addPitch(kind,{fielder:st.fielder,contactType:st.batted||st.outType,hitType:st.hitType||'',bunt:st.contact==='BUNT',slap:st.contact==='SLAP',rbiCount:st.rbiCount,rba:st.quals.has('RBA'),sac:st.quals.has('SAC'),error:st.quals.has('E'),fc:st.quals.has('FC'),hhb:st.strength==='HHB',weak:st.strength==='WEAK'})};
 }
 function bindReports(){
- $$('[data-rmode]').forEach(b=>b.onclick=()=>{reportMode=b.dataset.rmode;render()});
+ $$('[data-rmode]').forEach(b=>b.onclick=()=>{reportMode=b.dataset.rmode;reportGameId=null;render()});
+ bindDateFilters('report');
  $$('[data-rsub]').forEach(b=>b.onclick=()=>{reportSub=b.dataset.rsub;render()});
  $('#reportHitter').onchange=e=>{reportFilterHitter=e.target.value;render()};
  $('#exportReport').onclick=()=>exportCsv();
 }
 function exportCsv(){
- const source=reportMode==='current'?(currentGame()?.plateAppearances||[]):allPAs(false);
+ const source=reportMode==='current'?(currentGame()?.plateAppearances||[]):reportMode==='game'?(db.savedGames.find(game=>game.id===reportGameId)?.plateAppearances||[]):filteredPAs(false);
  const rows=[['Hitter','Inning','PA','Outcome','Contact Type','Hit Type','Fielder','Final Count','Pitch Count','RBI','RBA','SAC','HHB','WEAK'],...source.map(p=>[p.hitter,p.inning,p.pa,p.outcome,p.contactType||'',p.hitType,p.fielder||'',p.finalCount,p.pitchCount,p.rbiCount??(p.rbi?1:0),p.rba,p.sac,p.hhb,p.weak])];
  const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`HotB_${reportMode}_report.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function bindEval(){
  $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};
+ bindDateFilters('eval');
  $('#openRecruitingEmail').onclick=()=>{recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:''};modal='recruitingEmail';render()};
  $('#recordMeasure2').onclick=()=>{recordType='';modal='record';render()};
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
