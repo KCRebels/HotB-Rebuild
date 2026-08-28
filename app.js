@@ -170,6 +170,20 @@ function pitchDotLabel(p){
  return '';
 }
 function zoneGroup(z){return ['L'].includes(z)?'IN':['R'].includes(z)?'OUT':['T','B'].includes(z)?'OUT':'IN'}
+function runnersAfterHit(currentRunners,hitType){
+ const batterBase=({'1B':1,'2B':2,'3B':3,'HR':4})[hitType];
+ if(!batterBase)return [...currentRunners];
+ if(batterBase===4)return [];
+ let occupied=batterBase;
+ const next=[];
+ [...new Set(currentRunners)].sort((a,b)=>a-b).forEach(base=>{
+  const destination=Math.max(base,occupied+1);
+  occupied=destination;
+  if(destination<=3)next.push(destination);
+ });
+ next.push(batterBase);
+ return [...new Set(next)].sort((a,b)=>a-b);
+}
 function addPitch(result,extra={}){
  const g=currentGame(); if(!g)return;
  const h=currentHitter(g);
@@ -213,6 +227,7 @@ function closePA(outcome,extra={}){
   firstPitchStrike,execution,ts:Date.now()
  };
  g.plateAppearances.push(pa);
+ if(outcome==='HIT')g.runners=runnersAfterHit(g.runners,extra.hitType);
  if(outcome==='H4O'||outcome==='K') g.outs=Math.min(2,g.outs+1);
  g.balls=0;g.strikes=0;g.paNumber++;
  g.currentIdx=(g.currentIdx+1)%g.battingOrder.length;

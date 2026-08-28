@@ -27,7 +27,7 @@ button{cursor:pointer;color:#111}
 .topbar{background:var(--black);color:#fff;padding:16px 18px;display:flex;align-items:center;gap:10px}
 .topbar .brand{font-size:27px;font-weight:900;letter-spacing:2px;flex:1}
 .topbar button{font-weight:900;font-size:18px;border-radius:10px;border:1px solid #ddd;padding:10px 16px;background:#fff;color:#111}
-.topbar .end{background:#b93632;color:#fff;border-color:#df6a66}
+.topbar .end{background:#111;color:#fff;border-color:#111}
 .hero{padding:32px 22px 24px;background:linear-gradient(135deg,#190405,#d10c27);color:#fff}
 .hero-row{display:flex;align-items:center;gap:10px}
 .hero .kicker{font-weight:900;letter-spacing:2px}
