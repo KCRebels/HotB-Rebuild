@@ -515,12 +515,12 @@ function evalView(){
   <div class="eval-tile">${metricHead('RP / 100 PA')} ${player?comparison(rp100.toFixed(1),rp100-teamRp100,1):`<div class="value">${rp100.toFixed(1)}</div>`}<div class="note">${player?`Team Average ${teamRp100.toFixed(1)}`:'Team Rate'}</div></div>
   <div class="eval-tile">${metricHead('Execution')}<div class="value">${execution===null?'—':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
  </div>
- ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2><div class="pitcher-stat-grid">
-  ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<button class="pitcher-stat" data-pitch-ranking="${key}"><b>${esc(player[key]||'—')}</b><span>${label}</span></button>`).join('')}
- </div></section>`:''}
  <div class="performance"><h2>Hitting Results <span class="small" style="float:right">CUMULATIVE TO DATE</span></h2><div class="perf-grid">
  ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],['BB%',pct1(s.bbPct),'BB']].map(([label,val,key])=>`<div class="perf ${s.PA>=25?grade(s[key==='contact'?'contactPct':key==='K'?'kPct':key==='BB'?'bbPct':key],key):''}" data-guide="${label}"><b>${val}</b><span>${label}</span></div>`).join('')}
  </div></div>
+ ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2><div class="pitcher-stat-grid">
+  ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<button class="pitcher-stat" data-pitch-ranking="${key}"><b>${esc(player[key]||'—')}</b><span>${label}</span></button>`).join('')}
+ </div></section>`:''}
  <div class="athletic"><div class="athletic-head"><h2>Athletic Bests</h2><button class="btn black" id="recordMeasure2">+ Record</button></div>
  <div class="measure-grid">${ms.map(m=>measurementCard(player,m)).join('')}</div></div>`;
 }
