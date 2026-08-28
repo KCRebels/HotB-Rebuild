@@ -409,7 +409,8 @@ function activeDateFilterLabel(){
  return `${selectedSeason} · ${{full:'Full Season',fall:'Fall',summer:'Summer',offseason:'Off Season'}[dateFilterMode]}`;
 }
 function dateFilterControls(prefix){
- return `<div class="date-filter-controls"><select class="input" id="${prefix}SeasonFilter" aria-label="Season">${availableSeasons().map(season=>`<option ${season===selectedSeason?'selected':''}>${season}</option>`).join('')}</select><select class="input" id="${prefix}DateRange" aria-label="Date range"><option value="full" ${dateFilterMode==='full'?'selected':''}>Full Season</option><option value="fall" ${dateFilterMode==='fall'?'selected':''}>Fall</option><option value="summer" ${dateFilterMode==='summer'?'selected':''}>Summer</option><option value="offseason" ${dateFilterMode==='offseason'?'selected':''}>Off Season</option><option value="custom" ${dateFilterMode==='custom'?'selected':''}>Custom Dates</option></select>${dateFilterMode==='custom'?`<label>Start<input class="input" id="${prefix}DateStart" type="date" value="${customDateStart}"></label><label>End<input class="input" id="${prefix}DateEnd" type="date" value="${customDateEnd}"></label>`:''}</div>`;
+ if(dateFilterMode==='offseason')dateFilterMode='full';
+ return `<div class="date-filter-controls"><select class="input" id="${prefix}SeasonFilter" aria-label="Season">${availableSeasons().map(season=>`<option ${season===selectedSeason?'selected':''}>${season}</option>`).join('')}</select><select class="input" id="${prefix}DateRange" aria-label="Date range"><option value="full" ${dateFilterMode==='full'?'selected':''}>Full Season</option><option value="fall" ${dateFilterMode==='fall'?'selected':''}>Fall</option><option value="summer" ${dateFilterMode==='summer'?'selected':''}>Summer</option><option value="custom" ${dateFilterMode==='custom'?'selected':''}>Custom Dates</option></select>${dateFilterMode==='custom'?`<label>Start<input class="input" id="${prefix}DateStart" type="date" value="${customDateStart}"></label><label>End<input class="input" id="${prefix}DateEnd" type="date" value="${customDateEnd}"></label>`:''}</div>`;
 }
 function bindDateFilters(prefix){
  $(`#${prefix}SeasonFilter`)?.addEventListener('change',event=>{selectedSeason=event.target.value;render()});
@@ -426,7 +427,7 @@ function fps(g){
 function render(){
  captureGameUndo();
  const app=document.getElementById('app');
- app.innerHTML=`<div class="app ${route==='live'?'live-app':''}">${route==='home'?homeView():
+ app.innerHTML=`<div class="app ${route==='live'?'live-app':route==='eval'?'eval-app':''}">${route==='home'?homeView():
  route==='new'?newGameView():route==='roster'?rosterView():
  route==='live'?liveView():route==='eval'?evalView():route==='reports'?reportsPage():homeView()}</div>${modal?modalView():''}`;
  bind();
