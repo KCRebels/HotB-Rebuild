@@ -341,6 +341,17 @@ function render(){
  route==='new'?newGameView():route==='roster'?rosterView():
  route==='live'?liveView():route==='eval'?evalView():route==='reports'?reportsPage():homeView()}</div>${modal?modalView():''}`;
  bind();
+ if(route==='eval')requestAnimationFrame(fitEvalMetricValues);
+}
+function fitEvalMetricValues(){
+ document.querySelectorAll('.eval-tiles .eval-tile>.value').forEach(value=>{
+  value.style.fontSize='';
+  let size=parseFloat(getComputedStyle(value).fontSize);
+  while(value.scrollWidth>value.clientWidth&&size>12){
+   size-=1;
+   value.style.fontSize=`${size}px`;
+  }
+ });
 }
 function homeView(){
  return `<div class="home-hero">
@@ -588,8 +599,8 @@ function evalView(){
  ${player?`<div class="player-card player-profile"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div></div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
-  <div class="eval-tile dark">${metricHead('HotB+')} ${player&&hotb!==null?comparison(hotb,hotb-100,0):`<div class="value">${hotb??'—'}</div>`}<div class="note">${player?(hotb===null?'More Saved Data Needed':'100 = Team Average'):'Current-Team Benchmark'}</div></div>
-  <div class="eval-tile">${metricHead('Runs Produced','RP')} ${player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`}<div class="note">${player?`Player Average ${avgPlayerRp.toFixed(1)}`:'Team Total'}</div></div>
+  <div class="eval-tile dark">${metricHead('HotB+')} ${player&&hotb!==null?comparison(hotb,hotb-100,0):`<div class="value">${hotb??'—'}</div>`}<div class="note">Production vs Team</div></div>
+  <div class="eval-tile">${metricHead('Runs Produced','RP')} ${player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`}<div class="note">Runs Produced</div></div>
   <div class="eval-tile">${metricHead('Execution','HP%')}<div class="value">${execution===null?'—':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
  </div>
  <div class="performance"><h2>Hitting Results <span class="small" style="float:right">CUMULATIVE TO DATE</span></h2><div class="perf-grid">

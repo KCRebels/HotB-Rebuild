@@ -896,12 +896,15 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 /* Three evaluation summaries share one balanced row without changing tile height. */
 .eval-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
 .eval-tiles .eval-tile{min-width:0}
+.eval-tiles .eval-tile>.value{flex:1 1 auto;min-width:0;min-height:0;padding:2px 0;display:flex;align-items:center}
+.eval-tiles .eval-tile>.note{margin-top:0;padding-top:0;white-space:nowrap}
 @media(max-width:560px){
   .eval-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
   .eval-tiles .eval-tile{padding:8px 6px}
   .eval-tiles .eval-tile-head{gap:3px}
   .eval-tiles .metric-title{min-height:35px;padding:4px 6px;font-size:14px}
   .eval-tiles .metric-all{min-height:31px;padding:3px 5px;font-size:10px}
+  .eval-tiles .eval-tile>.note{font-size:10px;letter-spacing:-.2px}
   .eval-tiles .eval-tile .compare-value{gap:3px;font-size:clamp(17px,4.9vw,20px);letter-spacing:-.5px}
   .eval-tiles .eval-tile>.value:not(.compare-value){font-size:clamp(24px,7vw,30px)}
 }
