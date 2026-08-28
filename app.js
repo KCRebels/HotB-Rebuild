@@ -218,6 +218,7 @@ function addPitch(result,extra={}){
  else if(result==='H4O') end='H4O';
  g.pendingZone=null;
  if(end) closePA(end, extra);
+ g.pitchType='FB';
  save();render();
 }
 function closePA(outcome,extra={}){
@@ -388,7 +389,7 @@ function liveView(){
  const nextInitials=nextName?nextName.split(' ').map(x=>x[0]).join(''):'';
  return `<div class="topbar chart-head"><div class="brand">Hit Chart</div><button id="openProfile">Profile</button><button id="openReports">Reports</button><button class="end" id="endGame">End</button></div>
  <div class="live-top">
-  <button class="statbox hitter-box live-stat-button" id="changeHitter" aria-label="Substitute for ${esc(h.name)}"><div class="cap">HITTER</div><div class="big">${esc(h.name)}</div><div class="sidebadge">${h.side}</div></button>
+  <button class="statbox hitter-box live-stat-button" id="changeHitter" aria-label="Substitute for ${esc(h.name)}"><div class="cap">HITTER</div><div class="big">${esc(h.name)}</div></button>
   <div class="statbox"><div class="cap">INN</div><div class="big">${g.inning}</div></div>
   <div class="statbox"><div class="cap">COUNT</div><div class="big">${g.balls}-${g.strikes}</div></div>
   <button class="statbox live-stat-button" id="changePitcher" aria-label="Change pitcher"><div class="cap">PITCHER</div><div class="big">#${esc(g.pitcherNumber||'')}</div></button>
