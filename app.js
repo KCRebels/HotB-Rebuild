@@ -415,8 +415,11 @@ function dateFilterControls(prefix){
 function bindDateFilters(prefix){
  $(`#${prefix}SeasonFilter`)?.addEventListener('change',event=>{selectedSeason=event.target.value;render()});
  $(`#${prefix}DateRange`)?.addEventListener('change',event=>{dateFilterMode=event.target.value;render()});
- $(`#${prefix}DateStart`)?.addEventListener('change',event=>{customDateStart=event.target.value;render()});
- $(`#${prefix}DateEnd`)?.addEventListener('change',event=>{customDateEnd=event.target.value;render()});
+ const startInput=$(`#${prefix}DateStart`),endInput=$(`#${prefix}DateEnd`);
+ startInput?.addEventListener('change',event=>{customDateStart=event.target.value});
+ endInput?.addEventListener('change',event=>{customDateEnd=event.target.value});
+ startInput?.addEventListener('blur',()=>render());
+ endInput?.addEventListener('blur',()=>render());
 }
 function gameStats(g){return statsForPAs(g?.plateAppearances||[])}
 function fps(g){
