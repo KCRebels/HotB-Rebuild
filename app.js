@@ -191,8 +191,8 @@ function pitchExecutesPlan(pitch,player){
  if(plan==='CH')return pitch.pitchType==='CH';
  if(plan==='NO')return true;
  const leftHanded=player?.side==='L';
- const insideZones=new Set(leftHanded?['R','C2','C4']:['L','C1','C3']);
- const outsideZones=new Set(leftHanded?['L','C1','C3']:['R','C2','C4']);
+ const insideZones=new Set(leftHanded?['L','C1','C3']:['R','C2','C4']);
+ const outsideZones=new Set(leftHanded?['R','C2','C4']:['L','C1','C3']);
  return plan==='IN'?insideZones.has(pitch.zone):plan==='OUT'?outsideZones.has(pitch.zone):false;
 }
 function executionFromPitches(pitches,player){
@@ -205,10 +205,10 @@ function recalculateGameExecution(game){
   pa.execution=executionFromPitches(pitches,hitterObj(pa.hitter));
  });
 }
-if((db.executionFormulaVersion||0)<2){
+if((db.executionFormulaVersion||0)<3){
  (db.savedGames||[]).forEach(recalculateGameExecution);
  recalculateGameExecution(db.currentGame);
- db.executionFormulaVersion=2;
+ db.executionFormulaVersion=3;
  localStorage.setItem(DBKEY,JSON.stringify(db));
 }
 function runnersAfterHit(currentRunners,hitType){
