@@ -67,6 +67,7 @@ let infoPlayerIndex=0;
 let pendingRosterImport=null;
 let recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:''};
 let timerInt=null,timerStart=0,timerElapsed=0;
+let lastRenderedUndoState=null;
 
 function load(){
  try{
@@ -156,6 +157,22 @@ function syncRosterNames(){
  $$('.roster-name').forEach(input=>{const player=db.roster[+input.dataset.i];if(player)player.name=input.value.trim()||'Unnamed Player'});
 }
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
+function gameUndoState(g){
+ if(!g)return null;
+ const {pitches=[],plateAppearances=[],undoStack,...game}=g;
+ return {gameId:g.id,game:structuredClone(game),pitchesLength:pitches.length,plateAppearancesLength:plateAppearances.length,pitchHitters:pitches.map(pitch=>[pitch.id,pitch.hitter])};
+}
+function captureGameUndo(){
+ const g=currentGame();
+ if(!g){lastRenderedUndoState=null;return}
+ const current=gameUndoState(g);
+ if(!lastRenderedUndoState||lastRenderedUndoState.gameId!==g.id){lastRenderedUndoState=current;return}
+ if(JSON.stringify(current)===JSON.stringify(lastRenderedUndoState))return;
+ g.undoStack=Array.isArray(g.undoStack)?g.undoStack:[];
+ g.undoStack.push(lastRenderedUndoState);
+ lastRenderedUndoState=current;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+}
 function isStrikeResult(r){return ['F','K','KL','HIT','H4O'].includes(r)}
 function resultGroup(p){return p.result==='KL'?'K':p.result}
 function pitchMarkClass(p){
@@ -236,16 +253,15 @@ function closePA(outcome,extra={}){
  g.pitchType='FB';
 }
 function undo(){
- const g=currentGame(); if(!g||!g.pitches.length)return;
- // safest rebuild from all pitches except last, preserving PA metadata only if not affected.
- const removed=g.pitches.pop();
- const keep=g.pitches.map(p=>({...p}));
- const base={...g,pitches:[],plateAppearances:[],balls:0,strikes:0,paNumber:1,currentIdx:0,inning:1,outs:0,pendingZone:null};
- db.currentGame=base;
- keep.forEach(p=>{
-   base.pendingZone=p.zone;base.pitchType=p.pitchType;base.plan=p.plan;
-   addPitch(p.result,p);
- });
+ const g=currentGame();if(!g)return;
+ const stack=Array.isArray(g.undoStack)?g.undoStack:[];
+ const previous=stack.pop();if(!previous)return;
+ const pitches=g.pitches.slice(0,previous.pitchesLength);
+ const hitterByPitch=new Map(previous.pitchHitters||[]);
+ pitches.forEach(pitch=>{if(hitterByPitch.has(pitch.id))pitch.hitter=hitterByPitch.get(pitch.id)});
+ const plateAppearances=g.plateAppearances.slice(0,previous.plateAppearancesLength);
+ db.currentGame={...structuredClone(previous.game),pitches,plateAppearances,undoStack:stack};
+ lastRenderedUndoState=gameUndoState(db.currentGame);
  save();render();
 }
 function statsForPAs(pas){
@@ -281,6 +297,7 @@ function fps(g){
  return first.length?first.filter(p=>isStrikeResult(p.result)).length/first.length:0;
 }
 function render(){
+ captureGameUndo();
  const app=document.getElementById('app');
  app.innerHTML=`<div class="app ${route==='live'?'live-app':''}">${route==='home'?homeView():
  route==='new'?newGameView():route==='roster'?rosterView():
@@ -961,7 +978,7 @@ function bindLive(){
  const g=currentGame();
  $('.live-app')?.addEventListener('click',event=>{
   const button=event.target.closest('button');
-  if(button&&!button.matches('[data-zone],[data-result]')&&g.pendingZone){g.pendingZone=null;save()}
+  if(button&&button.id!=='undo'&&!button.matches('[data-zone],[data-result]')&&g.pendingZone){g.pendingZone=null;save()}
  },true);
  const percentMode=!g.firstPitchView&&(g.zoneScope==='TEAM'||g.previewNext||(g.historyTab==='ALL'&&(g.allView||'DOTS')==='PCT'));
  $$('[data-plan]').forEach(b=>b.onclick=()=>{
