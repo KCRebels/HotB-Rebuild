@@ -18,10 +18,10 @@ const defaultRoster = [
  {name:'Brooklyn Gering',side:'R',jersey:'16',grad:'2029',positions:'RHP | OF',gpa:'4.0',interest:'Nursing',school:'Spring Hill HS',photo:'Brooklyn.JPEG'},
  {name:'Brynna Peter',side:'R',jersey:'11',grad:'2028',positions:'SS | UT',gpa:'3.78',interest:'Occupational Therapy',school:'Chanute HS',photo:'Brynna.jpg'},
  {name:'Claire Jack',side:'R',jersey:'25',grad:'2029',positions:'CIF | OF',gpa:'4.0',interest:'Biology',school:'Pratt HS',photo:'Claire-headshot-small.png'},
- {name:'Hailey Marsh',side:'L',jersey:'23',grad:'2029',positions:'CF | OF',gpa:'4.0',interest:'Dentist',school:'Louisburg HS',photo:'Hailey.jpg'},
+ {name:'Hailey Marsh',side:'SL',jersey:'23',grad:'2029',positions:'CF | OF',gpa:'4.0',interest:'Dentist',school:'Louisburg HS',photo:'Hailey.jpg'},
  {name:'Lakyn Farley',side:'R',jersey:'8',grad:'2028',positions:'RHP | OF',gpa:'4.0',interest:'Sports Medicine',school:'Fort Scott HS',photo:'lakyn.jpg'},
  {name:'Lydia Copeland',side:'R',jersey:'27',grad:'2028',positions:'C | CIF',gpa:'4.0',interest:'Child Psychology',school:'Louisburg HS',photo:'Lydia.JPEG'},
- {name:'Maia Waddell',side:'L',jersey:'1',grad:'2028',positions:'2B | OF',gpa:'4.1',interest:'Criminal Justice / Film',school:'Olathe NW HS',photo:'Maia.jpg'},
+ {name:'Maia Waddell',side:'SL',jersey:'1',grad:'2028',positions:'2B | OF',gpa:'4.1',interest:'Criminal Justice / Film',school:'Olathe NW HS',photo:'Maia.jpg'},
  {name:'Makenna Whitaker',side:'R',jersey:'10',grad:'2029',positions:'RHP | UT',gpa:'4.3',interest:'Undecided',school:'Olathe NW HS',photo:'makenna.jpg'},
  {name:'Maleah Pena',side:'R',jersey:'20',grad:'2028',positions:'3B | 1B',gpa:'3.52',interest:'Sports Medicine',school:'Olathe NW HS',photo:'Maleah.jpg'},
  {name:'Mattingly Hardy',side:'R',jersey:'99',grad:'2029',positions:'OF | UT',gpa:'3.81',interest:'Biology',school:'Pembroke Hill HS',photo:'matti.jpg'},
@@ -50,6 +50,11 @@ if((db.planPreferencesVersion||0)<2){
 if((db.planPreferencesVersion||0)<3){
  db.planPreferences={...(db.planPreferences||{}),'Brooklyn Gering':'OUT','Megan Ryan':'OUT'};
  db.planPreferencesVersion=3;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+}
+if((db.battingStyleVersion||0)<1){
+ db.roster.forEach(player=>{if(['Maia Waddell','Hailey Marsh'].includes(player.name))player.side='SL'});
+ db.battingStyleVersion=1;
  localStorage.setItem(DBKEY,JSON.stringify(db));
 }
 // For now, a refresh abandons only the unfinished game and returns to setup.
@@ -135,6 +140,8 @@ function rememberPitcher(team,name,number){
  }else db.pitchers.push({name,number,teams:team?[team]:[]});
 }
 function hitterObj(name){return db.roster.find(r=>r.name===name)||{name,side:'R',jersey:'',grad:'',positions:'',gpa:'',interest:'',school:''}}
+function isLeftBatter(player){return ['L','SL'].includes(player?.side)}
+function recruitingBatSide(player){return player?.side==='SL'?'L':player?.side}
 const recruitingColumns=[
  ['Player Name','name'],['Jersey #','jersey'],['Grad Year','grad'],['Positions','positions'],['GPA','gpa'],['High School','school'],
  ['Intended College Major','interest'],['Bats','side'],['Throws','throws'],['Player Email','email'],['Player Phone','phone'],
@@ -193,7 +200,7 @@ function pitchExecutesPlan(pitch,player){
  const plan=pitch.plan;
  if(plan==='CH')return pitch.pitchType==='CH';
  if(plan==='NO')return true;
- const leftHanded=player?.side==='L';
+ const leftHanded=isLeftBatter(player);
  const insideZones=new Set(leftHanded?['L','C1','C3']:['R','C2','C4']);
  const outsideZones=new Set(leftHanded?['R','C2','C4']:['L','C1','C3']);
  return plan==='IN'?insideZones.has(pitch.zone):plan==='OUT'?outsideZones.has(pitch.zone):false;
@@ -466,6 +473,7 @@ function rosterView(){
  <input class="input roster-name" data-i="${i}" value="${esc(r.name)}">
  <button class="sidebtn ${r.side==='R'?'active':''}" data-side="R" data-i="${i}">R</button>
  <button class="sidebtn ${r.side==='L'?'active':''}" data-side="L" data-i="${i}">L</button>
+ <button class="sidebtn ${r.side==='SL'?'active':''}" data-side="SL" data-i="${i}">SL</button>
  <button class="infobtn" data-info="${i}">Info</button>
  <button class="deletebtn" data-del="${i}">×</button>
  </div>`).join('')}
@@ -564,7 +572,7 @@ function historyHtml(g,hitter){
  }).join('')||'<div class="history-empty" aria-label="Next pitch"></div>';
 }
 function zoneGroup(zone,player){
- const leftHanded=player?.side==='L';
+ const leftHanded=isLeftBatter(player);
  const inside=new Set(leftHanded?['L','C1','C3']:['R','C2','C4']);
  const outside=new Set(leftHanded?['R','C2','C4']:['L','C1','C3']);
  if(inside.has(zone))return'IN';
@@ -851,7 +859,7 @@ function playerInfoModal(){
   <p class="info-privacy">This information is saved only in HotB on this device. It is not added to the public website code.</p>
   <div class="info-grid">
    ${input('Jersey #','jersey')}${input('Graduation Year','grad')}${input('Positions','positions')}${input('GPA','gpa')}${input('High School','school')}${input('Intended College Major','interest')}
-   ${input('Bats (R, L, or S)','side')}${input('Throws (R or L)','throws')}${input('Player Email','email','email')}${input('Player Phone','phone','tel')}
+   ${input('Bats (R, L, or SL)','side')}${input('Throws (R or L)','throws')}${input('Player Email','email','email')}${input('Player Phone','phone','tel')}
    ${input('Twitter / X Full Link','twitter','url')}${input('SportsRecruits Full Link','sportsRecruits','url')}${input('Highlight Video Full Link','highlightVideo','url')}${input('NCAA ID','ncaaId')}
   </div>
   <h3 class="info-section-title">Pitching Statistics</h3>
@@ -880,7 +888,7 @@ function buildRecruitingEmail(player,details){
  const firstName=player.name.split(/\s+/)[0];
  const profile=[
   `• Positions: ${cleanCell(player.positions).replace(/\s*\|\s*/g,'/')}`,
-  player.side||player.throws?`• Bats/Throws: ${player.side||'—'}/${player.throws||'—'}`:'',
+  player.side||player.throws?`• Bats/Throws: ${recruitingBatSide(player)||'—'}/${player.throws||'—'}`:'',
   `• Jersey: #${player.jersey||'—'}`,
   player.school?`• High School: ${player.school}`:'',
   player.gpa?`• GPA: ${player.gpa}`:'',
@@ -1121,7 +1129,7 @@ function bindPlayerInfo(){
  $('#savePlayerInfo').onclick=()=>{
   const player=db.roster[infoPlayerIndex];if(!player)return;
   $$('[data-info-field]').forEach(field=>player[field.dataset.infoField]=field.value.trim());
-  if(!['R','L','S'].includes(player.side.toUpperCase()))player.side='R';else player.side=player.side.toUpperCase();
+  if(!['R','L','SL'].includes(player.side.toUpperCase()))player.side='R';else player.side=player.side.toUpperCase();
   player.throws=(player.throws||'').toUpperCase();
   save();modal=null;render();
  };
