@@ -253,6 +253,18 @@ function batterToFirst(currentRunners,{force=false}={}){
  if(force)return runnersAfterHit(currentRunners,'1B');
  return [...new Set([...currentRunners,1])].sort((a,b)=>a-b);
 }
+function runnersAfterRBA(currentRunners){
+ const occupied=new Set(currentRunners);
+ for(const base of [2,1]){
+  if(occupied.has(base)&&!occupied.has(base+1)){occupied.delete(base);occupied.add(base+1)}
+ }
+ return [...occupied].sort((a,b)=>a-b);
+}
+function runnersAfterRBI(currentRunners,rbiCount){
+ const scoringOrder=[...new Set(currentRunners)].sort((a,b)=>b-a);
+ const scored=new Set(scoringOrder.slice(0,Math.max(0,Number(rbiCount)||0)));
+ return scoringOrder.filter(base=>!scored.has(base)).sort((a,b)=>a-b);
+}
 function recordOut(g){
  g.outs+=1;
  if(g.outs>=3){g.outs=0;g.inning+=1;g.runners=[]}
@@ -296,6 +308,8 @@ function closePA(outcome,extra={}){
  if(outcome==='BB'||outcome==='HBP')g.runners=batterToFirst(g.runners,{force:true});
  if(outcome==='E')g.runners=batterToFirst(g.runners,{force:true});
  if(outcome==='FC')g.runners=batterToFirst(g.runners);
+ if(outcome==='H4O'&&extra.rba)g.runners=runnersAfterRBA(g.runners);
+ if(outcome==='H4O'&&Number(extra.rbiCount)>0)g.runners=runnersAfterRBI(g.runners,extra.rbiCount);
  if(['H4O','K','SAC'].includes(outcome))recordOut(g);
  g.balls=0;g.strikes=0;g.paNumber++;
  g.currentIdx=(g.currentIdx+1)%g.battingOrder.length;
@@ -577,7 +591,7 @@ function hitModal(kind){
     <div class="compact-four bases-grid">${['1B','2B','3B','HR'].map(x=>`<button class="choice blue" data-hit="${x}">${x}</button>`).join('')}</div>`}
   </div>
   <div class="contact-right">
-   <div class="qual-grid">${isOut?'':`<button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button>`}<button class="choice qual-wide" data-qual="SAC">SAC</button><button class="choice" data-rbi-open>RBI</button><button class="choice" data-qual="RBA">RBA</button><button class="choice" data-strength="HHB">HHB</button><button class="choice" data-strength="WEAK">WEAK</button></div>
+   <div class="qual-grid">${isOut?'':`<button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button>`}<button class="choice qual-wide" data-qual="SAC">SAC</button><button class="choice" data-rbi-open>RBI</button>${isOut?`<button class="choice" data-qual="RBA">RBA</button>`:''}<button class="choice" data-strength="HHB">HHB</button><button class="choice" data-strength="WEAK">WEAK</button></div>
    <div class="rbi-picker" hidden><div class="rbi-picker-title">RBI</div><div class="rbi-picker-options">${[1,2,3].map(n=>`<button type="button" data-rbi-count="${n}">${n}</button>`).join('')}</div><button type="button" class="rbi-picker-cancel" data-rbi-cancel>Cancel</button></div>
   </div>
  </div><button class="btn block black save-contact" id="saveContact" disabled>${isOut?'Save Out':'Save Hit'}</button></div></div></div>`;
@@ -1226,10 +1240,10 @@ function bindContact(){
  $$('[data-batted]').forEach(b=>b.onclick=()=>{$$('[data-batted]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.batted=b.dataset.batted;update()});
  $$('[data-hit]').forEach(b=>b.onclick=()=>{$$('[data-hit]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.hitType=b.dataset.hit;['E','FC','SAC'].forEach(q=>st.quals.delete(q));$$('[data-qual]').filter(x=>['E','FC','SAC'].includes(x.dataset.qual)).forEach(x=>x.classList.remove('active'));update()});
  $$('[data-outtype]').forEach(b=>b.onclick=()=>{$$('[data-outtype]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.outType=b.dataset.outtype;update()});
- $$('[data-qual]').forEach(b=>b.onclick=()=>{const q=b.dataset.qual;if(st.quals.has(q)){st.quals.delete(q);b.classList.remove('active')}else{if(['E','FC','SAC'].includes(q)){['E','FC','SAC'].forEach(x=>st.quals.delete(x));$$('[data-qual]').filter(x=>['E','FC','SAC'].includes(x.dataset.qual)).forEach(x=>x.classList.remove('active'));st.hitType=null;$$('[data-hit]').forEach(x=>x.classList.remove('active'))}st.quals.add(q);b.classList.add('active')}update()});
+ $$('[data-qual]').forEach(b=>b.onclick=()=>{const q=b.dataset.qual;if(st.quals.has(q)){st.quals.delete(q);b.classList.remove('active')}else{if(['E','FC','SAC'].includes(q)){['E','FC','SAC'].forEach(x=>st.quals.delete(x));$$('[data-qual]').filter(x=>['E','FC','SAC'].includes(x.dataset.qual)).forEach(x=>x.classList.remove('active'));st.hitType=null;$$('[data-hit]').forEach(x=>x.classList.remove('active'))}if(q==='RBA'){st.rbiCount=0;const rbi=$('[data-rbi-open]');rbi.textContent='RBI';rbi.classList.remove('active')}st.quals.add(q);b.classList.add('active')}update()});
  $('[data-rbi-open]').onclick=()=>{$('.rbi-picker').hidden=false};
  $('[data-rbi-cancel]').onclick=()=>{$('.rbi-picker').hidden=true};
- $$('[data-rbi-count]').forEach(b=>b.onclick=()=>{st.rbiCount=Number(b.dataset.rbiCount);const rbi=$('[data-rbi-open]');rbi.textContent=`RBI ${st.rbiCount}`;rbi.classList.add('active');$('.rbi-picker').hidden=true;update()});
+ $$('[data-rbi-count]').forEach(b=>b.onclick=()=>{st.rbiCount=Number(b.dataset.rbiCount);st.quals.delete('RBA');$('[data-qual="RBA"]')?.classList.remove('active');const rbi=$('[data-rbi-open]');rbi.textContent=`RBI ${st.rbiCount}`;rbi.classList.add('active');$('.rbi-picker').hidden=true;update()});
  $$('[data-strength]').forEach(b=>b.onclick=()=>{const strength=b.dataset.strength;st.strength=st.strength===strength?null:strength;$$('[data-strength]').forEach(x=>x.classList.toggle('active',x.dataset.strength===st.strength));update()});
  const update=()=>{const special=['E','FC','SAC'].some(q=>st.quals.has(q));$('#saveContact').disabled=!(st.fielder&&(modal==='H4O'?(st.contact&&st.outType):(st.contact&&st.batted&&(st.hitType||special))))};
  $('#saveContact').onclick=()=>{const kind=st.quals.has('E')?'E':st.quals.has('FC')?'FC':st.quals.has('SAC')?'SAC':modal;modal=null;addPitch(kind,{fielder:st.fielder,contactType:st.batted||st.outType,hitType:st.hitType||'',bunt:st.contact==='BUNT',slap:st.contact==='SLAP',rbiCount:st.rbiCount,rba:st.quals.has('RBA'),sac:st.quals.has('SAC'),error:st.quals.has('E'),fc:st.quals.has('FC'),hhb:st.strength==='HHB',weak:st.strength==='WEAK'})};
