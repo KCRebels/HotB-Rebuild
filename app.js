@@ -145,6 +145,11 @@ const pitchingColumns=[
 const playerInfoColumns=[...recruitingColumns,...pitchingColumns];
 function cleanCell(value){return String(value??'').trim()}
 function normalizeName(value){return cleanCell(value).toLowerCase().replace(/\s+/g,' ')}
+if((db.measurementCleanupVersion||0)<1){
+ db.measurements=(db.measurements||[]).filter(measurement=>normalizeName(measurement.player)!=='brynna peter');
+ db.measurementCleanupVersion=1;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+}
 function isPitcherProfile(player){return cleanCell(player?.positions).split(/\s*[|,\/]\s*/).some(position=>['P','RHP','LHP','PITCHER'].includes(position.toUpperCase()))}
 function syncRosterNames(){
  $$('.roster-name').forEach(input=>{const player=db.roster[+input.dataset.i];if(player)player.name=input.value.trim()||'Unnamed Player'});
@@ -603,9 +608,9 @@ function recordModal(){
  <label class="label">Measurement</label><select class="input" id="mType">${types.map(t=>`<option ${t===selectedType?'selected':''}>${t}</option>`).join('')}</select>
  <div class="stopwatch" id="measurementStopwatch" ${timed?'':'hidden'}><div class="timer-actions"><button class="btn green" id="timerStart">Start</button><button class="btn red" id="timerSave" hidden>Save</button></div><div class="timer-display"><div class="small">STOPWATCH</div><div class="time" id="timerTime">0.00</div></div></div>
  <div class="manual-entry ${timed?'':'manual-entry-large'}" id="manualEntryPanel" ${timed?'hidden':''}><label class="label">Manual Time / Value</label><div class="manual-entry-row"><input class="input" id="mValue" inputmode="decimal" placeholder="0.00"><button class="btn red" id="saveManualMeasurement" disabled>Save</button></div></div>
- <div class="measurement-attempt-row"><button class="tab fixed-tab manual-attempt ${timed?'':'active'}" id="manualEntryToggle">Manual</button><div class="measurement-attempt-scroll" id="measurementAttempts">${attempts.map((m,i)=>`<div class="tab attempt-box" title="Attempt ${i+1}">${esc(m.value)}</div>`).join('')}</div></div>
+ <div class="measurement-attempt-row"><button class="tab fixed-tab manual-attempt ${timed?'':'active'}" id="manualEntryToggle">Manual</button><div class="measurement-attempt-scroll" id="measurementAttempts">${attempts.map((m,i)=>`<button class="tab attempt-box" data-delete-measurement="${m.id}" title="Delete attempt ${i+1}">${esc(m.value)}</button>`).join('')}</div></div>
  <label class="label">Date</label><input class="input" id="mDate" type="date" value="${new Date().toISOString().slice(0,10)}">
- <button class="btn block black savebar" id="finishMeasurements">Save &amp; Close</button>
+ <div class="measurement-finish-row savebar"><button class="btn clear-measurements" id="clearMeasurements">Clear All</button><button class="btn black" id="finishMeasurements">Save &amp; Close</button></div>
  <p class="small">Every attempt is retained. The player page displays the best result.</p></div></div>`;
 }
 function gameActionModal(kind){
@@ -1054,7 +1059,7 @@ function bindRecord(){
   $('#timerSave').hidden=true;$('#timerTime').textContent='0.00';
  };
  const attemptRows=()=>db.measurements.filter(m=>m.player===$('#mPlayer').value&&m.type===$('#mType').value);
- const updateAttemptBoxes=()=>{$('#measurementAttempts').innerHTML=attemptRows().map((m,i)=>`<div class="tab attempt-box" title="Attempt ${i+1}">${esc(m.value)}</div>`).join('')};
+ const updateAttemptBoxes=()=>{$('#measurementAttempts').innerHTML=attemptRows().map((m,i)=>`<button class="tab attempt-box" data-delete-measurement="${m.id}" title="Delete attempt ${i+1}">${esc(m.value)}</button>`).join('')};
  const storeMeasurement=value=>{
   db.measurements.push({id:crypto.randomUUID(),player:$('#mPlayer').value,type:$('#mType').value,value:Number(value),date:$('#mDate').value});
   save();updateAttemptBoxes();
@@ -1094,6 +1099,18 @@ function bindRecord(){
  };
  $('#timerSave').onclick=()=>{
   if(!timerElapsed)return;storeMeasurement((timerElapsed/1000).toFixed(2));resetTimer();
+ };
+ $('#measurementAttempts').onclick=event=>{
+  const attempt=event.target.closest('[data-delete-measurement]');if(!attempt)return;
+  const row=db.measurements.find(m=>m.id===attempt.dataset.deleteMeasurement);if(!row)return;
+  if(!confirm(`Delete the ${row.value} attempt?`))return;
+  db.measurements=db.measurements.filter(m=>m.id!==row.id);save();updateAttemptBoxes();
+ };
+ $('#clearMeasurements').onclick=()=>{
+  const rows=attemptRows();if(!rows.length)return;
+  const player=$('#mPlayer').value,type=$('#mType').value;
+  if(!confirm(`Clear all ${rows.length} saved ${type} attempt${rows.length===1?'':'s'} for ${player}?`))return;
+  const ids=new Set(rows.map(row=>row.id));db.measurements=db.measurements.filter(row=>!ids.has(row.id));save();updateAttemptBoxes();resetTimer();
  };
  $('#finishMeasurements').onclick=()=>{
   resetTimer();modal=null;recordType='';render();
