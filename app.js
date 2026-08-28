@@ -186,7 +186,31 @@ function pitchDotLabel(p){
  if(p.result==='H4O')return p.fielder||'';
  return '';
 }
-function zoneGroup(z){return ['L'].includes(z)?'IN':['R'].includes(z)?'OUT':['T','B'].includes(z)?'OUT':'IN'}
+function pitchExecutesPlan(pitch,player){
+ const plan=pitch.plan;
+ if(plan==='CH')return pitch.pitchType==='CH';
+ if(plan==='NO')return true;
+ const leftHanded=player?.side==='L';
+ const insideZones=new Set(leftHanded?['R','C2','C4']:['L','C1','C3']);
+ const outsideZones=new Set(leftHanded?['L','C1','C3']:['R','C2','C4']);
+ return plan==='IN'?insideZones.has(pitch.zone):plan==='OUT'?outsideZones.has(pitch.zone):false;
+}
+function executionFromPitches(pitches,player){
+ const qualifying=pitches.filter(pitch=>['F','HIT','H4O'].includes(pitch.result)&&pitch.strikesBefore<2);
+ return qualifying.length?qualifying.some(pitch=>pitchExecutesPlan(pitch,player)):null;
+}
+function recalculateGameExecution(game){
+ (game?.plateAppearances||[]).forEach(pa=>{
+  const pitches=(game.pitches||[]).filter(pitch=>pitch.hitter===pa.hitter&&pitch.pa===pa.pa);
+  pa.execution=executionFromPitches(pitches,hitterObj(pa.hitter));
+ });
+}
+if((db.executionFormulaVersion||0)<2){
+ (db.savedGames||[]).forEach(recalculateGameExecution);
+ recalculateGameExecution(db.currentGame);
+ db.executionFormulaVersion=2;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+}
 function runnersAfterHit(currentRunners,hitType){
  const batterBase=({'1B':1,'2B':2,'3B':3,'HR':4})[hitType];
  if(!batterBase)return [...currentRunners];
@@ -224,18 +248,8 @@ function addPitch(result,extra={}){
 function closePA(outcome,extra={}){
  const g=currentGame(), h=currentHitter(g);
  const paPitches=g.pitches.filter(p=>p.pa===g.paNumber&&p.hitter===h.name);
- const contact = ['HIT','H4O'].includes(outcome);
  const firstPitchStrike = paPitches.length ? isStrikeResult(paPitches[0].result) : false;
- let execution=null;
- if(contact){
-  const final=paPitches.at(-1);
-  const twoStrike=final.strikesBefore>=2;
-  if(!twoStrike){
-    if(g.plan==='CH') execution = final.pitchType==='CH';
-    else if(g.plan==='NO') execution = true;
-    else execution = zoneGroup(final.zone)===g.plan;
-  }
- }
+ const execution=executionFromPitches(paPitches,h);
  const pa={
   id:crypto.randomUUID(),hitter:h.name,inning:g.inning,pa:g.paNumber,outcome,
   hitType:extra.hitType||'',contactType:extra.contactType||'',fielder:extra.fielder||null,
