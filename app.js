@@ -582,15 +582,15 @@ function evalView(){
  const executionTotals=pas.reduce((totals,pa)=>({successes:totals.successes+Number(pa.executionSuccesses||0),attempts:totals.attempts+Number(pa.executionAttempts||0)}),{successes:0,attempts:0});
  const execution=executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null;
  const ms=measurementTypes(player);
- const metricHead=(title)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${title}">${title}</button><button class="metric-all" data-ranking="${title}">ALL</button></div>`;
+ const metricHead=(metric,label=metric)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${metric}">${label}</button><button class="metric-all" data-ranking="${metric}">ALL</button></div>`;
  return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><button class="btn eval-email" id="openRecruitingEmail" ${player?'':'disabled'}>Email</button></div>
  <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  ${player?`<div class="player-card player-profile"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div></div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
   <div class="eval-tile dark">${metricHead('HotB+')} ${player&&hotb!==null?comparison(hotb,hotb-100,0):`<div class="value">${hotb??'—'}</div>`}<div class="note">${player?(hotb===null?'More Saved Data Needed':'100 = Team Average'):'Current-Team Benchmark'}</div></div>
-  <div class="eval-tile">${metricHead('Runs Produced')} ${player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`}<div class="note">${player?`Player Average ${avgPlayerRp.toFixed(1)}`:'Team Total'}</div></div>
-  <div class="eval-tile">${metricHead('Execution')}<div class="value">${execution===null?'—':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
+  <div class="eval-tile">${metricHead('Runs Produced','RP')} ${player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`}<div class="note">${player?`Player Average ${avgPlayerRp.toFixed(1)}`:'Team Total'}</div></div>
+  <div class="eval-tile">${metricHead('Execution','HP%')}<div class="value">${execution===null?'—':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
  </div>
  <div class="performance"><h2>Hitting Results <span class="small" style="float:right">CUMULATIVE TO DATE</span></h2><div class="perf-grid">
  ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],['BB%',pct1(s.bbPct),'BB']].map(([label,val,key])=>`<div class="perf ${s.PA>=25?grade(s[key==='contact'?'contactPct':key==='K'?'kPct':key==='BB'?'bbPct':key],key):''}" data-guide="${label}"><b>${val}</b><span>${label}</span></div>`).join('')}
@@ -624,11 +624,14 @@ function measurementCard(player,type){
 }
 function evalGuide(title){
  const content={
- 'HotB+':`HotB+ compares the hitter’s Runs Produced per plate appearance with the current team rate. A score of 100 is team average. A score of 120 means her production rate is 20% above the team; 80 means it is 20% below. It adjusts for differences in playing time, but it is a comparison with this team—not a national ranking.`,
+ 'HotB+':`HotB+ compares the hitter’s Runs Produced rate with the current team rate. Runs Produced assigns 1.00 for a single, 1.65 for a double, 2.30 for a triple, 2.95 for a home run, 0.70 for a walk or hit-by-pitch, 0.75 for each RBI, plus 0.25 for hard-hit contact and minus 0.25 for weak contact. The app divides the hitter’s Runs Produced by her plate appearances, divides that rate by the team’s Runs Produced-per-plate-appearance rate, then multiplies by 100. A score of 100 is team average; 120 is 20% above the team rate; 80 is 20% below.`,
  'Runs Produced':`Runs Produced estimates the hitter’s total accumulated offensive contribution. It credits hits, extra bases, walks, hit-by-pitches, each RBI, and hard-hit balls; weak contact reduces the total. Because it is cumulative, hitters with more plate appearances have more opportunities to add Runs Produced. The comparison shows how her total differs from the average total of teammates with saved plate appearances.`,
  'Execution':`Execution grades pitch-by-pitch decisions against the selected IN, OUT, or CH plan. Before two strikes, swinging in the plan location and taking pitches outside it are successful; swinging outside the plan or taking a pitch in it are unsuccessful. With two strikes, correct-location contact can improve the score, while nothing can lower it.`
  }[title];
- if(content)return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>${title}</h2></div><button class="btn" data-close>Close</button></div><hr style="border-color:#555"><p style="font-size:22px;line-height:1.45;font-weight:800">${content}</p></div></div>`;
+ if(content){
+  const guideTitle=title==='Execution'?'Hitting Plan Percentage':title;
+  return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>${guideTitle}</h2></div><button class="btn" data-close>Close</button></div><hr style="border-color:#555"><p style="font-size:22px;line-height:1.45;font-weight:800">${content}</p></div></div>`;
+ }
  const metricMap={AVG:'Batting Average',SLG:'Slugging Percentage',OBP:'On-Base Percentage',CONTACT:'Contact Percentage','K%':'Strikeout Percentage','BB%':'Walk Percentage'};
  const table={
   AVG:[['Excellent','.400+'],['Good','.350–.399'],['Acceptable','.300–.349'],['Concern','.250–.299'],['Serious concern','Under .250']],
