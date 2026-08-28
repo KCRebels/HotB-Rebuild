@@ -501,7 +501,8 @@ function hitModal(kind){
     <div class="compact-four bases-grid">${['1B','2B','3B','HR'].map(x=>`<button class="choice blue" data-hit="${x}">${x}</button>`).join('')}</div>`}
   </div>
   <div class="contact-right">
-   <div class="qual-grid">${isOut?'':`<button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button>`}<button class="choice qual-wide" data-qual="SAC">SAC</button><select class="choice rbi-select" data-rbi-count aria-label="Runs batted in"><option value="0">RBI</option><option value="1">RBI 1</option><option value="2">RBI 2</option><option value="3">RBI 3</option></select><button class="choice" data-qual="RBA">RBA</button><button class="choice" data-strength="HHB">HHB</button><button class="choice" data-strength="WEAK">WEAK</button></div>
+   <div class="qual-grid">${isOut?'':`<button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button>`}<button class="choice qual-wide" data-qual="SAC">SAC</button><button class="choice" data-rbi-open>RBI</button><button class="choice" data-qual="RBA">RBA</button><button class="choice" data-strength="HHB">HHB</button><button class="choice" data-strength="WEAK">WEAK</button></div>
+   <div class="rbi-picker" hidden><div class="rbi-picker-title">RBI</div><div class="rbi-picker-options">${[1,2,3].map(n=>`<button type="button" data-rbi-count="${n}">${n}</button>`).join('')}</div><button type="button" class="rbi-picker-cancel" data-rbi-cancel>Cancel</button></div>
   </div>
  </div><button class="btn block black save-contact" id="saveContact" disabled>${isOut?'Save Out':'Save Hit'}</button></div></div></div>`;
 }
@@ -1110,7 +1111,9 @@ function bindContact(){
  $$('[data-hit]').forEach(b=>b.onclick=()=>{$$('[data-hit]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.hitType=b.dataset.hit;update()});
  $$('[data-outtype]').forEach(b=>b.onclick=()=>{$$('[data-outtype]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.outType=b.dataset.outtype;update()});
  $$('[data-qual]').forEach(b=>b.onclick=()=>{const q=b.dataset.qual;if(st.quals.has(q)){st.quals.delete(q);b.classList.remove('active')}else{st.quals.add(q);b.classList.add('active')}update()});
- $('[data-rbi-count]').onchange=e=>{st.rbiCount=Number(e.target.value||0);e.target.classList.toggle('active',st.rbiCount>0);update()};
+ $('[data-rbi-open]').onclick=()=>{$('.rbi-picker').hidden=false};
+ $('[data-rbi-cancel]').onclick=()=>{$('.rbi-picker').hidden=true};
+ $$('[data-rbi-count]').forEach(b=>b.onclick=()=>{st.rbiCount=Number(b.dataset.rbiCount);const rbi=$('[data-rbi-open]');rbi.textContent=`RBI ${st.rbiCount}`;rbi.classList.add('active');$('.rbi-picker').hidden=true;update()});
  $$('[data-strength]').forEach(b=>b.onclick=()=>{const strength=b.dataset.strength;st.strength=st.strength===strength?null:strength;$$('[data-strength]').forEach(x=>x.classList.toggle('active',x.dataset.strength===st.strength));update()});
  const update=()=>{$('#saveContact').disabled=!(st.fielder&&(modal==='H4O'?(st.contact&&st.outType):(st.contact&&st.batted&&st.hitType)))};
  $('#saveContact').onclick=()=>{const kind=modal;modal=null;addPitch(kind,{fielder:st.fielder,contactType:st.batted||st.outType,hitType:st.hitType||'',bunt:st.contact==='BUNT',slap:st.contact==='SLAP',rbiCount:st.rbiCount,rba:st.quals.has('RBA'),sac:st.quals.has('SAC'),error:st.quals.has('E'),fc:st.quals.has('FC'),hhb:st.strength==='HHB',weak:st.strength==='WEAK'})};

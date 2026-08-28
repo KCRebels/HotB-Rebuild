@@ -865,3 +865,30 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .end-game-buttons .btn{font-size:15px;line-height:1.05}
   .confirm-discard-buttons .btn{font-size:19px}
 }
+
+/* Final contact-dialog proportions and custom RBI picker */
+.contact-board{grid-template-columns:minmax(0,1.65fr) minmax(124px,.95fr)}
+.contact-right{position:relative}
+.contact-left .choice{font-size:21px}
+.contact-right .choice{min-width:0;width:100%;padding-left:2px;padding-right:2px;white-space:nowrap;overflow:hidden}
+.hit-contact .contact-left,.out-contact .contact-left{height:236px;grid-template-rows:repeat(3,minmax(0,1fr))}
+.hit-contact .contact-left>.compact-three,.hit-contact .contact-left>.compact-four,.hit-contact .contact-left .choice,
+.out-contact .contact-left>.compact-three,.out-contact .contact-left>.compact-four,.out-contact .contact-left .choice{height:100%;max-height:none}
+.hit-contact .qual-grid{height:236px;grid-template-rows:repeat(4,minmax(0,1fr))}
+.out-contact .qual-grid{height:236px;grid-template-rows:repeat(3,minmax(0,1fr))}
+.qual-grid .choice{height:100%}
+.hit-contact .qual-grid [data-rbi-open]{grid-column:1;grid-row:3}
+.out-contact .qual-grid [data-rbi-open]{grid-column:1;grid-row:2}
+.rbi-picker{position:absolute;z-index:30;right:0;top:50%;transform:translateY(-50%);width:230px;padding:12px;border:3px solid #111;border-radius:14px;background:#fff;box-shadow:0 12px 30px rgba(0,0,0,.3)}
+.rbi-picker[hidden]{display:none}
+.rbi-picker-title{text-align:center;font-size:21px;font-weight:950;margin-bottom:9px}
+.rbi-picker-options{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.rbi-picker-options button,.rbi-picker-cancel{min-height:54px;border:2px solid #111;border-radius:9px;background:#fff;color:#111;font-size:24px;font-weight:950}
+.rbi-picker-options button:active{background:#111;color:#fff}
+.rbi-picker-cancel{width:100%;min-height:40px;margin-top:8px;font-size:16px}
+@media(max-width:560px){
+  .contact-board{grid-template-columns:minmax(0,1.65fr) minmax(118px,.95fr);gap:9px}
+  .contact-left .choice{font-size:21px}
+  .hit-contact .contact-left,.out-contact .contact-left,.hit-contact .qual-grid,.out-contact .qual-grid{height:221px}
+  .rbi-picker{width:220px;padding:10px}
+}
