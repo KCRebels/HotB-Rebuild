@@ -196,7 +196,9 @@ function pitchExecutesPlan(pitch,player){
  return plan==='IN'?insideZones.has(pitch.zone):plan==='OUT'?outsideZones.has(pitch.zone):false;
 }
 function executionFromPitches(pitches,player){
- const qualifying=pitches.filter(pitch=>['F','HIT','H4O'].includes(pitch.result)&&pitch.strikesBefore<2);
+ // Early-count contact and swinging strikes test whether the hitter followed the plan.
+ // Balls, called strikes, and any pitch faced with two strikes are excluded.
+ const qualifying=pitches.filter(pitch=>['F','HIT','H4O','K'].includes(pitch.result)&&pitch.strikesBefore<2);
  return qualifying.length?qualifying.some(pitch=>pitchExecutesPlan(pitch,player)):null;
 }
 function recalculateGameExecution(game){
@@ -205,10 +207,10 @@ function recalculateGameExecution(game){
   pa.execution=executionFromPitches(pitches,hitterObj(pa.hitter));
  });
 }
-if((db.executionFormulaVersion||0)<3){
+if((db.executionFormulaVersion||0)<4){
  (db.savedGames||[]).forEach(recalculateGameExecution);
  recalculateGameExecution(db.currentGame);
- db.executionFormulaVersion=3;
+ db.executionFormulaVersion=4;
  localStorage.setItem(DBKEY,JSON.stringify(db));
 }
 function runnersAfterHit(currentRunners,hitType){
