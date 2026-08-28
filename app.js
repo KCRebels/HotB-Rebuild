@@ -473,10 +473,19 @@ function historyHtml(g,hitter){
  ${['T','L','C1','C2','C3','C4','R','B'].map(z=>`<span class="mini-zone-cell mz-${z.toLowerCase()} ${p.zone===z?pitchMarkClass(p):''}"></span>`).join('')}</div></div>`;
  }).join('')||'<div class="history-empty" aria-label="Next pitch"></div>';
 }
+function zoneGroup(zone,player){
+ const leftHanded=player?.side==='L';
+ const inside=new Set(leftHanded?['L','C1','C3']:['R','C2','C4']);
+ const outside=new Set(leftHanded?['R','C2','C4']:['L','C1','C3']);
+ if(inside.has(zone))return'IN';
+ if(outside.has(zone))return'OUT';
+ return zone==='T'?'HIGH':zone==='B'?'LOW':'';
+}
 function aiSuggestions(g,hitter){
  const ps=allPitches(true).filter(p=>p.hitter===hitter&&p.pitchType);
  if(!ps.length)return [{label:'—',pct:0},{label:'—',pct:0}];
- const m={}; ps.forEach(p=>{const key=`${p.zone?zoneGroup(p.zone):''} ${p.pitchType}`.trim();m[key]=(m[key]||0)+1});
+ const player=hitterObj(hitter);
+ const m={}; ps.forEach(p=>{const key=`${p.zone?zoneGroup(p.zone,player):''} ${p.pitchType}`.trim();m[key]=(m[key]||0)+1});
  return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([k,v])=>({label:k.replace('IN FB','IN').replace('OUT FB','OUT').replace('IN CH','CHin').replace('OUT CH','CHout'),pct:Math.round(v/ps.length*100)})).concat([{label:'—',pct:0},{label:'—',pct:0}]).slice(0,2);
 }
 function hitModal(kind){
