@@ -596,13 +596,16 @@ function recordModal(){
  const player=hitterObj(p);
  const types=measurementTypes(player);
  const selectedType=recordType&&types.includes(recordType)?recordType:types[0];
+ const timed=stopwatchMeasurements.includes(selectedType);
+ const attempts=db.measurements.filter(m=>m.player===p&&m.type===selectedType);
  return `<div class="modal-backdrop"><div class="modal"><div class="modal-header"><h2>Record Measurement</h2><button class="btn" data-close>Close</button></div>
  <label class="label">Player</label><select class="input" id="mPlayer">${db.roster.map(r=>`<option ${r.name===p?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  <label class="label">Measurement</label><select class="input" id="mType">${types.map(t=>`<option ${t===selectedType?'selected':''}>${t}</option>`).join('')}</select>
- <div class="stopwatch" id="measurementStopwatch" ${stopwatchMeasurements.includes(selectedType)?'':'hidden'} style="margin-top:18px"><button class="btn green" id="timerStart" style="font-size:28px">Start</button><div style="flex:1;text-align:center"><div class="small">STOPWATCH</div><div class="time" id="timerTime">0.00</div></div></div>
- <label class="label">Manual Time / Value</label><input class="input" id="mValue" inputmode="decimal" placeholder="0.00">
+ <div class="stopwatch" id="measurementStopwatch" ${timed?'':'hidden'}><div class="timer-actions"><button class="btn green" id="timerStart">Start</button><button class="btn red" id="timerSave" hidden>Save</button></div><div class="timer-display"><div class="small">STOPWATCH</div><div class="time" id="timerTime">0.00</div></div></div>
+ <div class="measurement-attempt-row"><button class="tab fixed-tab manual-attempt ${timed?'':'active'}" id="manualEntryToggle">Manual</button><div class="measurement-attempt-scroll" id="measurementAttempts">${attempts.map((m,i)=>`<div class="tab attempt-box" title="Attempt ${i+1}">${esc(m.value)}</div>`).join('')}</div></div>
+ <div class="manual-entry ${timed?'':'manual-entry-large'}" id="manualEntryPanel" ${timed?'hidden':''}><label class="label">Manual Time / Value</label><div class="manual-entry-row"><input class="input" id="mValue" inputmode="decimal" placeholder="0.00"><button class="btn red" id="saveManualMeasurement" disabled>Save</button></div></div>
  <label class="label">Date</label><input class="input" id="mDate" type="date" value="${new Date().toISOString().slice(0,10)}">
- <button class="btn block red savebar" id="saveMeasurement" disabled>Save Attempt</button>
+ <button class="btn block black savebar" id="finishMeasurements">Save &amp; Close</button>
  <p class="small">Every attempt is retained. The player page displays the best result.</p></div></div>`;
 }
 function gameActionModal(kind){
@@ -841,7 +844,7 @@ function modalView(){
 }
 function bind(){
  $$('[data-go]').forEach(el=>el.onclick=()=>go(el.dataset.go));
- $$('[data-close]').forEach(el=>el.onclick=()=>{modal=null;render()});
+ $$('[data-close]').forEach(el=>el.onclick=()=>{if(modal==='record'){if(timerInt)clearInterval(timerInt);timerInt=null;timerElapsed=0;recordType=''}modal=null;render()});
  if(route==='new')bindNew();
  if(route==='roster')bindRoster();
  if(route==='live')bindLive();
@@ -1045,10 +1048,26 @@ function bindEval(){
  $$('[data-pitch-ranking]').forEach(x=>x.onclick=()=>{modal='pitchRanking:'+x.dataset.pitchRanking;render()});
 }
 function bindRecord(){
+ const resetTimer=()=>{
+  if(timerInt)clearInterval(timerInt);timerInt=null;timerElapsed=0;
+  $('#timerStart').textContent='Start';$('#timerStart').className='btn green';
+  $('#timerSave').hidden=true;$('#timerTime').textContent='0.00';
+ };
+ const attemptRows=()=>db.measurements.filter(m=>m.player===$('#mPlayer').value&&m.type===$('#mType').value);
+ const updateAttemptBoxes=()=>{$('#measurementAttempts').innerHTML=attemptRows().map((m,i)=>`<div class="tab attempt-box" title="Attempt ${i+1}">${esc(m.value)}</div>`).join('')};
+ const storeMeasurement=value=>{
+  db.measurements.push({id:crypto.randomUUID(),player:$('#mPlayer').value,type:$('#mType').value,value:Number(value),date:$('#mDate').value});
+  save();updateAttemptBoxes();
+ };
  const updateStopwatch=()=>{
   const show=stopwatchMeasurements.includes($('#mType').value);
   $('#measurementStopwatch').hidden=!show;
-  if(!show){if(timerInt)clearInterval(timerInt);timerInt=null;timerElapsed=0;$('#timerStart').textContent='Start';$('#timerTime').textContent='0.00'}
+  resetTimer();
+  $('#manualEntryPanel').hidden=show;
+  $('#manualEntryPanel').classList.toggle('manual-entry-large',!show);
+  $('#manualEntryToggle').classList.toggle('active',!show);
+  $('#mValue').value='';$('#saveManualMeasurement').disabled=true;
+  updateAttemptBoxes();
  };
  const updateTypes=()=>{
   const p=hitterObj($('#mPlayer').value); const types=measurementTypes(p);$('#mType').innerHTML=types.map(t=>`<option>${t}</option>`).join('');
@@ -1056,15 +1075,27 @@ function bindRecord(){
  };
  $('#mPlayer').onchange=updateTypes;
  $('#mType').onchange=updateStopwatch;
- $('#mValue').oninput=()=>{$('#saveMeasurement').disabled=!Number.isFinite(Number($('#mValue').value))};
+ $('#manualEntryToggle').onclick=()=>{
+  const panel=$('#manualEntryPanel');panel.hidden=!panel.hidden;
+  $('#manualEntryToggle').classList.toggle('active',!panel.hidden);
+  if(!panel.hidden)$('#mValue').focus();
+ };
+ $('#mValue').oninput=()=>{const value=$('#mValue').value.trim();$('#saveManualMeasurement').disabled=!value||!Number.isFinite(Number(value))};
+ $('#saveManualMeasurement').onclick=()=>{
+  const value=Number($('#mValue').value);if(!Number.isFinite(value))return;
+  storeMeasurement(value);$('#mValue').value='';$('#saveManualMeasurement').disabled=true;
+ };
  $('#timerStart').onclick=()=>{
-  if(timerInt){clearInterval(timerInt);timerInt=null;$('#timerStart').textContent='Start';$('#mValue').value=(timerElapsed/1000).toFixed(2);$('#saveMeasurement').disabled=false;return}
-  timerStart=performance.now()-timerElapsed;$('#timerStart').textContent='Stop';
+  if(timerInt){clearInterval(timerInt);timerInt=null;$('#timerStart').textContent='Clear';$('#timerStart').className='btn';$('#timerSave').hidden=false;return}
+  if(timerElapsed){resetTimer();return}
+  timerStart=performance.now();$('#timerStart').textContent='Stop';$('#timerStart').className='btn red';
   timerInt=setInterval(()=>{timerElapsed=performance.now()-timerStart;$('#timerTime').textContent=(timerElapsed/1000).toFixed(2)},30);
  };
- $('#saveMeasurement').onclick=()=>{
-  db.measurements.push({id:crypto.randomUUID(),player:$('#mPlayer').value,type:$('#mType').value,value:Number($('#mValue').value),date:$('#mDate').value});
-  save();modal=null;recordType='';timerElapsed=0;if(timerInt){clearInterval(timerInt);timerInt=null}render();
+ $('#timerSave').onclick=()=>{
+  if(!timerElapsed)return;storeMeasurement((timerElapsed/1000).toFixed(2));resetTimer();
+ };
+ $('#finishMeasurements').onclick=()=>{
+  resetTimer();modal=null;recordType='';render();
  };
 }
 render();
