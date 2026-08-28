@@ -602,8 +602,8 @@ function recordModal(){
  <label class="label">Player</label><select class="input" id="mPlayer">${db.roster.map(r=>`<option ${r.name===p?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  <label class="label">Measurement</label><select class="input" id="mType">${types.map(t=>`<option ${t===selectedType?'selected':''}>${t}</option>`).join('')}</select>
  <div class="stopwatch" id="measurementStopwatch" ${timed?'':'hidden'}><div class="timer-actions"><button class="btn green" id="timerStart">Start</button><button class="btn red" id="timerSave" hidden>Save</button></div><div class="timer-display"><div class="small">STOPWATCH</div><div class="time" id="timerTime">0.00</div></div></div>
- <div class="measurement-attempt-row"><button class="tab fixed-tab manual-attempt ${timed?'':'active'}" id="manualEntryToggle">Manual</button><div class="measurement-attempt-scroll" id="measurementAttempts">${attempts.map((m,i)=>`<div class="tab attempt-box" title="Attempt ${i+1}">${esc(m.value)}</div>`).join('')}</div></div>
  <div class="manual-entry ${timed?'':'manual-entry-large'}" id="manualEntryPanel" ${timed?'hidden':''}><label class="label">Manual Time / Value</label><div class="manual-entry-row"><input class="input" id="mValue" inputmode="decimal" placeholder="0.00"><button class="btn red" id="saveManualMeasurement" disabled>Save</button></div></div>
+ <div class="measurement-attempt-row"><button class="tab fixed-tab manual-attempt ${timed?'':'active'}" id="manualEntryToggle">Manual</button><div class="measurement-attempt-scroll" id="measurementAttempts">${attempts.map((m,i)=>`<div class="tab attempt-box" title="Attempt ${i+1}">${esc(m.value)}</div>`).join('')}</div></div>
  <label class="label">Date</label><input class="input" id="mDate" type="date" value="${new Date().toISOString().slice(0,10)}">
  <button class="btn block black savebar" id="finishMeasurements">Save &amp; Close</button>
  <p class="small">Every attempt is retained. The player page displays the best result.</p></div></div>`;
@@ -1060,7 +1060,8 @@ function bindRecord(){
   save();updateAttemptBoxes();
  };
  const updateStopwatch=()=>{
-  const show=stopwatchMeasurements.includes($('#mType').value);
+  const type=$('#mType').value;
+  const show=stopwatchMeasurements.includes(type);
   $('#measurementStopwatch').hidden=!show;
   resetTimer();
   $('#manualEntryPanel').hidden=show;
