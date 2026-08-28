@@ -281,7 +281,8 @@ function addPitch(result,extra={}){
  const h=currentHitter(g);
  const pitch={
   id:crypto.randomUUID(),hitter:h.name,pa:g.paNumber,inning:g.inning,ballsBefore:g.balls,strikesBefore:g.strikes,
-  zone:g.pendingZone||'',pitchType:g.pitchType,plan:g.plan,result,pitcherName:g.pitcherName||'',pitcherNumber:g.pitcherNumber||'',ts:Date.now(),...extra
+  zone:g.pendingZone||'',pitchType:g.pitchType,plan:g.plan,result,pitcherName:g.pitcherName||'',pitcherNumber:g.pitcherNumber||'',
+  opponent:g.opponent||'',gameId:g.id,hitterStyle:h.side||'R',runnersBefore:[...g.runners],outsBefore:g.outs,ts:Date.now(),...extra
  };
  g.pitches.push(pitch);
  let end=null;
@@ -294,6 +295,7 @@ function addPitch(result,extra={}){
  else if(['E','FC','SAC'].includes(result))end=result;
  g.pendingZone=null;
  if(end) closePA(end, extra);
+ g.showAi=false;
  g.pitchType='FB';
  save();render();
 }
@@ -520,7 +522,7 @@ function liveView(){
   const dotFont=Math.max(5,Math.min(11,Math.floor(dotSize*.65)));
   return `<span class="pitch-dot-grid" style="--dot-size:${dotSize}px;--dot-gap:${gap}px;--dot-wrap:${wrap}px;--dot-font:${dotFont}px">${pitches.map(p=>`<i class="pitch-dot ${pitchMarkClass(p)}">${pitchDotLabel(p)}</i>`).join('')}</span>`;
  };
- const suggestions=aiSuggestions(g,chartName);
+ const suggestions=g.showAi?aiSuggestions(g,chartName):[];
  const nextInitials=nextName?nextName.split(' ').map(x=>x[0]).join(''):'';
  return `<div class="topbar chart-head"><div class="brand">Hit Chart</div><button id="openProfile">Profile</button><button id="openReports">Reports</button><button class="end" id="endGame">End</button></div>
  <div class="live-top">
@@ -547,7 +549,7 @@ function liveView(){
    <button class="fps ${g.firstPitchView?'active':''}" id="fpsBtn" aria-label="First-pitch strike percentage"><strong class="${Math.round(fps(g)*100)===100?'fps-compact':'fps-standard'}">${Math.round(fps(g)*100)}%</strong></button>
   </div>
   <div class="zone-tools"><button class="ai" id="aiBtn">Ai</button>
-   ${g.showAi?`<div class="ai-suggestions">${suggestions.map((s,i)=>`<div class="ai-box"><span class="ai-rank">#${i+1}</span><span class="ai-pitch">${esc(s.label)}</span><span class="ai-pct">${s.pct}%</span></div>`).join('')}</div>`:''}
+   ${g.showAi?`<div class="ai-suggestions">${suggestions.map((s,i)=>`<div class="ai-box"><span class="ai-rank">#${i+1}</span><span class="ai-pitch">${esc(s.label)}</span><span class="ai-pct">${s.pct===null?'':`${s.pct}%`}</span></div>`).join('')}</div>`:''}
   </div>
  </div>
  <div class="tabs ${showAll?'with-all':'without-all'}"><button class="tab fixed-tab ${(g.historyTab||'LIVE')==='LIVE'?'active':''}" data-tab="LIVE">LIVE</button><div class="ab-scroll">${abTabNames.map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}${showAll?`<button class="tab ${(g.historyTab||'LIVE')==='ALL'?'active':''}" data-tab="ALL">${g.historyTab==='ALL'&&(g.allView||'DOTS')==='DOTS'?'%':'ALL'}</button>`:''}</div></div>
@@ -579,12 +581,125 @@ function zoneGroup(zone,player){
  if(outside.has(zone))return'OUT';
  return zone==='T'?'HIGH':zone==='B'?'LOW':'';
 }
+function normalized(value){return String(value||'').trim().toLowerCase()}
+function aiSeason(game){return seasonMeta(game?.date).season||currentSeasonLabel(new Date(game?.date||Date.now()))}
+function aiLocation(zone,player){return ({IN:'in',OUT:'ot',HIGH:'hi',LOW:'lo'})[zoneGroup(zone,player)]||''}
+function aiPitchKey(pitch,player){
+ const location=aiLocation(pitch.zone,player);
+ return pitch.pitchType&&location?`${pitch.pitchType}${location}`:'';
+}
+function aiResultGroup(result){
+ if(result==='B'||result==='KL')return'TAKE';
+ if(result==='K')return'MISS';
+ if(result==='F')return'FOUL';
+ return['HIT','H4O','E','FC','SAC'].includes(result)?'CONTACT':result;
+}
+function aiCountGroup(balls,strikes){
+ const key=`${balls}-${strikes}`;
+ if(['0-0','0-2','3-0','3-2'].includes(key))return key;
+ if(['0-1','1-2'].includes(key))return'PITCHER_AHEAD';
+ if(['1-1','2-2'].includes(key))return'EVEN';
+ if(['1-0','2-0','2-1','3-1'].includes(key))return'HITTER_AHEAD';
+ return key;
+}
+function aiCountWeight(pitch,balls,strikes){
+ const key=`${pitch.ballsBefore}-${pitch.strikesBefore}`,current=`${balls}-${strikes}`;
+ if(key===current)return 2.4;
+ const nearby={
+  '0-0':[],
+  '0-2':['1-2','2-2'],
+  '3-0':['2-0','3-1'],
+  '3-2':['2-2','3-1']
+ }[current];
+ if(nearby)return nearby.includes(key)?.65:.2;
+ return aiCountGroup(pitch.ballsBefore,pitch.strikesBefore)===aiCountGroup(balls,strikes)?1.2:.3;
+}
+function aiRunnerSituation(runners){
+ const set=new Set(runners||[]);
+ if(set.has(1)&&set.has(2)&&set.has(3))return'LOADED';
+ if(set.has(1)&&set.has(2))return'FORCE_THIRD';
+ if(set.has(3))return'THIRD';
+ if(set.has(1)&&set.has(3))return'CORNERS';
+ if(set.has(1))return'FIRST';
+ if(set.has(2))return'SECOND';
+ return'EMPTY';
+}
+function aiStyle(playerOrPitch){
+ const style=playerOrPitch?.hitterStyle||playerOrPitch?.side||hitterObj(playerOrPitch?.hitter).side||'R';
+ return ['R','L','SL'].includes(style)?style:'R';
+}
+function aiPitchRecords(g){
+ const season=aiSeason(g),opponent=normalized(g.opponent),pitcherName=normalized(g.pitcherName),pitcherNumber=normalized(g.pitcherNumber);
+ const games=[...db.savedGames,...(db.currentGame?[db.currentGame]:[])].filter(game=>
+  (game.id===g.id||aiSeason(game)===season)&&normalized(game.opponent)===opponent
+ );
+ const hasPitcher=game=>(game.pitches||[]).some(pitch=>normalized(pitch.pitcherName)===pitcherName&&normalized(pitch.pitcherNumber)===pitcherNumber);
+ const prior=games.filter(game=>game.id!==g.id&&hasPitcher(game)).sort((a,b)=>new Date(b.date)-new Date(a.date));
+ const recentIds=new Set(prior.slice(0,3).map(game=>game.id));
+ const records=[];
+ games.forEach(game=>{
+  const paIndexes=new Map();
+  (game.pitches||[]).forEach(pitch=>{
+   if(normalized(pitch.pitcherName)!==pitcherName||normalized(pitch.pitcherNumber)!==pitcherNumber)return;
+   const paKey=`${pitch.hitter}::${pitch.pa}`,paPitchIndex=paIndexes.get(paKey)||0;paIndexes.set(paKey,paPitchIndex+1);
+   records.push({pitch,game,paPitchIndex,gameWeight:game.id===g.id?3:recentIds.has(game.id)?1.5:.75});
+  });
+ });
+ return records;
+}
 function aiSuggestions(g,hitter){
- const ps=allPitches(true).filter(p=>p.hitter===hitter&&p.pitchType);
- if(!ps.length)return [{label:'—',pct:0},{label:'—',pct:0}];
- const player=hitterObj(hitter);
- const m={}; ps.forEach(p=>{const key=`${p.zone?zoneGroup(p.zone,player):''} ${p.pitchType}`.trim();m[key]=(m[key]||0)+1});
- return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([k,v])=>({label:k.replace('IN FB','IN').replace('OUT FB','OUT').replace('IN CH','CHin').replace('OUT CH','CHout'),pct:Math.round(v/ps.length*100)})).concat([{label:'—',pct:0},{label:'—',pct:0}]).slice(0,2);
+ const player=hitterObj(hitter),targetStyle=aiStyle(player),records=aiPitchRecords(g);
+ const locations=['in','ot','lo','hi'],types=['FB','CH','RS','DP','CV','SC'];
+ const scores=Object.fromEntries(types.flatMap(type=>locations.map(location=>[`${type}${location}`,1.5])));
+ const relevant=records.filter(({pitch})=>{
+  const relation=pitch.hitter===hitter?'EXACT':aiStyle(pitch)===targetStyle?'SAME':'OTHER';
+  return relation!=='OTHER'&&aiPitchKey(pitch,hitterObj(pitch.hitter));
+ });
+ if(relevant.length<6)return [{label:'—',pct:null},{label:'—',pct:null}];
+ const currentPaPitches=g.pitches.filter(pitch=>pitch.hitter===hitter&&pitch.pa===g.paNumber);
+ const longAtBat=currentPaPitches.length>=5,currentSituation=aiRunnerSituation(g.runners);
+ const comparableSituationCount=relevant.filter(({pitch})=>Array.isArray(pitch.runnersBefore)&&aiRunnerSituation(pitch.runnersBefore)===currentSituation).length;
+ const comparableOutCount=relevant.filter(({pitch})=>Number.isInteger(pitch.outsBefore)&&pitch.outsBefore===g.outs).length;
+ const typeUse={};relevant.forEach(({pitch})=>typeUse[pitch.pitchType]=(typeUse[pitch.pitchType]||0)+1);
+ const locationUse=Object.fromEntries(locations.map(location=>[location,1]));
+ relevant.forEach(({pitch})=>{const location=aiLocation(pitch.zone,hitterObj(pitch.hitter));if(location)locationUse[location]++});
+ const locationTotal=Object.values(locationUse).reduce((sum,value)=>sum+value,0);
+ const controlPitch=Object.entries(typeUse).sort((a,b)=>b[1]-a[1])[0]?.[0]||'FB';
+ records.forEach(({pitch,gameWeight,paPitchIndex})=>{
+  if(!pitch.pitchType)return;
+  const sourcePlayer=hitterObj(pitch.hitter),key=aiPitchKey(pitch,sourcePlayer);if(!key)return;
+  const sourceStyle=aiStyle(pitch),exact=pitch.hitter===hitter,sameStyle=sourceStyle===targetStyle;
+  const base=gameWeight*(exact?1.4:sameStyle?1:.05)*aiCountWeight(pitch,g.balls,g.strikes)*(longAtBat&&paPitchIndex>=5?1.25:1);
+  if(exact||sameStyle){
+   const situationWeight=comparableSituationCount>=5&&Array.isArray(pitch.runnersBefore)&&aiRunnerSituation(pitch.runnersBefore)===currentSituation?1.35:1;
+   const outsWeight=comparableOutCount>=5&&Number.isInteger(pitch.outsBefore)&&pitch.outsBefore===g.outs?1.08:1;
+   scores[key]+=base*situationWeight*outsWeight;
+  }else locations.forEach(location=>scores[`${pitch.pitchType}${location}`]+=base*(locationUse[location]/locationTotal));
+ });
+ if(currentPaPitches.length>=2){
+  const currentPair=currentPaPitches.slice(-2).map(pitch=>`${aiPitchKey(pitch,player)}:${aiResultGroup(pitch.result)}`);
+  const byPa=new Map();records.filter(({pitch})=>pitch.hitter===hitter||aiStyle(pitch)===targetStyle).forEach(record=>{
+   const id=`${record.game.id}:${record.pitch.hitter}:${record.pitch.pa}`;if(!byPa.has(id))byPa.set(id,[]);byPa.get(id).push(record);
+  });
+  const nextMatches=[];
+  byPa.forEach(group=>{group.sort((a,b)=>a.pitch.ts-b.pitch.ts);for(let i=2;i<group.length;i++){
+   const previous=group.slice(i-2,i).map(({pitch})=>`${aiPitchKey(pitch,hitterObj(pitch.hitter))}:${aiResultGroup(pitch.result)}`);
+   if(previous[0]===currentPair[0]&&previous[1]===currentPair[1])nextMatches.push(group[i]);
+  }});
+  if(nextMatches.length>=3)nextMatches.forEach(({pitch,gameWeight})=>{const key=aiPitchKey(pitch,hitterObj(pitch.hitter));if(key)scores[key]+=2.5*gameWeight});
+ }
+ const forceSituation=['FORCE_THIRD','LOADED'].includes(currentSituation);
+ Object.keys(scores).forEach(key=>{
+  const type=types.find(value=>key.startsWith(value)),location=key.slice(type.length);
+  if(forceSituation&&((targetStyle==='R'&&location==='in')||(targetStyle==='SL'&&location==='ot')))scores[key]*=1.15;
+  if(currentSituation==='LOADED'&&type===controlPitch)scores[key]*=1.1;
+  if(currentSituation==='THIRD'){
+   if(g.outs<2){if(type===controlPitch)scores[key]*=1.1;if(location==='lo'&&['CH','DP'].includes(type))scores[key]*=.75}
+   else{if(type===controlPitch)scores[key]*=1.03;if(location==='lo'&&['CH','DP'].includes(type))scores[key]*=.95}
+  }
+ });
+ const total=Object.values(scores).reduce((sum,value)=>sum+value,0)||1;
+ return Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([label,value])=>({label,pct:Math.round(value/total*100)}));
 }
 function hitModal(kind){
  const isOut=kind==='H4O';
@@ -1187,7 +1302,7 @@ function bindLive(){
  $('#openProfile').onclick=()=>{evalPlayer=currentHitter(g).name;go('eval')};
  $('#openReports').onclick=()=>{modal='reports';reportMode='current';render()};
  $('#endGame').onclick=()=>{modal='endGame';render()};
- $('#aiBtn').onclick=()=>{g.showAi=!g.showAi;save();render()};
+ $('#aiBtn').onclick=()=>{g.showAi=!g.showAi;g.zoneScope='HITTER';g.previewNext=false;g.historyTab='LIVE';g.firstPitchView=false;save();render()};
  $('#changePitcher').onclick=()=>{modal='changePitcher';render()};
  $('#changeHitter').onclick=()=>{modal='changeHitter';render()};
 }
