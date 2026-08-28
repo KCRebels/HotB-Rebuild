@@ -230,7 +230,7 @@ function closePA(outcome,extra={}){
   const final=paPitches.at(-1);
   const twoStrike=final.strikesBefore>=2;
   if(!twoStrike){
-    if(g.plan==='CH') execution = final.pitchType!=='FB';
+    if(g.plan==='CH') execution = final.pitchType==='CH';
     else if(g.plan==='NO') execution = true;
     else execution = zoneGroup(final.zone)===g.plan;
   }
