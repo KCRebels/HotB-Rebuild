@@ -67,6 +67,7 @@ let route = db.route || 'home';
 let modal = null;
 let reportMode='current', reportSub='spray', reportFilterHitter='All Hitters';
 let reportGameId=null;
+let reportSelectedPaId=null;
 let selectedSeason=currentSeasonLabel(), dateFilterMode='full', customDateStart='', customDateEnd='';
 let evalPlayer='Team';
 let recordType='';
@@ -728,15 +729,14 @@ function reportModal(){
  const hitters=[...new Set(source.map(p=>p.hitter))];
  return `<div class="modal-backdrop"><div class="modal">
  <div class="report-tabs"><button class="btn ${reportMode==='current'?'black':''}" data-rmode="current">Current</button><button class="btn ${reportMode!=='current'?'black':''}" data-rmode="saved">Saved</button><button class="btn gold" id="exportReport">Export</button><button class="btn" data-close>Close</button></div>
- <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px"><button class="btn ${reportSub==='spray'?'black':''}" data-rsub="spray">Spray Chart</button><button class="btn ${reportSub==='zone'?'black':''}" data-rsub="zone">Zone Chart</button></div>
  <div class="panel" style="margin:14px 0 0">
  ${reportMode==='saved'?dateFilterControls('report'):''}
  <select class="input" id="reportHitter"><option>All Hitters</option>${db.roster.map(r=>`<option ${reportFilterHitter===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  <div style="font-size:26px;margin-top:14px">${reportMode==='saved'?`${reportGames.length} Saved Games · ${esc(activeDateFilterLabel())}`:reportMode==='game'?`${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}`:'Current Game'}</div>
  <div class="report-stat-grid">${[['PA',s.PA],['AVG',round3(s.AVG)],['OBP',round3(s.OBP)],['SLG',round3(s.SLG)],['OPS',round3(s.OPS)],['RBI',s.RBI],['HHB',s.HHB],['WEAK',s.WEAK]].map(([k,v])=>`<div class="report-stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
- <h3>COUNT PERFORMANCE <span style="color:#3762db">H</span> | <span style="color:#c83832">H4O</span> | <span style="color:#c83832">K</span> | AVE</h3>
+ <h3 class="count-performance-title">COUNT PERFORMANCE <span class="count-key hit">H</span><span class="count-separator">|</span><span class="count-key out">H4O</span><span class="count-separator">|</span><span class="count-key strikeout">K</span><span class="count-separator">|</span><span class="count-key average">AVE</span></h3>
  <div class="count-grid">${['0-0','0-2','1-2','2-2','3-2','6+'].map(c=>countCard(filtered,c)).join('')}</div>
- ${reportSub==='spray'?sprayReport(filtered):zoneReport(filtered)}
+ ${outcomeReport(filtered)}
  </div></div></div>`;
 }
 function countCard(pas,bucket){
@@ -745,14 +745,34 @@ function countCard(pas,bucket){
   return pa.finalCount===bucket;
  });
  const h=matches.filter(p=>p.outcome==='HIT').length,o=matches.filter(p=>p.outcome==='H4O').length,k=matches.filter(p=>p.outcome==='K').length,ave=(h+o+k)?h/(h+o+k):0;
- return `<div class="count-card"><b>${bucket}</b>${h} | ${o} | ${k} | ${round3(ave)}</div>`;
+ return `<div class="count-card"><b>${bucket}</b><span class="count-value hit">${h}</span><span class="count-separator">|</span><span class="count-value out">${o}</span><span class="count-separator">|</span><span class="count-value strikeout">${k}</span><span class="count-separator">|</span><span class="count-value average">${round3(ave)}</span></div>`;
 }
-function sprayReport(pas){
- const items=pas.filter(p=>['HIT','H4O'].includes(p.outcome));
- return `<h3 style="margin-top:22px">SPRAY CHART</h3><div class="field" style="margin:0 auto;max-width:500px">${items.map((p,i)=>{
+function reportPitchSource(){
+ return reportMode==='current'?(currentGame()?.pitches||[]):reportMode==='game'?(db.savedGames.find(game=>game.id===reportGameId)?.pitches||[]):filteredPitches(false);
+}
+function reportPitchForPA(pa){
+ const pitches=reportPitchSource().filter(p=>p.pa===pa.pa&&p.hitter===pa.hitter);
+ return pitches[pitches.length-1]||{};
+}
+function reportPitchLabel(pa){
+ const pitch=reportPitchForPA(pa),zone=String(pitch.zone||'').replace(/^C/,'');
+ return `${pitch.pitchType||'—'}${zone||''} (${pa.finalCount||'0-0'}) (${pa.pitchCount||0})`;
+}
+function reportOutcomeItem(pa,kind){
+ const lead=kind==='HIT'?(pa.hitType||'H'):kind==='H4O'?(pa.fielder||'O'):'';
+ return `<button class="report-outcome-item ${kind.toLowerCase()} ${reportSelectedPaId===pa.id?'selected':''}" data-report-pa="${pa.id}">${lead?`<span>${lead}</span>`:''}<strong>${esc(reportPitchLabel(pa))}</strong></button>`;
+}
+function reportSection(title,items,kind){
+ return `<section class="report-outcome-section"><div class="report-outcome-heading"><b>${title}</b><span>(${items.length}) (COUNT) (TOTAL PITCHES)</span></div><div class="report-outcome-list">${items.length?items.map(pa=>reportOutcomeItem(pa,kind)).join(''):'<span class="report-empty">None</span>'}</div></section>`;
+}
+function outcomeReport(pas){
+ const strikeouts=pas.filter(p=>p.outcome==='K'),hits=pas.filter(p=>p.outcome==='HIT'),outs=pas.filter(p=>p.outcome==='H4O');
+ const items=[...hits,...outs];
+ return `${reportSection('STRIKEOUTS',strikeouts,'K')}${reportSection('BASE HITS',hits,'HIT')}
+ <h3 class="report-chart-title">SPRAY CHART</h3><div class="field report-spray-field">${items.map(p=>{
   const coords={1:[50,66],2:[50,85],3:[66,59],4:[62,47],5:[34,59],6:[38,47],7:[22,24],8:[50,13],9:[78,24]}[p.fielder]||[50,65];
-  return `<span style="position:absolute;left:${coords[0]}%;top:${coords[1]}%;width:22px;height:22px;border-radius:50%;background:${p.outcome==='HIT'?'#3862db':'#cf3832'};border:3px solid white;transform:translate(-50%,-50%)"></span>`;
- }).join('')}</div>`;
+  return `<button class="report-spray-dot ${p.outcome==='HIT'?'hit':'h4o'} ${reportSelectedPaId===p.id?'selected':''}" style="left:${coords[0]}%;top:${coords[1]}%" data-report-pa="${p.id}" aria-label="Select ${p.outcome} by ${esc(p.hitter)}"></button>`;
+ }).join('')}</div>${reportSection('HITS 4 OUTS',outs,'H4O')}`;
 }
 function zoneReport(pas){
  const pitchSource=reportMode==='current'?(currentGame()?.pitches||[]):reportMode==='game'?(db.savedGames.find(game=>game.id===reportGameId)?.pitches||[]):filteredPitches(false);
@@ -1372,10 +1392,11 @@ function bindContact(){
  $('#saveContact').onclick=()=>{const kind=st.quals.has('E')?'E':st.quals.has('FC')?'FC':st.quals.has('SAC')?'SAC':modal;modal=null;addPitch(kind,{fielder:st.fielder,contactType:st.batted||st.outType,hitType:st.hitType||'',bunt:st.contact==='BUNT',slap:st.contact==='SLAP',rbiCount:st.rbiCount,rba:st.quals.has('RBA'),sac:st.quals.has('SAC'),error:st.quals.has('E'),fc:st.quals.has('FC'),hhb:st.strength==='HHB',weak:st.strength==='WEAK'})};
 }
 function bindReports(){
- $$('[data-rmode]').forEach(b=>b.onclick=()=>{reportMode=b.dataset.rmode;reportGameId=null;render()});
+ $$('[data-rmode]').forEach(b=>b.onclick=()=>{reportMode=b.dataset.rmode;reportGameId=null;reportSelectedPaId=null;render()});
  bindDateFilters('report');
  $$('[data-rsub]').forEach(b=>b.onclick=()=>{reportSub=b.dataset.rsub;render()});
- $('#reportHitter').onchange=e=>{reportFilterHitter=e.target.value;render()};
+ $('#reportHitter').onchange=e=>{reportFilterHitter=e.target.value;reportSelectedPaId=null;render()};
+ $$('[data-report-pa]').forEach(button=>button.onclick=()=>{reportSelectedPaId=reportSelectedPaId===button.dataset.reportPa?null:button.dataset.reportPa;render()});
  $('#exportReport').onclick=()=>exportCsv();
 }
 function exportCsv(){
