@@ -196,21 +196,40 @@ function pitchExecutesPlan(pitch,player){
  return plan==='IN'?insideZones.has(pitch.zone):plan==='OUT'?outsideZones.has(pitch.zone):false;
 }
 function executionFromPitches(pitches,player){
- // Early-count contact and swinging strikes test whether the hitter followed the plan.
- // Balls, called strikes, and any pitch faced with two strikes are excluded.
- const qualifying=pitches.filter(pitch=>['F','HIT','H4O','K'].includes(pitch.result)&&pitch.strikesBefore<2);
- return qualifying.length?qualifying.some(pitch=>pitchExecutesPlan(pitch,player)):null;
+ let successes=0,attempts=0;
+ pitches.forEach(pitch=>{
+  const inPlan=pitchExecutesPlan(pitch,player);
+  const swing=['F','HIT','H4O','K'].includes(pitch.result);
+  const contact=['F','HIT','H4O'].includes(pitch.result);
+  const take=['B','KL'].includes(pitch.result);
+  if(pitch.strikesBefore<2){
+   // With no assigned location, only actual swings/contact are graded.
+   if(pitch.plan==='NO'){
+    if(swing){attempts++;successes++}
+   }else if(swing||take){
+    attempts++;
+    if(swing?inPlan:!inPlan)successes++;
+   }
+  }else if(contact&&inPlan){
+   // With two strikes, correct-location contact may help; nothing can hurt.
+   attempts++;successes++;
+  }
+ });
+ return {successes,attempts,rate:attempts?successes/attempts:null};
 }
 function recalculateGameExecution(game){
  (game?.plateAppearances||[]).forEach(pa=>{
   const pitches=(game.pitches||[]).filter(pitch=>pitch.hitter===pa.hitter&&pitch.pa===pa.pa);
-  pa.execution=executionFromPitches(pitches,hitterObj(pa.hitter));
+  const execution=executionFromPitches(pitches,hitterObj(pa.hitter));
+  pa.executionSuccesses=execution.successes;
+  pa.executionAttempts=execution.attempts;
+  pa.execution=execution.rate;
  });
 }
-if((db.executionFormulaVersion||0)<4){
+if((db.executionFormulaVersion||0)<5){
  (db.savedGames||[]).forEach(recalculateGameExecution);
  recalculateGameExecution(db.currentGame);
- db.executionFormulaVersion=4;
+ db.executionFormulaVersion=5;
  localStorage.setItem(DBKEY,JSON.stringify(db));
 }
 function runnersAfterHit(currentRunners,hitType){
@@ -255,10 +274,10 @@ function closePA(outcome,extra={}){
  const pa={
   id:crypto.randomUUID(),hitter:h.name,inning:g.inning,pa:g.paNumber,outcome,
   hitType:extra.hitType||'',contactType:extra.contactType||'',fielder:extra.fielder||null,
-  rbi:!!extra.rbi,rba:!!extra.rba,sac:!!extra.sac,error:!!extra.error,fc:!!extra.fc,
+  rbi:Number(extra.rbiCount||0)>0,rbiCount:Number(extra.rbiCount||0),rba:!!extra.rba,sac:!!extra.sac,error:!!extra.error,fc:!!extra.fc,
   bunt:!!extra.bunt,slap:!!extra.slap,hhb:!!extra.hhb,weak:!!extra.weak,
   pitchCount:paPitches.length,finalCount:`${Math.min(g.balls,3)}-${Math.min(g.strikes,2)}`,
-  firstPitchStrike,execution,ts:Date.now()
+  firstPitchStrike,execution:execution.rate,executionSuccesses:execution.successes,executionAttempts:execution.attempts,ts:Date.now()
  };
  g.plateAppearances.push(pa);
  if(outcome==='HIT')g.runners=runnersAfterHit(g.runners,extra.hitType);
@@ -282,20 +301,22 @@ function undo(){
  save();render();
 }
 function statsForPAs(pas){
- let AB=0,H=0,TB=0,BB=0,HBP=0,K=0,contact=0,RBI=0;
+ let AB=0,H=0,TB=0,BB=0,HBP=0,K=0,contact=0,RBI=0,HHB=0,WEAK=0;
  pas.forEach(pa=>{
    if(pa.outcome==='HIT'){H++;AB++;contact++;TB += ({'1B':1,'2B':2,'3B':3,'HR':4}[pa.hitType]||1)}
    else if(pa.outcome==='H4O'){AB++;contact++}
    else if(pa.outcome==='K'){AB++;K++}
    else if(pa.outcome==='BB'){BB++}
    else if(pa.outcome==='HBP'){HBP++}
-   if(pa.rbi)RBI++;
+   RBI+=Number(pa.rbiCount??(pa.rbi?1:0));
+   if(pa.hhb)HHB++;
+   if(pa.weak)WEAK++;
  });
  const PA=pas.length, AVG=AB?H/AB:0, OBP=(AB+BB+HBP)?(H+BB+HBP)/(AB+BB+HBP):0, SLG=AB?TB/AB:0;
  const OPS=OBP+SLG, contactPct=AB?contact/AB:0, kPct=PA?K/PA:0, bbPct=PA?BB/PA:0;
  // Provisional Runs Produced model for rebuild; calibrate against legacy app.
- const rp = H + Math.max(0,TB-H)*0.65 + BB*0.7 + HBP*0.7 + RBI*0.75;
- return {PA,AB,H,TB,BB,HBP,K,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,rp};
+ const rp = H + Math.max(0,TB-H)*0.65 + BB*0.7 + HBP*0.7 + RBI*0.75 + HHB*0.25 - WEAK*0.25;
+ return {PA,AB,H,TB,BB,HBP,K,RBI,HHB,WEAK,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,rp};
 }
 function allPAs(includeCurrent=true){
  let arr=[...db.savedGames.flatMap(g=>g.plateAppearances||[])];
@@ -471,7 +492,7 @@ function hitModal(kind){
     <div class="compact-four bases-grid">${['1B','2B','3B','HR'].map(x=>`<button class="choice blue" data-hit="${x}">${x}</button>`).join('')}</div>`}
   </div>
   <div class="contact-right">
-   <div class="qual-grid">${isOut?'':`<button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button>`}<button class="choice qual-wide" data-qual="SAC">SAC</button><button class="choice" data-qual="RBI">RBI</button><button class="choice" data-qual="RBA">RBA</button></div>
+   <div class="qual-grid">${isOut?'':`<button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button>`}<button class="choice qual-wide" data-qual="SAC">SAC</button><select class="choice rbi-select" data-rbi-count aria-label="Runs batted in"><option value="0">RBI</option><option value="1">RBI 1</option><option value="2">RBI 2</option><option value="3">RBI 3</option></select><button class="choice" data-qual="RBA">RBA</button><button class="choice" data-strength="HHB">HHB</button><button class="choice" data-strength="WEAK">WEAK</button></div>
   </div>
  </div><button class="btn block black save-contact" id="saveContact" disabled>${isOut?'Save Out':'Save Hit'}</button></div></div></div>`;
 }
@@ -487,7 +508,7 @@ function reportModal(){
  <div class="panel" style="margin:14px 0 0">
  <select class="input" id="reportHitter"><option>All Hitters</option>${db.roster.map(r=>`<option ${reportFilterHitter===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  <div style="font-size:26px;margin-top:14px">${reportMode==='saved'?db.savedGames.length+' Saved Games':'Current Game'}</div>
- <div class="report-stat-grid">${[['PA',s.PA],['AVG',round3(s.AVG)],['OBP',round3(s.OBP)],['SLG',round3(s.SLG)],['OPS',round3(s.OPS)]].map(([k,v])=>`<div class="report-stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
+ <div class="report-stat-grid">${[['PA',s.PA],['AVG',round3(s.AVG)],['OBP',round3(s.OBP)],['SLG',round3(s.SLG)],['OPS',round3(s.OPS)],['RBI',s.RBI],['HHB',s.HHB],['WEAK',s.WEAK]].map(([k,v])=>`<div class="report-stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
  <h3>COUNT PERFORMANCE <span style="color:#3762db">H</span> | <span style="color:#c83832">H4O</span> | <span style="color:#c83832">K</span> | AVE</h3>
  <div class="count-grid">${['0-0','0-2','1-2','2-2','3-2','6+'].map(c=>countCard(filtered,c)).join('')}</div>
  ${reportSub==='spray'?sprayReport(filtered):zoneReport(filtered)}
@@ -541,17 +562,15 @@ function evalView(){
  const pas=teamPas.filter(p=>!player||p.hitter===player.name);
  const s=statsForPAs(pas);
  const teamS=statsForPAs(teamPas);
- const rp100=s.PA?s.rp/s.PA*100:0;
  const teamRate=teamS.PA?teamS.rp/teamS.PA:0;
- const teamRp100=teamRate*100;
  const playerTotals=db.roster.map(r=>statsForPAs(teamPas.filter(p=>p.hitter===r.name))).filter(x=>x.PA>0);
  const avgPlayerRp=playerTotals.length?playerTotals.reduce((sum,x)=>sum+x.rp,0)/playerTotals.length:0;
  const hotb=s.PA&&teamRate?Math.round((s.rp/s.PA)/teamRate*100):null;
  const signed=(n,digits=1)=>`${n>0?'+':''}${n.toFixed(digits)}`;
  const deltaClass=n=>n>0?'positive':n<0?'negative':'neutral';
  const comparison=(value,delta,digits=1)=>`<div class="value compare-value"><span>${value}</span><span class="metric-pipe">|</span><span class="metric-delta ${deltaClass(delta)}">${signed(delta,digits)}</span></div>`;
- const execs=pas.map(p=>p.execution).filter(v=>v!==null);
- const execution=execs.length?execs.filter(Boolean).length/execs.length:null;
+ const executionTotals=pas.reduce((totals,pa)=>({successes:totals.successes+Number(pa.executionSuccesses||0),attempts:totals.attempts+Number(pa.executionAttempts||0)}),{successes:0,attempts:0});
+ const execution=executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null;
  const ms=measurementTypes(player);
  const metricHead=(title)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${title}">${title}</button><button class="metric-all" data-ranking="${title}">ALL</button></div>`;
  return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><button class="btn eval-email" id="openRecruitingEmail" ${player?'':'disabled'}>Email</button></div>
@@ -561,7 +580,6 @@ function evalView(){
  <div class="eval-tiles">
   <div class="eval-tile dark">${metricHead('HotB+')} ${player&&hotb!==null?comparison(hotb,hotb-100,0):`<div class="value">${hotb??'—'}</div>`}<div class="note">${player?(hotb===null?'More Saved Data Needed':'100 = Team Average'):'Current-Team Benchmark'}</div></div>
   <div class="eval-tile">${metricHead('Runs Produced')} ${player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`}<div class="note">${player?`Player Average ${avgPlayerRp.toFixed(1)}`:'Team Total'}</div></div>
-  <div class="eval-tile">${metricHead('RP / 100 PA')} ${player?comparison(rp100.toFixed(1),rp100-teamRp100,1):`<div class="value">${rp100.toFixed(1)}</div>`}<div class="note">${player?`Team Average ${teamRp100.toFixed(1)}`:'Team Rate'}</div></div>
   <div class="eval-tile">${metricHead('Execution')}<div class="value">${execution===null?'—':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
  </div>
  <div class="performance"><h2>Hitting Results <span class="small" style="float:right">CUMULATIVE TO DATE</span></h2><div class="perf-grid">
@@ -596,10 +614,9 @@ function measurementCard(player,type){
 }
 function evalGuide(title){
  const content={
- 'HotB+':`HotB+ compares this hitter’s Runs Produced rate per plate appearance with the current team rate. 100 is team average; 120 is 20% above it.`,
- 'Runs Produced':`Runs Produced estimates total offensive contribution. It is cumulative, so playing time matters. The comparison underneath shows the average total among players with saved plate appearances.`,
- 'RP / 100 PA':`RP / 100 PA puts every hitter on the same 100-plate-appearance workload, making production rates easier to compare regardless of playing time.`,
- 'Execution':`Execution measures qualifying at-bats in which the hitter made contact with the selected plan before reaching two strikes. Two-strike at-bats are excluded because the plan changes to protect and make contact.`
+ 'HotB+':`HotB+ compares the hitter’s Runs Produced per plate appearance with the current team rate. A score of 100 is team average. A score of 120 means her production rate is 20% above the team; 80 means it is 20% below. It adjusts for differences in playing time, but it is a comparison with this team—not a national ranking.`,
+ 'Runs Produced':`Runs Produced estimates the hitter’s total accumulated offensive contribution. It credits hits, extra bases, walks, hit-by-pitches, each RBI, and hard-hit balls; weak contact reduces the total. Because it is cumulative, hitters with more plate appearances have more opportunities to add Runs Produced. The comparison shows how her total differs from the average total of teammates with saved plate appearances.`,
+ 'Execution':`Execution grades pitch-by-pitch decisions against the selected IN, OUT, or CH plan. Before two strikes, swinging in the plan location and taking pitches outside it are successful; swinging outside the plan or taking a pitch in it are unsuccessful. With two strikes, correct-location contact can improve the score, while nothing can lower it.`
  }[title];
  if(content)return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>${title}</h2></div><button class="btn" data-close>Close</button></div><hr style="border-color:#555"><p style="font-size:22px;line-height:1.45;font-weight:800">${content}</p></div></div>`;
  const metricMap={AVG:'Batting Average',SLG:'Slugging Percentage',OBP:'On-Base Percentage',CONTACT:'Contact Percentage','K%':'Strikeout Percentage','BB%':'Walk Percentage'};
@@ -620,12 +637,11 @@ function evalRankingModal(metric){
  const rows=db.roster.map(player=>{
   const pas=teamPas.filter(pa=>pa.hitter===player.name);
   const stats=statsForPAs(pas);
-  const execs=pas.map(pa=>pa.execution).filter(value=>value===true||value===false);
+  const executionTotals=pas.reduce((totals,pa)=>({successes:totals.successes+Number(pa.executionSuccesses||0),attempts:totals.attempts+Number(pa.executionAttempts||0)}),{successes:0,attempts:0});
   let value=null;
   if(metric==='HotB+')value=stats.PA&&teamRate?(stats.rp/stats.PA)/teamRate*100:null;
   else if(metric==='Runs Produced')value=stats.PA?stats.rp:null;
-  else if(metric==='RP / 100 PA')value=stats.PA?stats.rp/stats.PA*100:null;
-  else if(metric==='Execution')value=execs.length?execs.filter(Boolean).length/execs.length:null;
+  else if(metric==='Execution')value=executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null;
   return {player,value};
  }).sort((a,b)=>{
   if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
@@ -1078,15 +1094,17 @@ function bindGameAction(){
  });
 }
 function bindContact(){
- let st={fielder:null,contact:null,batted:null,hitType:null,outType:null,quals:new Set()};
+ let st={fielder:null,contact:null,batted:null,hitType:null,outType:null,rbiCount:0,strength:null,quals:new Set()};
  $$('[data-fielder]').forEach(b=>b.onclick=()=>{$$('[data-fielder]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.fielder=+b.dataset.fielder;update()});
  $$('[data-contact]').forEach(b=>b.onclick=()=>{$$('[data-contact]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.contact=b.dataset.contact;update()});
  $$('[data-batted]').forEach(b=>b.onclick=()=>{$$('[data-batted]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.batted=b.dataset.batted;update()});
  $$('[data-hit]').forEach(b=>b.onclick=()=>{$$('[data-hit]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.hitType=b.dataset.hit;update()});
  $$('[data-outtype]').forEach(b=>b.onclick=()=>{$$('[data-outtype]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.outType=b.dataset.outtype;update()});
  $$('[data-qual]').forEach(b=>b.onclick=()=>{const q=b.dataset.qual;if(st.quals.has(q)){st.quals.delete(q);b.classList.remove('active')}else{st.quals.add(q);b.classList.add('active')}update()});
+ $('[data-rbi-count]').onchange=e=>{st.rbiCount=Number(e.target.value||0);e.target.classList.toggle('active',st.rbiCount>0);update()};
+ $$('[data-strength]').forEach(b=>b.onclick=()=>{const strength=b.dataset.strength;st.strength=st.strength===strength?null:strength;$$('[data-strength]').forEach(x=>x.classList.toggle('active',x.dataset.strength===st.strength));update()});
  const update=()=>{$('#saveContact').disabled=!(st.fielder&&(modal==='H4O'?(st.contact&&st.outType):(st.contact&&st.batted&&st.hitType)))};
- $('#saveContact').onclick=()=>{const kind=modal;modal=null;addPitch(kind,{fielder:st.fielder,contactType:st.batted||st.outType,hitType:st.hitType||'',bunt:st.contact==='BUNT',slap:st.contact==='SLAP',rbi:st.quals.has('RBI'),rba:st.quals.has('RBA'),sac:st.quals.has('SAC'),error:st.quals.has('E'),fc:st.quals.has('FC'),hhb:st.quals.has('HHB')})};
+ $('#saveContact').onclick=()=>{const kind=modal;modal=null;addPitch(kind,{fielder:st.fielder,contactType:st.batted||st.outType,hitType:st.hitType||'',bunt:st.contact==='BUNT',slap:st.contact==='SLAP',rbiCount:st.rbiCount,rba:st.quals.has('RBA'),sac:st.quals.has('SAC'),error:st.quals.has('E'),fc:st.quals.has('FC'),hhb:st.strength==='HHB',weak:st.strength==='WEAK'})};
 }
 function bindReports(){
  $$('[data-rmode]').forEach(b=>b.onclick=()=>{reportMode=b.dataset.rmode;render()});
@@ -1096,7 +1114,7 @@ function bindReports(){
 }
 function exportCsv(){
  const source=reportMode==='current'?(currentGame()?.plateAppearances||[]):allPAs(false);
- const rows=[['Hitter','Inning','PA','Outcome','Hit Type','Fielder','Final Count','Pitch Count','RBI','RBA','SAC'],...source.map(p=>[p.hitter,p.inning,p.pa,p.outcome,p.hitType,p.fielder||'',p.finalCount,p.pitchCount,p.rbi,p.rba,p.sac])];
+ const rows=[['Hitter','Inning','PA','Outcome','Contact Type','Hit Type','Fielder','Final Count','Pitch Count','RBI','RBA','SAC','HHB','WEAK'],...source.map(p=>[p.hitter,p.inning,p.pa,p.outcome,p.contactType||'',p.hitType,p.fielder||'',p.finalCount,p.pitchCount,p.rbiCount??(p.rbi?1:0),p.rba,p.sac,p.hhb,p.weak])];
  const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`HotB_${reportMode}_report.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }

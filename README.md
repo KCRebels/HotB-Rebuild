@@ -19,7 +19,7 @@ This is a separate rebuild of the KC Rebels HotB hitting app, created from the s
 - AVG / OBP / SLG / OPS
 - Count performance buckets
 - Player / Team Eval
-- HotB+, Runs Produced, RP / 100 PA, Execution
+- HotB+, Runs Produced, Execution
 - Evaluation grading thresholds after 25 PA
 - Athletic measurement recording with stopwatch/manual entry
 - Local persistence using browser localStorage
