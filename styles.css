@@ -219,9 +219,9 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .ranking-name{font-weight:850}.ranking-row strong{font-size:20px}
 .ranking-row.selected-player{border-color:#ee5d55;background:#b92f2c}
 .ranking-row.selected-player .ranking-place{background:#fff;color:#b92f2c}
-.pitcher-performance{margin:10px 22px;border:1px solid #ccc;border-radius:14px;background:#111;color:#fff;padding:12px}
-.pitcher-performance h2{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:22px;margin:0 0 10px}.pitcher-performance h2 .small{color:#bbb;font-size:10px;letter-spacing:1px;white-space:nowrap}
-.pitcher-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.pitcher-stat{min-width:0;border-radius:9px;background:#303034;padding:10px 3px;text-align:center}.pitcher-stat b{display:block;overflow:hidden;text-overflow:ellipsis;font-size:22px;line-height:1;white-space:nowrap}.pitcher-stat span{display:block;margin-top:5px;color:#ddd;font-size:11px;font-weight:900}
+.pitcher-performance{margin:10px 22px;border:1px solid #ccc;border-radius:14px;background:#fff;color:#111;padding:12px}
+.pitcher-performance h2{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:22px;margin:0 0 10px}.pitcher-performance h2 .small{color:#777;font-size:10px;letter-spacing:1px;white-space:nowrap}
+.pitcher-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.pitcher-stat{min-width:0;border:0;border-radius:9px;background:#f1f1f1;color:#111;padding:10px 3px;text-align:center;cursor:pointer}.pitcher-stat b{display:block;overflow:hidden;text-overflow:ellipsis;font-size:22px;line-height:1;white-space:nowrap}.pitcher-stat span{display:block;margin-top:5px;color:#555;font-size:11px;font-weight:900}
 .performance{margin:10px 22px;border:1px solid #ccc;border-radius:14px;background:#fff;padding:12px}
 .performance h2{font-size:22px;margin:0 0 10px}.perf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .perf{border:0;background:#f1f1f1;border-radius:9px;padding:10px 3px;text-align:center}.perf b{font-size:22px;line-height:1}.perf span{display:block;margin-top:5px;color:#555;font-size:13px;font-weight:900}

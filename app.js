@@ -509,10 +509,10 @@ function evalView(){
   <div class="eval-tile">${metricHead('RP / 100 PA')} ${player?comparison(rp100.toFixed(1),rp100-teamRp100,1):`<div class="value">${rp100.toFixed(1)}</div>`}<div class="note">${player?`Team Average ${teamRp100.toFixed(1)}`:'Team Rate'}</div></div>
   <div class="eval-tile">${metricHead('Execution')}<div class="value">${execution===null?'—':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
  </div>
- ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><h2>Pitching Performance <span class="small">MANUAL / GAMECHANGER</span></h2><div class="pitcher-stat-grid">
-  ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<div class="pitcher-stat"><b>${esc(player[key]||'—')}</b><span>${label}</span></div>`).join('')}
+ ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2><div class="pitcher-stat-grid">
+  ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<button class="pitcher-stat" data-pitch-ranking="${key}"><b>${esc(player[key]||'—')}</b><span>${label}</span></button>`).join('')}
  </div></section>`:''}
- <div class="performance"><h2>Game Performance <span class="small" style="float:right">CUMULATIVE TO DATE</span></h2><div class="perf-grid">
+ <div class="performance"><h2>Hitting Results <span class="small" style="float:right">CUMULATIVE TO DATE</span></h2><div class="perf-grid">
  ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],['BB%',pct1(s.bbPct),'BB']].map(([label,val,key])=>`<div class="perf ${s.PA>=25?grade(s[key==='contact'?'contactPct':key==='K'?'kPct':key==='BB'?'bbPct':key],key):''}" data-guide="${label}"><b>${val}</b><span>${label}</span></div>`).join('')}
  </div></div>
  <div class="athletic"><div class="athletic-head"><h2>Athletic Bests</h2><button class="btn black" id="recordMeasure2">+ Record</button></div>
@@ -573,6 +573,22 @@ function evalRankingModal(metric){
  const formatted=value=>value===null?'—':metric==='HotB+'?Math.round(value):metric==='Execution'?pct0(value):value.toFixed(1);
  return `<div class="modal-backdrop"><div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">TEAM RANKINGS</div><h2>${esc(metric)}</h2></div><button class="btn" data-close>Close</button></div>
   <div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.player.name===evalPlayer?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-name">${esc(row.player.name)}</span><strong>${formatted(row.value)}</strong></div>`).join('')}</div>
+ </div></div>`;
+}
+function pitcherRankingModal(key){
+ const labels={pitcherIP:'IP',pitcherERA:'ERA',pitcherWHIP:'WHIP',pitcherKBB:'K/BB',pitcherOBA:'OBA',pitcherStrikePct:'Strike %'};
+ const lowerIsBetter=['pitcherERA','pitcherWHIP','pitcherOBA'].includes(key);
+ const rows=db.roster.filter(isPitcherProfile).map(player=>{
+  const display=cleanCell(player[key]);
+  const value=display?Number(display.replace('%','')):null;
+  return {player,display:display||'—',value:Number.isFinite(value)?value:null};
+ }).sort((a,b)=>{
+  if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
+  if(a.value===null)return 1;if(b.value===null)return-1;
+  return (lowerIsBetter?a.value-b.value:b.value-a.value)||a.player.name.localeCompare(b.player.name);
+ });
+ return `<div class="modal-backdrop"><div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">PITCHER RANKINGS</div><h2>${labels[key]}</h2></div><button class="btn" data-close>Close</button></div>
+  <div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.player.name===evalPlayer?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-name">${esc(row.player.name)}</span><strong>${esc(row.display)}</strong></div>`).join('')}</div>
  </div></div>`;
 }
 function recordModal(){
@@ -815,6 +831,7 @@ function modalView(){
  if(modal==='recruitingEmailPreview')return recruitingEmailPreviewModal();
  if(modal==='importRoster')return importRosterModal();
  if(modal?.startsWith('ranking:'))return evalRankingModal(modal.slice(8));
+ if(modal?.startsWith('pitchRanking:'))return pitcherRankingModal(modal.slice(13));
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
  if(modal==='reports')return reportModal();
  if(modal==='record')return recordModal();
@@ -1025,6 +1042,7 @@ function bindEval(){
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
  $$('[data-guide]').forEach(x=>x.onclick=()=>{modal='guide:'+x.dataset.guide;render()});
  $$('[data-ranking]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.ranking;render()});
+ $$('[data-pitch-ranking]').forEach(x=>x.onclick=()=>{modal='pitchRanking:'+x.dataset.pitchRanking;render()});
 }
 function bindRecord(){
  const updateStopwatch=()=>{
