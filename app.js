@@ -170,20 +170,21 @@ function captureGameUndo(){
  if(JSON.stringify(current)===JSON.stringify(lastRenderedUndoState))return;
  g.undoStack=Array.isArray(g.undoStack)?g.undoStack:[];
  g.undoStack.push(lastRenderedUndoState);
+ if(g.undoStack.length>50)g.undoStack=g.undoStack.slice(-50);
  lastRenderedUndoState=current;
  localStorage.setItem(DBKEY,JSON.stringify(db));
 }
-function isStrikeResult(r){return ['F','K','KL','HIT','H4O'].includes(r)}
+function isStrikeResult(r){return ['F','K','KL','HIT','H4O','E','FC','SAC'].includes(r)}
 function resultGroup(p){return p.result==='KL'?'K':p.result}
 function pitchMarkClass(p){
  if(p.result==='HIT')return 'hit';
- if(p.result==='H4O'||p.result==='K'||p.result==='KL')return 'bad';
+ if(['H4O','K','KL','SAC'].includes(p.result))return 'bad';
  if(p.result==='F')return 'foul';
  return 'good';
 }
 function pitchDotLabel(p){
  if(p.result==='HIT')return ({'1B':'1','2B':'2','3B':'3','HR':'4'})[p.hitType]||'';
- if(p.result==='H4O')return p.fielder||'';
+ if(['H4O','E','FC','SAC'].includes(p.result))return p.fielder||'';
  return '';
 }
 function pitchExecutesPlan(pitch,player){
@@ -199,8 +200,8 @@ function executionFromPitches(pitches,player){
  let successes=0,attempts=0;
  pitches.forEach(pitch=>{
   const inPlan=pitchExecutesPlan(pitch,player);
-  const swing=['F','HIT','H4O','K'].includes(pitch.result);
-  const contact=['F','HIT','H4O'].includes(pitch.result);
+  const swing=['F','HIT','H4O','E','FC','SAC','K'].includes(pitch.result);
+  const contact=['F','HIT','H4O','E','FC','SAC'].includes(pitch.result);
   const take=['B','KL'].includes(pitch.result);
   if(pitch.strikesBefore<2){
    // With no assigned location, only actual swings/contact are graded.
@@ -246,6 +247,14 @@ function runnersAfterHit(currentRunners,hitType){
  next.push(batterBase);
  return [...new Set(next)].sort((a,b)=>a-b);
 }
+function batterToFirst(currentRunners,{force=false}={}){
+ if(force)return runnersAfterHit(currentRunners,'1B');
+ return [...new Set([...currentRunners,1])].sort((a,b)=>a-b);
+}
+function recordOut(g){
+ g.outs+=1;
+ if(g.outs>=3){g.outs=0;g.inning+=1;g.runners=[]}
+}
 function addPitch(result,extra={}){
  const g=currentGame(); if(!g)return;
  const h=currentHitter(g);
@@ -261,6 +270,7 @@ function addPitch(result,extra={}){
  else if(result==='K'||result==='KL'){g.strikes++;if(g.strikes>=3) end='K'}
  else if(result==='HIT') end='HIT';
  else if(result==='H4O') end='H4O';
+ else if(['E','FC','SAC'].includes(result))end=result;
  g.pendingZone=null;
  if(end) closePA(end, extra);
  g.pitchType='FB';
@@ -281,10 +291,12 @@ function closePA(outcome,extra={}){
  };
  g.plateAppearances.push(pa);
  if(outcome==='HIT')g.runners=runnersAfterHit(g.runners,extra.hitType);
- if(outcome==='H4O'||outcome==='K') g.outs=Math.min(2,g.outs+1);
+ if(outcome==='BB'||outcome==='HBP')g.runners=batterToFirst(g.runners,{force:true});
+ if(outcome==='E')g.runners=batterToFirst(g.runners,{force:true});
+ if(outcome==='FC')g.runners=batterToFirst(g.runners);
+ if(['H4O','K','SAC'].includes(outcome))recordOut(g);
  g.balls=0;g.strikes=0;g.paNumber++;
  g.currentIdx=(g.currentIdx+1)%g.battingOrder.length;
- if(g.currentIdx===0) g.inning++;
  g.plan=planFor(g.battingOrder[g.currentIdx]);
  g.pitchType='FB';
 }
@@ -305,6 +317,8 @@ function statsForPAs(pas){
  pas.forEach(pa=>{
    if(pa.outcome==='HIT'){H++;AB++;contact++;TB += ({'1B':1,'2B':2,'3B':3,'HR':4}[pa.hitType]||1)}
    else if(pa.outcome==='H4O'){AB++;contact++}
+   else if(pa.outcome==='E'||pa.outcome==='FC'){AB++;contact++}
+   else if(pa.outcome==='SAC'){contact++}
    else if(pa.outcome==='K'){AB++;K++}
    else if(pa.outcome==='BB'){BB++}
    else if(pa.outcome==='HBP'){HBP++}
@@ -551,7 +565,8 @@ function sprayReport(pas){
  }).join('')}</div>`;
 }
 function zoneReport(pas){
- const ps=allPitches(reportMode==='current').filter(p=>reportFilterHitter==='All Hitters'||p.hitter===reportFilterHitter);
+ const pitchSource=reportMode==='current'?(currentGame()?.pitches||[]):allPitches(false);
+ const ps=pitchSource.filter(p=>reportFilterHitter==='All Hitters'||p.hitter===reportFilterHitter);
  const z={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0};ps.forEach(p=>z[p.zone]=(z[p.zone]||0)+1);const n=ps.length||1;
  const heat=heatStyles(z,heatColors.REPORT);
  return `<h3 style="margin-top:22px">ZONE CHART</h3><div class="zone-layout" style="max-width:480px;margin:10px auto">
@@ -562,7 +577,22 @@ function zoneReport(pas){
 function reportsPage(){
  return `<div class="page-match-head page-head-centered"><button class="page-head-nav" data-go="home">Home</button><h1>Reports</h1><span class="page-head-spacer"></span></div>
  <div class="panel"><button class="btn black block" id="openSavedReports">Open Saved Reports</button>
+ <div class="roster-data-tools backup-tools"><button class="btn black" id="exportFullBackup">Export Full Backup</button><button class="btn" id="restoreFullBackup">Restore Backup</button><input id="fullBackupFile" type="file" accept=".json,application/json" hidden><p>A full backup preserves games, pitches, roster information, measurements, pitchers and app preferences.</p></div>
  <div style="margin-top:20px">${db.savedGames.length?db.savedGames.map(g=>`<div class="count-card" style="margin-bottom:10px"><b>${new Date(g.date).toLocaleDateString()}</b> ${esc(g.opponent||'Opponent')} · ${g.plateAppearances.length} PA</div>`).join(''):'No saved games yet.'}</div></div>`;
+}
+function exportFullBackup(){
+ const payload={format:'HotB Full Backup',version:1,exportedAt:new Date().toISOString(),db};
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
+ a.download=`HotB_Full_Backup_${new Date().toISOString().slice(0,10)}.json`;
+ a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+async function restoreFullBackup(file){
+ const payload=JSON.parse(await file.text());
+ if(payload?.format!=='HotB Full Backup'||!payload.db||!Array.isArray(payload.db.roster)||!Array.isArray(payload.db.savedGames))throw new Error('This is not a valid HotB full backup file.');
+ if(!confirm('Restore this backup? It will replace all HotB information currently saved on this device.'))return;
+ db=payload.db;route='home';db.route='home';modal=null;lastRenderedUndoState=null;save();render();
+ alert('HotB backup restored successfully.');
 }
 function grade(value,metric){
  const rules={
@@ -952,7 +982,7 @@ function bind(){
  if(route==='roster')bindRoster();
  if(route==='live')bindLive();
  if(route==='eval')bindEval();
- if(route==='reports') $('#openSavedReports')?.addEventListener('click',()=>{modal='reports';reportMode='saved';render()});
+ if(route==='reports')bindReportsPage();
  if(modal==='HIT'||modal==='H4O')bindContact();
  if(modal==='reports')bindReports();
  if(modal==='record')bindRecord();
@@ -977,17 +1007,26 @@ function bindNew(){
   });
   const vals=selections.filter(Boolean);
   $('#hitterCount').textContent=`${vals.length} hitters`;
-  // A selected hitter is enough to begin; matchup details may be added later.
-  $('#startGame').disabled=!vals.length;
+  $('#startGame').disabled=!(vals.length&&$('#opponent').value.trim()&&$('#pitcherName').value.trim()&&$('#pitcherNumber').value.trim());
  };
  ['input','change'].forEach(evt=>[$('#opponent'),$('#pitcherName'),$('#pitcherNumber'),...sels].forEach(x=>x?.addEventListener(evt,update)));
  $('#pitcherName').addEventListener('change',()=>{
    const p=db.pitchers.find(p=>p.name===$('#pitcherName').value);if(p&&!$('#pitcherNumber').value)$('#pitcherNumber').value=p.number||'';
+   update();
  });
  $('#startGame').onclick=()=>{
   const order=sels.map(s=>s.value).filter(Boolean);
   createGame($('#opponent').value.trim(),$('#pitcherName').value.trim(),$('#pitcherNumber').value.trim(),order);go('live');
  };
+}
+function bindReportsPage(){
+ $('#openSavedReports')?.addEventListener('click',()=>{modal='reports';reportMode='saved';render()});
+ $('#exportFullBackup')?.addEventListener('click',exportFullBackup);
+ $('#restoreFullBackup')?.addEventListener('click',()=>$('#fullBackupFile').click());
+ $('#fullBackupFile')?.addEventListener('change',async event=>{
+  const file=event.target.files?.[0];if(!file)return;
+  try{await restoreFullBackup(file)}catch(error){alert(error.message||'HotB could not restore that backup.')}
+ });
 }
 function bindRoster(){
  $$('.sidebtn').forEach(b=>b.onclick=()=>{db.roster[+b.dataset.i].side=b.dataset.side;save();render()});
@@ -1123,15 +1162,15 @@ function bindContact(){
  $$('[data-fielder]').forEach(b=>b.onclick=()=>{$$('[data-fielder]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.fielder=+b.dataset.fielder;update()});
  $$('[data-contact]').forEach(b=>b.onclick=()=>{$$('[data-contact]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.contact=b.dataset.contact;update()});
  $$('[data-batted]').forEach(b=>b.onclick=()=>{$$('[data-batted]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.batted=b.dataset.batted;update()});
- $$('[data-hit]').forEach(b=>b.onclick=()=>{$$('[data-hit]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.hitType=b.dataset.hit;update()});
+ $$('[data-hit]').forEach(b=>b.onclick=()=>{$$('[data-hit]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.hitType=b.dataset.hit;['E','FC','SAC'].forEach(q=>st.quals.delete(q));$$('[data-qual]').filter(x=>['E','FC','SAC'].includes(x.dataset.qual)).forEach(x=>x.classList.remove('active'));update()});
  $$('[data-outtype]').forEach(b=>b.onclick=()=>{$$('[data-outtype]').forEach(x=>x.classList.remove('active'));b.classList.add('active');st.outType=b.dataset.outtype;update()});
- $$('[data-qual]').forEach(b=>b.onclick=()=>{const q=b.dataset.qual;if(st.quals.has(q)){st.quals.delete(q);b.classList.remove('active')}else{st.quals.add(q);b.classList.add('active')}update()});
+ $$('[data-qual]').forEach(b=>b.onclick=()=>{const q=b.dataset.qual;if(st.quals.has(q)){st.quals.delete(q);b.classList.remove('active')}else{if(['E','FC','SAC'].includes(q)){['E','FC','SAC'].forEach(x=>st.quals.delete(x));$$('[data-qual]').filter(x=>['E','FC','SAC'].includes(x.dataset.qual)).forEach(x=>x.classList.remove('active'));st.hitType=null;$$('[data-hit]').forEach(x=>x.classList.remove('active'))}st.quals.add(q);b.classList.add('active')}update()});
  $('[data-rbi-open]').onclick=()=>{$('.rbi-picker').hidden=false};
  $('[data-rbi-cancel]').onclick=()=>{$('.rbi-picker').hidden=true};
  $$('[data-rbi-count]').forEach(b=>b.onclick=()=>{st.rbiCount=Number(b.dataset.rbiCount);const rbi=$('[data-rbi-open]');rbi.textContent=`RBI ${st.rbiCount}`;rbi.classList.add('active');$('.rbi-picker').hidden=true;update()});
  $$('[data-strength]').forEach(b=>b.onclick=()=>{const strength=b.dataset.strength;st.strength=st.strength===strength?null:strength;$$('[data-strength]').forEach(x=>x.classList.toggle('active',x.dataset.strength===st.strength));update()});
- const update=()=>{$('#saveContact').disabled=!(st.fielder&&(modal==='H4O'?(st.contact&&st.outType):(st.contact&&st.batted&&st.hitType)))};
- $('#saveContact').onclick=()=>{const kind=modal;modal=null;addPitch(kind,{fielder:st.fielder,contactType:st.batted||st.outType,hitType:st.hitType||'',bunt:st.contact==='BUNT',slap:st.contact==='SLAP',rbiCount:st.rbiCount,rba:st.quals.has('RBA'),sac:st.quals.has('SAC'),error:st.quals.has('E'),fc:st.quals.has('FC'),hhb:st.strength==='HHB',weak:st.strength==='WEAK'})};
+ const update=()=>{const special=['E','FC','SAC'].some(q=>st.quals.has(q));$('#saveContact').disabled=!(st.fielder&&(modal==='H4O'?(st.contact&&st.outType):(st.contact&&st.batted&&(st.hitType||special))))};
+ $('#saveContact').onclick=()=>{const kind=st.quals.has('E')?'E':st.quals.has('FC')?'FC':st.quals.has('SAC')?'SAC':modal;modal=null;addPitch(kind,{fielder:st.fielder,contactType:st.batted||st.outType,hitType:st.hitType||'',bunt:st.contact==='BUNT',slap:st.contact==='SLAP',rbiCount:st.rbiCount,rba:st.quals.has('RBA'),sac:st.quals.has('SAC'),error:st.quals.has('E'),fc:st.quals.has('FC'),hhb:st.strength==='HHB',weak:st.strength==='WEAK'})};
 }
 function bindReports(){
  $$('[data-rmode]').forEach(b=>b.onclick=()=>{reportMode=b.dataset.rmode;render()});
