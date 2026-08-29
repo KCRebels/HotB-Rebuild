@@ -1278,7 +1278,7 @@ function homeView(){
     <button class="home-card" data-go="eval"><h3>Player / Team Eval</h3><p>Performance and athletic measurements</p></button>
     <button class="home-card cloud-card" id="openCloudBackup"><h3>Cloud Backup</h3><p>${cloudUser?'Protected with Google':'Sign in to protect this device\'s data'}</p></button>
    </div>
- </div><div class="home-footer">HOTB (THE ELITE HITTING APP) · REBUILD</div>`;
+ </div><div class="home-footer">HOTB (THE ELITE HITTING APP) · REBUILD<button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button></div>`;
 }
 function newGameView(){
  const opts=db.roster.map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('');
@@ -2038,6 +2038,7 @@ async function importCoachWorkbook(file){
  save();render();alert(`Coach list imported. ${added} added, ${updated} updated${skipped?`, ${skipped} skipped because information was missing or invalid`:''}.`);
 }
 function modalView(){
+ if(modal==='recoveryGuide')return recoveryGuideModal();
  if(modal==='cloudBackup')return cloudBackupModal();
  if(modal==='changePitcher')return pitcherChangeModal();
  if(modal==='changeHitter')return hitterChangeModal();
@@ -2074,6 +2075,18 @@ function bind(){
  if(modal==='importRoster')$('#confirmRosterImport')?.addEventListener('click',applyRosterImport);
  if(modal==='cloudBackup')bindCloudBackup();
  $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
+ $('#openRecoveryGuide')?.addEventListener('click',()=>{modal='recoveryGuide';render()});
+}
+
+function recoveryGuideModal(){
+ return `<div class="modal-backdrop"><div class="modal recovery-guide-modal"><div class="modal-header"><div><div class="small info-kicker">OWNER SAFETY GUIDE</div><h2>HotB Recovery Guide</h2></div><button class="btn" data-close>Close</button></div>
+  <section><h3>Where everything lives</h3><p><b>App code:</b> GitHub repository KCRebels/HotB-Rebuild<br><b>Live app:</b> GitHub Pages<br><b>Team data:</b> This device plus Firebase project HotB KC Rebels<br><b>Backup account:</b> hotbkcrebels@gmail.com</p></section>
+  <section><h3>If this phone is lost</h3><ol><li>Open the official HotB website on the replacement device.</li><li>Open Cloud Backup and sign in.</li><li>Check the backup date, then choose Restore From Cloud.</li><li>Verify the roster, games, reports and measurements.</li></ol></section>
+  <section><h3>Before a major update</h3><ol><li>Open Cloud Backup.</li><li>Tap Back Up Now and wait for completion.</li><li>Publish only from the current GitHub main branch.</li><li>Keep the last working GitHub version available for rollback.</li></ol></section>
+  <section><h3>If backup fails</h3><p>Keep using the same device. Do not delete the Home Screen app or clear Safari website data. Record the exact error, reconnect to the internet and try Back Up Now again.</p></section>
+  <section><h3>If a ChatGPT conversation ends</h3><p>In the new conversation, provide the GitHub repository, Firebase project, backup email and this guide. Ask it to inspect the current main branch before changing anything.</p></section>
+  <div class="recovery-warning"><b>Never do these without a current backup:</b> delete the Home Screen app, clear Safari website data, restore onto the primary phone merely as a test, or publish from an older copy of the code.</div>
+  <p class="small">The complete guide is stored in GitHub as HOTB_RECOVERY_GUIDE.md. It contains no passwords.</p></div></div>`;
 }
 
 function cloudBackupModal(){
