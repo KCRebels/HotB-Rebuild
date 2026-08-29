@@ -872,7 +872,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 }
 
 /* Final contact-dialog proportions and custom RBI picker */
-.contact-board{grid-template-columns:minmax(0,1.65fr) minmax(124px,.95fr)}
+.contact-board{grid-template-columns:minmax(0,1.65fr) minmax(124px,.95fr);gap:13px}
 .contact-right{position:relative}
 .contact-left .choice{font-size:21px}
 .contact-right .choice{min-width:0;width:100%;padding-left:2px;padding-right:2px;white-space:nowrap;overflow:hidden}
@@ -880,7 +880,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .hit-contact .contact-left>.compact-three,.hit-contact .contact-left>.compact-four,.hit-contact .contact-left .choice,
 .out-contact .contact-left>.compact-three,.out-contact .contact-left>.compact-four,.out-contact .contact-left .choice{height:100%;max-height:none}
 .hit-contact .qual-grid,.out-contact .qual-grid{height:236px;grid-template-rows:repeat(3,minmax(0,1fr));gap:8px}
-.qual-grid .choice{height:100%}
+.qual-grid .choice{height:100%;max-height:none}
 .hit-contact .qual-grid [data-qual="E"]{grid-column:1;grid-row:1}
 .hit-contact .qual-grid [data-qual="FC"]{grid-column:2;grid-row:1}
 .hit-contact .qual-grid [data-rbi-open]{grid-column:1;grid-row:2}
@@ -900,7 +900,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .rbi-picker-options button:active{background:#111;color:#fff}
 .rbi-picker-cancel{width:100%;min-height:40px;margin-top:8px;font-size:16px}
 @media(max-width:560px){
-  .contact-board{grid-template-columns:minmax(0,1.65fr) minmax(118px,.95fr);gap:9px}
+  .contact-board{grid-template-columns:minmax(0,1.65fr) minmax(118px,.95fr);gap:12px}
   .contact-left .choice{font-size:21px}
   .hit-contact .contact-left,.out-contact .contact-left,.hit-contact .qual-grid,.out-contact .qual-grid{height:221px}
   .rbi-picker{width:220px;padding:10px}
