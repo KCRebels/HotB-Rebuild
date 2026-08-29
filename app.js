@@ -780,7 +780,7 @@ const defaultCoaches = [
 const DBKEY='hotbRebuildDbV1';
 const CLOUD_ENABLED_KEY='hotbCloudBackupEnabledV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
-const firebaseConfig={apiKey:'AIzaSyAxMXEExEsFJkVkk0l_DWbE92Q_S27jjMI',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
+const firebaseConfig={apiKey:'AIzaSyAxMXEExEsFJkVkK0l_DWbE92Q_S27jjMI',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
 const seed = {
  roster: defaultRoster,
  teams:[],
