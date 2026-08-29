@@ -879,7 +879,8 @@ async function cloudPasswordAuth(createAccount=false){
    else cloudMessage='Signed in. Create the first backup when you are ready.';
   }
  }catch(error){
-  cloudMessage=createAccount?'That backup login may already exist. Use Sign In instead.':'The backup password was not accepted. Check it and try again.';
+  const code=String(error?.code||'unknown-error').replace('auth/','');
+  cloudMessage=createAccount?`HotB could not create the login (${code}).`:`HotB could not sign in (${code}).`;
  }
  cloudBusy=false;render();
 }
