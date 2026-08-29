@@ -1303,12 +1303,14 @@ function homeView(){
 }
 function newGameView(){
  const opts=db.roster.map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('');
+ const teams=[...new Set(db.teams||[])].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
+ const pitchers=[...(db.pitchers||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'}));
  const rows=Array.from({length:13},(_,i)=>`<div class="batting-row"><div class="batting-num">${i+1}</div>
  <select class="input batting-select" data-idx="${i}"><option value="">Select hitter</option>${opts}</select></div>`).join('');
  return `<div class="page-match-head"><h1>New Game</h1><button class="page-head-nav" data-go="home">Home</button></div>
  <div class="panel"><div class="section-title">MATCHUP</div>
-  <label class="label">Opponent</label><input id="opponent" class="input" placeholder="Select or enter team" list="teamList"><datalist id="teamList">${db.teams.map(t=>`<option>${esc(t)}</option>`).join('')}</datalist>
-  <div class="grid2"><div><label class="label">Pitcher Name</label><input id="pitcherName" class="input" placeholder="Select or enter pitcher name" list="pitcherList"><datalist id="pitcherList">${db.pitchers.map(p=>`<option value="${esc(p.name)}"></option>`).join('')}</datalist></div>
+  <label class="label">Opponent</label><div class="matchup-picker"><input id="opponent" class="input matchup-input" placeholder="Select or enter team" autocomplete="off"><button type="button" class="matchup-picker-arrow" data-matchup-open="opponent" aria-label="Show saved opponents">⌄</button><div class="matchup-picker-menu" id="opponentMenu" hidden>${teams.map(team=>`<button type="button" data-opponent-choice="${esc(team)}">${esc(team)}</button>`).join('')}</div></div>
+  <div class="grid2"><div><label class="label">Pitcher Name</label><div class="matchup-picker"><input id="pitcherName" class="input matchup-input" placeholder="Select or enter pitcher name" autocomplete="off"><button type="button" class="matchup-picker-arrow" data-matchup-open="pitcher" aria-label="Show saved pitchers">⌄</button><div class="matchup-picker-menu" id="pitcherMenu" hidden>${pitchers.map(p=>`<button type="button" data-pitcher-choice="${esc(p.name)}"><b>${esc(p.name)}</b>${p.number?`<span>#${esc(p.number)}</span>`:''}</button>`).join('')}</div></div></div>
   <div><label class="label">Number</label><input id="pitcherNumber" class="input" placeholder="Auto"></div></div>
  </div>
  <div class="panel"><div style="display:flex"><div class="section-title">BATTING ORDER</div><div style="flex:1"></div><span class="small" id="hitterCount">0 hitters</span></div>${rows}</div>
@@ -2120,6 +2122,7 @@ function bindCloudBackup(){
 }
 function bindNew(){
  const sels=$$('.batting-select');
+ const opponent=$('#opponent'),pitcherName=$('#pitcherName'),pitcherNumber=$('#pitcherNumber'),opponentMenu=$('#opponentMenu'),pitcherMenu=$('#pitcherMenu');
  const update=()=>{
   const selections=sels.map(s=>s.value);
   sels.forEach((s,i)=>{
@@ -2131,16 +2134,23 @@ function bindNew(){
   });
   const vals=selections.filter(Boolean);
   $('#hitterCount').textContent=`${vals.length} hitters`;
-  $('#startGame').disabled=!(vals.length&&$('#opponent').value.trim()&&$('#pitcherName').value.trim()&&$('#pitcherNumber').value.trim());
+  $('#startGame').disabled=!(vals.length&&opponent.value.trim()&&pitcherName.value.trim()&&pitcherNumber.value.trim());
  };
- ['input','change'].forEach(evt=>[$('#opponent'),$('#pitcherName'),$('#pitcherNumber'),...sels].forEach(x=>x?.addEventListener(evt,update)));
- $('#pitcherName').addEventListener('change',()=>{
-   const p=db.pitchers.find(p=>p.name===$('#pitcherName').value);if(p&&!$('#pitcherNumber').value)$('#pitcherNumber').value=p.number||'';
+ ['input','change'].forEach(evt=>[opponent,pitcherName,pitcherNumber,...sels].forEach(x=>x?.addEventListener(evt,update)));
+ const filterMenu=(input,menu)=>{const query=normalizeName(input.value);[...menu.children].forEach(button=>button.hidden=!!query&&!normalizeName(button.textContent).includes(query));menu.hidden=false};
+ opponent.addEventListener('focus',()=>filterMenu(opponent,opponentMenu));pitcherName.addEventListener('focus',()=>filterMenu(pitcherName,pitcherMenu));
+ opponent.addEventListener('input',()=>filterMenu(opponent,opponentMenu));pitcherName.addEventListener('input',()=>filterMenu(pitcherName,pitcherMenu));
+ [opponent,pitcherName].forEach(input=>input.addEventListener('blur',()=>setTimeout(()=>{opponentMenu.hidden=true;pitcherMenu.hidden=true},120)));
+ $$('[data-matchup-open]').forEach(button=>button.onclick=()=>{const input=button.dataset.matchupOpen==='opponent'?opponent:pitcherName,menu=button.dataset.matchupOpen==='opponent'?opponentMenu:pitcherMenu;input.focus();filterMenu(input,menu)});
+ $$('[data-opponent-choice]').forEach(button=>button.onpointerdown=event=>{event.preventDefault();opponent.value=button.dataset.opponentChoice;opponentMenu.hidden=true;update()});
+ $$('[data-pitcher-choice]').forEach(button=>button.onpointerdown=event=>{event.preventDefault();pitcherName.value=button.dataset.pitcherChoice;const p=db.pitchers.find(item=>item.name===pitcherName.value);if(p)pitcherNumber.value=p.number||pitcherNumber.value;pitcherMenu.hidden=true;update()});
+ pitcherName.addEventListener('change',()=>{
+   const p=db.pitchers.find(p=>p.name===pitcherName.value);if(p&&!pitcherNumber.value)pitcherNumber.value=p.number||'';
    update();
  });
  $('#startGame').onclick=()=>{
   const order=sels.map(s=>s.value).filter(Boolean);
-  createGame($('#opponent').value.trim(),$('#pitcherName').value.trim(),$('#pitcherNumber').value.trim(),order);go('live');
+  createGame(opponent.value.trim(),pitcherName.value.trim(),pitcherNumber.value.trim(),order);go('live');
  };
 }
 function bindReportsPage(){
