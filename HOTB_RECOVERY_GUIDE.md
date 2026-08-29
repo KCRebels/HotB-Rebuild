@@ -82,8 +82,8 @@ Ask the new conversation to inspect the current `main` branch before making chan
 
 ## Current limitations
 
-- Firebase currently keeps the latest backup, not a full history of older versions.
-- Failed offline backups do not yet have a visible retry queue.
+- Firebase keeps the latest backup plus up to 30 daily historical copies.
+- HotB visibly reports the last successful backup, warns when a backup needs attention, and retries a pending backup after the device reconnects.
 - Full restore has not yet been tested on a second device.
 - The live website is publicly reachable; player-information exposure still needs a privacy audit.
 
