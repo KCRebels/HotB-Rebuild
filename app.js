@@ -29,6 +29,754 @@ const defaultRoster = [
  {name:'Tayte Stepps',side:'R',jersey:'00',grad:'2029',positions:'C | OF',gpa:'3.9',interest:'Nursing',school:'Fort Scott HS',photo:'Tayte.JPEG'}
 ];
 
+const defaultCoaches = [
+ {
+  "coachName": "Steve Babinski",
+  "coachEmail": "sjbabinski@mnu.edu",
+  "collegeName": "MidAmerica Nazarene University"
+ },
+ {
+  "coachName": "Olivia Pino",
+  "coachEmail": "olpino@mnu.edu",
+  "collegeName": "MidAmerica Nazarene University"
+ },
+ {
+  "coachName": "Brandon Russell",
+  "coachEmail": "barussell3@mnu.edu",
+  "collegeName": "MidAmerica Nazarene University"
+ },
+ {
+  "coachName": "Tony Austin",
+  "coachEmail": "tony.austin@bakeru.edu",
+  "collegeName": "Baker University"
+ },
+ {
+  "coachName": "Riley Phillips",
+  "coachEmail": "riley.phillips@bakeru.edu",
+  "collegeName": "Baker University"
+ },
+ {
+  "coachName": "Adrianna \"AD\" Solary",
+  "coachEmail": "adrianna.solary@bakeru.edu",
+  "collegeName": "Baker University"
+ },
+ {
+  "coachName": "Maile Deutsch",
+  "coachEmail": "maile.deutsch@ottawa.edu",
+  "collegeName": "Ottawa University"
+ },
+ {
+  "coachName": "Katie Enneking",
+  "coachEmail": "kathryn.enneking@ottawa.edu",
+  "collegeName": "Ottawa University"
+ },
+ {
+  "coachName": "Paul Hunt",
+  "coachEmail": "phunt@benedictine.edu",
+  "collegeName": "Benedictine College"
+ },
+ {
+  "coachName": "Jenna Schwartzhoff",
+  "coachEmail": "jschwartzhoff@benedictine.edu",
+  "collegeName": "Benedictine College"
+ },
+ {
+  "coachName": "Jay Monhollon",
+  "coachEmail": "Jay.Monhollon@stmary.edu",
+  "collegeName": "University of Saint Mary"
+ },
+ {
+  "coachName": "Jolona Shield-Dzakic",
+  "coachEmail": "jdzakic@haskell.edu",
+  "collegeName": "Haskell Indian Nations University"
+ },
+ {
+  "coachName": "Charlie Kennedy",
+  "coachEmail": "coach_kennedy@yahoo.com",
+  "collegeName": "Avila University"
+ },
+ {
+  "coachName": "Lindsey Derry",
+  "coachEmail": "lderry@park.edu",
+  "collegeName": "Park University"
+ },
+ {
+  "coachName": "Alyssa Ramirez",
+  "coachEmail": "alyssa.ramirez@park.edu",
+  "collegeName": "Park University"
+ },
+ {
+  "coachName": "Clarissa Hagler",
+  "coachEmail": "haglerc@moval.edu",
+  "collegeName": "Missouri Valley College"
+ },
+ {
+  "coachName": "Pat Reardon",
+  "coachEmail": "preardon@centralmethodist.edu",
+  "collegeName": "Central Methodist University"
+ },
+ {
+  "coachName": "Gene Reardon",
+  "coachEmail": "freardon@centralmethodist.edu",
+  "collegeName": "Central Methodist University"
+ },
+ {
+  "coachName": "Wendy Spratt",
+  "coachEmail": "wsspratt@ccis.edu",
+  "collegeName": "Columbia College"
+ },
+ {
+  "coachName": "Jordan Logan",
+  "coachEmail": "jclogan1@ccis.edu",
+  "collegeName": "Columbia College"
+ },
+ {
+  "coachName": "Clint Poulsen",
+  "coachEmail": "cpoulsen@stephens.edu",
+  "collegeName": "Stephens College"
+ },
+ {
+  "coachName": "Rebekah Klinginsmith",
+  "coachEmail": "rklinginsmith@cottey.edu",
+  "collegeName": "Cottey College"
+ },
+ {
+  "coachName": "Gracie Lopez",
+  "coachEmail": "ggl4@graceland.edu",
+  "collegeName": "Graceland University"
+ },
+ {
+  "coachName": "Layne Nowlin",
+  "coachEmail": "lnowlin@graceland.edu",
+  "collegeName": "Graceland University"
+ },
+ {
+  "coachName": "Suzanne Unruh",
+  "coachEmail": "suzanne_unruh@friends.edu",
+  "collegeName": "Friends University"
+ },
+ {
+  "coachName": "Brady Walker",
+  "coachEmail": "duckdog@sutv.com",
+  "collegeName": "Friends University"
+ },
+ {
+  "coachName": "Jay Halbrook",
+  "coachEmail": "halbrookja@evangel.edu",
+  "collegeName": "Evangel University"
+ },
+ {
+  "coachName": "Sony Mitchell",
+  "coachEmail": "mitchells@evangel.edu",
+  "collegeName": "Evangel University"
+ },
+ {
+  "coachName": "Rob Brice",
+  "coachEmail": "bricer@evangel.edu",
+  "collegeName": "Evangel University"
+ },
+ {
+  "coachName": "Justin Hale",
+  "coachEmail": "halej@evangel.edu",
+  "collegeName": "Evangel University"
+ },
+ {
+  "coachName": "Cayleigh Berry",
+  "coachEmail": "berryc@evangel.edu",
+  "collegeName": "Evangel University"
+ },
+ {
+  "coachName": "Jennifer McFalls",
+  "coachEmail": "jmcfalls@ku.edu",
+  "collegeName": "University of Kansas"
+ },
+ {
+  "coachName": "Laura Heberling",
+  "coachEmail": "laura.heberling@ku.edu",
+  "collegeName": "University of Kansas"
+ },
+ {
+  "coachName": "Justin Lewis",
+  "coachEmail": "Justin.lewis@ku.edu",
+  "collegeName": "University of Kansas"
+ },
+ {
+  "coachName": "Kiki Stokes O'Connor",
+  "coachEmail": "kstokes@umkc.edu",
+  "collegeName": "University of Missouri-Kansas City"
+ },
+ {
+  "coachName": "Cody Barham",
+  "coachEmail": "cb687@umkc.edu",
+  "collegeName": "University of Missouri-Kansas City"
+ },
+ {
+  "coachName": "Josie Tofpi",
+  "coachEmail": "josietofpi@umkc.edu",
+  "collegeName": "University of Missouri-Kansas City"
+ },
+ {
+  "coachName": "Kinsey Fiedler",
+  "coachEmail": "kfiedler@umkc.edu",
+  "collegeName": "University of Missouri-Kansas City"
+ },
+ {
+  "coachName": "Larissa Anderson",
+  "coachEmail": "andersonlar@missouri.edu",
+  "collegeName": "University of Missouri"
+ },
+ {
+  "coachName": "Bella Norton",
+  "coachEmail": "inry3@missouri.edu",
+  "collegeName": "University of Missouri"
+ },
+ {
+  "coachName": "Jake Epstein",
+  "coachEmail": "jepstein@missouri.edu",
+  "collegeName": "University of Missouri"
+ },
+ {
+  "coachName": "Kasey Griffith",
+  "coachEmail": "KaseyGriffith@MissouriState.edu",
+  "collegeName": "Missouri State University"
+ },
+ {
+  "coachName": "Shelby Hiers",
+  "coachEmail": "srh276e@missouristate.edu",
+  "collegeName": "Missouri State University"
+ },
+ {
+  "coachName": "Brittany Gray-Cardenas",
+  "coachEmail": "bjg675e@MissouriState.edu",
+  "collegeName": "Missouri State University"
+ },
+ {
+  "coachName": "Carly Brousek",
+  "coachEmail": "CarlyBrousek@missouristate.edu",
+  "collegeName": "Missouri State University"
+ },
+ {
+  "coachName": "Kristi Bredbenner",
+  "coachEmail": "kbredbenner@goshockers.com",
+  "collegeName": "Wichita State University"
+ },
+ {
+  "coachName": "Elizabeth Economon",
+  "coachEmail": "eeconomon@goshockers.com",
+  "collegeName": "Wichita State University"
+ },
+ {
+  "coachName": "Sara Driesenga",
+  "coachEmail": "sdriesenga@goshockers.com",
+  "collegeName": "Wichita State University"
+ },
+ {
+  "coachName": "Sydney McKinney",
+  "coachEmail": "smckinney@goshockers.com",
+  "collegeName": "Wichita State University"
+ },
+ {
+  "coachName": "Mike Heard",
+  "coachEmail": "mikeheard@omavs.com",
+  "collegeName": "University of Nebraska Omaha"
+ },
+ {
+  "coachName": "Jen Brauer",
+  "coachEmail": "jendaro@omavs.com",
+  "collegeName": "University of Nebraska Omaha"
+ },
+ {
+  "coachName": "Brooke Dumont",
+  "coachEmail": "bdumont@omavs.com",
+  "collegeName": "University of Nebraska Omaha"
+ },
+ {
+  "coachName": "Krista Wood",
+  "coachEmail": "kristawood@creighton.edu",
+  "collegeName": "Creighton University"
+ },
+ {
+  "coachName": "Garrett Furnal",
+  "coachEmail": "garrettfurnal@creighton.edu",
+  "collegeName": "Creighton University"
+ },
+ {
+  "coachName": "Cylie Halvorson",
+  "coachEmail": "cyliehalvorson@creighton.edu",
+  "collegeName": "Creighton University"
+ },
+ {
+  "coachName": "Lindsay Diehl",
+  "coachEmail": "lindsay.diehl@drake.edu",
+  "collegeName": "Drake University"
+ },
+ {
+  "coachName": "Jenn Marshall",
+  "coachEmail": "jenn.marshall@drake.edu",
+  "collegeName": "Drake University"
+ },
+ {
+  "coachName": "Molly Jacobsen McCargar",
+  "coachEmail": "molly.jacobsen@drake.edu",
+  "collegeName": "Drake University"
+ },
+ {
+  "coachName": "Jamie Pinkerton",
+  "coachEmail": "jdpinker@iastate.edu",
+  "collegeName": "Iowa State University"
+ },
+ {
+  "coachName": "Kate Sinnott",
+  "coachEmail": "ksinnott@iastate.edu",
+  "collegeName": "Iowa State University"
+ },
+ {
+  "coachName": "Lindsey Ubrun",
+  "coachEmail": "lubrun@iastate.edu",
+  "collegeName": "Iowa State University"
+ },
+ {
+  "coachName": "Milaysia Ochoa",
+  "coachEmail": "milaysia@iastate.edu",
+  "collegeName": "Iowa State University"
+ },
+ {
+  "coachName": "Dana Goss",
+  "coachEmail": "dana.goss@rockhurst.edu",
+  "collegeName": "Rockhurst University"
+ },
+ {
+  "coachName": "Suzie Muenz",
+  "coachEmail": "Suzanne.Muenz@rockhurst.edu",
+  "collegeName": "Rockhurst University"
+ },
+ {
+  "coachName": "Susan Anderson",
+  "coachEmail": "sanderson@ucmo.edu",
+  "collegeName": "University of Central Missouri"
+ },
+ {
+  "coachName": "Jeremy Eilert",
+  "coachEmail": "eilert@ucmo.edu",
+  "collegeName": "University of Central Missouri"
+ },
+ {
+  "coachName": "Taryan Barrick-Wessels",
+  "coachEmail": "tlb91900@ucmo.edu",
+  "collegeName": "University of Central Missouri"
+ },
+ {
+  "coachName": "Brenda Holaday",
+  "coachEmail": "brenda.holaday@washburn.edu",
+  "collegeName": "Washburn University"
+ },
+ {
+  "coachName": "Taylor Zordel",
+  "coachEmail": "taylor.zordel@washburn.edu",
+  "collegeName": "Washburn University"
+ },
+ {
+  "coachName": "Andi Wehrli",
+  "coachEmail": "andi.anti@washburn.edu",
+  "collegeName": "Washburn University"
+ },
+ {
+  "coachName": "Jaycee Ginter",
+  "coachEmail": "jaycee.ginter@washburn.edu",
+  "collegeName": "Washburn University"
+ },
+ {
+  "coachName": "Megan Hill",
+  "coachEmail": "mhill25@emporia.edu",
+  "collegeName": "Emporia State University"
+ },
+ {
+  "coachName": "Dustin Snyder",
+  "coachEmail": "dsnyder4@emporia.edu",
+  "collegeName": "Emporia State University"
+ },
+ {
+  "coachName": "Beau Schultz",
+  "coachEmail": "bschultz@pittstate.edu",
+  "collegeName": "Pittsburg State University"
+ },
+ {
+  "coachName": "Naomi Tellez",
+  "coachEmail": "ntellez@nwmissouri.edu",
+  "collegeName": "Northwest Missouri State University"
+ },
+ {
+  "coachName": "Lillie Filger",
+  "coachEmail": "lfilger@nwmissouri.edu",
+  "collegeName": "Northwest Missouri State University"
+ },
+ {
+  "coachName": "Mariah Wheeler",
+  "coachEmail": "s585205@nwmissouri.edu",
+  "collegeName": "Northwest Missouri State University"
+ },
+ {
+  "coachName": "Bianca Duran",
+  "coachEmail": "bduran@missouriwestern.edu",
+  "collegeName": "Missouri Western State University"
+ },
+ {
+  "coachName": "Ron Ferrill",
+  "coachEmail": "rferrill@truman.edu",
+  "collegeName": "Truman State University"
+ },
+ {
+  "coachName": "Josie Buhr",
+  "coachEmail": "jbuhr@truman.edu",
+  "collegeName": "Truman State University"
+ },
+ {
+  "coachName": "Hallie Blackney",
+  "coachEmail": "blackney-h@mssu.edu",
+  "collegeName": "Missouri Southern State University"
+ },
+ {
+  "coachName": "Lauren Fuller",
+  "coachEmail": "Fuller-L@mssu.edu",
+  "collegeName": "Missouri Southern State University"
+ },
+ {
+  "coachName": "Brittany Henning",
+  "coachEmail": "henningb@newmanu.edu",
+  "collegeName": "Newman University"
+ },
+ {
+  "coachName": "Trinity Kuntz",
+  "coachEmail": "kuntzt@newmanu.edu",
+  "collegeName": "Newman University"
+ },
+ {
+  "coachName": "Kyleigh Lay",
+  "coachEmail": "layk@newmanu.edu",
+  "collegeName": "Newman University"
+ },
+ {
+  "coachName": "Andrea Vaughan",
+  "coachEmail": "avaughan@rsu.edu",
+  "collegeName": "Rogers State University"
+ },
+ {
+  "coachName": "Malori Belcher",
+  "coachEmail": "mbelcher@rsu.edu",
+  "collegeName": "Rogers State University"
+ },
+ {
+  "coachName": "Cassidy Bowen",
+  "coachEmail": "bowen15@nsuok.edu",
+  "collegeName": "Northeastern State University"
+ },
+ {
+  "coachName": "Macy Taylor",
+  "coachEmail": "taylo259@nsuok.edu",
+  "collegeName": "Northeastern State University"
+ },
+ {
+  "coachName": "Kylie Pavlicek",
+  "coachEmail": "pavlicek@nsuok.edu",
+  "collegeName": "Northeastern State University"
+ },
+ {
+  "coachName": "Tripp Swisher",
+  "coachEmail": "tswisher@sbuniv.edu",
+  "collegeName": "Southwest Baptist University"
+ },
+ {
+  "coachName": "Dez Duncan",
+  "coachEmail": "dez.duncan@sbuniv.edu",
+  "collegeName": "Southwest Baptist University"
+ },
+ {
+  "coachName": "Emma Ryan",
+  "coachEmail": "ryane@william.jewell.edu",
+  "collegeName": "William Jewell College"
+ },
+ {
+  "coachName": "Makaela Carr",
+  "coachEmail": "carrm@william.jewell.edu",
+  "collegeName": "William Jewell College"
+ },
+ {
+  "coachName": "Samantha Moran",
+  "coachEmail": "smoran@highlandcc.edu",
+  "collegeName": "Highland Community College"
+ },
+ {
+  "coachName": "Ryan Phillips",
+  "coachEmail": "ryanp@labette.edu",
+  "collegeName": "Labette Community College"
+ },
+ {
+  "coachName": "Chelsea Beville",
+  "coachEmail": "chelseab@labette.edu",
+  "collegeName": "Labette Community College"
+ },
+ {
+  "coachName": "Kim Alexander",
+  "coachEmail": "kalexander@neosho.edu",
+  "collegeName": "Neosho County Community College"
+ },
+ {
+  "coachName": "Mateighia Tanner",
+  "coachEmail": "mtanner@neosho.edu",
+  "collegeName": "Neosho County Community College"
+ },
+ {
+  "coachName": "Morgan Bohanan",
+  "coachEmail": "mbohanan@butlercc.edu",
+  "collegeName": "Butler Community College"
+ },
+ {
+  "coachName": "Jaime Rose",
+  "coachEmail": "rosej@hutchcc.edu",
+  "collegeName": "Hutchinson Community College"
+ },
+ {
+  "coachName": "Kiana Saint Pierre",
+  "coachEmail": "kianas@fortscott.edu",
+  "collegeName": "Fort Scott Community College"
+ },
+ {
+  "coachName": "Ashton Friend",
+  "coachEmail": "ashton.friend@coffeyville.edu",
+  "collegeName": "Coffeyville Community College"
+ },
+ {
+  "coachName": "TJ Segebart",
+  "coachEmail": "tj.segebart@cloud.edu",
+  "collegeName": "Cloud County Community College"
+ },
+ {
+  "coachName": "Michele Rupard",
+  "coachEmail": "mrupard@sfccmo.edu",
+  "collegeName": "State Fair Community College"
+ },
+ {
+  "coachName": "Zach Sigler",
+  "coachEmail": "zsigler@iwcc.edu",
+  "collegeName": "Iowa Western Community College"
+ },
+ {
+  "coachName": "Adrian Pilkington",
+  "coachEmail": "ammohr2@fhsu.edu",
+  "collegeName": "Fort Hays State University"
+ },
+ {
+  "coachName": "Lawren McKinney",
+  "coachEmail": "llmckinney@fhsu.edu",
+  "collegeName": "Fort Hays State University"
+ },
+ {
+  "coachName": "Lily Fritsch-Sale",
+  "coachEmail": "llsale@fhsu.edu",
+  "collegeName": "Fort Hays State University"
+ },
+ {
+  "coachName": "Katie Ackermann",
+  "coachEmail": "ackermannk@unk.edu",
+  "collegeName": "University of Nebraska at Kearney"
+ },
+ {
+  "coachName": "Cory Castellano",
+  "coachEmail": "castellanoc@unk.edu",
+  "collegeName": "University of Nebraska at Kearney"
+ },
+ {
+  "coachName": "Sam Maples",
+  "coachEmail": "smaples1@uco.edu",
+  "collegeName": "University of Central Oklahoma"
+ },
+ {
+  "coachName": "Jessica Boone",
+  "coachEmail": "jboone9@uco.edu",
+  "collegeName": "University of Central Oklahoma"
+ },
+ {
+  "coachName": "Hailey Neira",
+  "coachEmail": "hneira@uco.edu",
+  "collegeName": "University of Central Oklahoma"
+ },
+ {
+  "coachName": "Jace Brewer",
+  "coachEmail": "jace.brewer@okbu.edu",
+  "collegeName": "Oklahoma Baptist University"
+ },
+ {
+  "coachName": "Brady Rowland",
+  "coachEmail": "brady.rowland@okbu.edu",
+  "collegeName": "Oklahoma Baptist University"
+ },
+ {
+  "coachName": "Brian Madden",
+  "coachEmail": "bmadden@snu.edu",
+  "collegeName": "Southern Nazarene University"
+ },
+ {
+  "coachName": "Mickey Brown",
+  "coachEmail": "mbrown1016@mail.snu.edu",
+  "collegeName": "Southern Nazarene University"
+ },
+ {
+  "coachName": "Kierra Homan",
+  "coachEmail": "kmcfadden@mail.snu.edu",
+  "collegeName": "Southern Nazarene University"
+ },
+ {
+  "coachName": "Whitney Baze",
+  "coachEmail": "whitney@thestrengthfactoryokc.com",
+  "collegeName": "Southern Nazarene University"
+ },
+ {
+  "coachName": "Mckayla Franks",
+  "coachEmail": "kfranks@mail.snu.edu",
+  "collegeName": "Southern Nazarene University"
+ },
+ {
+  "coachName": "Emma Swearingen",
+  "coachEmail": "eswearingen@mail.snu.edu",
+  "collegeName": "Southern Nazarene University"
+ },
+ {
+  "coachName": "Hailey Evans",
+  "coachEmail": "hevans@mail.snu.edu",
+  "collegeName": "Southern Nazarene University"
+ },
+ {
+  "coachName": "Jordon Jones",
+  "coachEmail": "jjones132@atu.edu",
+  "collegeName": "Arkansas Tech University"
+ },
+ {
+  "coachName": "Avery Sanders",
+  "coachEmail": "asanders40@atu.edu",
+  "collegeName": "Arkansas Tech University"
+ },
+ {
+  "coachName": "Scott Gongola",
+  "coachEmail": "sgongola@atu.edu",
+  "collegeName": "Arkansas Tech University"
+ },
+ {
+  "coachName": "Ashley Reeves",
+  "coachEmail": "areeves2@harding.edu",
+  "collegeName": "Harding University"
+ },
+ {
+  "coachName": "Riley Price",
+  "coachEmail": "rprice3@harding.edu",
+  "collegeName": "Harding University"
+ },
+ {
+  "coachName": "Bailey Willis",
+  "coachEmail": "bwillis3@harding.edu",
+  "collegeName": "Harding University"
+ },
+ {
+  "coachName": "Mackenzie Sher",
+  "coachEmail": "msher@se.edu",
+  "collegeName": "Southeastern Oklahoma State University"
+ },
+ {
+  "coachName": "Maddison Welch",
+  "coachEmail": "mwelch@se.edu",
+  "collegeName": "Southeastern Oklahoma State University"
+ },
+ {
+  "coachName": "Ryan Wondrasek",
+  "coachEmail": "ryan-wondrasek@utulsa.edu",
+  "collegeName": "University of Tulsa"
+ },
+ {
+  "coachName": "Amber Fiser",
+  "coachEmail": "amf8603@utulsa.edu",
+  "collegeName": "University of Tulsa"
+ },
+ {
+  "coachName": "Kenny Gajewski",
+  "coachEmail": "kenny.g@okstate.edu",
+  "collegeName": "Oklahoma State University"
+ },
+ {
+  "coachName": "Vanessa Shippy-Fletcher",
+  "coachEmail": "vshippy@okstate.edu",
+  "collegeName": "Oklahoma State University"
+ },
+ {
+  "coachName": "Ryan Jacobs",
+  "coachEmail": "ryan.jacobs@uni.edu",
+  "collegeName": "University of Northern Iowa"
+ },
+ {
+  "coachName": "Monica Adams",
+  "coachEmail": "monica.wright@uni.edu",
+  "collegeName": "University of Northern Iowa"
+ },
+ {
+  "coachName": "Ozzie Adams",
+  "coachEmail": "ozzie.adams@uni.edu",
+  "collegeName": "University of Northern Iowa"
+ },
+ {
+  "coachName": "Kyle Alstott",
+  "coachEmail": "alstottk@uni.edu",
+  "collegeName": "University of Northern Iowa"
+ },
+ {
+  "coachName": "Michael Bumpers",
+  "coachEmail": "bumpersm@uapb.edu",
+  "collegeName": "University of Arkansas at Pine Bluff"
+ },
+ {
+  "coachName": "Kristy Woods",
+  "coachEmail": "woodsk@uapb.edu",
+  "collegeName": "University of Arkansas at Pine Bluff"
+ },
+ {
+  "coachName": "Efrain Barraza",
+  "coachEmail": "eabarraza@nwosu.edu",
+  "collegeName": "Northwestern Oklahoma State University"
+ },
+ {
+  "coachName": "Gabriel Chavez",
+  "coachEmail": "bchavez@nwosu.edu",
+  "collegeName": "Northwestern Oklahoma State University"
+ },
+ {
+  "coachName": "Mike Viramontez",
+  "coachEmail": "mviramontez@dc3.edu",
+  "collegeName": "Dodge City Community College"
+ },
+ {
+  "coachName": "Riley Ludlam",
+  "coachEmail": "rludlam@dc3.edu",
+  "collegeName": "Dodge City Community College"
+ },
+ {
+  "coachName": "Nickie Madden",
+  "coachEmail": "nmadden@rose.edu",
+  "collegeName": "Rose State College"
+ },
+ {
+  "coachName": "Jessica Sisemore",
+  "coachEmail": "jsisemore@rose.edu",
+  "collegeName": "Rose State College"
+ },
+ {
+  "coachName": "Amber Flores",
+  "coachEmail": "A.Flores@sscok.edu",
+  "collegeName": "Seminole State College (Oklahoma)"
+ },
+ {
+  "coachName": "Bailey Burnett",
+  "coachEmail": "bburnett@neosho.edu",
+  "collegeName": "Neosho County Community College"
+ }
+];
+
 const DBKEY='hotbRebuildDbV1';
 const seed = {
  roster: defaultRoster,
@@ -36,13 +784,13 @@ const seed = {
  pitchers:[],
  savedGames:[],
  measurements:[],
- coaches:[],
+ coaches:defaultCoaches,
  planPreferences:{},
  currentGame:null,
  route:'home'
 };
 let db = load();
-if(!Array.isArray(db.coaches))db.coaches=[];
+if(!Array.isArray(db.coaches))db.coaches=structuredClone(defaultCoaches);
 // Apply the requested player plans once, then preserve any changes made in the app.
 if((db.planPreferencesVersion||0)<2){
  db.planPreferences={...(db.planPreferences||{}),...requestedPlanPreferences};
@@ -89,10 +837,18 @@ function load(){
    const standardNames=new Set(defaultRoster.map(r=>r.name));
    const guests=(d.roster||[]).filter(r=>!standardNames.has(aliases[r.name]||r.name)).map(r=>({...r,isGuest:true}));
    roster.push(...guests);
-   return {...seed,...d,roster};
+   return {...seed,...d,roster,coaches:mergeCoachDirectories(d.coaches)};
   }
  }catch(e){}
  return structuredClone(seed);
+}
+function mergeCoachDirectories(savedCoaches){
+ const merged=new Map(defaultCoaches.map(coach=>[String(coach.coachEmail||'').trim().toLowerCase(),{...coach}]));
+ (Array.isArray(savedCoaches)?savedCoaches:[]).forEach(coach=>{
+  const key=String(coach?.coachEmail||'').trim().toLowerCase();
+  if(key)merged.set(key,{...(merged.get(key)||{}),...coach});
+ });
+ return [...merged.values()];
 }
 function save(){
  db.route=route;
