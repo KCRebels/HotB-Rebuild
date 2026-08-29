@@ -778,6 +778,9 @@ const defaultCoaches = [
 ];
 
 const DBKEY='hotbRebuildDbV1';
+const CLOUD_ENABLED_KEY='hotbCloudBackupEnabledV1';
+const CLOUD_EMAIL='hotbkcrebels@gmail.com';
+const firebaseConfig={apiKey:'AIzaSyAxMXEExEsFJkVkk0l_DWbE92Q_S27jjMI',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
 const seed = {
  roster: defaultRoster,
  teams:[],
@@ -826,6 +829,47 @@ let pendingRosterImport=null;
 let recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:'',selectedCoachEmail:''};
 let timerInt=null,timerStart=0,timerElapsed=0;
 let lastRenderedUndoState=null;
+let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null,cloudLastBackup=null;
+
+function initCloud(){
+ if(!window.firebase)return;
+ try{
+  if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
+  cloudAuth=firebase.auth();cloudStore=firebase.firestore();
+  cloudAuth.onAuthStateChanged(async user=>{
+   if(user&&String(user.email||'').toLowerCase()!==CLOUD_EMAIL){await cloudAuth.signOut();cloudMessage=`Please sign in with ${CLOUD_EMAIL}.`;cloudUser=null}
+   else cloudUser=user||null;
+   if(cloudUser)await loadCloudStatus();
+   if(route==='home')render();
+  });
+ }catch(error){cloudMessage='Cloud backup could not start. Your phone data is still safe.'}
+}
+function cloudRoot(){return cloudStore.collection('hotbUsers').doc(cloudUser.uid)}
+async function loadCloudStatus(){try{const snap=await cloudRoot().get();cloudLastBackup=snap.exists?snap.data().updatedAt?.toDate?.()||null:null}catch(error){}}
+function scheduleCloudBackup(){if(!cloudUser||localStorage.getItem(CLOUD_ENABLED_KEY)!=='true'||cloudBusy)return;clearTimeout(cloudBackupTimer);cloudBackupTimer=setTimeout(()=>backupToCloud(true),1800)}
+async function backupToCloud(automatic=false){
+ if(!cloudUser||cloudBusy)return;cloudBusy=true;if(!automatic){cloudMessage='Creating a protected cloud backup…';render()}
+ try{
+  const json=JSON.stringify(db),chunks=[];for(let i=0;i<json.length;i+=180000)chunks.push(json.slice(i,i+180000));
+  const root=cloudRoot(),old=await root.collection('chunks').get(),batch=cloudStore.batch();old.docs.forEach(doc=>batch.delete(doc.ref));
+  chunks.forEach((data,index)=>batch.set(root.collection('chunks').doc(String(index).padStart(4,'0')),{index,data}));
+  batch.set(root,{email:CLOUD_EMAIL,chunkCount:chunks.length,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),formatVersion:1});
+  await batch.commit();localStorage.setItem(CLOUD_ENABLED_KEY,'true');cloudLastBackup=new Date();cloudMessage=automatic?'':'Cloud backup completed.';
+ }catch(error){cloudMessage='Backup failed. Your phone data was not changed. Check the Firebase rules and try again.'}
+ cloudBusy=false;if(route==='home')render();
+}
+async function restoreFromCloud(){
+ if(!cloudUser||cloudBusy||!confirm('Replace the data on this device with the latest cloud backup? Your current device data will be replaced.'))return;
+ cloudBusy=true;cloudMessage='Downloading cloud backup…';render();
+ try{const root=cloudRoot(),meta=await root.get();if(!meta.exists)throw new Error('No backup');const snap=await root.collection('chunks').orderBy('index').get(),restored=JSON.parse(snap.docs.map(doc=>doc.data().data).join(''));if(!Array.isArray(restored.roster)||!Array.isArray(restored.savedGames))throw new Error('Invalid backup');localStorage.setItem(DBKEY,JSON.stringify(restored));localStorage.setItem(CLOUD_ENABLED_KEY,'true');location.reload()}
+ catch(error){cloudBusy=false;cloudMessage='No usable cloud backup was found. Your device data was not changed.';render()}
+}
+async function cloudSignIn(){
+ if(!cloudAuth||cloudBusy)return;cloudBusy=true;cloudMessage='Opening Google sign-in…';render();
+ try{const provider=new firebase.auth.GoogleAuthProvider();provider.setCustomParameters({login_hint:CLOUD_EMAIL});await cloudAuth.signInWithPopup(provider);cloudMessage='Signed in. Create the first backup when you are ready.'}
+ catch(error){cloudMessage='Sign-in did not finish. Please allow the Google pop-up and try again.'}
+ cloudBusy=false;render();
+}
 
 function load(){
  try{
@@ -854,6 +898,7 @@ function mergeCoachDirectories(savedCoaches){
 function save(){
  db.route=route;
  localStorage.setItem(DBKEY,JSON.stringify(db));
+ scheduleCloudBackup();
 }
 function go(r){route=r;modal=null;save();render();window.scrollTo(0,0)}
 function currentGame(){return db.currentGame}
@@ -1217,6 +1262,7 @@ function homeView(){
     <button class="home-card" data-go="roster"><h3>Edit Roster</h3><p>Add, remove, or update hitters</p></button>
     <button class="home-card" data-go="reports"><h3>Reports</h3><p>Review saved games and trends</p></button>
     <button class="home-card" data-go="eval"><h3>Player / Team Eval</h3><p>Performance and athletic measurements</p></button>
+    <button class="home-card cloud-card" id="openCloudBackup"><h3>Cloud Backup</h3><p>${cloudUser?'Protected with Google':'Sign in to protect this device\'s data'}</p></button>
    </div>
  </div><div class="home-footer">HOTB (THE ELITE HITTING APP) · REBUILD</div>`;
 }
@@ -1978,6 +2024,7 @@ async function importCoachWorkbook(file){
  save();render();alert(`Coach list imported. ${added} added, ${updated} updated${skipped?`, ${skipped} skipped because information was missing or invalid`:''}.`);
 }
 function modalView(){
+ if(modal==='cloudBackup')return cloudBackupModal();
  if(modal==='changePitcher')return pitcherChangeModal();
  if(modal==='changeHitter')return hitterChangeModal();
  if(modal==='playerInfo')return playerInfoModal();
@@ -2011,6 +2058,16 @@ function bind(){
  if(modal==='recruitingEmail')bindRecruitingEmail();
  if(modal==='recruitingEmailPreview')bindRecruitingEmailPreview();
  if(modal==='importRoster')$('#confirmRosterImport')?.addEventListener('click',applyRosterImport);
+ if(modal==='cloudBackup')bindCloudBackup();
+ $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
+}
+
+function cloudBackupModal(){
+ const enabled=localStorage.getItem(CLOUD_ENABLED_KEY)==='true',last=cloudLastBackup?cloudLastBackup.toLocaleString():'No cloud backup yet';
+ return `<div class="modal-backdrop"><div class="modal cloud-modal"><div class="modal-header"><div><div class="small info-kicker">DATA PROTECTION</div><h2>Cloud Backup</h2></div><button class="btn" data-close>Close</button></div><p class="cloud-explain">Your HotB data stays on this device. After the first successful backup, HotB will also save changes securely to Firebase.</p><div class="cloud-status"><b>${cloudUser?esc(cloudUser.email):'Not signed in'}</b><span>${esc(last)}</span></div>${cloudMessage?`<p class="cloud-message">${esc(cloudMessage)}</p>`:''}${!cloudUser?`<button class="btn black block" id="cloudSignIn" ${cloudBusy?'disabled':''}>Sign In with Google</button>`:`<button class="btn red block" id="cloudBackupNow" ${cloudBusy?'disabled':''}>${enabled?'Back Up Now':'Create First Backup'}</button><button class="btn block" id="cloudRestore" ${cloudBusy||!cloudLastBackup?'disabled':''}>Restore From Cloud</button><button class="btn block cloud-signout" id="cloudSignOut" ${cloudBusy?'disabled':''}>Sign Out</button>`}<p class="small">Restore never happens automatically. HotB will ask before replacing device data.</p></div></div>`;
+}
+function bindCloudBackup(){
+ $('#cloudSignIn')?.addEventListener('click',cloudSignIn);$('#cloudBackupNow')?.addEventListener('click',()=>backupToCloud(false));$('#cloudRestore')?.addEventListener('click',restoreFromCloud);$('#cloudSignOut')?.addEventListener('click',async()=>{await cloudAuth.signOut();cloudMessage='Signed out.';render()});
 }
 function bindNew(){
  const sels=$$('.batting-select');
@@ -2319,4 +2376,5 @@ function bindRecord(){
  };
 }
 render();
+initCloud();
 })();
