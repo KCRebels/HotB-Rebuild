@@ -823,7 +823,7 @@ let evalPlayer='Team';
 let recordType='';
 let infoPlayerIndex=0;
 let pendingRosterImport=null;
-let recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:''};
+let recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:'',selectedCoachEmail:''};
 let timerInt=null,timerStart=0,timerElapsed=0;
 let lastRenderedUndoState=null;
 
@@ -846,6 +846,7 @@ function mergeCoachDirectories(savedCoaches){
  const merged=new Map(defaultCoaches.map(coach=>[String(coach.coachEmail||'').trim().toLowerCase(),{...coach}]));
  (Array.isArray(savedCoaches)?savedCoaches:[]).forEach(coach=>{
   const key=String(coach?.coachEmail||'').trim().toLowerCase();
+  (Array.isArray(coach?.previousEmails)?coach.previousEmails:[]).forEach(previous=>merged.delete(String(previous||'').trim().toLowerCase()));
   if(key)merged.set(key,{...(merged.get(key)||{}),...coach});
  });
  return [...merged.values()];
@@ -1820,11 +1821,14 @@ function buildRecruitingEmail(player,details){
 function recruitingEmailModal(){
  const player=hitterObj(evalPlayer);
  const coaches=[...(db.coaches||[])].sort((a,b)=>(a.collegeName||'').localeCompare(b.collegeName||'')||(a.coachName||'').localeCompare(b.coachName||''));
+ const selectedCoach=(db.coaches||[]).find(coach=>coachEmailKey(coach.coachEmail)===coachEmailKey(recruitingEmail.selectedCoachEmail));
+ const updatedText=selectedCoach?.lastUpdated?`Last updated ${formatCoachUpdated(selectedCoach.lastUpdated)}`:'No changes saved on this device';
  return `<div class="modal-backdrop"><div class="modal recruiting-email-modal"><div class="modal-header"><div><div class="small info-kicker">RECRUITING EMAIL</div><h2>${esc(player.name)}</h2></div><button class="btn" data-close>Cancel</button></div>
-  <label class="info-field"><span>Saved Coach</span><select id="savedCoach"><option value="">Enter a new coach</option>${coaches.map(coach=>`<option value="${esc(coach.coachEmail)}" ${coach.coachEmail===recruitingEmail.coachEmail?'selected':''}>${esc(coach.collegeName)} — ${esc(coach.coachName)}</option>`).join('')}</select></label>
+  <label class="info-field"><span>Saved Coach</span><select id="savedCoach"><option value="">Enter a new coach</option>${coaches.map(coach=>`<option value="${esc(coach.coachEmail)}" ${coachEmailKey(coach.coachEmail)===coachEmailKey(recruitingEmail.selectedCoachEmail)?'selected':''}>${esc(coach.collegeName)} — ${esc(coach.coachName)}</option>`).join('')}</select></label>
   <label class="info-field coach-search-field"><span>Coach’s Name</span><input id="emailCoachName" value="${esc(recruitingEmail.coachName)}" placeholder="Example: Coach Smith" autocomplete="off"><div class="coach-search-results" id="coachNameMatches" hidden></div></label>
   <label class="info-field"><span>Coach’s Email</span><input id="emailCoachAddress" type="email" value="${esc(recruitingEmail.coachEmail)}" placeholder="coach@college.edu"></label>
   <label class="info-field coach-search-field"><span>College Name</span><input id="emailCollegeName" value="${esc(recruitingEmail.collegeName)}" placeholder="College or university" autocomplete="off"><div class="coach-search-results" id="collegeNameMatches" hidden></div></label>
+  <div class="coach-save-row"><button class="btn black" id="saveCoachChanges" disabled>${selectedCoach?'Save Coach Changes':'Save New Coach'}</button><span id="coachLastUpdated">${esc(updatedText)}</span></div>
   <label class="info-field"><span>Optional Personal Note</span><textarea id="emailPersonalNote" rows="3" placeholder="Add a personal message for this coach if needed.">${esc(recruitingEmail.personalNote)}</textarea></label>
   <div class="email-copy-row"><span><b>CC:</b> ${esc(player.email||'No player email saved')}</span></div>
   <div class="email-template-actions"><button class="btn" id="downloadCoachTemplate">Download Coach Template</button><button class="btn" id="importCoachList">Import Coach List</button><input id="coachImportFile" type="file" accept=".xlsx,.xls,.csv" hidden></div>
@@ -1939,12 +1943,21 @@ function exportRosterWorkbook(){
  XLSX.writeFile(workbook,'HotB_Player_Recruiting_Information.xlsx');
 }
 function coachEmailKey(value){return cleanCell(value).toLowerCase()}
-function rememberCoach(details){
+function formatCoachUpdated(value){
+ const date=new Date(value);return Number.isNaN(date.getTime())?'':date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+}
+function rememberCoach(details,originalEmail=''){
  const key=coachEmailKey(details.coachEmail);if(!key)return;
- const coach={coachName:cleanCell(details.coachName),coachEmail:cleanCell(details.coachEmail),collegeName:cleanCell(details.collegeName)};
- const existing=(db.coaches||[]).find(item=>coachEmailKey(item.coachEmail)===key);
- if(existing)Object.assign(existing,coach);else db.coaches.push(coach);
- save();
+ const originalKey=coachEmailKey(originalEmail),coaches=db.coaches||[];
+ const original=originalKey?coaches.find(item=>coachEmailKey(item.coachEmail)===originalKey):null;
+ const conflict=coaches.find(item=>item!==original&&coachEmailKey(item.coachEmail)===key);
+ if(conflict)return {error:'That email address is already saved for another coach.'};
+ const previousEmails=[...(Array.isArray(original?.previousEmails)?original.previousEmails:[])];
+ if(originalKey&&originalKey!==key&&!previousEmails.includes(originalKey))previousEmails.push(originalKey);
+ const coach={coachName:cleanCell(details.coachName),coachEmail:cleanCell(details.coachEmail),collegeName:cleanCell(details.collegeName),lastUpdated:new Date().toISOString(),previousEmails};
+ const existing=original||coaches.find(item=>coachEmailKey(item.coachEmail)===key);
+ if(existing)Object.assign(existing,coach);else coaches.push(coach);
+ save();return {coach:existing||coach};
 }
 function coachTemplateWorkbook(){
  const headings=coachColumns.map(([label])=>label),sheet=XLSX.utils.aoa_to_sheet([['KC REBELS COACH DIRECTORY'],['Fill in one coach per row. Do not change the column headings.'],[],headings]);
@@ -2064,13 +2077,14 @@ function bindPlayerInfo(){
 }
 function bindRecruitingEmail(){
  const coachName=$('#emailCoachName'),coachEmail=$('#emailCoachAddress'),collegeName=$('#emailCollegeName'),note=$('#emailPersonalNote'),preview=$('#previewRecruitingEmail');
- const savedCoach=$('#savedCoach'),nameMatches=$('#coachNameMatches'),collegeMatches=$('#collegeNameMatches');
+ const savedCoach=$('#savedCoach'),nameMatches=$('#coachNameMatches'),collegeMatches=$('#collegeNameMatches'),saveCoachButton=$('#saveCoachChanges'),updatedLabel=$('#coachLastUpdated');
  const update=()=>{
   recruitingEmail.coachName=coachName.value.trim();recruitingEmail.coachEmail=coachEmail.value.trim();recruitingEmail.collegeName=collegeName.value.trim();recruitingEmail.personalNote=note.value.trim();
-  preview.disabled=!recruitingEmail.coachName||!recruitingEmail.coachEmail||!recruitingEmail.collegeName||!coachEmail.validity.valid;
+  const invalid=!recruitingEmail.coachName||!recruitingEmail.coachEmail||!recruitingEmail.collegeName||!coachEmail.validity.valid;
+  preview.disabled=invalid;saveCoachButton.disabled=invalid;
  };
  [coachName,coachEmail,collegeName,note].forEach(field=>field.addEventListener('input',update));update();
- const chooseCoach=coach=>{coachName.value=coach.coachName;coachEmail.value=coach.coachEmail;collegeName.value=coach.collegeName;savedCoach.value=coach.coachEmail;nameMatches.hidden=true;collegeMatches.hidden=true;update()};
+ const chooseCoach=coach=>{recruitingEmail.selectedCoachEmail=coach.coachEmail;coachName.value=coach.coachName;coachEmail.value=coach.coachEmail;collegeName.value=coach.collegeName;savedCoach.value=coach.coachEmail;saveCoachButton.textContent='Save Coach Changes';updatedLabel.textContent=coach.lastUpdated?`Last updated ${formatCoachUpdated(coach.lastUpdated)}`:'No changes saved on this device';nameMatches.hidden=true;collegeMatches.hidden=true;update()};
  const showCoachMatches=(input,container,key)=>{
   const query=normalizeName(input.value);container.replaceChildren();
   if(!query){container.hidden=true;return}
@@ -2085,12 +2099,17 @@ function bindRecruitingEmail(){
  coachName.addEventListener('focus',()=>showCoachMatches(coachName,nameMatches,'coachName'));
  collegeName.addEventListener('focus',()=>showCoachMatches(collegeName,collegeMatches,'collegeName'));
  [coachName,collegeName].forEach(input=>input.addEventListener('blur',()=>setTimeout(()=>{nameMatches.hidden=true;collegeMatches.hidden=true},100)));
- savedCoach.onchange=event=>{const coach=db.coaches.find(item=>coachEmailKey(item.coachEmail)===coachEmailKey(event.target.value));if(coach)chooseCoach(coach)};
+ savedCoach.onchange=event=>{const coach=db.coaches.find(item=>coachEmailKey(item.coachEmail)===coachEmailKey(event.target.value));if(coach)chooseCoach(coach);else{recruitingEmail.selectedCoachEmail='';saveCoachButton.textContent='Save New Coach';updatedLabel.textContent='Not saved yet';update()}};
+ saveCoachButton.onclick=()=>{
+  update();const result=rememberCoach(recruitingEmail,recruitingEmail.selectedCoachEmail);
+  if(result?.error){alert(result.error);return}
+  recruitingEmail.selectedCoachEmail=result.coach.coachEmail;let option=[...savedCoach.options].find(item=>coachEmailKey(item.value)===coachEmailKey(result.coach.coachEmail)||coachEmailKey(item.value)===coachEmailKey(result.coach.previousEmails?.at(-1)));if(!option){option=document.createElement('option');savedCoach.append(option)}option.value=result.coach.coachEmail;option.textContent=`${result.coach.collegeName} — ${result.coach.coachName}`;option.selected=true;saveCoachButton.textContent='Save Coach Changes';updatedLabel.textContent=`Last updated ${formatCoachUpdated(result.coach.lastUpdated)}`;alert('Coach information saved.');
+ };
  $('#downloadCoachTemplate').onclick=downloadCoachTemplate;
  $('#importCoachList').onclick=()=>$('#coachImportFile').click();
  $('#coachImportFile').onchange=async event=>{const file=event.target.files[0];if(!file)return;try{await importCoachWorkbook(file)}catch(error){alert(error.message||'HotB could not read that coach spreadsheet.')}};
  preview.onclick=()=>{
-  update();rememberCoach(recruitingEmail);const player=hitterObj(evalPlayer),built=buildRecruitingEmail(player,recruitingEmail);
+  update();const saved=rememberCoach(recruitingEmail,recruitingEmail.selectedCoachEmail);if(saved?.error){alert(saved.error);return}recruitingEmail.selectedCoachEmail=saved.coach.coachEmail;const player=hitterObj(evalPlayer),built=buildRecruitingEmail(player,recruitingEmail);
   recruitingEmail.subject=built.subject;recruitingEmail.body=built.body;modal='recruitingEmailPreview';render();
  };
 }
@@ -2224,7 +2243,7 @@ function exportCsv(){
 function bindEval(){
  $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};
  bindDateFilters('eval');
- $('#openRecruitingEmail').onclick=()=>{recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:''};modal='recruitingEmail';render()};
+ $('#openRecruitingEmail').onclick=()=>{recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:'',selectedCoachEmail:''};modal='recruitingEmail';render()};
  $('#recordMeasure2').onclick=()=>{recordType='';modal='record';render()};
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
  $$('[data-guide]').forEach(x=>x.onclick=()=>{modal='guide:'+x.dataset.guide;render()});
