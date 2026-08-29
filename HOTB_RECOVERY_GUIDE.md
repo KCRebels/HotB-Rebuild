@@ -18,6 +18,7 @@ The ChatGPT conversation is not the permanent copy of the app. GitHub and Fireba
 - After the first successful cloud backup, HotB automatically sends later saved changes to Firebase while signed in and online.
 - The Cloud Backup screen shows the most recent cloud-backup time.
 - **Back Up Now** can be used before a major app update, before changing phones, or whenever confirmation is wanted.
+- **Download Backup File** creates an additional full backup that can be stored outside the phone and Firebase.
 - A restore never happens automatically. HotB asks before replacing device data.
 
 ## Before any major app update
@@ -68,6 +69,7 @@ Ask the new conversation to inspect the current `main` branch before making chan
 ## Account protection
 
 - Keep the GitHub and dedicated Gmail recovery email and phone number current.
+- GitHub two-factor authentication is enabled; keep its recovery codes securely stored outside the phone.
 - Enable two-step verification on the dedicated Gmail account.
 - Store passwords in a password manager; do not put passwords in this guide or in the source code.
 - Make sure Dan retains owner access to both GitHub and Firebase.
@@ -84,7 +86,7 @@ Ask the new conversation to inspect the current `main` branch before making chan
 
 - Firebase keeps the latest backup plus up to 30 daily historical copies.
 - HotB visibly reports the last successful backup, warns when a backup needs attention, and retries a pending backup after the device reconnects.
-- Full restore has not yet been tested on a second device.
-- The live website is publicly reachable; player-information exposure still needs a privacy audit.
+- A full Firebase restore was successfully tested on an iPad on August 29, 2026; a recent phone-only player change was restored correctly.
+- The live website is publicly reachable. The August 29, 2026 privacy audit found player names, headshots, GPAs, schools and intended majors in public website files; remediation was consciously deferred.
 
 These limitations are the next planned protection work.
