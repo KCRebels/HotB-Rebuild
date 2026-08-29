@@ -1901,11 +1901,12 @@ function buildRecruitingEmail(player,details){
 }
 function recruitingEmailModal(){
  const player=hitterObj(evalPlayer);
- const coaches=[...(db.coaches||[])].sort((a,b)=>(a.collegeName||'').localeCompare(b.collegeName||'')||(a.coachName||'').localeCompare(b.coachName||''));
+ const coaches=[...(db.coaches||[])].sort((a,b)=>(a.coachName||'').localeCompare(b.coachName||'',undefined,{sensitivity:'base'})||(a.collegeName||'').localeCompare(b.collegeName||''));
  const selectedCoach=(db.coaches||[]).find(coach=>coachEmailKey(coach.coachEmail)===coachEmailKey(recruitingEmail.selectedCoachEmail));
+ const shortCollege=value=>String(value||'').replace(/\bUniversity\b/gi,'U');
  const updatedText=selectedCoach?.lastUpdated?`Last updated ${formatCoachUpdated(selectedCoach.lastUpdated)}`:'No changes saved on this device';
  return `<div class="modal-backdrop"><div class="modal recruiting-email-modal"><div class="modal-header"><div><div class="small info-kicker">RECRUITING EMAIL</div><h2>${esc(player.name)}</h2></div><button class="btn" data-close>Cancel</button></div>
-  <label class="info-field"><span>Saved Coach</span><select id="savedCoach"><option value="">Enter a new coach</option>${coaches.map(coach=>`<option value="${esc(coach.coachEmail)}" ${coachEmailKey(coach.coachEmail)===coachEmailKey(recruitingEmail.selectedCoachEmail)?'selected':''}>${esc(coach.collegeName)} — ${esc(coach.coachName)}</option>`).join('')}</select></label>
+  <div class="info-field"><span>Coach List</span><div class="coach-list-picker"><button class="coach-list-toggle" id="coachListToggle" type="button" aria-expanded="false"><b>${selectedCoach?esc(selectedCoach.coachName):'Choose a saved coach'}</b><small>${selectedCoach?esc(shortCollege(selectedCoach.collegeName)):'Alphabetical by first name'}</small></button><div class="coach-list-menu" id="coachListMenu" hidden>${coaches.map(coach=>`<button type="button" class="coach-list-option" data-coach-email="${esc(coach.coachEmail)}"><b>${esc(coach.coachName)}</b><span>${esc(shortCollege(coach.collegeName))}</span></button>`).join('')}</div></div><button class="btn coach-new-button" id="startNewCoach" type="button">Enter New Coach</button></div>
   <label class="info-field coach-search-field"><span>Coach’s Name</span><input id="emailCoachName" value="${esc(recruitingEmail.coachName)}" placeholder="Example: Coach Smith" autocomplete="off"><div class="coach-search-results" id="coachNameMatches" hidden></div></label>
   <label class="info-field"><span>Coach’s Email</span><input id="emailCoachAddress" type="email" value="${esc(recruitingEmail.coachEmail)}" placeholder="coach@college.edu"></label>
   <label class="info-field coach-search-field"><span>College Name</span><input id="emailCollegeName" value="${esc(recruitingEmail.collegeName)}" placeholder="College or university" autocomplete="off"><div class="coach-search-results" id="collegeNameMatches" hidden></div></label>
@@ -2182,14 +2183,14 @@ function bindPlayerInfo(){
 }
 function bindRecruitingEmail(){
  const coachName=$('#emailCoachName'),coachEmail=$('#emailCoachAddress'),collegeName=$('#emailCollegeName'),note=$('#emailPersonalNote'),preview=$('#previewRecruitingEmail');
- const savedCoach=$('#savedCoach'),nameMatches=$('#coachNameMatches'),collegeMatches=$('#collegeNameMatches'),saveCoachButton=$('#saveCoachChanges'),updatedLabel=$('#coachLastUpdated');
+ const coachListToggle=$('#coachListToggle'),coachListMenu=$('#coachListMenu'),nameMatches=$('#coachNameMatches'),collegeMatches=$('#collegeNameMatches'),saveCoachButton=$('#saveCoachChanges'),updatedLabel=$('#coachLastUpdated');
  const update=()=>{
   recruitingEmail.coachName=coachName.value.trim();recruitingEmail.coachEmail=coachEmail.value.trim();recruitingEmail.collegeName=collegeName.value.trim();recruitingEmail.personalNote=note.value.trim();
   const invalid=!recruitingEmail.coachName||!recruitingEmail.coachEmail||!recruitingEmail.collegeName||!coachEmail.validity.valid;
   preview.disabled=invalid;saveCoachButton.disabled=invalid;
  };
  [coachName,coachEmail,collegeName,note].forEach(field=>field.addEventListener('input',update));update();
- const chooseCoach=coach=>{recruitingEmail.selectedCoachEmail=coach.coachEmail;coachName.value=coach.coachName;coachEmail.value=coach.coachEmail;collegeName.value=coach.collegeName;savedCoach.value=coach.coachEmail;saveCoachButton.textContent='Save Coach Changes';updatedLabel.textContent=coach.lastUpdated?`Last updated ${formatCoachUpdated(coach.lastUpdated)}`:'No changes saved on this device';nameMatches.hidden=true;collegeMatches.hidden=true;update()};
+ const chooseCoach=coach=>{recruitingEmail.selectedCoachEmail=coach.coachEmail;coachName.value=coach.coachName;coachEmail.value=coach.coachEmail;collegeName.value=coach.collegeName;coachListToggle.querySelector('b').textContent=coach.coachName;coachListToggle.querySelector('small').textContent=String(coach.collegeName||'').replace(/\bUniversity\b/gi,'U');coachListToggle.setAttribute('aria-expanded','false');coachListMenu.hidden=true;saveCoachButton.textContent='Save Coach Changes';updatedLabel.textContent=coach.lastUpdated?`Last updated ${formatCoachUpdated(coach.lastUpdated)}`:'No changes saved on this device';nameMatches.hidden=true;collegeMatches.hidden=true;update()};
  const showCoachMatches=(input,container,key)=>{
   const query=normalizeName(input.value);container.replaceChildren();
   if(!query){container.hidden=true;return}
@@ -2204,11 +2205,13 @@ function bindRecruitingEmail(){
  coachName.addEventListener('focus',()=>showCoachMatches(coachName,nameMatches,'coachName'));
  collegeName.addEventListener('focus',()=>showCoachMatches(collegeName,collegeMatches,'collegeName'));
  [coachName,collegeName].forEach(input=>input.addEventListener('blur',()=>setTimeout(()=>{nameMatches.hidden=true;collegeMatches.hidden=true},100)));
- savedCoach.onchange=event=>{const coach=db.coaches.find(item=>coachEmailKey(item.coachEmail)===coachEmailKey(event.target.value));if(coach)chooseCoach(coach);else{recruitingEmail.selectedCoachEmail='';saveCoachButton.textContent='Save New Coach';updatedLabel.textContent='Not saved yet';update()}};
+ coachListToggle.onclick=()=>{coachListMenu.hidden=!coachListMenu.hidden;coachListToggle.setAttribute('aria-expanded',String(!coachListMenu.hidden))};
+ $$('.coach-list-option').forEach(button=>button.onclick=()=>{const coach=db.coaches.find(item=>coachEmailKey(item.coachEmail)===coachEmailKey(button.dataset.coachEmail));if(coach)chooseCoach(coach)});
+ $('#startNewCoach').onclick=()=>{recruitingEmail.selectedCoachEmail='';coachName.value='';coachEmail.value='';collegeName.value='';coachListToggle.querySelector('b').textContent='Choose a saved coach';coachListToggle.querySelector('small').textContent='Alphabetical by first name';coachListToggle.setAttribute('aria-expanded','false');coachListMenu.hidden=true;saveCoachButton.textContent='Save New Coach';updatedLabel.textContent='Not saved yet';update();coachName.focus()};
  saveCoachButton.onclick=()=>{
   update();const result=rememberCoach(recruitingEmail,recruitingEmail.selectedCoachEmail);
   if(result?.error){alert(result.error);return}
-  recruitingEmail.selectedCoachEmail=result.coach.coachEmail;let option=[...savedCoach.options].find(item=>coachEmailKey(item.value)===coachEmailKey(result.coach.coachEmail)||coachEmailKey(item.value)===coachEmailKey(result.coach.previousEmails?.at(-1)));if(!option){option=document.createElement('option');savedCoach.append(option)}option.value=result.coach.coachEmail;option.textContent=`${result.coach.collegeName} — ${result.coach.coachName}`;option.selected=true;saveCoachButton.textContent='Save Coach Changes';updatedLabel.textContent=`Last updated ${formatCoachUpdated(result.coach.lastUpdated)}`;alert('Coach information saved.');
+  recruitingEmail.selectedCoachEmail=result.coach.coachEmail;saveCoachButton.textContent='Save Coach Changes';updatedLabel.textContent=`Last updated ${formatCoachUpdated(result.coach.lastUpdated)}`;alert('Coach information saved.');render();
  };
  $('#downloadCoachTemplate').onclick=downloadCoachTemplate;
  $('#importCoachList').onclick=()=>$('#coachImportFile').click();
