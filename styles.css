@@ -267,7 +267,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .app{max-width:none}
   body{font-size:14px}
   .home-brand{top:max(6px,env(safe-area-inset-top));width:calc(100% - 10px);height:360px;gap:0}
-  .home-logo-img{position:absolute;top:87px;width:675px;max-width:none;height:495px;opacity:.32;transform:none}
+  .home-logo-img{position:absolute;top:22px;width:675px;max-width:none;height:495px;opacity:.32;transform:none}
   .home-title{top:38px;width:100%;font-size:clamp(18px,5.75vw,23px);letter-spacing:.2px}
   .home-hero{height:calc(100svh - 48px);min-height:520px;padding:20px 14px 14px}
   .home-actions{gap:7px}
