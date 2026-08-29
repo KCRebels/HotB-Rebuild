@@ -876,14 +876,22 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .contact-right{position:relative}
 .contact-left .choice{font-size:21px}
 .contact-right .choice{min-width:0;width:100%;padding-left:2px;padding-right:2px;white-space:nowrap;overflow:hidden}
-.hit-contact .contact-left,.out-contact .contact-left{height:236px;grid-template-rows:repeat(3,minmax(0,1fr))}
+.hit-contact .contact-left,.out-contact .contact-left{height:236px;grid-template-rows:repeat(3,minmax(0,1fr));gap:8px}
 .hit-contact .contact-left>.compact-three,.hit-contact .contact-left>.compact-four,.hit-contact .contact-left .choice,
 .out-contact .contact-left>.compact-three,.out-contact .contact-left>.compact-four,.out-contact .contact-left .choice{height:100%;max-height:none}
-.hit-contact .qual-grid{height:236px;grid-template-rows:repeat(4,minmax(0,1fr))}
-.out-contact .qual-grid{height:236px;grid-template-rows:repeat(3,minmax(0,1fr))}
+.hit-contact .qual-grid,.out-contact .qual-grid{height:236px;grid-template-rows:repeat(3,minmax(0,1fr));gap:8px}
 .qual-grid .choice{height:100%}
-.hit-contact .qual-grid [data-rbi-open]{grid-column:1;grid-row:3}
-.out-contact .qual-grid [data-rbi-open]{grid-column:1;grid-row:2}
+.hit-contact .qual-grid [data-qual="E"]{grid-column:1;grid-row:1}
+.hit-contact .qual-grid [data-qual="FC"]{grid-column:2;grid-row:1}
+.hit-contact .qual-grid [data-rbi-open]{grid-column:1;grid-row:2}
+.hit-contact .qual-grid [data-qual="SAC"]{grid-column:2;grid-row:2}
+.hit-contact .qual-grid [data-strength="HHB"]{grid-column:1;grid-row:3}
+.hit-contact .qual-grid [data-strength="WEAK"]{grid-column:2;grid-row:3}
+.out-contact .qual-grid [data-rbi-open]{grid-column:1;grid-row:1}
+.out-contact .qual-grid [data-qual="SAC"]{grid-column:2;grid-row:1}
+.out-contact .qual-grid [data-qual="RBA"]{grid-column:1/3;grid-row:2}
+.out-contact .qual-grid [data-strength="HHB"]{grid-column:1;grid-row:3}
+.out-contact .qual-grid [data-strength="WEAK"]{grid-column:2;grid-row:3}
 .rbi-picker{position:absolute;z-index:30;right:0;top:50%;transform:translateY(-50%);width:230px;padding:12px;border:3px solid #111;border-radius:14px;background:#fff;box-shadow:0 12px 30px rgba(0,0,0,.3)}
 .rbi-picker[hidden]{display:none}
 .rbi-picker-title{text-align:center;font-size:21px;font-weight:950;margin-bottom:9px}

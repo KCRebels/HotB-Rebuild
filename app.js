@@ -719,7 +719,9 @@ function hitModal(kind){
     <div class="compact-four bases-grid">${['1B','2B','3B','HR'].map(x=>`<button class="choice blue" data-hit="${x}">${x}</button>`).join('')}</div>`}
   </div>
   <div class="contact-right">
-   <div class="qual-grid">${isOut?'':`<button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button>`}<button class="choice qual-wide" data-qual="SAC">SAC</button><button class="choice" data-rbi-open>RBI</button>${isOut?`<button class="choice" data-qual="RBA">RBA</button>`:''}<button class="choice" data-strength="HHB">HHB</button><button class="choice" data-strength="WEAK">WEAK</button></div>
+   <div class="qual-grid">${isOut
+    ?`<button class="choice" data-rbi-open>RBI</button><button class="choice" data-qual="SAC">SAC</button><button class="choice qual-wide" data-qual="RBA">RBA</button>`
+    :`<button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button><button class="choice" data-rbi-open>RBI</button><button class="choice" data-qual="SAC">SAC</button>`}<button class="choice" data-strength="HHB">HHB</button><button class="choice" data-strength="WEAK">WEAK</button></div>
    <div class="rbi-picker" hidden><div class="rbi-picker-title">RBI</div><div class="rbi-picker-options">${[1,2,3].map(n=>`<button type="button" data-rbi-count="${n}">${n}</button>`).join('')}</div><button type="button" class="rbi-picker-cancel" data-rbi-cancel>Cancel</button></div>
   </div>
  </div><button class="btn block black save-contact" id="saveContact" disabled>${isOut?'Save Out':'Save Hit'}</button></div></div></div>`;
