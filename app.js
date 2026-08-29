@@ -36,11 +36,13 @@ const seed = {
  pitchers:[],
  savedGames:[],
  measurements:[],
+ coaches:[],
  planPreferences:{},
  currentGame:null,
  route:'home'
 };
 let db = load();
+if(!Array.isArray(db.coaches))db.coaches=[];
 // Apply the requested player plans once, then preserve any changes made in the app.
 if((db.planPreferencesVersion||0)<2){
  db.planPreferences={...(db.planPreferences||{}),...requestedPlanPreferences};
@@ -154,6 +156,7 @@ const pitchingColumns=[
  ['Pitcher K/BB','pitcherKBB'],['Pitcher OBA','pitcherOBA'],['Pitcher Strike %','pitcherStrikePct']
 ];
 const playerInfoColumns=[...recruitingColumns,...pitchingColumns];
+const coachColumns=[['Coach Name','coachName'],['Coach Email','coachEmail'],['School','collegeName']];
 function cleanCell(value){return String(value??'').trim()}
 function normalizeName(value){return cleanCell(value).toLowerCase().replace(/\s+/g,' ')}
 if((db.measurementCleanupVersion||0)<1){
@@ -1060,13 +1063,16 @@ function buildRecruitingEmail(player,details){
 }
 function recruitingEmailModal(){
  const player=hitterObj(evalPlayer);
+ const coaches=[...(db.coaches||[])].sort((a,b)=>(a.collegeName||'').localeCompare(b.collegeName||'')||(a.coachName||'').localeCompare(b.coachName||''));
  return `<div class="modal-backdrop"><div class="modal recruiting-email-modal"><div class="modal-header"><div><div class="small info-kicker">RECRUITING EMAIL</div><h2>${esc(player.name)}</h2></div><button class="btn" data-close>Cancel</button></div>
   <p class="email-note">The player will automatically be copied using the email saved in her roster information.</p>
+  <label class="info-field"><span>Saved Coach</span><select id="savedCoach"><option value="">Enter a new coach</option>${coaches.map(coach=>`<option value="${esc(coach.coachEmail)}" ${coach.coachEmail===recruitingEmail.coachEmail?'selected':''}>${esc(coach.collegeName)} — ${esc(coach.coachName)}</option>`).join('')}</select></label>
   <label class="info-field"><span>Coach’s Name</span><input id="emailCoachName" value="${esc(recruitingEmail.coachName)}" placeholder="Example: Coach Smith"></label>
   <label class="info-field"><span>Coach’s Email</span><input id="emailCoachAddress" type="email" value="${esc(recruitingEmail.coachEmail)}" placeholder="coach@college.edu"></label>
   <label class="info-field"><span>College Name</span><input id="emailCollegeName" value="${esc(recruitingEmail.collegeName)}" placeholder="College or university"></label>
   <label class="info-field"><span>Optional Personal Note</span><textarea id="emailPersonalNote" rows="3" placeholder="Add a personal message for this coach if needed.">${esc(recruitingEmail.personalNote)}</textarea></label>
   <div class="email-copy-row"><span><b>CC:</b> ${esc(player.email||'No player email saved')}</span></div>
+  <div class="email-template-actions"><button class="btn" id="downloadCoachTemplate">Download Coach Template</button><button class="btn" id="importCoachList">Import Coach List</button><input id="coachImportFile" type="file" accept=".xlsx,.xls,.csv" hidden></div>
   <button class="btn black block" id="previewRecruitingEmail" disabled>Preview Email</button>
  </div></div>`;
 }
@@ -1177,6 +1183,32 @@ function exportRosterWorkbook(){
  const workbook=XLSX.utils.book_new();XLSX.utils.book_append_sheet(workbook,sheet,'Players');
  XLSX.writeFile(workbook,'HotB_Player_Recruiting_Information.xlsx');
 }
+function coachEmailKey(value){return cleanCell(value).toLowerCase()}
+function rememberCoach(details){
+ const key=coachEmailKey(details.coachEmail);if(!key)return;
+ const coach={coachName:cleanCell(details.coachName),coachEmail:cleanCell(details.coachEmail),collegeName:cleanCell(details.collegeName)};
+ const existing=(db.coaches||[]).find(item=>coachEmailKey(item.coachEmail)===key);
+ if(existing)Object.assign(existing,coach);else db.coaches.push(coach);
+ save();
+}
+function coachTemplateWorkbook(){
+ const headings=coachColumns.map(([label])=>label),sheet=XLSX.utils.aoa_to_sheet([['KC REBELS COACH DIRECTORY'],['Fill in one coach per row. Do not change the column headings.'],[],headings]);
+ sheet['!cols']=[{wch:24},{wch:34},{wch:34}];
+ const instructions=XLSX.utils.aoa_to_sheet([['HOW TO USE THIS TEMPLATE'],[],['1','Enter one college coach per row on the Coach Directory tab.'],['2','Coach Name, Coach Email, and School are required.'],['3','HotB uses Coach Email to recognize and update an existing coach.'],['4',"Save the file, then choose Import Coach List in HotB's Email window."]]);
+ const workbook=XLSX.utils.book_new();XLSX.utils.book_append_sheet(workbook,sheet,'Coach Directory');XLSX.utils.book_append_sheet(workbook,instructions,'Instructions');return workbook;
+}
+function downloadCoachTemplate(){
+ if(window.XLSX)XLSX.writeFile(coachTemplateWorkbook(),'KC_Rebels_Coach_Directory_Template.xlsx');
+ else{const csv='Coach Name,Coach Email,School\r\n';const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));link.download='KC_Rebels_Coach_Directory_Template.csv';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000)}
+}
+async function importCoachWorkbook(file){
+ let rows;if(file.name.toLowerCase().endsWith('.csv'))rows=csvRows(await file.text());else{if(!window.XLSX)throw new Error('Excel import is not available right now. Please use a CSV file.');const workbook=XLSX.read(await file.arrayBuffer(),{type:'array'}),sheet=workbook.Sheets['Coach Directory']||workbook.Sheets[workbook.SheetNames[0]];rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false})}
+ const headerIndex=rows.findIndex(row=>row.some(cell=>cleanCell(cell)==='Coach Name'));if(headerIndex<0)throw new Error('The Coach Name header was not found. Please use the HotB coach template.');
+ const headers=rows[headerIndex].map(cleanCell),missing=coachColumns.filter(([label])=>!headers.includes(label)).map(([label])=>label);if(missing.length)throw new Error(`The spreadsheet is missing: ${missing.join(', ')}.`);
+ let added=0,updated=0,skipped=0;
+ rows.slice(headerIndex+1).forEach(row=>{const data={};coachColumns.forEach(([label,key])=>data[key]=cleanCell(row[headers.indexOf(label)]));if(!data.coachName&&!data.coachEmail&&!data.collegeName)return;if(!data.coachName||!data.coachEmail||!data.collegeName||!/^\S+@\S+\.\S+$/.test(data.coachEmail)){skipped++;return}const existing=db.coaches.find(coach=>coachEmailKey(coach.coachEmail)===coachEmailKey(data.coachEmail));if(existing){Object.assign(existing,data);updated++}else{db.coaches.push(data);added++}});
+ save();render();alert(`Coach list imported. ${added} added, ${updated} updated${skipped?`, ${skipped} skipped because information was missing or invalid`:''}.`);
+}
 function modalView(){
  if(modal==='changePitcher')return pitcherChangeModal();
  if(modal==='changeHitter')return hitterChangeModal();
@@ -1282,8 +1314,12 @@ function bindRecruitingEmail(){
   preview.disabled=!recruitingEmail.coachName||!recruitingEmail.coachEmail||!recruitingEmail.collegeName||!coachEmail.validity.valid;
  };
  [coachName,coachEmail,collegeName,note].forEach(field=>field.addEventListener('input',update));update();
+ $('#savedCoach').onchange=event=>{const coach=db.coaches.find(item=>coachEmailKey(item.coachEmail)===coachEmailKey(event.target.value));if(!coach)return;coachName.value=coach.coachName;coachEmail.value=coach.coachEmail;collegeName.value=coach.collegeName;update()};
+ $('#downloadCoachTemplate').onclick=downloadCoachTemplate;
+ $('#importCoachList').onclick=()=>$('#coachImportFile').click();
+ $('#coachImportFile').onchange=async event=>{const file=event.target.files[0];if(!file)return;try{await importCoachWorkbook(file)}catch(error){alert(error.message||'HotB could not read that coach spreadsheet.')}};
  preview.onclick=()=>{
-  update();const player=hitterObj(evalPlayer),built=buildRecruitingEmail(player,recruitingEmail);
+  update();rememberCoach(recruitingEmail);const player=hitterObj(evalPlayer),built=buildRecruitingEmail(player,recruitingEmail);
   recruitingEmail.subject=built.subject;recruitingEmail.body=built.body;modal='recruitingEmailPreview';render();
  };
 }
