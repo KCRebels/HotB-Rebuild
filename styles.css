@@ -47,6 +47,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .home-card p{margin:3px 0 0;font-size:14px;font-weight:700;color:#525252}
 .home-card.primary p{color:#ffdadd}
 .cloud-card{border-color:#315d9a;box-shadow:0 5px 0 #315d9a}.cloud-card h3{color:#204d87}
+.cloud-card.healthy{border-color:#37814b;box-shadow:0 5px 0 #37814b}.cloud-card.healthy h3{color:#27653a}.cloud-card.attention{border-color:#bd6b16;box-shadow:0 5px 0 #bd6b16;background:#fff5e8}.cloud-card.attention h3{color:#914c0c}
 .home-footer{text-align:center;padding:24px;font-weight:900;letter-spacing:2px;color:#555}.home-guide-button{display:block;margin:12px auto 0;padding:9px 14px;border:1px solid #aeb8b3;border-radius:10px;background:#fff;color:#234f87;font-size:13px;font-weight:900;letter-spacing:0}
 .panel{background:#fff;border:1px solid #d5dcda;border-radius:22px;margin:20px;padding:22px}
 .panel h2,.panel h3{margin-top:0}
