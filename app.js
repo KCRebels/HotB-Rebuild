@@ -754,7 +754,7 @@ function countCard(pas,bucket){
   return pa.finalCount===bucket;
  });
  const h=matches.filter(p=>p.outcome==='HIT').length,o=matches.filter(p=>p.outcome==='H4O').length,k=matches.filter(p=>p.outcome==='K').length,ave=(h+o+k)?h/(h+o+k):0;
- return `<div class="count-card"><b>${bucket}</b><span class="count-value hit">${h}</span><span class="count-separator">|</span><span class="count-value out">${o}</span><span class="count-separator">|</span><span class="count-value strikeout">${k}</span><span class="count-separator">|</span><span class="count-value average">${round3(ave)}</span></div>`;
+ return `<div class="count-card"><b>${bucket}</b><span class="count-value hit ${h===0?'zero':''}">${h}</span><span class="count-separator">|</span><span class="count-value out ${o===0?'zero':''}">${o}</span><span class="count-separator">|</span><span class="count-value strikeout ${k===0?'zero':''}">${k}</span><span class="count-separator">|</span><span class="count-value average ${ave===0?'zero':''}">${round3(ave)}</span></div>`;
 }
 function reportPitchSource(){
  return reportMode==='current'?(currentGame()?.pitches||[]):reportMode==='game'?(db.savedGames.find(game=>game.id===reportGameId)?.pitches||[]):filteredPitches(false);
@@ -769,7 +769,7 @@ function reportPitchLabel(pa){
 }
 function reportOutcomeItem(pa,kind){
  const lead=kind==='HIT'?(pa.hitType||'H'):kind==='H4O'?(pa.fielder||'O'):'';
- return `<button class="report-outcome-item ${kind.toLowerCase()} ${reportSelectedPaId===pa.id?'selected':''}" data-report-pa="${pa.id}">${lead?`<span>${lead}</span>`:''}<strong>${esc(reportPitchLabel(pa))}</strong></button>`;
+ return `<button class="report-outcome-item ${kind.toLowerCase()}" data-report-pa="${pa.id}">${lead?`<span>${lead}</span>`:''}<strong>${esc(reportPitchLabel(pa))}</strong></button>`;
 }
 function reportSection(title,items,kind){
  return `<section class="report-outcome-section"><div class="report-outcome-heading"><b>${title}</b><span>(${items.length}) (COUNT) (TOTAL PITCHES)</span></div><div class="report-outcome-list">${items.length?items.map(pa=>reportOutcomeItem(pa,kind)).join(''):'<span class="report-empty">None</span>'}</div></section>`;
@@ -1438,7 +1438,10 @@ function bindReports(){
  bindDateFilters('report');
  $$('[data-rsub]').forEach(b=>b.onclick=()=>{reportSub=b.dataset.rsub;render()});
  $('#reportHitter').onchange=e=>{reportFilterHitter=e.target.value;reportSelectedPaId=null;render()};
- $$('[data-report-pa]').forEach(button=>button.onclick=()=>{reportSelectedPaId=reportSelectedPaId===button.dataset.reportPa?null:button.dataset.reportPa;render()});
+ $$('[data-report-pa]').forEach(button=>button.onclick=()=>{
+  reportSelectedPaId=reportSelectedPaId===button.dataset.reportPa?null:button.dataset.reportPa;
+  $$('.report-spray-dot').forEach(dot=>dot.classList.toggle('selected',dot.dataset.reportPa===reportSelectedPaId));
+ });
  $('#exportReport').onclick=()=>exportCsv();
 }
 function exportCsv(){
