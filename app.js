@@ -1066,9 +1066,9 @@ function recruitingEmailModal(){
  const coaches=[...(db.coaches||[])].sort((a,b)=>(a.collegeName||'').localeCompare(b.collegeName||'')||(a.coachName||'').localeCompare(b.coachName||''));
  return `<div class="modal-backdrop"><div class="modal recruiting-email-modal"><div class="modal-header"><div><div class="small info-kicker">RECRUITING EMAIL</div><h2>${esc(player.name)}</h2></div><button class="btn" data-close>Cancel</button></div>
   <label class="info-field"><span>Saved Coach</span><select id="savedCoach"><option value="">Enter a new coach</option>${coaches.map(coach=>`<option value="${esc(coach.coachEmail)}" ${coach.coachEmail===recruitingEmail.coachEmail?'selected':''}>${esc(coach.collegeName)} — ${esc(coach.coachName)}</option>`).join('')}</select></label>
-  <label class="info-field"><span>Coach’s Name</span><input id="emailCoachName" value="${esc(recruitingEmail.coachName)}" placeholder="Example: Coach Smith"></label>
+  <label class="info-field coach-search-field"><span>Coach’s Name</span><input id="emailCoachName" value="${esc(recruitingEmail.coachName)}" placeholder="Example: Coach Smith" autocomplete="off"><div class="coach-search-results" id="coachNameMatches" hidden></div></label>
   <label class="info-field"><span>Coach’s Email</span><input id="emailCoachAddress" type="email" value="${esc(recruitingEmail.coachEmail)}" placeholder="coach@college.edu"></label>
-  <label class="info-field"><span>College Name</span><input id="emailCollegeName" value="${esc(recruitingEmail.collegeName)}" placeholder="College or university"></label>
+  <label class="info-field coach-search-field"><span>College Name</span><input id="emailCollegeName" value="${esc(recruitingEmail.collegeName)}" placeholder="College or university" autocomplete="off"><div class="coach-search-results" id="collegeNameMatches" hidden></div></label>
   <label class="info-field"><span>Optional Personal Note</span><textarea id="emailPersonalNote" rows="3" placeholder="Add a personal message for this coach if needed.">${esc(recruitingEmail.personalNote)}</textarea></label>
   <div class="email-copy-row"><span><b>CC:</b> ${esc(player.email||'No player email saved')}</span></div>
   <div class="email-template-actions"><button class="btn" id="downloadCoachTemplate">Download Coach Template</button><button class="btn" id="importCoachList">Import Coach List</button><input id="coachImportFile" type="file" accept=".xlsx,.xls,.csv" hidden></div>
@@ -1308,12 +1308,28 @@ function bindPlayerInfo(){
 }
 function bindRecruitingEmail(){
  const coachName=$('#emailCoachName'),coachEmail=$('#emailCoachAddress'),collegeName=$('#emailCollegeName'),note=$('#emailPersonalNote'),preview=$('#previewRecruitingEmail');
+ const savedCoach=$('#savedCoach'),nameMatches=$('#coachNameMatches'),collegeMatches=$('#collegeNameMatches');
  const update=()=>{
   recruitingEmail.coachName=coachName.value.trim();recruitingEmail.coachEmail=coachEmail.value.trim();recruitingEmail.collegeName=collegeName.value.trim();recruitingEmail.personalNote=note.value.trim();
   preview.disabled=!recruitingEmail.coachName||!recruitingEmail.coachEmail||!recruitingEmail.collegeName||!coachEmail.validity.valid;
  };
  [coachName,coachEmail,collegeName,note].forEach(field=>field.addEventListener('input',update));update();
- $('#savedCoach').onchange=event=>{const coach=db.coaches.find(item=>coachEmailKey(item.coachEmail)===coachEmailKey(event.target.value));if(!coach)return;coachName.value=coach.coachName;coachEmail.value=coach.coachEmail;collegeName.value=coach.collegeName;update()};
+ const chooseCoach=coach=>{coachName.value=coach.coachName;coachEmail.value=coach.coachEmail;collegeName.value=coach.collegeName;savedCoach.value=coach.coachEmail;nameMatches.hidden=true;collegeMatches.hidden=true;update()};
+ const showCoachMatches=(input,container,key)=>{
+  const query=normalizeName(input.value);container.replaceChildren();
+  if(!query){container.hidden=true;return}
+  const matches=[...(db.coaches||[])].filter(coach=>normalizeName(coach[key]).includes(query)).sort((a,b)=>{
+   const aStart=normalizeName(a[key]).startsWith(query),bStart=normalizeName(b[key]).startsWith(query);return Number(bStart)-Number(aStart)||(a[key]||'').localeCompare(b[key]||'');
+  }).slice(0,8);
+  matches.forEach(coach=>{const button=document.createElement('button');button.type='button';button.className='coach-search-result';const primary=document.createElement('b'),secondary=document.createElement('span');primary.textContent=coach.coachName;secondary.textContent=`${coach.collegeName} · ${coach.coachEmail}`;button.append(primary,secondary);button.addEventListener('pointerdown',event=>{event.preventDefault();chooseCoach(coach)});container.append(button)});
+  container.hidden=!matches.length;
+ };
+ coachName.addEventListener('input',()=>showCoachMatches(coachName,nameMatches,'coachName'));
+ collegeName.addEventListener('input',()=>showCoachMatches(collegeName,collegeMatches,'collegeName'));
+ coachName.addEventListener('focus',()=>showCoachMatches(coachName,nameMatches,'coachName'));
+ collegeName.addEventListener('focus',()=>showCoachMatches(collegeName,collegeMatches,'collegeName'));
+ [coachName,collegeName].forEach(input=>input.addEventListener('blur',()=>setTimeout(()=>{nameMatches.hidden=true;collegeMatches.hidden=true},100)));
+ savedCoach.onchange=event=>{const coach=db.coaches.find(item=>coachEmailKey(item.coachEmail)===coachEmailKey(event.target.value));if(coach)chooseCoach(coach)};
  $('#downloadCoachTemplate').onclick=downloadCoachTemplate;
  $('#importCoachList').onclick=()=>$('#coachImportFile').click();
  $('#coachImportFile').onchange=async event=>{const file=event.target.files[0];if(!file)return;try{await importCoachWorkbook(file)}catch(error){alert(error.message||'HotB could not read that coach spreadsheet.')}};
