@@ -864,10 +864,23 @@ async function restoreFromCloud(){
  try{const root=cloudRoot(),meta=await root.get();if(!meta.exists)throw new Error('No backup');const snap=await root.collection('chunks').orderBy('index').get(),restored=JSON.parse(snap.docs.map(doc=>doc.data().data).join(''));if(!Array.isArray(restored.roster)||!Array.isArray(restored.savedGames))throw new Error('Invalid backup');localStorage.setItem(DBKEY,JSON.stringify(restored));localStorage.setItem(CLOUD_ENABLED_KEY,'true');location.reload()}
  catch(error){cloudBusy=false;cloudMessage='No usable cloud backup was found. Your device data was not changed.';render()}
 }
-async function cloudSignIn(){
- if(!cloudAuth||cloudBusy)return;cloudBusy=true;cloudMessage='Opening Google sign-in…';render();
- try{const provider=new firebase.auth.GoogleAuthProvider();provider.setCustomParameters({login_hint:CLOUD_EMAIL});await cloudAuth.signInWithPopup(provider);cloudMessage='Signed in. Create the first backup when you are ready.'}
- catch(error){cloudMessage='Sign-in did not finish. Please allow the Google pop-up and try again.'}
+async function cloudPasswordAuth(createAccount=false){
+ const password=$('#cloudPassword')?.value||'';
+ if(!cloudAuth||cloudBusy)return;
+ if(password.length<6){cloudMessage='Your HotB backup password must be at least 6 characters.';render();return}
+ cloudBusy=true;cloudMessage=createAccount?'Creating your protected backup login…':'Signing in…';render();
+ try{
+  if(createAccount){
+   const result=await cloudAuth.createUserWithEmailAndPassword(CLOUD_EMAIL,password);await result.user.sendEmailVerification();await cloudAuth.signOut();
+   cloudMessage=`A verification email was sent to ${CLOUD_EMAIL}. Open that email, verify the address, then return here and sign in.`;
+  }else{
+   const result=await cloudAuth.signInWithEmailAndPassword(CLOUD_EMAIL,password);
+   if(!result.user.emailVerified){await result.user.sendEmailVerification();await cloudAuth.signOut();cloudMessage=`Verify ${CLOUD_EMAIL} using the email Google sent, then sign in again.`}
+   else cloudMessage='Signed in. Create the first backup when you are ready.';
+  }
+ }catch(error){
+  cloudMessage=createAccount?'That backup login may already exist. Use Sign In instead.':'The backup password was not accepted. Check it and try again.';
+ }
  cloudBusy=false;render();
 }
 
@@ -2064,10 +2077,10 @@ function bind(){
 
 function cloudBackupModal(){
  const enabled=localStorage.getItem(CLOUD_ENABLED_KEY)==='true',last=cloudLastBackup?cloudLastBackup.toLocaleString():'No cloud backup yet';
- return `<div class="modal-backdrop"><div class="modal cloud-modal"><div class="modal-header"><div><div class="small info-kicker">DATA PROTECTION</div><h2>Cloud Backup</h2></div><button class="btn" data-close>Close</button></div><p class="cloud-explain">Your HotB data stays on this device. After the first successful backup, HotB will also save changes securely to Firebase.</p><div class="cloud-status"><b>${cloudUser?esc(cloudUser.email):'Not signed in'}</b><span>${esc(last)}</span></div>${cloudMessage?`<p class="cloud-message">${esc(cloudMessage)}</p>`:''}${!cloudUser?`<button class="btn black block" id="cloudSignIn" ${cloudBusy?'disabled':''}>Sign In with Google</button>`:`<button class="btn red block" id="cloudBackupNow" ${cloudBusy?'disabled':''}>${enabled?'Back Up Now':'Create First Backup'}</button><button class="btn block" id="cloudRestore" ${cloudBusy||!cloudLastBackup?'disabled':''}>Restore From Cloud</button><button class="btn block cloud-signout" id="cloudSignOut" ${cloudBusy?'disabled':''}>Sign Out</button>`}<p class="small">Restore never happens automatically. HotB will ask before replacing device data.</p></div></div>`;
+  return `<div class="modal-backdrop"><div class="modal cloud-modal"><div class="modal-header"><div><div class="small info-kicker">DATA PROTECTION</div><h2>Cloud Backup</h2></div><button class="btn" data-close>Close</button></div><p class="cloud-explain">Your HotB data stays on this device. After the first successful backup, HotB will also save changes securely to Firebase.</p><div class="cloud-status"><b>${cloudUser?esc(cloudUser.email):'Not signed in'}</b><span>${esc(last)}</span></div>${cloudMessage?`<p class="cloud-message">${esc(cloudMessage)}</p>`:''}${!cloudUser?`<label class="label" for="cloudPassword">HotB Backup Password</label><input class="input" id="cloudPassword" type="password" autocomplete="current-password" placeholder="At least 6 characters"><p class="small">Use a password for HotB backup. Do not enter your Gmail password.</p><button class="btn black block" id="cloudEmailSignIn" ${cloudBusy?'disabled':''}>Sign In</button><button class="btn block" id="cloudCreateLogin" ${cloudBusy?'disabled':''}>First Time: Create Login</button>`:`<button class="btn red block" id="cloudBackupNow" ${cloudBusy?'disabled':''}>${enabled?'Back Up Now':'Create First Backup'}</button><button class="btn block" id="cloudRestore" ${cloudBusy||!cloudLastBackup?'disabled':''}>Restore From Cloud</button><button class="btn block cloud-signout" id="cloudSignOut" ${cloudBusy?'disabled':''}>Sign Out</button>`}<p class="small">Restore never happens automatically. HotB will ask before replacing device data.</p></div></div>`;
 }
 function bindCloudBackup(){
- $('#cloudSignIn')?.addEventListener('click',cloudSignIn);$('#cloudBackupNow')?.addEventListener('click',()=>backupToCloud(false));$('#cloudRestore')?.addEventListener('click',restoreFromCloud);$('#cloudSignOut')?.addEventListener('click',async()=>{await cloudAuth.signOut();cloudMessage='Signed out.';render()});
+ $('#cloudEmailSignIn')?.addEventListener('click',()=>cloudPasswordAuth(false));$('#cloudCreateLogin')?.addEventListener('click',()=>cloudPasswordAuth(true));$('#cloudBackupNow')?.addEventListener('click',()=>backupToCloud(false));$('#cloudRestore')?.addEventListener('click',restoreFromCloud);$('#cloudSignOut')?.addEventListener('click',async()=>{await cloudAuth.signOut();cloudMessage='Signed out.';render()});
 }
 function bindNew(){
  const sels=$$('.batting-select');
