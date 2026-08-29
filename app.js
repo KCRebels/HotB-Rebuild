@@ -1906,15 +1906,15 @@ function recruitingEmailModal(){
  const shortCollege=value=>String(value||'').replace(/\bUniversity\b/gi,'U');
  const updatedText=selectedCoach?.lastUpdated?`Last updated ${formatCoachUpdated(selectedCoach.lastUpdated)}`:'No changes saved on this device';
  return `<div class="modal-backdrop"><div class="modal recruiting-email-modal"><div class="modal-header"><div><div class="small info-kicker">RECRUITING EMAIL</div><h2>${esc(player.name)}</h2></div><button class="btn" data-close>Cancel</button></div>
-  <div class="info-field"><span>Coach List</span><div class="coach-list-picker"><button class="coach-list-toggle" id="coachListToggle" type="button" aria-expanded="false"><b>${selectedCoach?esc(selectedCoach.coachName):'Choose a saved coach'}</b><small>${selectedCoach?esc(shortCollege(selectedCoach.collegeName)):'Alphabetical by first name'}</small></button><div class="coach-list-menu" id="coachListMenu" hidden>${coaches.map(coach=>`<button type="button" class="coach-list-option" data-coach-email="${esc(coach.coachEmail)}"><b>${esc(coach.coachName)}</b><span>${esc(shortCollege(coach.collegeName))}</span></button>`).join('')}</div></div><button class="btn coach-new-button" id="startNewCoach" type="button">Enter New Coach</button></div>
+  <div class="info-field"><span>Coach List</span><div class="coach-list-picker"><button class="coach-list-toggle" id="coachListToggle" type="button" aria-expanded="false"><b>${selectedCoach?esc(selectedCoach.coachName):'Choose a saved coach'}</b><small>${selectedCoach?esc(shortCollege(selectedCoach.collegeName)):'Alphabetical by first name'}</small></button><div class="coach-list-menu" id="coachListMenu" hidden>${coaches.map(coach=>`<button type="button" class="coach-list-option" data-coach-email="${esc(coach.coachEmail)}"><b>${esc(coach.coachName)}</b><span>${esc(shortCollege(coach.collegeName))}</span></button>`).join('')}</div></div></div>
   <label class="info-field coach-search-field"><span>Coach’s Name</span><input id="emailCoachName" value="${esc(recruitingEmail.coachName)}" placeholder="Example: Coach Smith" autocomplete="off"><div class="coach-search-results" id="coachNameMatches" hidden></div></label>
   <label class="info-field"><span>Coach’s Email</span><input id="emailCoachAddress" type="email" value="${esc(recruitingEmail.coachEmail)}" placeholder="coach@college.edu"></label>
   <label class="info-field coach-search-field"><span>College Name</span><input id="emailCollegeName" value="${esc(recruitingEmail.collegeName)}" placeholder="College or university" autocomplete="off"><div class="coach-search-results" id="collegeNameMatches" hidden></div></label>
   <div class="coach-save-row"><button class="btn black" id="saveCoachChanges" disabled>${selectedCoach?'Save Coach Changes':'Save New Coach'}</button><span id="coachLastUpdated">${esc(updatedText)}</span></div>
   <label class="info-field"><span>Optional Personal Note</span><textarea id="emailPersonalNote" rows="3" placeholder="Add a personal message for this coach if needed.">${esc(recruitingEmail.personalNote)}</textarea></label>
   <div class="email-copy-row"><span><b>CC:</b> ${esc(player.email||'No player email saved')}</span></div>
-  <div class="email-template-actions"><button class="btn" id="downloadCoachTemplate">Download Coach Template</button><button class="btn" id="importCoachList">Import Coach List</button><input id="coachImportFile" type="file" accept=".xlsx,.xls,.csv" hidden></div>
   <button class="btn black block" id="previewRecruitingEmail" disabled>Preview Email</button>
+  <div class="email-template-actions"><button class="btn" id="downloadCoachTemplate">Download Coach Template</button><button class="btn" id="importCoachList">Import Coach List</button><input id="coachImportFile" type="file" accept=".xlsx,.xls,.csv" hidden></div>
  </div></div>`;
 }
 function recruitingEmailPreviewModal(){
@@ -2207,7 +2207,6 @@ function bindRecruitingEmail(){
  [coachName,collegeName].forEach(input=>input.addEventListener('blur',()=>setTimeout(()=>{nameMatches.hidden=true;collegeMatches.hidden=true},100)));
  coachListToggle.onclick=()=>{coachListMenu.hidden=!coachListMenu.hidden;coachListToggle.setAttribute('aria-expanded',String(!coachListMenu.hidden))};
  $$('.coach-list-option').forEach(button=>button.onclick=()=>{const coach=db.coaches.find(item=>coachEmailKey(item.coachEmail)===coachEmailKey(button.dataset.coachEmail));if(coach)chooseCoach(coach)});
- $('#startNewCoach').onclick=()=>{recruitingEmail.selectedCoachEmail='';coachName.value='';coachEmail.value='';collegeName.value='';coachListToggle.querySelector('b').textContent='Choose a saved coach';coachListToggle.querySelector('small').textContent='Alphabetical by first name';coachListToggle.setAttribute('aria-expanded','false');coachListMenu.hidden=true;saveCoachButton.textContent='Save New Coach';updatedLabel.textContent='Not saved yet';update();coachName.focus()};
  saveCoachButton.onclick=()=>{
   update();const result=rememberCoach(recruitingEmail,recruitingEmail.selectedCoachEmail);
   if(result?.error){alert(result.error);return}
