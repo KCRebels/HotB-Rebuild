@@ -1065,7 +1065,6 @@ function recruitingEmailModal(){
  const player=hitterObj(evalPlayer);
  const coaches=[...(db.coaches||[])].sort((a,b)=>(a.collegeName||'').localeCompare(b.collegeName||'')||(a.coachName||'').localeCompare(b.coachName||''));
  return `<div class="modal-backdrop"><div class="modal recruiting-email-modal"><div class="modal-header"><div><div class="small info-kicker">RECRUITING EMAIL</div><h2>${esc(player.name)}</h2></div><button class="btn" data-close>Cancel</button></div>
-  <p class="email-note">The player will automatically be copied using the email saved in her roster information.</p>
   <label class="info-field"><span>Saved Coach</span><select id="savedCoach"><option value="">Enter a new coach</option>${coaches.map(coach=>`<option value="${esc(coach.coachEmail)}" ${coach.coachEmail===recruitingEmail.coachEmail?'selected':''}>${esc(coach.collegeName)} — ${esc(coach.coachName)}</option>`).join('')}</select></label>
   <label class="info-field"><span>Coach’s Name</span><input id="emailCoachName" value="${esc(recruitingEmail.coachName)}" placeholder="Example: Coach Smith"></label>
   <label class="info-field"><span>Coach’s Email</span><input id="emailCoachAddress" type="email" value="${esc(recruitingEmail.coachEmail)}" placeholder="coach@college.edu"></label>
