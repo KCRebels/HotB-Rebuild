@@ -1294,9 +1294,10 @@ function homeView(){
    </div>
    <div class="home-actions">
     <button class="home-card primary" data-go="new"><h3>New Game</h3><p>Set matchup and batting order</p></button>
-    <button class="home-card" data-go="roster"><h3>Edit Roster</h3><p>Add, remove, or update hitters</p></button>
-    <button class="home-card" data-go="reports"><h3>Reports</h3><p>Review saved games and trends</p></button>
     <button class="home-card" data-go="eval"><h3>Player / Team Eval</h3><p>Performance and athletic measurements</p></button>
+    <button class="home-card" data-go="reports"><h3>Reports</h3><p>Review saved games and trends</p></button>
+    <button class="home-card future-card" type="button"><h3>Hitting Practice</h3><p>Coming soon</p></button>
+    <button class="home-card" data-go="roster"><h3>Edit Roster</h3><p>Add, remove, or update hitters</p></button>
     <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><h3>Cloud Backup</h3><p>${esc(cloudText)}</p></button>
    </div>
  </div><div class="home-footer">HOTB (THE ELITE HITTING APP) · REBUILD<button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button></div>`;
