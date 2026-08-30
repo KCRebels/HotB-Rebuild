@@ -1290,7 +1290,6 @@ function homeView(){
  return `<div class="home-hero">
    <div class="home-brand">
     <img class="home-logo-img" src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="Kansas City Rebels Regional">
-    <div class="home-title">KC REBELS REGIONAL LICKEL</div>
    </div>
    <div class="home-actions">
     <button class="home-card primary" data-go="new"><h3>New Game</h3></button>
