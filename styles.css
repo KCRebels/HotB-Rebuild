@@ -943,3 +943,4 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .pitcher-performance .pitcher-stat b,
 .athletic .measure .best{font-family:inherit;font-size:22px;font-weight:900;line-height:1}
 .email-template-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.email-template-actions .btn{font-size:14px;padding:12px 8px}
+.email-preview-group{margin-top:28px}.preview-recruiting-email{min-height:50px;font-size:16px}.email-preview-group .email-copy-row{margin:11px 0 0}
