@@ -978,6 +978,25 @@ function rememberPitcher(team,name,number){
   found.teams=[...new Set([...(found.teams||[]),...(found.team?[found.team]:[]),...(team?[team]:[])])];
  }else db.pitchers.push({name,number,teams:team?[team]:[]});
 }
+function knownPitchersForOpponent(opponent){
+ const opponentKey=normalized(opponent),pitchers=new Map();
+ const add=(name,number)=>{
+  name=String(name||'').trim();number=String(number||'').trim();
+  if(!name&&!number)return;
+  const key=`${normalized(name)}::${normalized(number)}`;
+  if(!pitchers.has(key))pitchers.set(key,{name,number});
+ };
+ (db.pitchers||[]).forEach(pitcher=>{
+  const teams=[...(pitcher.teams||[]),...(pitcher.team?[pitcher.team]:[])];
+  if(!opponentKey||teams.some(team=>normalized(team)===opponentKey))add(pitcher.name,pitcher.number);
+ });
+ [...(db.savedGames||[]),...(db.currentGame?[db.currentGame]:[])].forEach(game=>{
+  if(opponentKey&&normalized(game.opponent)!==opponentKey)return;
+  (game.pitchersUsed||[]).forEach(pitcher=>add(pitcher.name,pitcher.number));
+  (game.pitches||[]).forEach(pitch=>add(pitch.pitcherName,pitch.pitcherNumber));
+ });
+ return [...pitchers.values()].sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'})||(a.number||'').localeCompare(b.number||'',undefined,{numeric:true}));
+}
 function hitterObj(name){return db.roster.find(r=>r.name===name)||{name,side:'R',jersey:'',grad:'',positions:'',gpa:'',interest:'',school:''}}
 function isLeftBatter(player){return ['L','SL'].includes(player?.side)}
 function recruitingBatSide(player){return player?.side==='SL'?'L':player?.side}
@@ -1006,7 +1025,7 @@ function syncRosterNames(){
  $$('.roster-name').forEach(input=>{const player=db.roster[+input.dataset.i];if(player)player.name=input.value.trim()||'Unnamed Player'});
 }
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
-const undoViewKeys=['historyTab','allView','zoneScope','zoneFilter','previewNext','firstPitchView','showAi'];
+const undoViewKeys=['historyTab','allView','zoneScope','zoneFilter','previewNext','firstPitchView','showAi','pendingZone','pitchType'];
 function gameWithoutUndoViews(game){
  const actionGame=structuredClone(game||{});
  undoViewKeys.forEach(key=>delete actionGame[key]);
@@ -1175,7 +1194,7 @@ function undo(){
  const g=currentGame();if(!g)return;
  const stack=Array.isArray(g.undoStack)?g.undoStack:[];
  const current=gameUndoState(g);
- const viewState={historyTab:'LIVE',allView:'DOTS',zoneScope:'HITTER',zoneFilter:'K',previewNext:false,firstPitchView:false,showAi:false};
+ const viewState={historyTab:'LIVE',allView:'DOTS',zoneScope:'HITTER',zoneFilter:'K',previewNext:false,firstPitchView:false,showAi:false,pendingZone:null,pitchType:'FB'};
  let previous=null;
  while(stack.length){
   const candidate=stack.pop();
@@ -1841,9 +1860,10 @@ function gameActionModal(kind){
 }
 function pitcherChangeModal(){
  const g=currentGame();
- const known=db.pitchers.filter(p=>!g.opponent||(p.teams||[]).includes(g.opponent)||p.team===g.opponent);
+ const known=knownPitchersForOpponent(g.opponent);
  return `<div class="modal-backdrop"><div class="modal substitution-modal"><div class="modal-header"><h2>Change Pitcher</h2><button class="btn" data-close>Cancel</button></div>
   <p class="substitution-note">Enter the new pitcher for ${esc(g.opponent||"this team")}.</p>
+  ${known.length?`<div class="saved-pitcher-options"><div class="label">Saved Pitchers</div>${known.map(pitcher=>`<button type="button" data-saved-pitcher-name="${esc(pitcher.name)}" data-saved-pitcher-number="${esc(pitcher.number)}"><b>${esc(pitcher.name||'Pitcher')}</b><span>${pitcher.number?`#${esc(pitcher.number)}`:'No number'}</span></button>`).join('')}</div>`:''}
   <label class="label">Pitcher Name</label><input id="subPitcherName" class="input" placeholder="Enter pitcher name" list="subPitcherList"><datalist id="subPitcherList">${known.map(p=>`<option value="${esc(p.name)}"></option>`).join("")}</datalist>
   <label class="label">Number</label><input id="subPitcherNumber" class="input" placeholder="Enter number" inputmode="numeric">
   <button class="btn block red savebar" id="savePitcherChange" disabled>Use New Pitcher</button>
@@ -2326,9 +2346,10 @@ function bindLive(){
 function bindPitcherChange(){
  const g=currentGame(), name=$('#subPitcherName'), number=$('#subPitcherNumber'), saveButton=$('#savePitcherChange');
  const update=()=>{saveButton.disabled=!name.value.trim()&&!number.value.trim()};
+ $$('[data-saved-pitcher-name]').forEach(button=>button.onclick=()=>{name.value=button.dataset.savedPitcherName;number.value=button.dataset.savedPitcherNumber;update()});
  name.addEventListener('input',update);number.addEventListener('input',update);
  name.addEventListener('change',()=>{
-  const known=db.pitchers.find(p=>p.name===name.value&&(!g.opponent||(p.teams||[]).includes(g.opponent)||p.team===g.opponent));
+  const known=knownPitchersForOpponent(g.opponent).find(p=>p.name===name.value);
   if(known&&!number.value)number.value=known.number||'';
   update();
  });
