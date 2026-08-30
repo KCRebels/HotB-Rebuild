@@ -2,7 +2,7 @@
   "name": "HotB",
   "short_name": "HotB",
   "description": "KC Rebels Regional hitting and player evaluation app",
-  "start_url": "./",
+  "start_url": "./?launch=20260830-repair47",
   "scope": "./",
   "display": "standalone",
   "display_override": ["standalone"],
