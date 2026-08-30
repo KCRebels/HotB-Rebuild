@@ -1718,6 +1718,10 @@ function measurementUnit(type){
  if(type==='Broad Jump')return'Inches';
  return'Value';
 }
+function formatMeasurementValue(type,value){
+ const number=Number(value);
+ return type==='Home to First'&&Number.isFinite(number)?number.toFixed(2):value;
+}
 function measurementCard(player,type){
  const rows=db.measurements.filter(m=>(!player||m.player===player.name)&&m.type===type);
  const isTime=['Home to First','Pop Time'].includes(type);
@@ -1726,9 +1730,9 @@ function measurementCard(player,type){
  const best=vals.length?(isTime?Math.min(...vals):Math.max(...vals)):null;
  if(!player){
   const bestPlayers=best===null?[]:[...new Set(entries.filter(entry=>entry.value===best).map(entry=>entry.row.player))];
-  return `<div class="measure team-measure"><h3>${type}</h3><div class="best">${best===null?'—':best}</div><div class="note">${bestPlayers.length?esc(bestPlayers.join(' / ')):'No results recorded'}</div></div>`;
+  return `<div class="measure team-measure"><h3>${type}</h3><div class="best">${best===null?'—':formatMeasurementValue(type,best)}</div><div class="note">${bestPlayers.length?esc(bestPlayers.join(' / ')):'No results recorded'}</div></div>`;
  }
- return `<button class="measure" data-measure="${esc(type)}"><h3>${type}</h3><div class="best">${best===null?'—':best}</div><div class="note">${vals.length?`${vals.length} attempt${vals.length===1?'':'s'} recorded`:'Tap to record'}</div></button>`;
+ return `<button class="measure" data-measure="${esc(type)}"><h3>${type}</h3><div class="best">${best===null?'—':formatMeasurementValue(type,best)}</div><div class="note">${vals.length?`${vals.length} attempt${vals.length===1?'':'s'} recorded`:'Tap to record'}</div></button>`;
 }
 function evalGuide(title){
  const content={
@@ -1802,7 +1806,7 @@ function recordModal(){
  <label class="label">Measurement</label><select class="input" id="mType">${types.map(t=>`<option ${t===selectedType?'selected':''}>${t}</option>`).join('')}</select>
  <div class="stopwatch" id="measurementStopwatch" ${timed?'':'hidden'}><div class="timer-actions"><button class="btn green" id="timerStart">Start</button><button class="btn red" id="timerSave" hidden>Save</button></div><div class="timer-display"><div class="small">STOPWATCH</div><div class="time" id="timerTime">0.00</div></div></div>
  <div class="manual-entry ${timed?'':'manual-entry-large'}" id="manualEntryPanel" ${timed?'hidden':''}><label class="label" id="measurementUnitLabel">${measurementUnit(selectedType)}</label><div class="manual-entry-row"><input class="input" id="mValue" inputmode="decimal" placeholder="${timed?'0.00':'0'}"><button class="btn red" id="saveManualMeasurement" disabled>Save</button></div></div>
- <div class="measurement-attempt-row ${timed?'':'without-manual'}" id="measurementAttemptRow"><button class="tab fixed-tab manual-attempt" id="manualEntryToggle" ${timed?'':'hidden'}>Manual</button><div class="measurement-attempt-scroll" id="measurementAttempts">${attempts.map((m,i)=>`<button class="tab attempt-box" data-delete-measurement="${m.id}" title="Delete attempt ${i+1}">${esc(m.value)}</button>`).join('')}</div></div>
+ <div class="measurement-attempt-row ${timed?'':'without-manual'}" id="measurementAttemptRow"><button class="tab fixed-tab manual-attempt" id="manualEntryToggle" ${timed?'':'hidden'}>Manual</button><div class="measurement-attempt-scroll" id="measurementAttempts">${attempts.map((m,i)=>`<button class="tab attempt-box" data-delete-measurement="${m.id}" title="Delete attempt ${i+1}">${esc(formatMeasurementValue(selectedType,m.value))}</button>`).join('')}</div></div>
  <div class="measurement-date"><label class="label" for="mDate">Date</label><input class="input" id="mDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
  <div class="measurement-finish-row savebar"><button class="btn clear-measurements" id="clearMeasurements">Clear All</button><button class="btn black" id="finishMeasurements">Save &amp; Close</button></div>
  <p class="small">Every attempt is retained. The player page displays the best result.</p></div></div>`;
@@ -1866,7 +1870,7 @@ function playerMeasurementLines(player){
   const values=db.measurements.filter(m=>m.player===player.name&&m.type===type).map(m=>Number(m.value)).filter(Number.isFinite);
   if(!values.length)return [];
   const best=['Home to First','Pop Time'].includes(type)?Math.min(...values):Math.max(...values);
-  return [`• ${type}: ${best}${units[type]||''}`];
+  return [`• ${type}: ${formatMeasurementValue(type,best)}${units[type]||''}`];
  });
 }
 function emailSubject(player){
@@ -2405,7 +2409,7 @@ function bindRecord(){
   $('#timerSave').hidden=true;$('#timerTime').textContent='0.00';
  };
  const attemptRows=()=>db.measurements.filter(m=>m.player===$('#mPlayer').value&&m.type===$('#mType').value);
- const updateAttemptBoxes=()=>{$('#measurementAttempts').innerHTML=attemptRows().map((m,i)=>`<button class="tab attempt-box" data-delete-measurement="${m.id}" title="Delete attempt ${i+1}">${esc(m.value)}</button>`).join('')};
+ const updateAttemptBoxes=()=>{const type=$('#mType').value;$('#measurementAttempts').innerHTML=attemptRows().map((m,i)=>`<button class="tab attempt-box" data-delete-measurement="${m.id}" title="Delete attempt ${i+1}">${esc(formatMeasurementValue(type,m.value))}</button>`).join('')};
  const storeMeasurement=value=>{
   db.measurements.push({id:crypto.randomUUID(),player:$('#mPlayer').value,type:$('#mType').value,value:Number(value),date:$('#mDate').value});
   save();updateAttemptBoxes();
@@ -2453,7 +2457,7 @@ function bindRecord(){
  $('#measurementAttempts').onclick=event=>{
   const attempt=event.target.closest('[data-delete-measurement]');if(!attempt)return;
   const row=db.measurements.find(m=>m.id===attempt.dataset.deleteMeasurement);if(!row)return;
-  if(!confirm(`Delete the ${row.value} attempt?`))return;
+  if(!confirm(`Delete the ${formatMeasurementValue(row.type,row.value)} attempt?`))return;
   db.measurements=db.measurements.filter(m=>m.id!==row.id);save();updateAttemptBoxes();
  };
  $('#clearMeasurements').onclick=()=>{
