@@ -1619,7 +1619,7 @@ function outcomeReport(pas){
  const strikeouts=pas.filter(p=>p.outcome==='K'),hits=pas.filter(p=>p.outcome==='HIT'),outs=pas.filter(p=>p.outcome==='H4O');
  const items=[...hits,...outs];
  return `${reportSection('STRIKEOUTS',strikeouts,'K')}${reportSection('BASE HITS',hits,'HIT')}
- <h3 class="report-chart-title">SPRAY CHART</h3><div class="report-spray-box"><div class="field report-spray-field">${items.map(p=>{
+ <div class="report-spray-box"><div class="field report-spray-field">${items.map(p=>{
   const coords={1:[50,66],2:[50,85],3:[66,59],4:[62,47],5:[34,59],6:[38,47],7:[22,24],8:[50,13],9:[78,24]}[p.fielder]||[50,65];
   return `<button class="report-spray-dot ${p.outcome==='HIT'?'hit':'h4o'} ${reportSelectedPaId===p.id?'selected':''}" style="left:${coords[0]}%;top:${coords[1]}%" data-report-pa="${p.id}" aria-label="Select ${p.outcome} by ${esc(p.hitter)}"></button>`;
  }).join('')}</div></div>${reportSection('HITS 4 OUTS',outs,'H4O')}`;
