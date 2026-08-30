@@ -1919,9 +1919,9 @@ function recruitingEmailModal(){
   <label class="info-field coach-search-field"><span>College Name</span><input id="emailCollegeName" value="${esc(recruitingEmail.collegeName)}" placeholder="College or university" autocomplete="off"><div class="coach-search-results" id="collegeNameMatches" hidden></div></label>
   <div class="coach-save-row"><button class="btn black" id="saveCoachChanges" disabled>${selectedCoach?'Save Coach Changes':'Save New Coach'}</button><span id="coachLastUpdated">${esc(updatedText)}</span></div>
   <label class="info-field"><span>Optional Personal Note</span><textarea id="emailPersonalNote" rows="3" placeholder="Add a personal message for this coach if needed.">${esc(recruitingEmail.personalNote)}</textarea></label>
-  <div class="email-copy-row"><span><b>CC:</b> ${esc(player.email||'No player email saved')}</span></div>
-  <button class="btn black block" id="previewRecruitingEmail" disabled>Preview Email</button>
   <div class="email-template-actions"><button class="btn" id="downloadCoachTemplate">Download Coach Template</button><button class="btn" id="importCoachList">Import Coach List</button><input id="coachImportFile" type="file" accept=".xlsx,.xls,.csv" hidden></div>
+  <div class="email-preview-group"><button class="btn black block preview-recruiting-email" id="previewRecruitingEmail" disabled>Preview Email</button>
+  <div class="email-copy-row"><span><b>CC:</b> ${esc(player.email||'No player email saved')}</span></div></div>
  </div></div>`;
 }
 function recruitingEmailPreviewModal(){
