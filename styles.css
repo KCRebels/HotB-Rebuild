@@ -42,7 +42,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .home-title{position:absolute;top:40px;z-index:3;color:#fff;font-size:30px;line-height:1;font-weight:900;letter-spacing:2px;white-space:nowrap;text-align:center;text-shadow:0 2px 5px #000}
 .home-actions{position:relative;z-index:3;width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,72px);gap:10px}
 .home-card{display:flex;align-items:center;border-radius:15px;border:3px solid #111;padding:11px 20px;background:#fff;box-shadow:0 5px 0 #111;text-align:left}
-.home-card.primary{background:#cc1f2a;color:#fff;border-color:#7d1017;box-shadow:0 8px 0 #631116}
+.home-card.primary{background:#101011;color:#fff;border-color:#101011;box-shadow:0 8px 0 #aeb8b3}
 .home-card h3{margin:0;font-size:24px}
 .home-card p{margin:3px 0 0;font-size:14px;font-weight:700;color:#525252}
 .home-card.primary p{color:#ffdadd}
@@ -270,8 +270,8 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .home-logo-img{position:absolute;top:22px;width:675px;max-width:none;height:495px;opacity:.32;transform:none}
   .home-title{top:38px;width:100%;font-size:clamp(18px,5.75vw,23px);letter-spacing:.2px}
   .home-hero{height:calc(100svh - 48px);min-height:520px;padding:50svh 14px 14px;justify-content:flex-start}
-  .home-actions{grid-template-rows:repeat(3,64px);gap:9px 8px}
-  .home-card{padding:8px 10px;border-width:2px;border-radius:12px;box-shadow:0 3px 0 #111}.home-card.primary{box-shadow:0 3px 0 #631116}.home-card h3{font-size:18px}
+  .home-actions{grid-template-rows:repeat(3,64px);gap:9px 8px;transform:translateY(73px)}
+  .home-card{padding:8px 10px;border-width:2px;border-radius:12px;box-shadow:0 3px 0 #111}.home-card.primary{box-shadow:0 3px 0 #aeb8b3}.home-card h3{font-size:18px}
   .home-footer{padding:14px 8px;font-size:11px;letter-spacing:1px}
   .hero{padding:15px 13px}.hero h1{font-size:28px;margin:4px 0}.hero p{font-size:14px;margin-top:6px}.hero .kicker{font-size:11px}.hero button{padding:8px 11px;font-size:14px;border-radius:9px}
   .panel{margin:10px 8px;padding:13px;border-radius:14px}.panel h2{font-size:20px}
