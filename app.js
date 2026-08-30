@@ -1701,7 +1701,7 @@ function evalView(){
  ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2><div class="pitcher-stat-grid">
   ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<button class="pitcher-stat" data-pitch-ranking="${key}"><b>${esc(player[key]||'—')}</b><span>${label}</span></button>`).join('')}
  </div></section>`:''}
- <div class="athletic"><div class="athletic-head"><h2>Athletic Bests</h2><button class="btn black" id="recordMeasure2">+ Record</button></div>
+ <div class="athletic"><div class="athletic-head"><h2>Athletic Bests</h2>${player?'<button class="btn black" id="recordMeasure2">+ Record</button>':''}</div>
  <div class="measure-grid">${ms.map(m=>measurementCard(player,m)).join('')}</div></div>`;
 }
 function measurementTypes(player){
@@ -1721,8 +1721,13 @@ function measurementUnit(type){
 function measurementCard(player,type){
  const rows=db.measurements.filter(m=>(!player||m.player===player.name)&&m.type===type);
  const isTime=['Home to First','Pop Time'].includes(type);
- const vals=rows.map(r=>Number(r.value)).filter(Number.isFinite);
+ const entries=rows.map(row=>({row,value:Number(row.value)})).filter(entry=>Number.isFinite(entry.value));
+ const vals=entries.map(entry=>entry.value);
  const best=vals.length?(isTime?Math.min(...vals):Math.max(...vals)):null;
+ if(!player){
+  const bestPlayers=best===null?[]:[...new Set(entries.filter(entry=>entry.value===best).map(entry=>entry.row.player))];
+  return `<div class="measure team-measure"><h3>${type}</h3><div class="best">${best===null?'—':best}</div><div class="note">${bestPlayers.length?esc(bestPlayers.join(' / ')):'No results recorded'}</div></div>`;
+ }
  return `<button class="measure" data-measure="${esc(type)}"><h3>${type}</h3><div class="best">${best===null?'—':best}</div><div class="note">${vals.length?`${vals.length} attempt${vals.length===1?'':'s'} recorded`:'Tap to record'}</div></button>`;
 }
 function evalGuide(title){
@@ -2386,7 +2391,8 @@ function bindEval(){
  $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};
  bindDateFilters('eval');
  $('#openRecruitingEmail').onclick=()=>{recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:'',selectedCoachEmail:''};modal='recruitingEmail';render()};
- $('#recordMeasure2').onclick=()=>{recordType='';modal='record';render()};
+ const recordMeasureButton=$('#recordMeasure2');
+ if(recordMeasureButton)recordMeasureButton.onclick=()=>{recordType='';modal='record';render()};
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
  $$('[data-guide]').forEach(x=>x.onclick=()=>{modal='guide:'+x.dataset.guide;render()});
  $$('[data-ranking]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.ranking;render()});
