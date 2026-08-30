@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 38618)
-Total output lines: 2450
-
 
 (() => {
 const $ = (sel, root=document) => root.querySelector(sel);
@@ -1393,7 +1390,392 @@ function liveView(){
   <div class="zone-layout">
    <button class="zone-scope ${g.zoneScope==='TEAM'?'active':''}" id="zoneScope">${g.zoneScope==='TEAM'?'HTR':'TM'}</button>
    <div class="zone zone-top ${showPct?'heat-zone':''} ${g.pendingZone==='T'?'selected':''}" style="${showPct?heat.T:''}" data-zone="T">${zoneContent('T')}</div>
-   <div class="zone zone-left ${showPct?'heat-zone':''} ${g.pendingZone==='L'?'selected':''}" style…8618 tokens truncated…ll;
+   <div class="zone zone-left ${showPct?'heat-zone':''} ${g.pendingZone==='L'?'selected':''}" style="${showPct?heat.L:''}" data-zone="L">${zoneContent('L')}</div>
+   <div class="core-grid">${['C1','C2','C3','C4'].map(z=>`<div class="zone core ${showPct?'heat-zone':''} ${g.pendingZone===z?'selected':''}" style="${showPct?heat[z]:''}" data-zone="${z}">${zoneContent(z)}</div>`).join('')}</div>
+   <div class="zone zone-right ${showPct?'heat-zone':''} ${g.pendingZone==='R'?'selected':''}" style="${showPct?heat.R:''}" data-zone="R">${zoneContent('R')}</div>
+   <div class="zone zone-bottom ${showPct?'heat-zone':''} ${g.pendingZone==='B'?'selected':''}" style="${showPct?heat.B:''}" data-zone="B">${zoneContent('B')}</div>
+   <button class="zone-next ${g.previewNext?'active':''}" id="zoneNext" ${nextName?'': 'disabled'}>${g.previewNext?nextInitials:'NXT'}</button>
+   <button class="fps ${g.firstPitchView?'active':''}" id="fpsBtn" aria-label="First-pitch strike percentage"><strong class="${Math.round(fps(g)*100)===100?'fps-compact':'fps-standard'}">${Math.round(fps(g)*100)}%</strong></button>
+  </div>
+  <div class="zone-tools"><button class="ai" id="aiBtn">Ai</button>
+   ${g.showAi?`<div class="ai-suggestions">${suggestions.map((s,i)=>`<div class="ai-box"><span class="ai-rank">#${i+1}</span><span class="ai-pitch">${esc(s.label)}</span><span class="ai-pct">${s.pct===null?'':`${s.pct}%`}</span></div>`).join('')}</div>`:''}
+  </div>
+ </div>
+ <div class="tabs ${showAll?'with-all':'without-all'}"><button class="tab fixed-tab ${(g.historyTab||'LIVE')==='LIVE'?'active':''}" data-tab="LIVE">LIVE</button><div class="ab-scroll">${abTabNames.map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}${showAll?`<button class="tab ${(g.historyTab||'LIVE')==='ALL'?'active':''}" data-tab="ALL">${g.historyTab==='ALL'&&(g.allView||'DOTS')==='DOTS'?'%':'ALL'}</button>`:''}</div></div>
+ <div class="results">
+  <button class="result hbp" data-result="HBP" ${statsMode?'disabled':''}>HBP</button><button class="result ball ${percentMode&&filter==='B'?'filter-active':''}" data-result="B">B</button><button class="result foul ${percentMode&&filter==='F'?'filter-active':''}" data-result="F">F</button><button class="result hit ${percentMode&&filter==='HIT'?'filter-active':''}" data-result="HIT">HIT</button>
+  <button class="result undo" id="undo" ${statsMode?'disabled':''}>Undo</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="K">K</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="KL">KL</button><button class="result out ${percentMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
+ </div></div><div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div></div>`;
+}
+function historyHtml(g,hitter){
+ const pitches=g.pitches.filter(p=>p.hitter===hitter);
+ const tab=g.historyTab||'LIVE';
+ let show=pitches.filter(p=>p.pa===g.paNumber);
+ if(/^AB\d+$/.test(tab)){
+   const n=Number(tab.slice(2)), completed=g.plateAppearances.filter(pa=>pa.hitter===hitter)[n-1];
+   show=completed?pitches.filter(p=>p.pa===completed.pa):[];
+ }else if(tab==='ALL')show=pitches;
+ const ordered=[...show].reverse();
+ return ordered.map((p,i)=>{
+   const divider=tab==='ALL'&&i>0&&p.pa!==ordered[i-1].pa?'<div class="history-ab-divider" aria-hidden="true"></div>':'';
+   return `${divider}<div class="history-chip"><div class="history-chip-head"><strong>${esc(p.result)}</strong><span>${esc(p.pitchType)}</span></div><div class="mini-zone">
+ ${['T','L','C1','C2','C3','C4','R','B'].map(z=>`<span class="mini-zone-cell mz-${z.toLowerCase()} ${p.zone===z?pitchMarkClass(p):''}"></span>`).join('')}</div></div>`;
+ }).join('')||'<div class="history-empty" aria-label="Next pitch"></div>';
+}
+function zoneGroup(zone,player){
+ const leftHanded=isLeftBatter(player);
+ const inside=new Set(leftHanded?['L','C1','C3']:['R','C2','C4']);
+ const outside=new Set(leftHanded?['R','C2','C4']:['L','C1','C3']);
+ if(inside.has(zone))return'IN';
+ if(outside.has(zone))return'OUT';
+ return zone==='T'?'HIGH':zone==='B'?'LOW':'';
+}
+function normalized(value){return String(value||'').trim().toLowerCase()}
+function aiSeason(game){return seasonMeta(game?.date).season||currentSeasonLabel(new Date(game?.date||Date.now()))}
+function aiLocation(zone,player){return ({IN:'in',OUT:'ot',HIGH:'hi',LOW:'lo'})[zoneGroup(zone,player)]||''}
+function aiPitchKey(pitch,player){
+ const location=aiLocation(pitch.zone,player);
+ return pitch.pitchType&&location?`${pitch.pitchType}${location}`:'';
+}
+function aiResultGroup(result){
+ if(result==='B'||result==='KL')return'TAKE';
+ if(result==='K')return'MISS';
+ if(result==='F')return'FOUL';
+ return['HIT','H4O','E','FC','SAC'].includes(result)?'CONTACT':result;
+}
+function aiCountGroup(balls,strikes){
+ const key=`${balls}-${strikes}`;
+ if(['0-0','0-2','3-0','3-2'].includes(key))return key;
+ if(['0-1','1-2'].includes(key))return'PITCHER_AHEAD';
+ if(['1-1','2-2'].includes(key))return'EVEN';
+ if(['1-0','2-0','2-1','3-1'].includes(key))return'HITTER_AHEAD';
+ return key;
+}
+function aiCountWeight(pitch,balls,strikes){
+ const key=`${pitch.ballsBefore}-${pitch.strikesBefore}`,current=`${balls}-${strikes}`;
+ if(key===current)return 2.4;
+ const nearby={
+  '0-0':[],
+  '0-2':['1-2','2-2'],
+  '3-0':['2-0','3-1'],
+  '3-2':['2-2','3-1']
+ }[current];
+ if(nearby)return nearby.includes(key)?.65:.2;
+ return aiCountGroup(pitch.ballsBefore,pitch.strikesBefore)===aiCountGroup(balls,strikes)?1.2:.3;
+}
+function aiRunnerSituation(runners){
+ const set=new Set(runners||[]);
+ if(set.has(1)&&set.has(2)&&set.has(3))return'LOADED';
+ if(set.has(1)&&set.has(2))return'FORCE_THIRD';
+ if(set.has(3))return'THIRD';
+ if(set.has(1)&&set.has(3))return'CORNERS';
+ if(set.has(1))return'FIRST';
+ if(set.has(2))return'SECOND';
+ return'EMPTY';
+}
+function aiStyle(playerOrPitch){
+ const style=playerOrPitch?.hitterStyle||playerOrPitch?.side||hitterObj(playerOrPitch?.hitter).side||'R';
+ return ['R','L','SL'].includes(style)?style:'R';
+}
+function aiPitchRecords(g){
+ const season=aiSeason(g),opponent=normalized(g.opponent),pitcherName=normalized(g.pitcherName),pitcherNumber=normalized(g.pitcherNumber);
+ const games=[...db.savedGames,...(db.currentGame?[db.currentGame]:[])].filter(game=>
+  (game.id===g.id||aiSeason(game)===season)&&normalized(game.opponent)===opponent
+ );
+ const hasPitcher=game=>(game.pitches||[]).some(pitch=>normalized(pitch.pitcherName)===pitcherName&&normalized(pitch.pitcherNumber)===pitcherNumber);
+ const prior=games.filter(game=>game.id!==g.id&&hasPitcher(game)).sort((a,b)=>new Date(b.date)-new Date(a.date));
+ const recentIds=new Set(prior.slice(0,3).map(game=>game.id));
+ const records=[];
+ games.forEach(game=>{
+  const paIndexes=new Map();
+  (game.pitches||[]).forEach(pitch=>{
+   if(normalized(pitch.pitcherName)!==pitcherName||normalized(pitch.pitcherNumber)!==pitcherNumber)return;
+   const paKey=`${pitch.hitter}::${pitch.pa}`,paPitchIndex=paIndexes.get(paKey)||0;paIndexes.set(paKey,paPitchIndex+1);
+   records.push({pitch,game,paPitchIndex,gameWeight:game.id===g.id?3:recentIds.has(game.id)?1.5:.75});
+  });
+ });
+ return records;
+}
+function aiSuggestions(g,hitter){
+ const player=hitterObj(hitter),targetStyle=aiStyle(player),records=aiPitchRecords(g);
+ const locations=['in','ot','lo','hi'],types=['FB','CH','RS','DP','CV','SC'];
+ const scores=Object.fromEntries(types.flatMap(type=>locations.map(location=>[`${type}${location}`,1.5])));
+ const relevant=records.filter(({pitch})=>{
+  const relation=pitch.hitter===hitter?'EXACT':aiStyle(pitch)===targetStyle?'SAME':'OTHER';
+  return relation!=='OTHER'&&aiPitchKey(pitch,hitterObj(pitch.hitter));
+ });
+ if(relevant.length<6)return [{label:'—',pct:null},{label:'—',pct:null}];
+ const currentPaPitches=g.pitches.filter(pitch=>pitch.hitter===hitter&&pitch.pa===g.paNumber);
+ const longAtBat=currentPaPitches.length>=5,currentSituation=aiRunnerSituation(g.runners);
+ const comparableSituationCount=relevant.filter(({pitch})=>Array.isArray(pitch.runnersBefore)&&aiRunnerSituation(pitch.runnersBefore)===currentSituation).length;
+ const comparableOutCount=relevant.filter(({pitch})=>Number.isInteger(pitch.outsBefore)&&pitch.outsBefore===g.outs).length;
+ const typeUse={};relevant.forEach(({pitch})=>typeUse[pitch.pitchType]=(typeUse[pitch.pitchType]||0)+1);
+ const locationUse=Object.fromEntries(locations.map(location=>[location,1]));
+ relevant.forEach(({pitch})=>{const location=aiLocation(pitch.zone,hitterObj(pitch.hitter));if(location)locationUse[location]++});
+ const locationTotal=Object.values(locationUse).reduce((sum,value)=>sum+value,0);
+ const controlPitch=Object.entries(typeUse).sort((a,b)=>b[1]-a[1])[0]?.[0]||'FB';
+ records.forEach(({pitch,gameWeight,paPitchIndex})=>{
+  if(!pitch.pitchType)return;
+  const sourcePlayer=hitterObj(pitch.hitter),key=aiPitchKey(pitch,sourcePlayer);if(!key)return;
+  const sourceStyle=aiStyle(pitch),exact=pitch.hitter===hitter,sameStyle=sourceStyle===targetStyle;
+  const base=gameWeight*(exact?1.4:sameStyle?1:.05)*aiCountWeight(pitch,g.balls,g.strikes)*(longAtBat&&paPitchIndex>=5?1.25:1);
+  if(exact||sameStyle){
+   const situationWeight=comparableSituationCount>=5&&Array.isArray(pitch.runnersBefore)&&aiRunnerSituation(pitch.runnersBefore)===currentSituation?1.35:1;
+   const outsWeight=comparableOutCount>=5&&Number.isInteger(pitch.outsBefore)&&pitch.outsBefore===g.outs?1.08:1;
+   scores[key]+=base*situationWeight*outsWeight;
+  }else locations.forEach(location=>scores[`${pitch.pitchType}${location}`]+=base*(locationUse[location]/locationTotal));
+ });
+ if(currentPaPitches.length>=2){
+  const currentPair=currentPaPitches.slice(-2).map(pitch=>`${aiPitchKey(pitch,player)}:${aiResultGroup(pitch.result)}`);
+  const byPa=new Map();records.filter(({pitch})=>pitch.hitter===hitter||aiStyle(pitch)===targetStyle).forEach(record=>{
+   const id=`${record.game.id}:${record.pitch.hitter}:${record.pitch.pa}`;if(!byPa.has(id))byPa.set(id,[]);byPa.get(id).push(record);
+  });
+  const nextMatches=[];
+  byPa.forEach(group=>{group.sort((a,b)=>a.pitch.ts-b.pitch.ts);for(let i=2;i<group.length;i++){
+   const previous=group.slice(i-2,i).map(({pitch})=>`${aiPitchKey(pitch,hitterObj(pitch.hitter))}:${aiResultGroup(pitch.result)}`);
+   if(previous[0]===currentPair[0]&&previous[1]===currentPair[1])nextMatches.push(group[i]);
+  }});
+  if(nextMatches.length>=3)nextMatches.forEach(({pitch,gameWeight})=>{const key=aiPitchKey(pitch,hitterObj(pitch.hitter));if(key)scores[key]+=2.5*gameWeight});
+ }
+ const forceSituation=['FORCE_THIRD','LOADED'].includes(currentSituation);
+ Object.keys(scores).forEach(key=>{
+  const type=types.find(value=>key.startsWith(value)),location=key.slice(type.length);
+  if(forceSituation&&((targetStyle==='R'&&location==='in')||(targetStyle==='SL'&&location==='ot')))scores[key]*=1.15;
+  if(currentSituation==='LOADED'&&type===controlPitch)scores[key]*=1.1;
+  if(currentSituation==='THIRD'){
+   if(g.outs<2){if(type===controlPitch)scores[key]*=1.1;if(location==='lo'&&['CH','DP'].includes(type))scores[key]*=.75}
+   else{if(type===controlPitch)scores[key]*=1.03;if(location==='lo'&&['CH','DP'].includes(type))scores[key]*=.95}
+  }
+ });
+ const total=Object.values(scores).reduce((sum,value)=>sum+value,0)||1;
+ return Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([label,value])=>({label,pct:Math.round(value/total*100)}));
+}
+function hitModal(kind){
+ const isOut=kind==='H4O';
+ return `<div class="modal-backdrop hit-backdrop"><div class="modal hit-modal ${isOut?'out-contact':'hit-contact'}">
+ <div class="topbar"><button class="btn" data-close>Cancel</button><div class="brand" style="text-align:center">${kind}</div><div style="width:94px"></div></div>
+ <div class="field-wrap"><div class="field">${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="pos p${n}" data-fielder="${n}">${n}</button>`).join('')}</div></div>
+ <div class="hit-options"><div class="contact-board">
+  <div class="contact-left">
+   <div class="compact-three">${['HIT','BUNT','SLAP'].map(x=>`<button class="choice" data-contact="${x}">${x}</button>`).join('')}</div>
+   ${isOut?`<div class="compact-four out-grid">${['GO','LO','FO','PO'].map(x=>`<button class="choice" data-outtype="${x}">${x}</button>`).join('')}</div>`:
+   `<div class="compact-three">${['GB','LD','FB'].map(x=>`<button class="choice" data-batted="${x}">${x}</button>`).join('')}</div>
+    <div class="compact-four bases-grid">${['1B','2B','3B','HR'].map(x=>`<button class="choice blue" data-hit="${x}">${x}</button>`).join('')}</div>`}
+  </div>
+  <div class="contact-right">
+   <div class="qual-grid">${isOut
+    ?`<button class="choice" data-rbi-open>RBI</button><button class="choice" data-qual="SAC">SAC</button><button class="choice qual-wide" data-qual="RBA">RBA</button>`
+    :`<button class="choice" data-qual="E">E</button><button class="choice" data-qual="FC">FC</button><button class="choice" data-rbi-open>RBI</button><button class="choice" data-qual="SAC">SAC</button>`}<button class="choice" data-strength="HHB">HHB</button><button class="choice" data-strength="WEAK">WEAK</button></div>
+   <div class="rbi-picker" hidden><div class="rbi-picker-title">RBI</div><div class="rbi-picker-options">${[1,2,3].map(n=>`<button type="button" data-rbi-count="${n}">${n}</button>`).join('')}</div><button type="button" class="rbi-picker-cancel" data-rbi-cancel>Cancel</button></div>
+  </div>
+ </div><button class="btn block black save-contact" id="saveContact" disabled>${isOut?'Save Out':'Save Hit'}</button></div></div></div>`;
+}
+function reportModal(){
+ const g=reportMode==='current'?currentGame():reportMode==='game'?db.savedGames.find(game=>game.id===reportGameId):null;
+ const reportGames=reportMode==='saved'?filteredGames(false):(g?[g]:[]);
+ const source=reportGames.flatMap(game=>game.plateAppearances||[]);
+ const filtered=reportFilterHitter==='All Hitters'?source:source.filter(p=>p.hitter===reportFilterHitter);
+ const s=statsForPAs(filtered);
+ const hitters=[...new Set(source.map(p=>p.hitter))];
+ return `<div class="modal-backdrop"><div class="modal">
+ <div class="report-tabs"><button class="btn ${reportMode==='current'?'black':''}" data-rmode="current">Current</button><button class="btn ${reportMode!=='current'?'black':''}" data-rmode="saved">Saved</button><button class="btn gold" id="exportReport">Export</button><button class="btn" data-close>Close</button></div>
+ <div class="panel" style="margin:14px 0 0">
+ ${reportMode==='saved'?dateFilterControls('report'):''}
+ <select class="input" id="reportHitter"><option>All Hitters</option>${db.roster.map(r=>`<option ${reportFilterHitter===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
+ <div style="font-size:26px;margin-top:14px">${reportMode==='saved'?`${reportGames.length} Saved Games · ${esc(activeDateFilterLabel())}`:reportMode==='game'?`${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}`:'Current Game'}</div>
+ <div class="report-stat-grid">${[['PA',s.PA],['AVG',round3(s.AVG)],['OBP',round3(s.OBP)],['SLG',round3(s.SLG)],['OPS',round3(s.OPS)],['RBI',s.RBI],['HHB',s.HHB],['WEAK',s.WEAK]].map(([k,v])=>`<div class="report-stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
+ <h3 class="count-performance-title">COUNT PERFORMANCE <span class="count-key hit">H</span><span class="count-separator">|</span><span class="count-key out">H4O</span><span class="count-separator">|</span><span class="count-key strikeout">K</span><span class="count-separator">|</span><span class="count-key average">AVE</span></h3>
+ <div class="count-grid">${['0-0','0-2','1-2','2-2','3-2','6+'].map(c=>countCard(filtered,c)).join('')}</div>
+ ${outcomeReport(filtered)}
+ </div></div></div>`;
+}
+function countCard(pas,bucket){
+ const matches=pas.filter(pa=>{
+  if(bucket==='6+')return pa.pitchCount>=6;
+  return pa.finalCount===bucket;
+ });
+ const h=matches.filter(p=>p.outcome==='HIT').length,o=matches.filter(p=>p.outcome==='H4O').length,k=matches.filter(p=>p.outcome==='K').length,ave=(h+o+k)?h/(h+o+k):0;
+ return `<div class="count-card"><b>${bucket}</b><span class="count-value hit ${h===0?'zero':''}">${h}</span><span class="count-separator">|</span><span class="count-value out ${o===0?'zero':''}">${o}</span><span class="count-separator">|</span><span class="count-value strikeout ${k===0?'zero':''}">${k}</span><span class="count-separator">|</span><span class="count-value average ${ave===0?'zero':''}">${round3(ave)}</span></div>`;
+}
+function reportPitchSource(){
+ return reportMode==='current'?(currentGame()?.pitches||[]):reportMode==='game'?(db.savedGames.find(game=>game.id===reportGameId)?.pitches||[]):filteredPitches(false);
+}
+function reportPitchForPA(pa){
+ const pitches=reportPitchSource().filter(p=>p.pa===pa.pa&&p.hitter===pa.hitter);
+ return pitches[pitches.length-1]||{};
+}
+function reportPitchLabel(pa){
+ const pitch=reportPitchForPA(pa),zone=String(pitch.zone||'').replace(/^C/,'');
+ return `${pitch.pitchType||'—'}${zone||''} (${pa.finalCount||'0-0'}) (${pa.pitchCount||0})`;
+}
+function reportOutcomeItem(pa,kind){
+ const lead=kind==='HIT'?(pa.hitType||'H'):kind==='H4O'?(pa.fielder||'O'):'';
+ return `<button class="report-outcome-item ${kind.toLowerCase()}" data-report-pa="${pa.id}">${lead?`<span>${lead}</span>`:''}<strong>${esc(reportPitchLabel(pa))}</strong></button>`;
+}
+function reportSection(title,items,kind){
+ return `<section class="report-outcome-section"><div class="report-outcome-heading"><b>${title}</b><span>(${items.length}) (COUNT) (TOTAL PITCHES)</span></div><div class="report-outcome-list">${items.length?items.map(pa=>reportOutcomeItem(pa,kind)).join(''):'<span class="report-empty">None</span>'}</div></section>`;
+}
+function outcomeReport(pas){
+ const strikeouts=pas.filter(p=>p.outcome==='K'),hits=pas.filter(p=>p.outcome==='HIT'),outs=pas.filter(p=>p.outcome==='H4O');
+ const items=[...hits,...outs];
+ return `${reportSection('STRIKEOUTS',strikeouts,'K')}${reportSection('BASE HITS',hits,'HIT')}
+ <h3 class="report-chart-title">SPRAY CHART</h3><div class="report-spray-box"><div class="field report-spray-field">${items.map(p=>{
+  const coords={1:[50,66],2:[50,85],3:[66,59],4:[62,47],5:[34,59],6:[38,47],7:[22,24],8:[50,13],9:[78,24]}[p.fielder]||[50,65];
+  return `<button class="report-spray-dot ${p.outcome==='HIT'?'hit':'h4o'} ${reportSelectedPaId===p.id?'selected':''}" style="left:${coords[0]}%;top:${coords[1]}%" data-report-pa="${p.id}" aria-label="Select ${p.outcome} by ${esc(p.hitter)}"></button>`;
+ }).join('')}</div></div>${reportSection('HITS 4 OUTS',outs,'H4O')}`;
+}
+function zoneReport(pas){
+ const pitchSource=reportMode==='current'?(currentGame()?.pitches||[]):reportMode==='game'?(db.savedGames.find(game=>game.id===reportGameId)?.pitches||[]):filteredPitches(false);
+ const ps=pitchSource.filter(p=>reportFilterHitter==='All Hitters'||p.hitter===reportFilterHitter);
+ const z={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0};ps.forEach(p=>z[p.zone]=(z[p.zone]||0)+1);const n=ps.length||1;
+ const heat=heatStyles(z,heatColors.REPORT);
+ return `<h3 style="margin-top:22px">ZONE CHART</h3><div class="zone-layout" style="max-width:480px;margin:10px auto">
+ <div class="zone zone-top heat-zone" style="${heat.T}"><span class="pct">${Math.round(z.T/n*100)}%</span></div><div class="zone zone-left heat-zone" style="${heat.L}"><span class="pct">${Math.round(z.L/n*100)}%</span></div>
+ <div class="core-grid">${['C1','C2','C3','C4'].map(k=>`<div class="zone core heat-zone" style="${heat[k]}"><span class="pct">${Math.round(z[k]/n*100)}%</span></div>`).join('')}</div>
+ <div class="zone zone-right heat-zone" style="${heat.R}"><span class="pct">${Math.round(z.R/n*100)}%</span></div><div class="zone zone-bottom heat-zone" style="${heat.B}"><span class="pct">${Math.round(z.B/n*100)}%</span></div></div>`;
+}
+function reportsPage(){
+ const games=filteredGames(false);
+ return `<div class="page-match-head page-head-centered"><button class="page-head-nav" data-go="home">Home</button><h1>Reports</h1><span class="page-head-spacer"></span></div>
+ <div class="panel"><button class="btn black block" id="openSavedReports">Open Saved Reports</button>
+ <div class="roster-data-tools backup-tools"><button class="btn black" id="exportFullBackup">Export Full Backup</button><button class="btn" id="restoreFullBackup">Restore Backup</button><input id="fullBackupFile" type="file" accept=".json,application/json" hidden><p>A full backup preserves games, pitches, roster information, measurements, pitchers and app preferences.</p></div>
+ ${dateFilterControls('saved')}<div class="saved-game-list">${games.length?games.map(g=>{const meta=seasonMeta(g.date);return `<div class="saved-game-card"><div><b>${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}</b><span>${esc(meta.season)} · ${esc(meta.segment)} · ${(g.plateAppearances||[]).length} PA</span></div><div class="saved-game-actions"><button class="btn black" data-view-game="${g.id}">View</button><button class="btn red" data-delete-game="${g.id}">Delete</button></div></div>`}).join(''):'No saved games match this date range.'}</div></div>`;
+}
+function exportFullBackup(){
+ const payload={format:'HotB Full Backup',version:1,exportedAt:new Date().toISOString(),db};
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
+ a.download=`HotB_Full_Backup_${new Date().toISOString().slice(0,10)}.json`;
+ a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+async function restoreFullBackup(file){
+ const payload=JSON.parse(await file.text());
+ if(payload?.format!=='HotB Full Backup'||!payload.db||!Array.isArray(payload.db.roster)||!Array.isArray(payload.db.savedGames))throw new Error('This is not a valid HotB full backup file.');
+ if(!confirm('Restore this backup? It will replace all HotB information currently saved on this device.'))return;
+ db=payload.db;route='home';db.route='home';modal=null;lastRenderedUndoState=null;save();render();
+ alert('HotB backup restored successfully.');
+}
+function grade(value,metric){
+ const rules={
+  AVG:[[.4,'excellent'],[.35,'good'],[.3,'acceptable'],[.25,'concern'],[-Infinity,'serious']],
+  OBP:[[.475,'excellent'],[.425,'good'],[.375,'acceptable'],[.325,'concern'],[-Infinity,'serious']],
+  SLG:[[.6,'excellent'],[.5,'good'],[.4,'acceptable'],[.325,'concern'],[-Infinity,'serious']],
+  contact:[[.9,'excellent'],[.85,'good'],[.8,'acceptable'],[.75,'concern'],[-Infinity,'serious']],
+  BB:[[.15,'excellent'],[.10,'good'],[.07,'acceptable'],[.04,'concern'],[-Infinity,'serious']]
+ };
+ if(metric==='K'){
+  if(value<.10)return'excellent';if(value<=.15)return'good';if(value<=.20)return'acceptable';if(value<=.25)return'concern';return'serious';
+ }
+ return rules[metric].find(([min])=>value>=min)[1];
+}
+function evalView(){
+ const player=evalPlayer==='Team'?null:hitterObj(evalPlayer);
+ const teamPas=filteredPAs();
+ const pas=teamPas.filter(p=>!player||p.hitter===player.name);
+ const s=statsForPAs(pas);
+ const teamS=statsForPAs(teamPas);
+ const teamRate=teamS.PA?teamS.rp/teamS.PA:0;
+ const playerTotals=db.roster.map(r=>statsForPAs(teamPas.filter(p=>p.hitter===r.name))).filter(x=>x.PA>0);
+ const avgPlayerRp=playerTotals.length?playerTotals.reduce((sum,x)=>sum+x.rp,0)/playerTotals.length:0;
+ const hotb=s.PA&&teamRate?Math.round((s.rp/s.PA)/teamRate*100):null;
+ const signed=(n,digits=1)=>`${n>0?'+':''}${n.toFixed(digits)}`;
+ const deltaClass=n=>n>0?'positive':n<0?'negative':'neutral';
+ const comparison=(value,delta,digits=1)=>`<div class="value compare-value"><span>${value}</span><span class="metric-pipe">|</span><span class="metric-delta ${deltaClass(delta)}">${signed(delta,digits)}</span></div>`;
+ const emptyComparison=()=>`<div class="value compare-value empty-value"><span>—</span><span class="metric-pipe">|</span><span>—</span></div>`;
+ const executionTotals=pas.reduce((totals,pa)=>({successes:totals.successes+Number(pa.executionSuccesses||0),attempts:totals.attempts+Number(pa.executionAttempts||0)}),{successes:0,attempts:0});
+ const execution=executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null;
+ const ms=measurementTypes(player);
+ const metricHead=(metric,label=metric)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${metric}">${label}</button><button class="metric-all" data-ranking="${metric}">ALL</button></div>`;
+ return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><button class="btn eval-email" id="openRecruitingEmail" ${player?'':'disabled'}>Email</button></div>
+ <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
+ ${dateFilterControls('eval')}
+ ${player?`<div class="player-card player-profile"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div></div>`:
+ `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
+ <div class="eval-tiles">
+  <div class="eval-tile dark">${metricHead('HotB+')} ${hotb===null?emptyComparison():(player?comparison(hotb,hotb-100,0):`<div class="value">${hotb}</div>`)}<div class="note">Production vs Team</div></div>
+  <div class="eval-tile">${metricHead('Runs Produced','RP')} ${s.PA?(player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`):emptyComparison()}<div class="note">Runs Produced</div></div>
+  <div class="eval-tile">${metricHead('Execution','HP%')}<div class="value">${execution===null?'—%':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
+ </div>
+ <div class="performance"><h2>Hitting Results <span class="small" style="float:right">${esc(activeDateFilterLabel())}</span></h2><div class="perf-grid">
+ ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],['BB%',pct1(s.bbPct),'BB']].map(([label,val,key])=>`<div class="perf ${s.PA>=25?grade(s[key==='contact'?'contactPct':key==='K'?'kPct':key==='BB'?'bbPct':key],key):''}" data-guide="${label}"><b>${val}</b><span>${label}</span></div>`).join('')}
+ </div></div>
+ ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2><div class="pitcher-stat-grid">
+  ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<button class="pitcher-stat" data-pitch-ranking="${key}"><b>${esc(player[key]||'—')}</b><span>${label}</span></button>`).join('')}
+ </div></section>`:''}
+ <div class="athletic"><div class="athletic-head"><h2>Athletic Bests</h2><button class="btn black" id="recordMeasure2">+ Record</button></div>
+ <div class="measure-grid">${ms.map(m=>measurementCard(player,m)).join('')}</div></div>`;
+}
+function measurementTypes(player){
+ const base=['Home to First','Overhand Throw','Exit Velocity','Broad Jump'];
+ const positions=positionTokens(player);
+ if(isPitcherProfile(player))base.push('Fastball','Changeup');
+ if(positions.includes('C'))base.push('Pop Time');
+ return base;
+}
+const stopwatchMeasurements=['Home to First'];
+function measurementUnit(type){
+ if(['Home to First','Pop Time'].includes(type))return'Seconds';
+ if(['Overhand Throw','Fastball','Changeup','Exit Velocity'].includes(type))return'MPH';
+ if(type==='Broad Jump')return'Inches';
+ return'Value';
+}
+function measurementCard(player,type){
+ const rows=db.measurements.filter(m=>(!player||m.player===player.name)&&m.type===type);
+ const isTime=['Home to First','Pop Time'].includes(type);
+ const vals=rows.map(r=>Number(r.value)).filter(Number.isFinite);
+ const best=vals.length?(isTime?Math.min(...vals):Math.max(...vals)):null;
+ return `<button class="measure" data-measure="${esc(type)}"><h3>${type}</h3><div class="best">${best===null?'—':best}</div><div class="note">${vals.length?`${vals.length} attempt${vals.length===1?'':'s'} recorded`:'Tap to record'}</div></button>`;
+}
+function evalGuide(title){
+ const content={
+ 'HotB+':`HotB+ compares the hitter’s Runs Produced rate with the current team rate. Runs Produced assigns 1.00 for a single, 1.65 for a double, 2.30 for a triple, 2.95 for a home run, 0.70 for a walk or hit-by-pitch, 0.75 for each RBI, plus 0.25 for hard-hit contact and minus 0.25 for weak contact. The app divides the hitter’s Runs Produced by her plate appearances, divides that rate by the team’s Runs Produced-per-plate-appearance rate, then multiplies by 100. A score of 100 is team average; 120 is 20% above the team rate; 80 is 20% below.`,
+ 'Runs Produced':`Runs Produced estimates the hitter’s total accumulated offensive contribution. It credits hits, extra bases, walks, hit-by-pitches, each RBI, and hard-hit balls; weak contact reduces the total. Because it is cumulative, hitters with more plate appearances have more opportunities to add Runs Produced. The comparison shows how her total differs from the average total of teammates with saved plate appearances.`,
+ 'Execution':`Execution grades pitch-by-pitch decisions against the selected IN, OUT, or CH plan. Before two strikes, swinging in the plan location and taking pitches outside it are successful; swinging outside the plan or taking a pitch in it are unsuccessful. With two strikes, correct-location contact can improve the score, while nothing can lower it.`
+ }[title];
+ if(content){
+  const guideTitle=title==='Execution'?'Hitting Plan Percentage':title;
+  return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>${guideTitle}</h2></div><button class="btn" data-close>Close</button></div><hr style="border-color:#555"><p style="font-size:22px;line-height:1.45;font-weight:400">${content}</p></div></div>`;
+ }
+ const metricMap={AVG:'Batting Average',SLG:'Slugging Percentage',OBP:'On-Base Percentage',CONTACT:'Contact Percentage','K%':'Strikeout Percentage','BB%':'Walk Percentage'};
+ const table={
+  AVG:[['Excellent','.400+'],['Good','.350–.399'],['Acceptable','.300–.349'],['Concern','.250–.299'],['Serious concern','Under .250']],
+  SLG:[['Excellent','.600+'],['Good','.500–.599'],['Acceptable','.400–.499'],['Concern','.325–.399'],['Serious concern','Under .325']],
+  OBP:[['Excellent','.475+'],['Good','.425–.474'],['Acceptable','.375–.424'],['Concern','.325–.374'],['Serious concern','Under .325']],
+  CONTACT:[['Excellent','90%+'],['Good','85–89.9%'],['Acceptable','80–84.9%'],['Concern','75–79.9%'],['Serious concern','Below 75%']],
+  'BB%':[['Excellent','15%+'],['Good','10–14.9%'],['Acceptable','7–9.9%'],['Concern','4–6.9%'],['Serious concern','Under 4%']],
+  'K%':[['Excellent','Under 10%'],['Good','10–15%'],['Acceptable','15.1–20%'],['Concern','20.1–25%'],['Serious concern','Over 25%']]
+ }[title];
+ return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>${metricMap[title]}</h2></div><button class="btn" data-close>Close</button></div><table class="guide-table"><thead><tr><th>Rating</th><th>${title.replace('CONTACT','Contact%')}</th></tr></thead><tbody>${table.map(([r,v],i)=>`<tr><td class="${['excellent','good','acceptable','concern','serious'][i]}">${r}</td><td><b>${v}</b></td></tr>`).join('')}</tbody></table><p class="small" style="color:#ddd">The app begins color-grading a player after 25 saved plate appearances.</p></div></div>`;
+}
+function evalRankingModal(metric){
+ const teamPas=filteredPAs();
+ const teamStats=statsForPAs(teamPas);
+ const teamRate=teamStats.PA?teamStats.rp/teamStats.PA:0;
+ const rows=db.roster.map(player=>{
+  const pas=teamPas.filter(pa=>pa.hitter===player.name);
+  const stats=statsForPAs(pas);
+  const executionTotals=pas.reduce((totals,pa)=>({successes:totals.successes+Number(pa.executionSuccesses||0),attempts:totals.attempts+Number(pa.executionAttempts||0)}),{successes:0,attempts:0});
+  let value=null;
+  if(metric==='HotB+')value=stats.PA&&teamRate?(stats.rp/stats.PA)/teamRate*100:null;
+  else if(metric==='Runs Produced')value=stats.PA?stats.rp:null;
+  else if(metric==='Execution')value=executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null;
+  return {player,value};
+ }).sort((a,b)=>{
+  if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
+  if(a.value===null)return 1;if(b.value===null)return-1;
+  return b.value-a.value||a.player.name.localeCompare(b.player.name);
+ });
+ const formatted=value=>value===null?'—':metric==='HotB+'?Math.round(value):metric==='Execution'?pct0(value):value.toFixed(1);
+ return `<div class="modal-backdrop"><div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">TEAM RANKINGS</div><h2>${esc(metric)}</h2></div><button class="btn" data-close>Close</button></div>
+  <div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.player.name===evalPlayer?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-name">${esc(row.player.name)}</span><strong>${formatted(row.value)}</strong></div>`).join('')}</div>
+ </div></div>`;
+}
+function pitcherRankingModal(key){
+ const labels={pitcherIP:'IP',pitcherERA:'ERA',pitcherWHIP:'WHIP',pitcherKBB:'K/BB',pitcherOBA:'OBA',pitcherStrikePct:'Strike %'};
+ const lowerIsBetter=['pitcherERA','pitcherWHIP','pitcherOBA'].includes(key);
+ const rows=db.roster.filter(isPitcherProfile).map(player=>{
+  const display=cleanCell(player[key]);
+  const value=display?Number(display.replace('%','')):null;
   return {player,display:display||'—',value:Number.isFinite(value)?value:null};
  }).sort((a,b)=>{
   if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
