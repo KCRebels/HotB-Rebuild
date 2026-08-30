@@ -1174,8 +1174,8 @@ function closePA(outcome,extra={}){
 function undo(){
  const g=currentGame();if(!g)return;
  const stack=Array.isArray(g.undoStack)?g.undoStack:[];
- const current=gameUndoState(g),viewState={};
- undoViewKeys.forEach(key=>{if(key in g)viewState[key]=structuredClone(g[key])});
+ const current=gameUndoState(g);
+ const viewState={historyTab:'LIVE',allView:'DOTS',zoneScope:'HITTER',zoneFilter:'K',previewNext:false,firstPitchView:false,showAi:false};
  let previous=null;
  while(stack.length){
   const candidate=stack.pop();
