@@ -1581,9 +1581,9 @@ function reportModal(){
  <div class="panel" style="margin:14px 0 0">
  ${reportMode==='saved'?dateFilterControls('report'):''}
  <select class="input" id="reportHitter"><option>All Hitters</option>${db.roster.map(r=>`<option ${reportFilterHitter===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
- <div style="font-size:26px;margin-top:14px">${reportMode==='saved'?`${reportGames.length} Saved Games · ${esc(activeDateFilterLabel())}`:reportMode==='game'?`${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}`:'Current Game'}</div>
+ <div class="report-context-title">${reportMode==='saved'?`${reportGames.length} Saved Games · ${esc(activeDateFilterLabel())}`:reportMode==='game'?`${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}`:'Current Game'}</div>
  <div class="report-stat-grid">${[['PA',s.PA],['AVG',round3(s.AVG)],['OBP',round3(s.OBP)],['SLG',round3(s.SLG)],['OPS',round3(s.OPS)],['RBI',s.RBI],['HHB',s.HHB],['WEAK',s.WEAK]].map(([k,v])=>`<div class="report-stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
- <h3 class="count-performance-title">COUNT PERFORMANCE <span class="count-key hit">H</span><span class="count-separator">|</span><span class="count-key out">H4O</span><span class="count-separator">|</span><span class="count-key strikeout">K</span><span class="count-separator">|</span><span class="count-key average">AVE</span></h3>
+ <h3 class="count-performance-title"><b>COUNT PERFORMANCE</b><span class="count-key hit">H</span><span class="count-separator">|</span><span class="count-key out">H4O</span><span class="count-separator">|</span><span class="count-key strikeout">K</span><span class="count-separator">|</span><span class="count-key average">AVE</span></h3>
  <div class="count-grid">${['0-0','0-2','1-2','2-2','3-2','6+'].map(c=>countCard(filtered,c)).join('')}</div>
  ${outcomeReport(filtered)}
  </div></div></div>`;
