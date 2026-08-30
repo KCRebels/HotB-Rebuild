@@ -168,6 +168,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .recovery-guide-modal{width:min(600px,100%)}.recovery-guide-modal section{padding:13px 0;border-bottom:1px solid #d9dfdc}.recovery-guide-modal section h3{margin:0 0 7px;font-size:19px}.recovery-guide-modal section p,.recovery-guide-modal li{color:#344054;font-size:15px;font-weight:650;line-height:1.45}.recovery-guide-modal ol{margin:7px 0;padding-left:22px}.recovery-warning{margin:16px 0;padding:13px;border-radius:11px;background:#fff1d6;color:#5c4513;font-size:14px;line-height:1.45}
 .substitution-modal{width:min(440px,100%)}
 .substitution-note{font-size:17px;line-height:1.4;color:#475467}
+.saved-pitcher-options{display:grid;gap:7px;margin:12px 0 18px}.saved-pitcher-options .label{margin:0}.saved-pitcher-options button{display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:10px 14px;border:2px solid #ccd4d0;border-radius:11px;background:#fff;color:#182233;text-align:left}.saved-pitcher-options button:active{background:#f1f3f2}.saved-pitcher-options b{font-size:17px}.saved-pitcher-options span{color:#596579;font-size:15px;font-weight:850}
 .substitute-list{display:grid;gap:9px;margin-top:16px}
 .substitute-player{display:flex;align-items:center;gap:12px;width:100%;padding:15px;border:2px solid #cfd6d2;border-radius:12px;background:#fff;font-size:19px;font-weight:900;text-align:left}
 .substitute-player span{flex:1}.substitute-player strong{display:grid;place-items:center;width:34px;height:34px;border-radius:8px;background:#fde8e8;color:#c93d3d}
