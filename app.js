@@ -1309,8 +1309,8 @@ function newGameView(){
  <select class="input batting-select" data-idx="${i}"><option value="">Select hitter</option>${opts}</select></div>`).join('');
  return `<div class="page-match-head"><h1>New Game</h1><button class="page-head-nav" data-go="home">Home</button></div>
  <div class="panel"><div class="section-title">MATCHUP</div>
-  <label class="label">Opponent</label><div class="matchup-picker"><input id="opponent" class="input matchup-input" placeholder="Select or enter team" autocomplete="off"><button type="button" class="matchup-picker-arrow" data-matchup-open="opponent" aria-label="Show saved opponents">⌄</button><div class="matchup-picker-menu" id="opponentMenu" hidden>${teams.map(team=>`<button type="button" data-opponent-choice="${esc(team)}">${esc(team)}</button>`).join('')}</div></div>
-  <div class="grid2"><div><label class="label">Pitcher Name</label><div class="matchup-picker"><input id="pitcherName" class="input matchup-input" placeholder="Select or enter pitcher name" autocomplete="off"><button type="button" class="matchup-picker-arrow" data-matchup-open="pitcher" aria-label="Show saved pitchers">⌄</button><div class="matchup-picker-menu" id="pitcherMenu" hidden>${pitchers.map(p=>`<button type="button" data-pitcher-choice="${esc(p.name)}"><b>${esc(p.name)}</b>${p.number?`<span>#${esc(p.number)}</span>`:''}</button>`).join('')}</div></div></div>
+  <label class="label">Opponent</label><div class="matchup-picker"><input id="opponent" class="input matchup-input" placeholder="Select or enter team" autocomplete="off"><button type="button" class="matchup-picker-arrow" data-matchup-open="opponent" aria-label="Show saved opponents">⌄</button><div class="matchup-picker-menu" id="opponentMenu" hidden>${teams.map(team=>`<div class="matchup-picker-option"><button type="button" class="matchup-picker-choice" data-opponent-choice="${esc(team)}">${esc(team)}</button><button type="button" class="matchup-picker-delete" data-delete-opponent="${esc(team)}" aria-label="Delete saved opponent ${esc(team)}">Delete</button></div>`).join('')}</div></div>
+  <div class="grid2"><div><label class="label">Pitcher Name</label><div class="matchup-picker"><input id="pitcherName" class="input matchup-input" placeholder="Select or enter pitcher name" autocomplete="off"><button type="button" class="matchup-picker-arrow" data-matchup-open="pitcher" aria-label="Show saved pitchers">⌄</button><div class="matchup-picker-menu" id="pitcherMenu" hidden>${pitchers.map(p=>`<div class="matchup-picker-option"><button type="button" class="matchup-picker-choice" data-pitcher-choice="${esc(p.name)}" data-pitcher-number="${esc(p.number||'')}"><b>${esc(p.name)}</b>${p.number?`<span>#${esc(p.number)}</span>`:''}</button><button type="button" class="matchup-picker-delete" data-delete-pitcher-name="${esc(p.name)}" data-delete-pitcher-number="${esc(p.number||'')}" aria-label="Delete saved pitcher ${esc(p.name)}">Delete</button></div>`).join('')}</div></div></div>
   <div><label class="label">Number</label><input id="pitcherNumber" class="input" placeholder="Auto"></div></div>
  </div>
  <div class="panel"><div style="display:flex"><div class="section-title">BATTING ORDER</div><div style="flex:1"></div><span class="small" id="hitterCount">0 hitters</span></div>${rows}</div>
@@ -2152,7 +2152,23 @@ function bindNew(){
   };
  });
  $$('[data-opponent-choice]').forEach(button=>button.onpointerdown=event=>{event.preventDefault();opponent.value=button.dataset.opponentChoice;opponentMenu.hidden=true;update()});
- $$('[data-pitcher-choice]').forEach(button=>button.onpointerdown=event=>{event.preventDefault();pitcherName.value=button.dataset.pitcherChoice;const p=db.pitchers.find(item=>item.name===pitcherName.value);if(p)pitcherNumber.value=p.number||pitcherNumber.value;pitcherMenu.hidden=true;update()});
+ $$('[data-pitcher-choice]').forEach(button=>button.onpointerdown=event=>{event.preventDefault();pitcherName.value=button.dataset.pitcherChoice;pitcherNumber.value=button.dataset.pitcherNumber||'';pitcherMenu.hidden=true;update()});
+ $$('[data-delete-opponent]').forEach(button=>button.onpointerdown=event=>{
+  event.preventDefault();event.stopPropagation();
+  const team=button.dataset.deleteOpponent;
+  if(!confirm(`Remove ${team} from the saved opponent list? Previous games and hitter data will not be changed.`))return;
+  db.teams=(db.teams||[]).filter(item=>item!==team);
+  if(opponent.value===team)opponent.value='';
+  save();button.closest('.matchup-picker-option')?.remove();update();
+ });
+ $$('[data-delete-pitcher-name]').forEach(button=>button.onpointerdown=event=>{
+  event.preventDefault();event.stopPropagation();
+  const name=button.dataset.deletePitcherName,number=button.dataset.deletePitcherNumber||'';
+  if(!confirm(`Remove ${name}${number?` #${number}`:''} from the saved pitcher list? Previous games and hitter data will not be changed.`))return;
+  db.pitchers=(db.pitchers||[]).filter(item=>!(item.name===name&&String(item.number||'')===number));
+  if(pitcherName.value===name&&String(pitcherNumber.value||'')===number){pitcherName.value='';pitcherNumber.value=''}
+  save();button.closest('.matchup-picker-option')?.remove();update();
+ });
  pitcherName.addEventListener('change',()=>{
    const p=db.pitchers.find(p=>p.name===pitcherName.value);if(p&&!pitcherNumber.value)pitcherNumber.value=p.number||'';
    update();
