@@ -1006,10 +1006,16 @@ function syncRosterNames(){
  $$('.roster-name').forEach(input=>{const player=db.roster[+input.dataset.i];if(player)player.name=input.value.trim()||'Unnamed Player'});
 }
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
+const undoViewKeys=['historyTab','allView','zoneScope','zoneFilter','previewNext','firstPitchView','showAi'];
+function gameWithoutUndoViews(game){
+ const actionGame=structuredClone(game||{});
+ undoViewKeys.forEach(key=>delete actionGame[key]);
+ return actionGame;
+}
 function gameUndoState(g){
  if(!g)return null;
  const {pitches=[],plateAppearances=[],undoStack,...game}=g;
- return {gameId:g.id,game:structuredClone(game),pitchesLength:pitches.length,plateAppearancesLength:plateAppearances.length,pitchHitters:pitches.map(pitch=>[pitch.id,pitch.hitter])};
+ return {gameId:g.id,game:gameWithoutUndoViews(game),pitchesLength:pitches.length,plateAppearancesLength:plateAppearances.length,pitchHitters:pitches.map(pitch=>[pitch.id,pitch.hitter])};
 }
 function captureGameUndo(){
  const g=currentGame();
@@ -1168,12 +1174,20 @@ function closePA(outcome,extra={}){
 function undo(){
  const g=currentGame();if(!g)return;
  const stack=Array.isArray(g.undoStack)?g.undoStack:[];
- const previous=stack.pop();if(!previous)return;
+ const current=gameUndoState(g),viewState={};
+ undoViewKeys.forEach(key=>{if(key in g)viewState[key]=structuredClone(g[key])});
+ let previous=null;
+ while(stack.length){
+  const candidate=stack.pop();
+  const normalized={...candidate,game:gameWithoutUndoViews(candidate.game)};
+  if(JSON.stringify(normalized)!==JSON.stringify(current)){previous=normalized;break}
+ }
+ if(!previous)return;
  const pitches=g.pitches.slice(0,previous.pitchesLength);
  const hitterByPitch=new Map(previous.pitchHitters||[]);
  pitches.forEach(pitch=>{if(hitterByPitch.has(pitch.id))pitch.hitter=hitterByPitch.get(pitch.id)});
  const plateAppearances=g.plateAppearances.slice(0,previous.plateAppearancesLength);
- db.currentGame={...structuredClone(previous.game),pitches,plateAppearances,undoStack:stack};
+ db.currentGame={...structuredClone(previous.game),...viewState,pitches,plateAppearances,undoStack:stack};
  lastRenderedUndoState=gameUndoState(db.currentGame);
  save();render();
 }
@@ -1403,7 +1417,7 @@ function liveView(){
  <div class="tabs ${showAll?'with-all':'without-all'}"><button class="tab fixed-tab ${(g.historyTab||'LIVE')==='LIVE'?'active':''}" data-tab="LIVE">LIVE</button><div class="ab-scroll">${abTabNames.map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}${showAll?`<button class="tab ${(g.historyTab||'LIVE')==='ALL'?'active':''}" data-tab="ALL">${g.historyTab==='ALL'&&(g.allView||'DOTS')==='DOTS'?'%':'ALL'}</button>`:''}</div></div>
  <div class="results">
   <button class="result hbp" data-result="HBP" ${statsMode?'disabled':''}>HBP</button><button class="result ball ${percentMode&&filter==='B'?'filter-active':''}" data-result="B">B</button><button class="result foul ${percentMode&&filter==='F'?'filter-active':''}" data-result="F">F</button><button class="result hit ${percentMode&&filter==='HIT'?'filter-active':''}" data-result="HIT">HIT</button>
-  <button class="result undo" id="undo" ${statsMode?'disabled':''}>Undo</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="K">K</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="KL">KL</button><button class="result out ${percentMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
+  <button class="result undo" id="undo">Undo</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="K">K</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="KL">KL</button><button class="result out ${percentMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
  </div></div><div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div></div>`;
 }
 function historyHtml(g,hitter){
