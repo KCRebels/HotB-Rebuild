@@ -22,7 +22,8 @@
   const duration=Math.max(10,Math.round((Number(durationMinutes)||120)/10)*10),blockMinutes=duration/BLOCK_COUNT;
   const times=blockTimes(startTime,duration),warnings=[];
   const schedule=Object.fromEntries(attendees.map(player=>[player.name,Array(BLOCK_COUNT).fill(null)]));
-  attendees.forEach(player=>{schedule[player.name][0]={activity:fixedActivities[0]};schedule[player.name][1]={activity:fixedActivities[1]};schedule[player.name][8]={activity:'Front Toss'};schedule[player.name][9]={activity:'Front Toss'}});
+  const frontTossBlocks=attendees.length>8?[8,9]:[9];
+  attendees.forEach(player=>{schedule[player.name][0]={activity:fixedActivities[0]};schedule[player.name][1]={activity:fixedActivities[1]};frontTossBlocks.forEach(block=>schedule[player.name][block]={activity:'Front Toss'})});
   const pitchers=attendees.filter(player=>player.isPitcher),catchers=attendees.filter(player=>player.isCatcher);
   const liveSessions=[];
   if(!pitchers.length)warnings.push('No attending pitchers are available for live pitching.');
@@ -59,7 +60,7 @@
    });
    if(missed.length)warnings.push(`${missed.length} player${missed.length===1?'':'s'} could not be assigned ${activity}.`);
   }
-  assignOnce('Machine',4,[2,3,4,5,6,7]);
+  assignOnce('Machine',4,[2,3,4,5,6,7,8].filter(block=>!frontTossBlocks.includes(block)));
   attendees.forEach(player=>{
    for(let block=2;block<BLOCK_COUNT;block++)if(schedule[player.name][block]===null)schedule[player.name][block]={activity:'Drill'};
   });
@@ -93,7 +94,7 @@
    return {...time,assignments};
   });
   const catcherLoads=catchers.map(catcher=>({name:catcher.name,liveBlocks:schedule[catcher.name].filter(entry=>entry?.activity==='Catch Live').length}));
-  return {attendance:attendees.length,players:attendees,startTime,durationMinutes:duration,blockMinutes,times,schedule,blocks,liveSessions,drillStations,catcherLoads,warnings};
+  return {attendance:attendees.length,players:attendees,startTime,durationMinutes:duration,blockMinutes,times,schedule,blocks,liveSessions,frontTossBlocks,drillStations,catcherLoads,warnings};
  }
  function validate(plan){
   const errors=[];
@@ -103,7 +104,8 @@
    if(entries[0]?.activity!=='Stretch')errors.push(`${name} must stretch first.`);
    if(entries[1]?.activity!=='Tee Work')errors.push(`${name} must complete tee work second.`);
    if(!entries.some(entry=>entry.activity==='Machine'))errors.push(`${name} is missing Machine.`);
-   if(entries[8]?.activity!=='Front Toss'||entries[9]?.activity!=='Front Toss')errors.push(`${name} must have Front Toss in Blocks 9 and 10.`);
+   const expectedFrontToss=plan.frontTossBlocks||[];
+   if(expectedFrontToss.some(block=>entries[block]?.activity!=='Front Toss'))errors.push(`${name} is missing a scheduled Front Toss block.`);
    if(!entries.some(entry=>entry.activity.startsWith('Drill Station')))errors.push(`${name} is missing drill work.`);
    const drillEntries=entries.filter(entry=>entry.activity.startsWith('Drill Station')).map(entry=>entry.activity);
    if(new Set(drillEntries).size!==drillEntries.length)errors.push(`${name} repeats a drill station.`);
