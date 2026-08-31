@@ -935,7 +935,7 @@ function save(){
  scheduleCloudBackup();
 }
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
-function go(r){route=r;modal=null;save();render();window.scrollTo(0,0)}
+function go(r){if(route==='practice'&&r==='home')practicePlan=null;route=r;modal=null;save();render();window.scrollTo(0,0)}
 function currentGame(){return db.currentGame}
 function planFor(name){
  const saved=db.planPreferences?.[name];
