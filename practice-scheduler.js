@@ -64,22 +64,39 @@
   attendees.forEach(player=>{
    for(let block=2;block<BLOCK_COUNT;block++)if(schedule[player.name][block]===null)schedule[player.name][block]={activity:'Drill'};
   });
+  for(let block=2;block<BLOCK_COUNT;block++){
+   const drillPlayers=attendees.filter(player=>schedule[player.name][block].activity==='Drill');
+   if(drillPlayers.length===1)schedule[drillPlayers[0].name][block]={activity:'Tee Work'};
+  }
   const drillSlotsByPlayer=Object.fromEntries(attendees.map(player=>[player.name,schedule[player.name].map((entry,index)=>entry.activity==='Drill'?index:-1).filter(index=>index>=0)]));
   const drillPlayersByBlock=Array.from({length:BLOCK_COUNT},(_,block)=>attendees.filter(player=>schedule[player.name][block].activity==='Drill'));
-  let drillStations=Math.max(0,...Object.values(drillSlotsByPlayer).map(slots=>slots.length),...drillPlayersByBlock.map(list=>Math.ceil(list.length/4))),drillsAssigned=false;
+  let drillStations=Math.max(0,...Object.values(drillSlotsByPlayer).map(slots=>slots.length),...drillPlayersByBlock.map(list=>Math.ceil(list.length/3))),drillsAssigned=false;
   while(!drillsAssigned&&drillStations<=BLOCK_COUNT){
    attendees.forEach(player=>schedule[player.name].forEach(entry=>{if(entry.activity.startsWith('Drill Station'))entry.activity='Drill'}));
    const usedByPlayer=Object.fromEntries(attendees.map(player=>[player.name,new Set()]));
    let failed=false;
    for(let block=2;block<BLOCK_COUNT&&!failed;block++){
-    const stationLoads=Array(drillStations).fill(0);
     const drillPlayers=drillPlayersByBlock[block].slice().sort((a,b)=>drillSlotsByPlayer[b.name].length-drillSlotsByPlayer[a.name].length||a.name.localeCompare(b.name));
-    for(const player of drillPlayers){
-     const station=stationLoads.map((load,index)=>({index,load})).filter(item=>item.load<4&&!usedByPlayer[player.name].has(item.index)).sort((a,b)=>a.load-b.load||a.index-b.index)[0];
-     if(!station){failed=true;break}
-     stationLoads[station.index]++;
-     usedByPlayer[player.name].add(station.index);
-     schedule[player.name][block].activity=`Drill Station ${station.index+1}`;
+    if(!drillPlayers.length)continue;
+    const groupCount=Math.ceil(drillPlayers.length/3),smallGroups=groupCount*3-drillPlayers.length;
+    const groupSizes=Array.from({length:groupCount},(_,index)=>index<smallGroups?2:3);
+    const groups=[];
+    let cursor=0;
+    for(const size of groupSizes){groups.push(drillPlayers.slice(cursor,cursor+size));cursor+=size}
+    const availableStations=Array.from({length:drillStations},(_,index)=>index);
+    groups.sort((a,b)=>{
+     const aOptions=availableStations.filter(station=>a.every(player=>!usedByPlayer[player.name].has(station))).length;
+     const bOptions=availableStations.filter(station=>b.every(player=>!usedByPlayer[player.name].has(station))).length;
+     return aOptions-bOptions;
+    });
+    for(const group of groups){
+     const stationAt=availableStations.findIndex(station=>group.every(player=>!usedByPlayer[player.name].has(station)));
+     if(stationAt<0){failed=true;break}
+     const station=availableStations.splice(stationAt,1)[0];
+     group.forEach(player=>{
+      usedByPlayer[player.name].add(station);
+      schedule[player.name][block].activity=`Drill Station ${station+1}`;
+     });
     }
    }
    if(failed)drillStations++;else drillsAssigned=true;
@@ -123,7 +140,7 @@
    if(entries.filter(entry=>entry?.activity==='Machine').length>4)errors.push(`Block ${block+1} exceeds machine capacity.`);
    if(block<8&&entries.some(entry=>entry?.activity==='Front Toss'))errors.push(`Block ${block+1} has Front Toss before the final two blocks.`);
    const drillCounts={};entries.filter(entry=>entry?.activity.startsWith('Drill Station')).forEach(entry=>drillCounts[entry.activity]=(drillCounts[entry.activity]||0)+1);
-   if(Object.values(drillCounts).some(count=>count>4))errors.push(`Block ${block+1} exceeds drill-station capacity.`);
+   if(Object.values(drillCounts).some(count=>count<2||count>3))errors.push(`Block ${block+1} has a drill station without 2–3 players.`);
   }
   (plan?.liveSessions||[]).forEach(session=>{if(session.hitters.length>3)errors.push(`Block ${session.block+1} has too many live hitters.`)});
   return errors;
