@@ -33,11 +33,12 @@
    const catcher=coachCatches?null:(index<firstChunk?catchers[0]:catchers[Math.min(1,catchers.length-1)]);
    const chunkFirst=index===0||index===firstChunk;
    const warmBlock=Math.max(2,liveBlock-1);
-   const warmPartner=chunkFirst&&catcher?catcher.name:'Coach';
+   const catcherHandlesWarmup=chunkFirst&&catchers.length>1&&catcher;
+   const warmPartner=catcherHandlesWarmup?catcher.name:'Coach';
    schedule[pitcher.name][warmBlock]={activity:'Pitch Warm-Up',partner:warmPartner};
    schedule[pitcher.name][liveBlock]={activity:'Pitch Live',partner:catcher?.name||'Coach'};
    if(catcher){
-    if(chunkFirst&&schedule[catcher.name][warmBlock]===null)schedule[catcher.name][warmBlock]={activity:'Catch Warm-Up',partner:pitcher.name};
+    if(catcherHandlesWarmup&&schedule[catcher.name][warmBlock]===null)schedule[catcher.name][warmBlock]={activity:'Catch Warm-Up',partner:pitcher.name};
     schedule[catcher.name][liveBlock]={activity:'Catch Live',partner:pitcher.name};
    }
    liveSessions.push({block:liveBlock,pitcher:pitcher.name,catcher:catcher?.name||'',hitters:[]});
