@@ -832,6 +832,7 @@ let pendingRosterImport=null;
 let recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:'',selectedCoachEmail:''};
 let timerInt=null,timerStart=0,timerElapsed=0;
 let lastRenderedUndoState=null;
+let practicePlan=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 
@@ -1302,9 +1303,9 @@ function fps(g){
 function render(){
  captureGameUndo();
  const app=document.getElementById('app');
- app.innerHTML=`<div class="app ${route==='live'?'live-app':route==='eval'?'eval-app':''}">${route==='home'?homeView():
+ app.innerHTML=`<div class="app ${route==='live'?'live-app':route==='eval'?'eval-app':route==='practice'?'practice-app':''}">${route==='home'?homeView():
  route==='new'?newGameView():route==='roster'?rosterView():
- route==='live'?liveView():route==='eval'?evalView():route==='reports'?reportsPage():homeView()}</div>${modal?modalView():''}`;
+ route==='live'?liveView():route==='eval'?evalView():route==='reports'?reportsPage():route==='practice'?practicePage():homeView()}</div>${modal?modalView():''}`;
  bind();
  if(route==='eval')requestAnimationFrame(fitEvalMetricValues);
 }
@@ -1329,10 +1330,48 @@ function homeView(){
     <button class="home-card" data-go="reports"><h3>Reports</h3></button>
     <button class="home-card" data-go="eval"><h3>Player Eval</h3></button>
     <button class="home-card" data-go="roster"><h3>Edit Roster</h3></button>
-    <button class="home-card future-card" type="button"><h3>Hitting Practice</h3></button>
+    <button class="home-card" data-go="practice"><h3>Hitting Practice</h3></button>
     <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><h3>Cloud Backup</h3></button>
    </div>
  </div><div class="home-footer">HOTB (THE ELITE HITTING APP) · REBUILD<button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button></div>`;
+}
+function practicePlayerModel(player){
+ const positions=positionTokens(player);
+ return {name:player.name,isPitcher:isPitcherProfile(player),isCatcher:positions.includes('C')};
+}
+function practiceRole(player){
+ const model=practicePlayerModel(player);
+ return model.isPitcher&&model.isCatcher?'P/C':model.isPitcher?'P':model.isCatcher?'C':'';
+}
+function practiceEntryText(entry){return entry.partner?`${entry.activity} — ${entry.partner}`:entry.activity}
+function practiceSetup(){
+ return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
+ <div class="panel practice-setup no-print"><div class="practice-intro"><h2>Who Is At Practice?</h2><p>Select everyone attending. HotB will build ten 12-minute blocks with no downtime.</p></div>
+ <div class="practice-attendance-tools"><button class="btn" id="practiceSelectAll">All</button><button class="btn" id="practiceSelectNone">None</button><label>Start Time<input class="input" id="practiceStartTime" type="time" value="18:00"></label></div>
+ <div class="practice-attendance">${db.roster.map((player,index)=>`<label class="practice-player"><input type="checkbox" data-practice-player="${index}" checked><span><b>${esc(player.name)}</b><small>${practiceRole(player)||'Hitter'}</small></span></label>`).join('')}</div>
+ <button class="btn black block practice-generate" id="generatePractice">Build Practice Schedule</button></div>`;
+}
+function practiceCoachView(plan){
+ return `<section class="practice-coach no-print"><h2>Coach View</h2>${plan.blocks.map(block=>`<article class="practice-block"><header><b>Block ${block.block}</b><span>${esc(block.start)}–${esc(block.end)}</span></header><div>${Object.entries(block.assignments).map(([activity,names])=>`<p><strong>${esc(activity)}</strong><span>${esc(names.join(', '))}</span></p>`).join('')}</div></article>`).join('')}</section>`;
+}
+function practicePlayerCards(plan){
+ const names=Object.keys(plan.schedule);
+ return `<section class="practice-player-cards"><div class="practice-cards-title no-print"><h2>Player Cards</h2><p>Each card gives one player her complete rotation.</p></div>${names.map(name=>{
+  const player=db.roster.find(item=>item.name===name),role=practiceRole(player||{name,positions:''});
+  return `<article class="practice-player-card"><header><div><h2>${esc(name)}${role?` <small>(${role})</small>`:''}</h2><p>HotB Hitting Practice · ${esc(plan.times[0].start)}–${esc(plan.times[9].end)}</p></div></header><ol>${plan.schedule[name].map((entry,index)=>`<li><b>B${index+1}</b><span class="card-time">${esc(plan.times[index].start)}–${esc(plan.times[index].end)}</span><strong>${esc(practiceEntryText(entry))}</strong></li>`).join('')}</ol><footer>When coach calls ROTATE, move to the next block.</footer></article>`;
+ }).join('')}</section>`;
+}
+function practicePage(){
+ if(!practicePlan)return practiceSetup();
+ const catcherText=practicePlan.catcherLoads.map(item=>`${item.name}: ${item.liveBlocks}`).join(' · ');
+ return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
+ <div class="practice-results">
+  <section class="practice-summary no-print"><div><b>${practicePlan.attendance}</b><span>Players</span></div><div><b>10</b><span>12-Min Blocks</span></div><div><b>${practicePlan.drillStations}</b><span>Drill Stations Needed</span></div></section>
+  <div class="practice-actions no-print"><button class="btn" id="editPracticeAttendance">Edit Attendance</button><button class="btn black" id="printPracticeCards">Print Player Cards</button></div>
+  ${catcherText?`<p class="practice-catcher-load no-print"><b>Live catching:</b> ${esc(catcherText)} block${practicePlan.catcherLoads.reduce((sum,item)=>sum+item.liveBlocks,0)===1?'':'s'}</p>`:''}
+  ${practicePlan.warnings.length?`<div class="practice-warnings no-print"><b>Schedule Check</b>${practicePlan.warnings.map(warning=>`<p>${esc(warning)}</p>`).join('')}</div>`:''}
+  ${practiceCoachView(practicePlan)}${practicePlayerCards(practicePlan)}
+ </div>`;
 }
 function newGameView(){
  const opts=db.roster.map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('');
@@ -2130,6 +2169,7 @@ function bind(){
  if(route==='live')bindLive();
  if(route==='eval')bindEval();
  if(route==='reports')bindReportsPage();
+ if(route==='practice')bindPractice();
  if(modal==='HIT'||modal==='H4O')bindContact();
  if(modal==='reports')bindReports();
  if(modal==='record')bindRecord();
@@ -2143,6 +2183,22 @@ function bind(){
  if(modal==='cloudBackup')bindCloudBackup();
  $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
  $('#openRecoveryGuide')?.addEventListener('click',()=>{modal='recoveryGuide';render()});
+}
+
+function bindPractice(){
+ $('#practiceSelectAll')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=true));
+ $('#practiceSelectNone')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=false));
+ $('#generatePractice')?.addEventListener('click',()=>{
+  const attendees=$$('[data-practice-player]:checked').map(input=>db.roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
+  if(!attendees.length){alert('Select at least one player attending practice.');return}
+  if(!window.HotBPracticeScheduler){alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
+  practicePlan=window.HotBPracticeScheduler.buildSchedule(attendees.map(practicePlayerModel),$('#practiceStartTime').value||'18:00');
+  const errors=window.HotBPracticeScheduler.validate(practicePlan);
+  if(errors.length)practicePlan.warnings.push(...errors);
+  render();window.scrollTo(0,0);
+ });
+ $('#editPracticeAttendance')?.addEventListener('click',()=>{practicePlan=null;render();window.scrollTo(0,0)});
+ $('#printPracticeCards')?.addEventListener('click',()=>window.print());
 }
 
 function recoveryGuideModal(){
