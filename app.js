@@ -1370,8 +1370,8 @@ function practicePage(){
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
  <div class="practice-results">
   <section class="practice-summary no-print"><div class="practice-player-summary"><b>${practicePlan.attendance}</b><span>Player</span><button id="editPracticePlayers">Edit</button></div><div><b>10</b><span>${practicePlan.blockMinutes}M Blocks</span></div><div><b>${practicePlan.drillStations}</b><span>Drills</span></div></section>
-  <section class="practice-live-control no-print"><div class="practice-clock-actions"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart Practice':'Start Practice'}</button><button class="btn black" id="endPracticeClock" ${practiceClock.running?'':'disabled'}>End Practice</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Time</span><b id="practiceCurrentTime">${practiceClock.finished?new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'}):'--:--'}</b></div><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'Practice Complete':'Block 1 of 10'}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${practicePlan.blockMinutes}:00`}</b></div></div></section>
-  <div class="practice-actions practice-actions-three no-print"><button class="btn ${practiceCoachOpen?'active':''}" id="togglePracticeCoach" aria-pressed="${practiceCoachOpen}">Coach View</button><button class="btn ${practiceCardsOpen?'active':''}" id="togglePracticeCards" aria-pressed="${practiceCardsOpen}">Player Card</button><button class="btn black" id="printPracticeCards">Print Player Card</button></div>
+  <section class="practice-live-control no-print"><div class="practice-clock-actions"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart Practice':'Start Practice'}</button><button class="btn black" id="endPracticeClock" ${practiceClock.running?'':'disabled'}>End Practice</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Time</span><b id="practiceCurrentTime">${practiceClock.finished?new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'--:--'}</b></div><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'Practice Complete':'1 of 10'}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${practicePlan.blockMinutes}:00`}</b></div></div></section>
+  <div class="practice-actions practice-actions-three no-print"><button class="btn ${practiceCoachOpen?'active':''}" id="togglePracticeCoach" aria-pressed="${practiceCoachOpen}">Coach</button><button class="btn ${practiceCardsOpen?'active':''}" id="togglePracticeCards" aria-pressed="${practiceCardsOpen}">Player</button><button class="btn black" id="printPracticeCards">Print</button></div>
   ${catcherText?`<p class="practice-catcher-load no-print"><b>Live Catching Blocks:</b> ${esc(catcherText)}</p>`:''}
   ${practicePlan.warnings.length?`<div class="practice-warnings no-print"><b>Schedule Check</b>${practicePlan.warnings.map(warning=>`<p>${esc(warning)}</p>`).join('')}</div>`:''}
   ${practiceCoachOpen?practiceCoachView(practicePlan):''}${practicePlayerCards(practicePlan,!practiceCardsOpen)}
@@ -2203,7 +2203,7 @@ function updatePracticeClock(){
  if(!practicePlan||!practiceClock.running)return;
  const now=Date.now(),blockMs=practicePlan.blockMinutes*60000,totalMs=blockMs*10,elapsed=Math.max(0,now-practiceClock.startAt);
  const currentTime=$('#practiceCurrentTime'),currentBlock=$('#practiceCurrentBlock'),timeLeft=$('#practiceTimeLeft');
- if(currentTime)currentTime.textContent=new Date(now).toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'});
+ if(currentTime)currentTime.textContent=new Date(now).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
  if(elapsed>=totalMs){
   if(currentBlock)currentBlock.textContent='Practice Complete';if(timeLeft)timeLeft.textContent='0:00';
   practiceClock.running=false;practiceClock.finished=true;if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
@@ -2212,7 +2212,7 @@ function updatePracticeClock(){
  }
  const block=Math.floor(elapsed/blockMs)+1,remaining=Math.max(0,blockMs-(elapsed%blockMs)),seconds=Math.ceil(remaining/1000);
  if(block>practiceClock.lastBlock){practiceClock.lastBlock=block;speakPracticeClock('Ladies, Time to Rotate')}
- if(currentBlock)currentBlock.textContent=`Block ${block} of 10`;
+ if(currentBlock)currentBlock.textContent=`${block} of 10`;
  if(timeLeft)timeLeft.textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
 }
 function beginPracticeClock(){
