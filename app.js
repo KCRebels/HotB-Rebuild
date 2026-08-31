@@ -1346,7 +1346,29 @@ function practiceRole(player){
  const model=practicePlayerModel(player);
  return model.isPitcher&&model.isCatcher?'P/C':model.isPitcher?'P':model.isCatcher?'C':'';
 }
-function practiceEntryText(entry){return entry.partner?`${entry.activity} — ${entry.partner}`:entry.activity}
+function practiceFirstName(name){return String(name||'').trim().split(/\s+/)[0]||''}
+function practiceEntryText(entry,plan=null,blockIndex=-1){
+ if(!entry.partner)return entry.activity;
+ const partner=practiceFirstName(entry.partner);
+ if(entry.activity==='Hit Live'&&plan){
+  const session=plan.liveSessions?.find(item=>item.block===blockIndex);
+  if(session)return `Hit Live — ${practiceFirstName(session.pitcher)} (${practiceFirstName(session.catcher||'Coach')})`;
+ }
+ return entry.activity.startsWith('Pitch ')?`${entry.activity} (${partner})`:`${entry.activity} — ${partner}`;
+}
+function practiceCoachLabel(label,plan=null,blockIndex=-1){
+ const [activity,partner]=String(label).split(' — ');
+ if(!partner)return label;
+ if(activity==='Hit Live'&&plan){
+  const session=plan.liveSessions?.find(item=>item.block===blockIndex);
+  if(session)return `Hit Live — ${practiceFirstName(session.pitcher)} (${practiceFirstName(session.catcher||'Coach')})`;
+ }
+ return activity.startsWith('Pitch ')?`${activity} (${practiceFirstName(partner)})`:`${activity} — ${practiceFirstName(partner)}`;
+}
+function practiceClockText(date=new Date()){
+ const hour=date.getHours(),minute=String(date.getMinutes()).padStart(2,'0');
+ return `${hour%12||12}:${minute}${hour<12?'a':'p'}`;
+}
 function practiceHeader(title='Hitting Practice',backToHub=false){
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" ${backToHub?'id="practiceHubBack"':'data-go="home"'}>${backToHub?'Back':'Home'}</button><h1>${esc(title)}</h1><span class="page-head-spacer"></span></div>`;
 }
@@ -1370,14 +1392,15 @@ function practiceSetup(){
  <button class="btn black block practice-generate" id="generatePractice">Build Practice Schedule</button></div>`;
 }
 function practiceCoachView(plan){
- return `<section class="practice-coach no-print"><h2>Coach View</h2>${plan.blocks.map(block=>`<article class="practice-block"><header><b>Block ${block.block}</b><span>${esc(block.start)}–${esc(block.end)}</span></header><div>${Object.entries(block.assignments).map(([activity,names])=>`<p><strong>${esc(activity)}</strong><span>${esc(names.join(', '))}</span></p>`).join('')}</div></article>`).join('')}</section>`;
+ return `<section class="practice-coach no-print"><h2>Coach View</h2>${plan.blocks.map(block=>`<article class="practice-block"><header><b>Block ${block.block}</b><span>${esc(block.start)}–${esc(block.end)}</span></header><div>${Object.entries(block.assignments).map(([activity,names])=>`<p><strong>${esc(practiceCoachLabel(activity,plan,block.block-1))}</strong><span>${esc(names.map(practiceFirstName).join(', '))}</span></p>`).join('')}</div></article>`).join('')}</section>`;
 }
 function practicePlayerCards(plan,hidden=false){
  const names=Object.keys(plan.schedule);
- return `<section class="practice-player-cards ${hidden?'practice-cards-screen-hidden':''}"><div class="practice-cards-title no-print"><h2>Player Cards</h2><p>Each card gives one player her complete rotation.</p></div>${names.map(name=>{
+ const pages=Array.from({length:Math.ceil(names.length/6)},(_,index)=>names.slice(index*6,index*6+6));
+ return `<section class="practice-player-cards ${hidden?'practice-cards-screen-hidden':''}"><div class="practice-cards-title no-print"><h2>Player Cards</h2><p>Each card gives one player her complete rotation.</p></div>${pages.map(page=>`<div class="practice-card-page">${page.map(name=>{
   const player=db.roster.find(item=>item.name===name),role=practiceRole(player||{name,positions:''});
-  return `<article class="practice-player-card"><header><div><h2>${esc(name)}${role?` <small>(${role})</small>`:''}</h2><p>HotB Hitting Practice · ${esc(plan.times[0].start)}–${esc(plan.times[9].end)}</p></div></header><ol>${plan.schedule[name].map((entry,index)=>`<li><b>B${index+1}</b><span class="card-time">${esc(plan.times[index].start)}–${esc(plan.times[index].end)}</span><strong>${esc(practiceEntryText(entry))}</strong></li>`).join('')}</ol><footer>When coach calls ROTATE, move to the next block.</footer></article>`;
- }).join('')}</section>`;
+  return `<article class="practice-player-card"><header><div><h2>${esc(practiceFirstName(name))}${role?` <small>(${role})</small>`:''}</h2></div></header><ol>${plan.schedule[name].map((entry,index)=>`<li><b>B${index+1}</b><span class="card-time">${esc(plan.times[index].start)}–${esc(plan.times[index].end)}</span><strong>${esc(practiceEntryText(entry,plan,index))}</strong></li>`).join('')}</ol></article>`;
+ }).join('')}</div>`).join('')}</section>`;
 }
 function practicePage(){
  if(!practicePlan&&practiceSection==='hub')return practiceHub();
@@ -1388,7 +1411,7 @@ function practicePage(){
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
  <div class="practice-results">
   <section class="practice-summary no-print"><div><b>${practicePlan.attendance}</b><span>Player</span></div><div><b>10</b><span>${practicePlan.blockMinutes}M Blocks</span></div><div><b>${practicePlan.drillStations}</b><span>Drills</span></div></section>
-  <section class="practice-live-control no-print"><div class="practice-clock-actions"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart':'Start'}</button><button class="btn" id="editPracticePlayers">Edit</button><button class="btn black" id="endPracticeClock" ${practiceClock.running?'':'disabled'}>End</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Time</span><b id="practiceCurrentTime">${practiceClock.finished?new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'--:--'}</b></div><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'Practice Complete':'1 of 10'}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${practicePlan.blockMinutes}:00`}</b></div></div></section>
+  <section class="practice-live-control no-print"><div class="practice-clock-actions"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart':'Start'}</button><button class="btn" id="editPracticePlayers">Edit</button><button class="btn black" id="endPracticeClock" ${practiceClock.running?'':'disabled'}>End</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Time</span><b id="practiceCurrentTime">${practiceClock.finished?practiceClockText():'--:--'}</b></div><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'Practice Complete':'1 of 10'}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${practicePlan.blockMinutes}:00`}</b></div></div></section>
   <div class="practice-actions practice-actions-three no-print"><button class="btn ${practiceCoachOpen?'active':''}" id="togglePracticeCoach" aria-pressed="${practiceCoachOpen}">Coach</button><button class="btn ${practiceCardsOpen?'active':''}" id="togglePracticeCards" aria-pressed="${practiceCardsOpen}">Player</button><button class="btn black" id="printPracticeCards">Print</button></div>
   ${catcherText?`<p class="practice-catcher-load no-print"><b>Live Catching Blocks:</b> ${esc(catcherText)}</p>`:''}
   ${practicePlan.warnings.length?`<div class="practice-warnings no-print"><b>Schedule Check</b>${practicePlan.warnings.map(warning=>`<p>${esc(warning)}</p>`).join('')}</div>`:''}
@@ -2221,7 +2244,7 @@ function updatePracticeClock(){
  if(!practicePlan||!practiceClock.running)return;
  const now=Date.now(),blockMs=practicePlan.blockMinutes*60000,totalMs=blockMs*10,elapsed=Math.max(0,now-practiceClock.startAt);
  const currentTime=$('#practiceCurrentTime'),currentBlock=$('#practiceCurrentBlock'),timeLeft=$('#practiceTimeLeft');
- if(currentTime)currentTime.textContent=new Date(now).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+ if(currentTime)currentTime.textContent=practiceClockText(new Date(now));
  if(elapsed>=totalMs){
   if(currentBlock)currentBlock.textContent='Practice Complete';if(timeLeft)timeLeft.textContent='0:00';
   practiceClock.running=false;practiceClock.finished=true;if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
@@ -2252,14 +2275,16 @@ function bindPractice(){
  $('#changeFocusPlayer')?.addEventListener('click',()=>{practiceFocusPlayer='';render();window.scrollTo(0,0)});
  $('#practiceSelectAll')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=true));
  $('#practiceSelectNone')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=false));
- $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')} ${hour<12?'AM':'PM'}`});
+ $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`});
  $('#generatePractice')?.addEventListener('click',()=>{
   const attendees=$$('[data-practice-player]:checked').map(input=>db.roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
   if(!attendees.length){alert('Select at least one player attending practice.');return}
   if(!window.HotBPracticeScheduler){alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
   const startTime=$('#practiceStartTime').value||'18:00',durationMinutes=Number($('#practiceDuration').value)||120;
+  const practicePlayers=attendees.map(practicePlayerModel);
+  const noPitchersMode=practicePlayers.some(player=>player.isPitcher)?null:(confirm('No pitchers are attending.\n\nPress OK to use Coach Pitch for live at-bats.\nPress Cancel to replace live with additional skill work.')?'coach':'skills');
   stopPracticeClock();practiceSetupState={selectedNames:attendees.map(player=>player.name),startTime,durationMinutes};practiceCoachOpen=false;practiceCardsOpen=false;
-  practicePlan=window.HotBPracticeScheduler.buildSchedule(attendees.map(practicePlayerModel),startTime,durationMinutes);
+  practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});
   const errors=window.HotBPracticeScheduler.validate(practicePlan);
   if(errors.length)practicePlan.warnings.push(...errors);
   render();window.scrollTo(0,0);
