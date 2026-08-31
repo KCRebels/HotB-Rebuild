@@ -6,19 +6,21 @@
  const BLOCK_COUNT=10,BLOCK_MINUTES=12;
  const fixedActivities=['Stretch','Tee Work'];
  const pad=value=>String(value).padStart(2,'0');
- function blockTimes(startTime='18:00'){
+ function blockTimes(startTime='18:00',durationMinutes=120){
   const [hour,minute]=String(startTime||'18:00').split(':').map(Number);
   const start=(Number.isFinite(hour)?hour:18)*60+(Number.isFinite(minute)?minute:0);
+  const duration=Math.max(10,Math.round((Number(durationMinutes)||120)/10)*10),blockMinutes=duration/BLOCK_COUNT;
   const label=minutes=>{
    const normalized=(minutes+1440)%1440,h=Math.floor(normalized/60),m=normalized%60;
    const displayHour=h%12||12,period=h<12?'AM':'PM';
    return `${displayHour}:${pad(m)} ${period}`;
   };
-  return Array.from({length:BLOCK_COUNT},(_,index)=>({block:index+1,start:label(start+index*BLOCK_MINUTES),end:label(start+(index+1)*BLOCK_MINUTES)}));
+  return Array.from({length:BLOCK_COUNT},(_,index)=>({block:index+1,start:label(start+index*blockMinutes),end:label(start+(index+1)*blockMinutes)}));
  }
- function buildSchedule(players,startTime='18:00'){
+ function buildSchedule(players,startTime='18:00',durationMinutes=120){
   const attendees=(players||[]).filter(player=>player&&player.name).map(player=>({...player,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher}));
-  const times=blockTimes(startTime),warnings=[];
+  const duration=Math.max(10,Math.round((Number(durationMinutes)||120)/10)*10),blockMinutes=duration/BLOCK_COUNT;
+  const times=blockTimes(startTime,duration),warnings=[];
   const schedule=Object.fromEntries(attendees.map(player=>[player.name,Array(BLOCK_COUNT).fill(null)]));
   attendees.forEach(player=>{schedule[player.name][0]={activity:fixedActivities[0]};schedule[player.name][1]={activity:fixedActivities[1]}});
   const pitchers=attendees.filter(player=>player.isPitcher),catchers=attendees.filter(player=>player.isCatcher);
@@ -89,7 +91,7 @@
    return {...time,assignments};
   });
   const catcherLoads=catchers.map(catcher=>({name:catcher.name,liveBlocks:schedule[catcher.name].filter(entry=>entry?.activity==='Catch Live').length}));
-  return {attendance:attendees.length,players:attendees,startTime,times,schedule,blocks,liveSessions,drillStations,catcherLoads,warnings};
+  return {attendance:attendees.length,players:attendees,startTime,durationMinutes:duration,blockMinutes,times,schedule,blocks,liveSessions,drillStations,catcherLoads,warnings};
  }
  function validate(plan){
   const errors=[];
