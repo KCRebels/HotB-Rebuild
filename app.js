@@ -1346,8 +1346,8 @@ function practiceRole(player){
 function practiceEntryText(entry){return entry.partner?`${entry.activity} — ${entry.partner}`:entry.activity}
 function practiceSetup(){
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
- <div class="panel practice-setup no-print"><div class="practice-intro"><h2>Who Is At Practice?</h2><p>Select everyone attending. HotB will build ten 12-minute blocks with no downtime.</p></div>
- <div class="practice-attendance-tools"><button class="btn" id="practiceSelectAll">All</button><button class="btn" id="practiceSelectNone">None</button><label>Start Time<input class="input" id="practiceStartTime" type="time" value="18:00"></label></div>
+ <div class="panel practice-setup no-print"><div class="practice-intro"><h2>Who Is At Practice?</h2><p>Select everyone attending. HotB will divide the practice into ten blocks with no downtime.</p></div>
+ <div class="practice-attendance-tools"><button class="btn" id="practiceSelectAll">All</button><button class="btn" id="practiceSelectNone">None</button><label>Start Time<input class="input" id="practiceStartTime" type="time" value="18:00"></label><label>Duration<select class="input" id="practiceDuration">${Array.from({length:13},(_,index)=>60+index*10).map(minutes=>`<option value="${minutes}" ${minutes===120?'selected':''}>${minutes} Minutes</option>`).join('')}</select></label></div>
  <div class="practice-attendance">${db.roster.map((player,index)=>`<label class="practice-player"><input type="checkbox" data-practice-player="${index}" checked><span><b>${esc(player.name)}</b><small>${practiceRole(player)||'Hitter'}</small></span></label>`).join('')}</div>
  <button class="btn black block practice-generate" id="generatePractice">Build Practice Schedule</button></div>`;
 }
@@ -1366,7 +1366,7 @@ function practicePage(){
  const catcherText=practicePlan.catcherLoads.map(item=>`${item.name}: ${item.liveBlocks}`).join(' · ');
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
  <div class="practice-results">
-  <section class="practice-summary no-print"><div><b>${practicePlan.attendance}</b><span>Players</span></div><div><b>10</b><span>12-Min Blocks</span></div><div><b>${practicePlan.drillStations}</b><span>Drill Stations Needed</span></div></section>
+  <section class="practice-summary no-print"><div><b>${practicePlan.attendance}</b><span>Players</span></div><div><b>10</b><span>${practicePlan.blockMinutes}-Min Blocks</span></div><div><b>${practicePlan.drillStations}</b><span>Drill Stations Needed</span></div></section>
   <div class="practice-actions no-print"><button class="btn" id="editPracticeAttendance">Edit Attendance</button><button class="btn black" id="printPracticeCards">Print Player Cards</button></div>
   ${catcherText?`<p class="practice-catcher-load no-print"><b>Live catching:</b> ${esc(catcherText)} block${practicePlan.catcherLoads.reduce((sum,item)=>sum+item.liveBlocks,0)===1?'':'s'}</p>`:''}
   ${practicePlan.warnings.length?`<div class="practice-warnings no-print"><b>Schedule Check</b>${practicePlan.warnings.map(warning=>`<p>${esc(warning)}</p>`).join('')}</div>`:''}
@@ -2192,7 +2192,7 @@ function bindPractice(){
   const attendees=$$('[data-practice-player]:checked').map(input=>db.roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
   if(!attendees.length){alert('Select at least one player attending practice.');return}
   if(!window.HotBPracticeScheduler){alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
-  practicePlan=window.HotBPracticeScheduler.buildSchedule(attendees.map(practicePlayerModel),$('#practiceStartTime').value||'18:00');
+  practicePlan=window.HotBPracticeScheduler.buildSchedule(attendees.map(practicePlayerModel),$('#practiceStartTime').value||'18:00',Number($('#practiceDuration').value)||120);
   const errors=window.HotBPracticeScheduler.validate(practicePlan);
   if(errors.length)practicePlan.warnings.push(...errors);
   render();window.scrollTo(0,0);
