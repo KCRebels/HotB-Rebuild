@@ -22,25 +22,22 @@
   const duration=Math.max(10,Math.round((Number(durationMinutes)||120)/10)*10),blockMinutes=duration/BLOCK_COUNT;
   const times=blockTimes(startTime,duration),warnings=[];
   const schedule=Object.fromEntries(attendees.map(player=>[player.name,Array(BLOCK_COUNT).fill(null)]));
-  attendees.forEach(player=>{schedule[player.name][0]={activity:fixedActivities[0]};schedule[player.name][1]={activity:fixedActivities[1]}});
+  attendees.forEach(player=>{schedule[player.name][0]={activity:fixedActivities[0]};schedule[player.name][1]={activity:fixedActivities[1]};schedule[player.name][8]={activity:'Front Toss'};schedule[player.name][9]={activity:'Front Toss'}});
   const pitchers=attendees.filter(player=>player.isPitcher),catchers=attendees.filter(player=>player.isCatcher);
   const liveSessions=[];
   if(!pitchers.length)warnings.push('No attending pitchers are available for live pitching.');
   if(!catchers.length&&pitchers.length)warnings.push('No attending catcher is available for live pitching.');
-  const livePitchers=catchers.length?pitchers.slice(0,7):[];
+  const livePitchers=catchers.length?pitchers.slice(0,5):[];
   const firstChunk=Math.ceil(livePitchers.length/2);
   livePitchers.forEach((pitcher,index)=>{
    const liveBlock=3+index;
-   const coachCatches=catchers.length===1&&index===livePitchers.length-1;
+   const coachCatches=catchers.length===1&&index>=3;
    const catcher=coachCatches?null:(index<firstChunk?catchers[0]:catchers[Math.min(1,catchers.length-1)]);
-   const chunkFirst=index===0||index===firstChunk;
    const warmBlock=Math.max(2,liveBlock-1);
-   const catcherHandlesWarmup=chunkFirst&&catchers.length>1&&catcher;
-   const warmPartner=catcherHandlesWarmup?catcher.name:'Coach';
+   const warmPartner='Coach';
    schedule[pitcher.name][warmBlock]={activity:'Pitch Warm-Up',partner:warmPartner};
    schedule[pitcher.name][liveBlock]={activity:'Pitch Live',partner:catcher?.name||'Coach'};
    if(catcher){
-    if(catcherHandlesWarmup&&schedule[catcher.name][warmBlock]===null)schedule[catcher.name][warmBlock]={activity:'Catch Warm-Up',partner:pitcher.name};
     schedule[catcher.name][liveBlock]={activity:'Catch Live',partner:pitcher.name};
    }
    liveSessions.push({block:liveBlock,pitcher:pitcher.name,catcher:catcher?.name||'',hitters:[]});
@@ -62,26 +59,31 @@
    });
    if(missed.length)warnings.push(`${missed.length} player${missed.length===1?'':'s'} could not be assigned ${activity}.`);
   }
-  assignOnce('Machine',2,[2,3,4,5,6,7,8,9]);
-  assignOnce('Front Toss',8,[8,9]);
+  assignOnce('Machine',4,[2,3,4,5,6,7]);
   attendees.forEach(player=>{
    for(let block=2;block<BLOCK_COUNT;block++)if(schedule[player.name][block]===null)schedule[player.name][block]={activity:'Drill'};
   });
   const drillSlotsByPlayer=Object.fromEntries(attendees.map(player=>[player.name,schedule[player.name].map((entry,index)=>entry.activity==='Drill'?index:-1).filter(index=>index>=0)]));
   const drillPlayersByBlock=Array.from({length:BLOCK_COUNT},(_,block)=>attendees.filter(player=>schedule[player.name][block].activity==='Drill'));
-  const drillStations=Math.max(0,...Object.values(drillSlotsByPlayer).map(slots=>slots.length),...drillPlayersByBlock.map(list=>Math.ceil(list.length/4)));
-  const usedByPlayer=Object.fromEntries(attendees.map(player=>[player.name,new Set()]));
-  for(let block=2;block<BLOCK_COUNT;block++){
-   const stationLoads=Array(drillStations).fill(0);
-   const drillPlayers=drillPlayersByBlock[block].slice().sort((a,b)=>drillSlotsByPlayer[b.name].length-drillSlotsByPlayer[a.name].length||a.name.localeCompare(b.name));
-   drillPlayers.forEach(player=>{
-    const station=stationLoads.map((load,index)=>({index,load})).filter(item=>item.load<4&&!usedByPlayer[player.name].has(item.index)).sort((a,b)=>a.load-b.load||a.index-b.index)[0];
-    if(!station){warnings.push(`${player.name} could not be assigned a unique drill station in Block ${block+1}.`);return}
-    stationLoads[station.index]++;
-    usedByPlayer[player.name].add(station.index);
-    schedule[player.name][block].activity=`Drill Station ${station.index+1}`;
-   });
+  let drillStations=Math.max(0,...Object.values(drillSlotsByPlayer).map(slots=>slots.length),...drillPlayersByBlock.map(list=>Math.ceil(list.length/4))),drillsAssigned=false;
+  while(!drillsAssigned&&drillStations<=BLOCK_COUNT){
+   attendees.forEach(player=>schedule[player.name].forEach(entry=>{if(entry.activity.startsWith('Drill Station'))entry.activity='Drill'}));
+   const usedByPlayer=Object.fromEntries(attendees.map(player=>[player.name,new Set()]));
+   let failed=false;
+   for(let block=2;block<BLOCK_COUNT&&!failed;block++){
+    const stationLoads=Array(drillStations).fill(0);
+    const drillPlayers=drillPlayersByBlock[block].slice().sort((a,b)=>drillSlotsByPlayer[b.name].length-drillSlotsByPlayer[a.name].length||a.name.localeCompare(b.name));
+    for(const player of drillPlayers){
+     const station=stationLoads.map((load,index)=>({index,load})).filter(item=>item.load<4&&!usedByPlayer[player.name].has(item.index)).sort((a,b)=>a.load-b.load||a.index-b.index)[0];
+     if(!station){failed=true;break}
+     stationLoads[station.index]++;
+     usedByPlayer[player.name].add(station.index);
+     schedule[player.name][block].activity=`Drill Station ${station.index+1}`;
+    }
+   }
+   if(failed)drillStations++;else drillsAssigned=true;
   }
+  if(!drillsAssigned)warnings.push('The drill stations could not be assigned without a repeat.');
   const blocks=times.map((time,index)=>{
    const assignments={};
    attendees.forEach(player=>{
@@ -100,7 +102,8 @@
    if(entries.length!==BLOCK_COUNT||entries.some(entry=>!entry?.activity))errors.push(`${name} has downtime.`);
    if(entries[0]?.activity!=='Stretch')errors.push(`${name} must stretch first.`);
    if(entries[1]?.activity!=='Tee Work')errors.push(`${name} must complete tee work second.`);
-   ['Machine','Front Toss'].forEach(activity=>{if(!entries.some(entry=>entry.activity===activity))errors.push(`${name} is missing ${activity}.`)});
+   if(!entries.some(entry=>entry.activity==='Machine'))errors.push(`${name} is missing Machine.`);
+   if(entries[8]?.activity!=='Front Toss'||entries[9]?.activity!=='Front Toss')errors.push(`${name} must have Front Toss in Blocks 9 and 10.`);
    if(!entries.some(entry=>entry.activity.startsWith('Drill Station')))errors.push(`${name} is missing drill work.`);
    const drillEntries=entries.filter(entry=>entry.activity.startsWith('Drill Station')).map(entry=>entry.activity);
    if(new Set(drillEntries).size!==drillEntries.length)errors.push(`${name} repeats a drill station.`);
@@ -115,8 +118,7 @@
   });
   for(let block=2;block<BLOCK_COUNT;block++){
    const entries=Object.values(plan.schedule||{}).map(items=>items[block]);
-   if(entries.filter(entry=>entry?.activity==='Machine').length>2)errors.push(`Block ${block+1} exceeds machine capacity.`);
-   if(entries.filter(entry=>entry?.activity==='Front Toss').length>8)errors.push(`Block ${block+1} exceeds front-toss capacity.`);
+   if(entries.filter(entry=>entry?.activity==='Machine').length>4)errors.push(`Block ${block+1} exceeds machine capacity.`);
    if(block<8&&entries.some(entry=>entry?.activity==='Front Toss'))errors.push(`Block ${block+1} has Front Toss before the final two blocks.`);
    const drillCounts={};entries.filter(entry=>entry?.activity.startsWith('Drill Station')).forEach(entry=>drillCounts[entry.activity]=(drillCounts[entry.activity]||0)+1);
    if(Object.values(drillCounts).some(count=>count>4))errors.push(`Block ${block+1} exceeds drill-station capacity.`);
