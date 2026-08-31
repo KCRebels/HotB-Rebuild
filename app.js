@@ -834,6 +834,7 @@ let timerInt=null,timerStart=0,timerElapsed=0;
 let lastRenderedUndoState=null;
 let practicePlan=null;
 let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120},practiceCoachOpen=false,practiceCardsOpen=false;
+let practiceSection='hub',practiceFocusPlayer='';
 let practiceClock={running:false,finished:false,startAt:0,lastBlock:1},practiceClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
@@ -937,7 +938,7 @@ function save(){
  scheduleCloudBackup();
 }
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
-function go(r){if(route==='practice'&&r==='home'){stopPracticeClock();practicePlan=null;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120};practiceCoachOpen=false;practiceCardsOpen=false}route=r;modal=null;save();render();window.scrollTo(0,0)}
+function go(r){if(route==='practice'&&r==='home'){stopPracticeClock();practicePlan=null;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120};practiceCoachOpen=false;practiceCardsOpen=false;practiceSection='hub';practiceFocusPlayer=''}if(r==='practice'&&route!=='practice')practiceSection='hub';route=r;modal=null;save();render();window.scrollTo(0,0)}
 function currentGame(){return db.currentGame}
 function planFor(name){
  const saved=db.planPreferences?.[name];
@@ -1346,10 +1347,24 @@ function practiceRole(player){
  return model.isPitcher&&model.isCatcher?'P/C':model.isPitcher?'P':model.isCatcher?'C':'';
 }
 function practiceEntryText(entry){return entry.partner?`${entry.activity} — ${entry.partner}`:entry.activity}
+function practiceHeader(title='Hitting Practice',backToHub=false){
+ return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" ${backToHub?'id="practiceHubBack"':'data-go="home"'}>${backToHub?'Back':'Home'}</button><h1>${esc(title)}</h1><span class="page-head-spacer"></span></div>`;
+}
+function practiceHub(){
+ return `${practiceHeader()}<main class="practice-hub no-print"><section class="practice-hub-intro"><h2>Plan Your Hitting Practice</h2><p>Build today’s schedule, organize your drills, or focus on one player.</p></section><section class="practice-hub-actions"><button class="practice-hub-card primary" id="openPracticeBuilder"><span>PLAN</span><h3>Build Practice</h3><p>Choose attendance, time and create the complete rotation.</p></button><button class="practice-hub-card" id="openDrillLibrary"><span>LIBRARY</span><h3>Drill Library</h3><p>Keep every hitting drill, setup and coaching purpose in one place.</p><small>LOOK ONLY</small></button><button class="practice-hub-card" id="openPlayerFocus"><span>PLAYER</span><h3>Player Focus</h3><p>Select one player for a future two-week review and targeted drill plan.</p><small>LOOK ONLY</small></button></section></main>`;
+}
+function practiceLibrary(){
+ const filters=['All Drills','Tee','Front Toss','Machine','Live','Timing','Power','Contact','Pitch Recognition'];
+ return `${practiceHeader('Drill Library',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>FUTURE FEATURE</span><h2>Your Hitting Drill Library</h2><p>This screen is ready for the drill information you are still building. Nothing here changes a practice plan yet.</p></section><div class="practice-library-search"><input class="input" type="search" placeholder="Search drills" disabled aria-label="Search drills preview"><button class="btn black" disabled>Add Drill</button></div><div class="practice-filter-preview">${filters.map((filter,index)=>`<button class="${index===0?'active':''}" disabled>${filter}</button>`).join('')}</div><article class="practice-drill-preview"><div class="practice-drill-media"><span>PHOTO OR VIDEO</span></div><div><span class="practice-preview-label">DRILL CARD PREVIEW</span><h3>Drill Name</h3><p>Purpose, instructions, equipment, player requirements and coaching points will appear here.</p><div class="practice-drill-tags"><span>Skill Focus</span><span>2–3 Players</span><span>Equipment</span></div></div></article></main>`;
+}
+function practicePlayerFocus(){
+ const selected=db.roster.find(player=>player.name===practiceFocusPlayer);
+ return `${practiceHeader('Player Focus',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>FUTURE FEATURE</span><h2>${selected?esc(selected.name):'Choose A Player'}</h2><p>${selected?'This is how her two-week hitting review and targeted drill plan will be displayed. No performance analysis is active yet.':'Select a player to preview where her future two-week review and drill plan will appear.'}</p></section>${selected?`<section class="practice-focus-preview"><div><span>PAST 14 DAYS</span><b>Waiting for analysis</b></div><div><span>NEEDS WORK</span><b>Not calculated yet</b></div><div><span>DRILL PLAN</span><b>Not created yet</b></div></section><button class="btn block" id="changeFocusPlayer">Choose Another Player</button>`:`<section class="practice-focus-roster">${db.roster.map(player=>`<button data-focus-player="${esc(player.name)}"><b>${esc(player.name)}</b><span>${practiceRole(player)||'Hitter'}</span></button>`).join('')}</section>`}</main>`;
+}
 function practiceSetup(){
  const selected=practiceSetupState.selectedNames?new Set(practiceSetupState.selectedNames):null,duration=practiceSetupState.durationMinutes||120;
- return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
- <div class="panel practice-setup no-print"><div class="practice-intro"><h2>Who Is At Practice?</h2><p>Select everyone attending. HotB will divide the practice into ten blocks with no downtime.</p></div>
+ return `${practiceHeader('Build Practice',true)}
+ <div class="panel practice-setup no-print"><section class="practice-team-focus-preview"><div><span>TEAM FOCUS · PAST 14 DAYS</span><b>Drill recommendations will appear here</b></div><small>LOOK ONLY</small></section><div class="practice-intro"><h2>Who Is At Practice?</h2><p>Select everyone attending. HotB will divide the practice into ten blocks with no downtime.</p></div>
  <div class="practice-attendance-tools"><button class="btn" id="practiceSelectAll">All</button><button class="btn" id="practiceSelectNone">None</button><label>Start Time<div class="practice-field-shell practice-time-shell"><input class="input" id="practiceStartTime" type="time" value="${esc(practiceSetupState.startTime||'18:00')}" aria-label="Practice start time"><span id="practiceStartTimeDisplay">${esc(window.HotBPracticeScheduler.blockTimes(practiceSetupState.startTime||'18:00',duration)[0].start)}</span></div></label><label>Duration<div class="practice-field-shell"><select class="input" id="practiceDuration">${Array.from({length:13},(_,index)=>60+index*10).map(minutes=>`<option value="${minutes}" ${minutes===duration?'selected':''}>${minutes} Minutes</option>`).join('')}</select></div></label></div>
  <div class="practice-attendance">${db.roster.map((player,index)=>`<label class="practice-player"><input type="checkbox" data-practice-player="${index}" ${!selected||selected.has(player.name)?'checked':''}><span><b>${esc(player.name)}</b><small>${practiceRole(player)||'Hitter'}</small></span></label>`).join('')}</div>
  <button class="btn black block practice-generate" id="generatePractice">Build Practice Schedule</button></div>`;
@@ -1365,6 +1380,9 @@ function practicePlayerCards(plan,hidden=false){
  }).join('')}</section>`;
 }
 function practicePage(){
+ if(!practicePlan&&practiceSection==='hub')return practiceHub();
+ if(!practicePlan&&practiceSection==='library')return practiceLibrary();
+ if(!practicePlan&&practiceSection==='player')return practicePlayerFocus();
  if(!practicePlan)return practiceSetup();
  const catcherText=practicePlan.catcherLoads.map(item=>`${item.name.split(' ')[0]} ${item.liveBlocks}`).join(' · ');
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
@@ -2226,6 +2244,12 @@ function finishPracticeClock(){
  speakPracticeClock('Times Up, Good Practice, Please start to clean up');render();
 }
 function bindPractice(){
+ $('#practiceHubBack')?.addEventListener('click',()=>{stopPracticeClock();practicePlan=null;practiceSection='hub';practiceFocusPlayer='';render();window.scrollTo(0,0)});
+ $('#openPracticeBuilder')?.addEventListener('click',()=>{practiceSection='setup';render();window.scrollTo(0,0)});
+ $('#openDrillLibrary')?.addEventListener('click',()=>{practiceSection='library';render();window.scrollTo(0,0)});
+ $('#openPlayerFocus')?.addEventListener('click',()=>{practiceSection='player';practiceFocusPlayer='';render();window.scrollTo(0,0)});
+ $$('[data-focus-player]').forEach(button=>button.addEventListener('click',()=>{practiceFocusPlayer=button.dataset.focusPlayer;render();window.scrollTo(0,0)}));
+ $('#changeFocusPlayer')?.addEventListener('click',()=>{practiceFocusPlayer='';render();window.scrollTo(0,0)});
  $('#practiceSelectAll')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=true));
  $('#practiceSelectNone')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=false));
  $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')} ${hour<12?'AM':'PM'}`});
@@ -2240,7 +2264,7 @@ function bindPractice(){
   if(errors.length)practicePlan.warnings.push(...errors);
   render();window.scrollTo(0,0);
  });
- $('#editPracticePlayers')?.addEventListener('click',()=>{stopPracticeClock();practiceSetupState={selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes};practicePlan=null;render();window.scrollTo(0,0)});
+ $('#editPracticePlayers')?.addEventListener('click',()=>{stopPracticeClock();practiceSetupState={selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes};practicePlan=null;practiceSection='setup';render();window.scrollTo(0,0)});
  $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;if(practiceCoachOpen)practiceCardsOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#togglePracticeCards')?.addEventListener('click',()=>{practiceCardsOpen=!practiceCardsOpen;if(practiceCardsOpen)practiceCoachOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#startPracticeClock')?.addEventListener('click',beginPracticeClock);
