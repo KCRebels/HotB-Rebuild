@@ -834,7 +834,7 @@ let timerInt=null,timerStart=0,timerElapsed=0;
 let lastRenderedUndoState=null;
 let practicePlan=null;
 let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120},practiceCoachOpen=false,practiceCardsOpen=false;
-let practiceSection='hub',practiceFocusPlayer='';
+let practiceSection='hub',practiceFocusPlayer='',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
 let practiceClock={running:false,finished:false,startAt:0,lastBlock:1},practiceClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
@@ -1373,11 +1373,19 @@ function practiceHeader(title='Hitting Practice',backToHub=false){
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" ${backToHub?'id="practiceHubBack"':'data-go="home"'}>${backToHub?'Back':'Home'}</button><h1>${esc(title)}</h1><span class="page-head-spacer"></span></div>`;
 }
 function practiceHub(){
- return `${practiceHeader()}<main class="practice-hub no-print"><section class="practice-hub-intro"><h2>Plan Your Hitting Practice</h2><p>Build today’s schedule, organize your drills, or focus on one player.</p></section><section class="practice-hub-actions"><button class="practice-hub-card primary" id="openPracticeBuilder"><span>PLAN</span><h3>Build Practice</h3><p>Choose attendance, time and create the complete rotation.</p></button><button class="practice-hub-card" id="openDrillLibrary"><span>LIBRARY</span><h3>Drill Library</h3><p>Keep every hitting drill, setup and coaching purpose in one place.</p><small>LOOK ONLY</small></button><button class="practice-hub-card" id="openPlayerFocus"><span>PLAYER</span><h3>Player Focus</h3><p>Select one player for a future two-week review and targeted drill plan.</p><small>LOOK ONLY</small></button></section></main>`;
+ return `${practiceHeader()}<main class="practice-hub no-print"><section class="practice-hub-intro"><h2>Plan Your Hitting Practice</h2><p>Build today’s schedule, organize your drills, or focus on one player.</p></section><section class="practice-hub-actions"><button class="practice-hub-card primary" id="openPracticeBuilder"><span>PLAN</span><h3>Build Practice</h3><p>Choose attendance, time and create the complete rotation.</p></button><button class="practice-hub-card" id="openDrillLibrary"><span>LIBRARY</span><h3>Drill Library</h3><p>Search your hitting drills, setups and coaching purposes.</p></button><button class="practice-hub-card" id="openPlayerFocus"><span>PLAYER</span><h3>Player Focus</h3><p>Select one player for a future two-week review and targeted drill plan.</p><small>LOOK ONLY</small></button></section></main>`;
 }
 function practiceLibrary(){
- const filters=['All Drills','Tee','Front Toss','Machine','Live','Timing','Power','Contact','Pitch Recognition'];
- return `${practiceHeader('Drill Library',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>FUTURE FEATURE</span><h2>Your Hitting Drill Library</h2><p>This screen is ready for the drill information you are still building. Nothing here changes a practice plan yet.</p></section><div class="practice-library-search"><input class="input" type="search" placeholder="Search drills" disabled aria-label="Search drills preview"><button class="btn black" disabled>Add Drill</button></div><div class="practice-filter-preview">${filters.map((filter,index)=>`<button class="${index===0?'active':''}" disabled>${filter}</button>`).join('')}</div><article class="practice-drill-preview"><div class="practice-drill-media"><span>PHOTO OR VIDEO</span></div><div><span class="practice-preview-label">DRILL CARD PREVIEW</span><h3>Drill Name</h3><p>Purpose, instructions, equipment, player requirements and coaching points will appear here.</p><div class="practice-drill-tags"><span>Skill Focus</span><span>2–3 Players</span><span>Equipment</span></div></div></article></main>`;
+ const drills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[];
+ const selected=drills.find(drill=>drill.name===practiceSelectedDrill);
+ if(selected){
+  const detail=(title,value)=>value?`<section class="practice-drill-detail-section"><h3>${esc(title)}</h3><p>${esc(value)}</p></section>`:'';
+  return `${practiceHeader('Drill Library',true)}<main class="practice-feature-page practice-drill-detail no-print"><button class="practice-library-return" id="backToDrillList">‹ Back To All Drills</button><section class="practice-drill-detail-head"><span>${esc(selected.category)}</span><h2>${esc(selected.name)}</h2><p>${esc(selected.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(selected.hittingMethod)}</span>${selected.equipment?`<span>${esc(selected.equipment)}</span>`:''}</div></section>${detail('Best Used For',selected.bestUsedFor)}${detail('How It Works',selected.howItWorks)}${detail('Key Coaching Cues',selected.coachingCues)}${detail('What Success Looks Like',selected.success)}${detail('Secondary Focus',selected.secondaryFocus)}${detail('Space / Setup',selected.spaceSetup)}${detail('Equipment',selected.equipment)}${detail('Notes / Variations',selected.notes)}${selected.mediaLink?`<a class="btn black block practice-drill-media-link" href="${esc(selected.mediaLink)}" target="_blank" rel="noopener">Watch Drill</a>`:''}</main>`;
+ }
+ const filters=['All Drills',...new Set(drills.map(drill=>drill.category).filter(Boolean))];
+ const query=practiceDrillQuery.trim().toLowerCase();
+ const shown=drills.filter(drill=>(practiceDrillCategory==='All Drills'||drill.category===practiceDrillCategory)&&(!query||Object.values(drill).some(value=>String(value).toLowerCase().includes(query))));
+ return `${practiceHeader('Drill Library',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>HITTING LIBRARY</span><h2>${drills.length} Hitting Drills</h2><p>Search by drill name, hitting problem, purpose, equipment or coaching cue. This library does not change the practice scheduler yet.</p></section><div class="practice-library-search"><input class="input" id="practiceDrillSearch" type="search" placeholder="Search drills" value="${esc(practiceDrillQuery)}" aria-label="Search drills"></div><div class="practice-filter-preview">${filters.map(filter=>`<button class="${filter===practiceDrillCategory?'active':''}" data-drill-category="${esc(filter)}">${esc(filter)}</button>`).join('')}</div><p class="practice-library-count">${shown.length} ${shown.length===1?'drill':'drills'}</p><section class="practice-drill-list">${shown.map(drill=>`<button class="practice-drill-card" data-drill-name="${esc(drill.name)}"><span>${esc(drill.category)}</span><h3>${esc(drill.name)}</h3><p>${esc(drill.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(drill.hittingMethod)}</span>${drill.equipment?`<span>${esc(drill.equipment)}</span>`:''}</div></button>`).join('')||`<div class="practice-library-empty"><b>No Drills Found</b><p>Try another search or category.</p></div>`}</section></main>`;
 }
 function practicePlayerFocus(){
  const selected=db.roster.find(player=>player.name===practiceFocusPlayer);
@@ -2267,9 +2275,13 @@ function finishPracticeClock(){
  speakPracticeClock('Times Up, Good Practice, Please start to clean up');render();
 }
 function bindPractice(){
- $('#practiceHubBack')?.addEventListener('click',()=>{stopPracticeClock();practicePlan=null;practiceSection='hub';practiceFocusPlayer='';render();window.scrollTo(0,0)});
+ $('#practiceHubBack')?.addEventListener('click',()=>{stopPracticeClock();practicePlan=null;practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)});
  $('#openPracticeBuilder')?.addEventListener('click',()=>{practiceSection='setup';render();window.scrollTo(0,0)});
  $('#openDrillLibrary')?.addEventListener('click',()=>{practiceSection='library';render();window.scrollTo(0,0)});
+ $('#practiceDrillSearch')?.addEventListener('input',event=>{practiceDrillQuery=event.target.value;render();const search=$('#practiceDrillSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
+ $$('[data-drill-category]').forEach(button=>button.addEventListener('click',()=>{practiceDrillCategory=button.dataset.drillCategory;render();window.scrollTo(0,0)}));
+ $$('[data-drill-name]').forEach(button=>button.addEventListener('click',()=>{practiceSelectedDrill=button.dataset.drillName;render();window.scrollTo(0,0)}));
+ $('#backToDrillList')?.addEventListener('click',()=>{practiceSelectedDrill='';render();window.scrollTo(0,0)});
  $('#openPlayerFocus')?.addEventListener('click',()=>{practiceSection='player';practiceFocusPlayer='';render();window.scrollTo(0,0)});
  $$('[data-focus-player]').forEach(button=>button.addEventListener('click',()=>{practiceFocusPlayer=button.dataset.focusPlayer;render();window.scrollTo(0,0)}));
  $('#changeFocusPlayer')?.addEventListener('click',()=>{practiceFocusPlayer='';render();window.scrollTo(0,0)});
