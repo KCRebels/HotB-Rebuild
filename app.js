@@ -833,6 +833,8 @@ let recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',s
 let timerInt=null,timerStart=0,timerElapsed=0;
 let lastRenderedUndoState=null;
 let practicePlan=null;
+let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120},practiceCoachOpen=false;
+let practiceClock={running:false,finished:false,startAt:0,lastBlock:1},practiceClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 
@@ -935,7 +937,7 @@ function save(){
  scheduleCloudBackup();
 }
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
-function go(r){if(route==='practice'&&r==='home')practicePlan=null;route=r;modal=null;save();render();window.scrollTo(0,0)}
+function go(r){if(route==='practice'&&r==='home'){stopPracticeClock();practicePlan=null;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120};practiceCoachOpen=false}route=r;modal=null;save();render();window.scrollTo(0,0)}
 function currentGame(){return db.currentGame}
 function planFor(name){
  const saved=db.planPreferences?.[name];
@@ -1345,10 +1347,11 @@ function practiceRole(player){
 }
 function practiceEntryText(entry){return entry.partner?`${entry.activity} — ${entry.partner}`:entry.activity}
 function practiceSetup(){
+ const selected=practiceSetupState.selectedNames?new Set(practiceSetupState.selectedNames):null,duration=practiceSetupState.durationMinutes||120;
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
  <div class="panel practice-setup no-print"><div class="practice-intro"><h2>Who Is At Practice?</h2><p>Select everyone attending. HotB will divide the practice into ten blocks with no downtime.</p></div>
- <div class="practice-attendance-tools"><button class="btn" id="practiceSelectAll">All</button><button class="btn" id="practiceSelectNone">None</button><label>Start Time<div class="practice-field-shell practice-time-shell"><input class="input" id="practiceStartTime" type="time" value="18:00" aria-label="Practice start time"><span id="practiceStartTimeDisplay">6:00 PM</span></div></label><label>Duration<div class="practice-field-shell"><select class="input" id="practiceDuration">${Array.from({length:13},(_,index)=>60+index*10).map(minutes=>`<option value="${minutes}" ${minutes===120?'selected':''}>${minutes} Minutes</option>`).join('')}</select></div></label></div>
- <div class="practice-attendance">${db.roster.map((player,index)=>`<label class="practice-player"><input type="checkbox" data-practice-player="${index}" checked><span><b>${esc(player.name)}</b><small>${practiceRole(player)||'Hitter'}</small></span></label>`).join('')}</div>
+ <div class="practice-attendance-tools"><button class="btn" id="practiceSelectAll">All</button><button class="btn" id="practiceSelectNone">None</button><label>Start Time<div class="practice-field-shell practice-time-shell"><input class="input" id="practiceStartTime" type="time" value="${esc(practiceSetupState.startTime||'18:00')}" aria-label="Practice start time"><span id="practiceStartTimeDisplay">${esc(window.HotBPracticeScheduler.blockTimes(practiceSetupState.startTime||'18:00',duration)[0].start)}</span></div></label><label>Duration<div class="practice-field-shell"><select class="input" id="practiceDuration">${Array.from({length:13},(_,index)=>60+index*10).map(minutes=>`<option value="${minutes}" ${minutes===duration?'selected':''}>${minutes} Minutes</option>`).join('')}</select></div></label></div>
+ <div class="practice-attendance">${db.roster.map((player,index)=>`<label class="practice-player"><input type="checkbox" data-practice-player="${index}" ${!selected||selected.has(player.name)?'checked':''}><span><b>${esc(player.name)}</b><small>${practiceRole(player)||'Hitter'}</small></span></label>`).join('')}</div>
  <button class="btn black block practice-generate" id="generatePractice">Build Practice Schedule</button></div>`;
 }
 function practiceCoachView(plan){
@@ -1363,14 +1366,15 @@ function practicePlayerCards(plan){
 }
 function practicePage(){
  if(!practicePlan)return practiceSetup();
- const catcherText=practicePlan.catcherLoads.map(item=>`${item.name}: ${item.liveBlocks}`).join(' · ');
+ const catcherText=practicePlan.catcherLoads.map(item=>`${item.name.split(' ')[0]}: ${item.liveBlocks}`).join(' · ');
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
  <div class="practice-results">
-  <section class="practice-summary no-print"><div><b>${practicePlan.attendance}</b><span>Players</span></div><div><b>10</b><span>${practicePlan.blockMinutes}-Min Blocks</span></div><div><b>${practicePlan.drillStations}</b><span>Drill Stations Needed</span></div></section>
-  <div class="practice-actions no-print"><button class="btn" id="editPracticeAttendance">Edit Attendance</button><button class="btn black" id="printPracticeCards">Print Player Cards</button></div>
+  <section class="practice-summary no-print"><button id="editPracticePlayers"><b>${practicePlan.attendance}</b><span>Players · Edit</span></button><div><b>10</b><span>${practicePlan.blockMinutes}-Min Blocks</span></div><div><b>${practicePlan.drillStations}</b><span>Drill Stations Needed</span></div></section>
+  <section class="practice-live-control no-print"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart Practice':'Start Practice'}</button><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Current Time</span><b id="practiceCurrentTime">--:--</b></div><div><span>Current Block</span><b id="practiceCurrentBlock">Block 1 of 10</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practicePlan.blockMinutes}:00</b></div></div></section>
+  <div class="practice-actions no-print"><button class="btn" id="togglePracticeCoach">${practiceCoachOpen?'Hide Coach View':'Coach View'}</button><button class="btn black" id="printPracticeCards">Print Player Cards</button></div>
   ${catcherText?`<p class="practice-catcher-load no-print"><b>Live catching:</b> ${esc(catcherText)} block${practicePlan.catcherLoads.reduce((sum,item)=>sum+item.liveBlocks,0)===1?'':'s'}</p>`:''}
   ${practicePlan.warnings.length?`<div class="practice-warnings no-print"><b>Schedule Check</b>${practicePlan.warnings.map(warning=>`<p>${esc(warning)}</p>`).join('')}</div>`:''}
-  ${practiceCoachView(practicePlan)}${practicePlayerCards(practicePlan)}
+  ${practiceCoachOpen?practiceCoachView(practicePlan):''}${practicePlayerCards(practicePlan)}
  </div>`;
 }
 function newGameView(){
@@ -2185,6 +2189,36 @@ function bind(){
  $('#openRecoveryGuide')?.addEventListener('click',()=>{modal='recoveryGuide';render()});
 }
 
+function stopPracticeClock(){
+ if(practiceClockTimer)clearInterval(practiceClockTimer);
+ practiceClockTimer=null;practiceClock={running:false,finished:false,startAt:0,lastBlock:1};
+ if('speechSynthesis'in window)window.speechSynthesis.cancel();
+}
+function speakPracticeClock(message,quiet=false){
+ if(!('speechSynthesis'in window))return;
+ const voice=new SpeechSynthesisUtterance(message);voice.rate=.92;voice.volume=quiet?0:1;
+ window.speechSynthesis.cancel();window.speechSynthesis.speak(voice);
+}
+function updatePracticeClock(){
+ if(!practicePlan||!practiceClock.running)return;
+ const now=Date.now(),blockMs=practicePlan.blockMinutes*60000,totalMs=blockMs*10,elapsed=Math.max(0,now-practiceClock.startAt);
+ const currentTime=$('#practiceCurrentTime'),currentBlock=$('#practiceCurrentBlock'),timeLeft=$('#practiceTimeLeft');
+ if(currentTime)currentTime.textContent=new Date(now).toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'});
+ if(elapsed>=totalMs){
+  if(currentBlock)currentBlock.textContent='Practice Complete';if(timeLeft)timeLeft.textContent='0:00';
+  practiceClock.running=false;practiceClock.finished=true;if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
+  speakPracticeClock('Times Up, Good Practice, Please start to clean up');return;
+ }
+ const block=Math.floor(elapsed/blockMs)+1,remaining=Math.max(0,blockMs-(elapsed%blockMs)),seconds=Math.ceil(remaining/1000);
+ if(block>practiceClock.lastBlock){practiceClock.lastBlock=block;speakPracticeClock('Ladies, Time to Rotate')}
+ if(currentBlock)currentBlock.textContent=`Block ${block} of 10`;
+ if(timeLeft)timeLeft.textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
+}
+function beginPracticeClock(){
+ if(practiceClockTimer)clearInterval(practiceClockTimer);
+ practiceClock={running:true,finished:false,startAt:Date.now(),lastBlock:1};
+ speakPracticeClock('.',true);render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);
+}
 function bindPractice(){
  $('#practiceSelectAll')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=true));
  $('#practiceSelectNone')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=false));
@@ -2193,12 +2227,16 @@ function bindPractice(){
   const attendees=$$('[data-practice-player]:checked').map(input=>db.roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
   if(!attendees.length){alert('Select at least one player attending practice.');return}
   if(!window.HotBPracticeScheduler){alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
-  practicePlan=window.HotBPracticeScheduler.buildSchedule(attendees.map(practicePlayerModel),$('#practiceStartTime').value||'18:00',Number($('#practiceDuration').value)||120);
+  const startTime=$('#practiceStartTime').value||'18:00',durationMinutes=Number($('#practiceDuration').value)||120;
+  stopPracticeClock();practiceSetupState={selectedNames:attendees.map(player=>player.name),startTime,durationMinutes};practiceCoachOpen=false;
+  practicePlan=window.HotBPracticeScheduler.buildSchedule(attendees.map(practicePlayerModel),startTime,durationMinutes);
   const errors=window.HotBPracticeScheduler.validate(practicePlan);
   if(errors.length)practicePlan.warnings.push(...errors);
   render();window.scrollTo(0,0);
  });
- $('#editPracticeAttendance')?.addEventListener('click',()=>{practicePlan=null;render();window.scrollTo(0,0)});
+ $('#editPracticePlayers')?.addEventListener('click',()=>{stopPracticeClock();practiceSetupState={selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes};practicePlan=null;render();window.scrollTo(0,0)});
+ $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
+ $('#startPracticeClock')?.addEventListener('click',beginPracticeClock);
  $('#printPracticeCards')?.addEventListener('click',()=>window.print());
 }
 
