@@ -91,7 +91,7 @@
   const contactCounts={GROUND:0,LINE:0,FLY:0,POPUP:0};
   batted.forEach(pa=>contactCounts[normalizeContact(pa)]++);
   const popupRate=ratio(contactCounts.POPUP,batted.length);
-  if(batted.length>=thresholds.battedBalls&&contactCounts.POPUP>=2&&popupRate>=.18)issues.push(issue('popups','Frequent Pop-Ups','Contact / Barrel Control',popupRate,batted.length,`${contactCounts.POPUP} pop-ups in ${batted.length} batted balls`,'Posture / Barrel Path'));
+  if(batted.length>=thresholds.battedBalls&&contactCounts.POPUP>=2&&popupRate>=.18)issues.push(issue('popups','Too Many Pop Flies','Barrel Path',popupRate,batted.length,`${contactCounts.POPUP} pop flies in ${batted.length} batted balls`,'Stay Above The Ball / Prevent Hand Drop'));
   const groundEligible=battedRecords.filter(record=>!isSlapper(record.pitches[0]?.hitterStyle||player?.side)).map(record=>record.pa),groundCount=groundEligible.filter(pa=>normalizeContact(pa)==='GROUND').length,groundRate=ratio(groundCount,groundEligible.length);
   if(groundEligible.length>=thresholds.battedBalls&&groundRate>=.5)issues.push(issue('groundballs','High Groundball Rate','Contact Quality',groundRate,groundEligible.length,`${groundCount} groundballs in ${groundEligible.length} non-slap batted balls`,'Contact Point / Barrel Direction'));
 
@@ -113,6 +113,8 @@
   }
   contactIssue('outside-pitches','Struggling With Outside Pitches','Zone Coverage',pitch=>locationGroup(pitch,player)==='OUTSIDE','Outside Pitch Coverage');
   contactIssue('inside-pitches','Struggling With Inside Pitches','Zone Coverage',pitch=>locationGroup(pitch,player)==='INSIDE','Inside Pitch Coverage');
+  const highStrikeSwings=pitches.filter(pitch=>['C1','C2'].includes(String(pitch.zone||'').toUpperCase())&&isSwing(pitch)),highStrikeMisses=highStrikeSwings.filter(pitch=>pitch.result==='K'),highStrikeMissRate=ratio(highStrikeMisses.length,highStrikeSwings.length),minimumHighStrikeMisses=scope==='team'?6:3;
+  if(highStrikeSwings.length>=thresholds.relevantSwings&&highStrikeMisses.length>=minimumHighStrikeMisses&&highStrikeMissRate>=.35)issues.push(issue('high-strike-misses','Swinging And Missing High Strikes','Swing Path',highStrikeMissRate,highStrikeSwings.length,`${highStrikeMisses.length} misses on ${highStrikeSwings.length} swings at high strikes`,'Keep Hands High / Match The High Pitch Plane'));
   contactIssue('high-rise','Struggling With High Or Rise Pitches','Pitch Type / Zone',pitch=>locationGroup(pitch,player)==='HIGH'||pitch.pitchType==='RS','High Pitch / Rise-Ball Coverage');
   contactIssue('changeup','Struggling With Changeups','Pitch Recognition',pitch=>pitch.pitchType==='CH','Changeup Recognition / Adjustability');
 
