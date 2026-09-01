@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isCoach() {
+      return signedIn()
+        && request.auth.token.email == 'hotbkcrebels@gmail.com';
+    }
+
+    match /hotbUsers/{userId} {
+      allow read, write: if isCoach() && request.auth.uid == userId;
+
+      match /{document=**} {
+        allow read, write: if isCoach() && request.auth.uid == userId;
+      }
+    }
+
+    match /playerPortals/{portalId} {
+      allow create, delete: if isCoach();
+      allow read: if isCoach()
+        || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow update: if isCoach()
+        || (
+          signedIn()
+          && request.auth.token.email == null
+          && resource.data.ownerUid == null
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.pinProof == resource.data.pinHash
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['ownerUid', 'pinProof', 'claimedAt'])
+        );
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
