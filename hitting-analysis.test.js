@@ -80,6 +80,34 @@ const twoStrikeFoulGame=makeGame({pas:repeat(10,index=>({
 const twoStrikeFouls=analysis.analyzePlayer([twoStrikeFoulGame],{name:'Test Hitter',side:'R'},{now:NOW});
 assert.ok(!twoStrikeFouls.issues.some(item=>item.id==='foul-balls'),'two-strike spoil fouls should not trigger the under-ball rule');
 
+const chaseGame=makeGame({pas:repeat(10,index=>({
+ outcome:'H4O',contactType:'LO',
+ pitches:[{result:index<4?'K':'B',zone:'T1',pitchType:'FB',strikesBefore:0},{result:'H4O',zone:'C1',pitchType:'FB',strikesBefore:1}]
+}))});
+const chase=analysis.analyzePlayer([chaseGame],{name:'Test Hitter',side:'R'},{now:NOW});
+assert.ok(chase.issues.some(item=>item.id==='chase-rate'));
+
+const twoStrikeGame=makeGame({pas:repeat(10,index=>({
+ outcome:index<4?'K':'H4O',contactType:index<4?'':'LO',
+ pitches:[{result:index<4?'K':'H4O',zone:'C1',pitchType:'FB',strikesBefore:2}]
+}))});
+const twoStrike=analysis.analyzePlayer([twoStrikeGame],{name:'Test Hitter',side:'R'},{now:NOW});
+assert.ok(twoStrike.issues.some(item=>item.id==='two-strike-contact'));
+
+const outsidePullGame=makeGame({pas:repeat(10,index=>({
+ outcome:index<5?'H4O':'HIT',contactType:index<5?'GO':'LD',fielder:index<5?5:9,
+ pitches:[{result:index<5?'H4O':'HIT',zone:'L1',pitchType:'FB',strikesBefore:1}]
+}))});
+const outsidePull=analysis.analyzePlayer([outsidePullGame],{name:'Test Hitter',side:'R'},{now:NOW});
+assert.ok(outsidePull.issues.some(item=>item.id==='outside-pull-grounders'));
+
+const outsideStayThroughGame=makeGame({pas:repeat(10,index=>({
+ outcome:index<5?'H4O':'HIT',contactType:index<5?'GO':'LD',fielder:index<5?4:9,
+ pitches:[{result:index<5?'H4O':'HIT',zone:'L1',pitchType:'FB',strikesBefore:1}]
+}))});
+const outsideStayThrough=analysis.analyzePlayer([outsideStayThroughGame],{name:'Test Hitter',side:'R'},{now:NOW});
+assert.ok(!outsideStayThrough.issues.some(item=>item.id==='outside-pull-grounders'),'outside-pitch grounders to the opposite side should not trigger a pull-off warning');
+
 const fallbackGame=makeGame({date:'2026-08-10T12:00:00.000Z',pas:repeat(10,()=>({outcome:'HIT',contactType:'LD'}))});
 const fallback=analysis.analyzePlayer([fallbackGame],{name:'Test Hitter',side:'R'},{now:NOW});
 assert.equal(fallback.window,'fallback-30-days');
