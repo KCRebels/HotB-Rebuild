@@ -786,6 +786,8 @@ const CLOUD_LAST_SUCCESS_KEY='hotbCloudLastSuccessV1';
 const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
+const PORTAL_QUERY_KEY='portal';
+const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const firebaseConfig={apiKey:'AIzaSyAxMXEExEsFJkVkK0l_DWbE92Q_S27jjMI',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
 const seed = {
  roster: defaultRoster,
@@ -822,7 +824,7 @@ if(db.route==='live'){
  db.route='new';
  localStorage.setItem(DBKEY,JSON.stringify(db));
 }
-let route = db.route || 'home';
+let route = portalToken?'portal':db.route || 'home';
 let modal = null;
 let reportMode='current', reportSub='spray', reportFilterHitter='All Hitters';
 let reportGameId=null;
@@ -842,6 +844,7 @@ let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false
 let practiceClock={running:false,finished:false,startAt:0,lastBlock:1},practiceClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
+let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null;
 
 function initCloud(){
  if(!window.firebase)return;
@@ -849,12 +852,84 @@ function initCloud(){
   if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
   cloudAuth=firebase.auth();cloudStore=firebase.firestore();
   cloudAuth.onAuthStateChanged(async user=>{
-   if(user&&String(user.email||'').toLowerCase()!==CLOUD_EMAIL){await cloudAuth.signOut();cloudMessage=`Please sign in with ${CLOUD_EMAIL}.`;cloudUser=null}
-   else cloudUser=user||null;
+   if(user&&!user.isAnonymous&&String(user.email||'').toLowerCase()!==CLOUD_EMAIL){await cloudAuth.signOut();cloudMessage=`Please sign in with ${CLOUD_EMAIL}.`;cloudUser=null;portalAuthUser=null}
+   else{
+    cloudUser=user&&!user.isAnonymous?user:null;
+    portalAuthUser=user||null;
+   }
    if(cloudUser){await loadCloudStatus();if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()}
-   if(route==='home')render();
+   if(portalToken)await loadPlayerPortal();
+   if(route==='home'||route==='portal')render();
   });
  }catch(error){cloudMessage='Cloud backup could not start. Your phone data is still safe.'}
+}
+function isCoachPortalUser(user=portalAuthUser){return !!user&&!user.isAnonymous&&String(user.email||'').toLowerCase()===CLOUD_EMAIL}
+function portalDoc(id=portalToken){return cloudStore?.collection('playerPortals').doc(id)}
+async function portalHash(token,pin){
+ const bytes=new TextEncoder().encode(`${token}:${String(pin||'').trim()}`),digest=await crypto.subtle.digest('SHA-256',bytes);
+ return [...new Uint8Array(digest)].map(value=>value.toString(16).padStart(2,'0')).join('');
+}
+function newPortalId(){
+ const bytes=crypto.getRandomValues(new Uint8Array(18));
+ return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function newPortalPin(){return String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0')}
+function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}`}
+async function loadPlayerPortal(){
+ if(!portalToken||!cloudAuth||!cloudStore)return;
+ portalBusy=true;portalMessage='';
+ if(!portalAuthUser){
+  try{await cloudAuth.signInAnonymously()}catch(error){portalBusy=false;portalMessage='Player access is not active yet. The coach must finish Firebase portal setup.'}
+  return;
+ }
+ try{
+  const snapshot=await portalDoc().get();
+  if(snapshot.exists){
+   portalData={id:snapshot.id,...snapshot.data()};portalMessage='';
+   if(portalUnsubscribe)portalUnsubscribe();
+   portalUnsubscribe=portalDoc().onSnapshot(next=>{if(next.exists){portalData={id:next.id,...next.data()};if(route==='portal')render()}},()=>{});
+  }
+  else portalMessage='This player portal link is not valid.';
+ }catch(error){
+  portalData=null;
+  if(!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
+  else portalMessage='This player portal link is not valid.';
+ }
+ portalBusy=false;
+}
+async function claimPlayerPortal(pin){
+ if(!portalToken||!portalAuthUser||isCoachPortalUser()||portalBusy)return;
+ if(!/^\d{6}$/.test(String(pin||'').trim())){portalMessage='Enter the six-digit PIN provided by your coach.';render();return}
+ portalBusy=true;portalMessage='Checking your PIN…';render();
+ try{
+  const proof=await portalHash(portalToken,pin);
+  await portalDoc().update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  await loadPlayerPortal();
+ }catch(error){portalBusy=false;portalMessage='That PIN did not work, or this portal is already linked to another device.'}
+ render();
+}
+async function setupPlayerPortals(){
+ if(!cloudUser||!cloudStore||cloudBusy)return;
+ cloudBusy=true;portalMessage='Creating private player portals…';render();
+ const players=db.roster.filter(item=>!item.isGuest),originals=players.map(player=>({player,portalId:player.portalId,portalPin:player.portalPin,portalPinHash:player.portalPinHash}));
+ try{
+  const batch=cloudStore.batch();
+  for(const player of players){
+   if(!player.portalId)player.portalId=newPortalId();
+   if(!player.portalPin)player.portalPin=newPortalPin();
+   player.portalPinHash=await portalHash(player.portalId,player.portalPin);
+   const existing=await portalDoc(player.portalId).get();
+   batch.set(portalDoc(player.portalId),{playerName:player.name,firstName:practiceFirstName(player.name),pinHash:player.portalPinHash,...(!existing.exists?{ownerUid:null,activePractice:null,focus:null}:{}),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  }
+  await batch.commit();save();portalMessage='Private links and PINs are ready.';
+ }catch(error){originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});portalMessage='Player portals could not be created. Confirm Anonymous Authentication and the Player Portal security rules are active.'}
+ cloudBusy=false;render();
+}
+async function resetPlayerPortal(player){
+ if(!cloudUser||!player?.portalId||!confirm(`Reset ${practiceFirstName(player.name)}’s saved portal device? Her link and PIN will stay the same.`))return;
+ try{await portalDoc(player.portalId).update({ownerUid:null,pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete()});portalMessage=`${practiceFirstName(player.name)} can connect a new device.`}
+ catch(error){portalMessage='That portal could not be reset.'}
+ render();
 }
 function cloudRoot(){return cloudStore.collection('hotbUsers').doc(cloudUser.uid)}
 async function loadCloudStatus(){
@@ -1310,9 +1385,9 @@ function fps(g){
 function render(){
  captureGameUndo();
  const app=document.getElementById('app');
- app.innerHTML=`<div class="app ${route==='live'?'live-app':route==='eval'?'eval-app':route==='practice'?'practice-app':''}">${route==='home'?homeView():
+ app.innerHTML=`<div class="app ${route==='live'?'live-app':route==='eval'?'eval-app':route==='practice'?'practice-app':route==='portal'?'portal-app':''}">${route==='home'?homeView():
  route==='new'?newGameView():route==='roster'?rosterView():
- route==='live'?liveView():route==='eval'?evalView():route==='reports'?reportsPage():route==='practice'?practicePage():homeView()}</div>${modal?modalView():''}`;
+ route==='live'?liveView():route==='eval'?evalView():route==='reports'?reportsPage():route==='practice'?practicePage():route==='portal'?playerPortalPage():homeView()}</div>${modal?modalView():''}`;
  bind();
  if(route==='eval')requestAnimationFrame(fitEvalMetricValues);
 }
@@ -1339,8 +1414,73 @@ function homeView(){
     <button class="home-card" data-go="roster"><h3>Edit Roster</h3></button>
     <button class="home-card" data-go="practice"><h3>Hitting Practice</h3></button>
     <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><h3>Cloud Backup</h3></button>
+    <button class="home-card portal-home-card" data-go="portal"><h3>Player Portal</h3></button>
    </div>
  </div><div class="home-footer">HOTB (THE ELITE HITTING APP) · REBUILD<button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button></div>`;
+}
+function portalHeader(title='Player Portal',showBack=false){
+ return `<div class="page-match-head page-head-centered portal-head"><button class="page-head-nav" ${showBack?'id="portalBack"':portalToken?'id="portalDashboard"':'data-go="home"'}>${showBack?'Back':portalToken?'Portal':'Home'}</button><h1>${esc(title)}</h1><span class="page-head-spacer"></span></div>`;
+}
+function portalProblemWords(query){
+ const text=String(query||'').toLowerCase(),words=text.match(/[a-z0-9]+/g)||[],expanded=[...words];
+ const add=(pattern,terms)=>{if(pattern.test(text))expanded.push(...terms.split(' '))};
+ add(/pop|fly ball|under (the )?ball/, 'pop-ups dropped hands contact under ball barrel path');
+ add(/ground|roll.?over|third base/, 'ground balls rollover barrel control contact');
+ add(/outside|away/, 'outside pitch zone coverage');add(/inside|jam/, 'inside pitch zone coverage');
+ add(/rise|high pitch/, 'high pitch barrel path vision');add(/low pitch/, 'low pitch posture barrel path');
+ add(/change|off.?speed|too early|out front/, 'changeup offspeed early commitment timing weight back');
+ add(/late|behind|velocity|fast/, 'late timing game-speed velocity quick');
+ add(/strike.?out|chase|ball|recogn/, 'pitch recognition swing decisions chasing zone');
+ add(/weak|power|harder|exit/, 'weak contact power lower-half stride weight transfer');
+ add(/balance|drift|front foot|lunge/, 'balance drifting forward front foot posture');
+ return [...new Set(expanded.filter(word=>word.length>2))];
+}
+function recommendPortalDrills(query){
+ const terms=portalProblemWords(query),drills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[];
+ if(!terms.length)return [];
+ return drills.map(drill=>{
+  const fields=[[drill.bestUsedFor,5],[drill.primaryPurpose,4],[drill.secondaryFocus,3],[drill.coachingCues,2],[drill.success,2],[drill.howItWorks,1],[drill.category,1],[drill.hittingMethod,1]];
+  const score=terms.reduce((total,term)=>total+fields.reduce((fieldTotal,[value,weight])=>fieldTotal+(String(value||'').toLowerCase().includes(term)?weight:0),0),0);
+  return {drill,score};
+ }).filter(item=>item.score>0).sort((a,b)=>b.score-a.score||a.drill.name.localeCompare(b.drill.name)).slice(0,4).map(item=>item.drill);
+}
+function portalCoachView(){
+ const players=db.roster.filter(player=>!player.isGuest),ready=players.length&&players.every(player=>player.portalId&&player.portalPin);
+ if(!cloudUser)return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>Private Player Access</h2><p>Sign in through Cloud Backup on this device before creating or managing player links.</p></section><button class="btn black block" data-go="home">Return Home</button></main>`;
+ return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>${ready?'Player Portals Are Ready':'Create Private Player Portals'}</h2><p>Each player receives one private link and a six-digit PIN. Her first successful login connects that portal to her device.</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}<button class="btn black block portal-setup-button" id="setupPlayerPortals" ${cloudBusy?'disabled':''}>${ready?'Refresh Portal Records':'Create Player Portals'}</button>${ready?`<section class="portal-player-list">${players.map(player=>`<article><div><b>${esc(practiceFirstName(player.name))}</b><span>PIN ${esc(player.portalPin)}</span></div><div class="portal-player-actions"><button class="btn" data-share-portal="${esc(player.name)}">Share</button><button class="btn" data-reset-portal="${esc(player.name)}">Reset</button></div></article>`).join('')}</section><p class="portal-private-note">Share each link and PIN only with that player. Reset connects the portal to a replacement phone without changing her link or PIN.</p>`:''}</main>`;
+}
+function portalLoginView(){
+ return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>PRIVATE ACCESS</span><h2>${portalBusy?'Opening Your Portal':'Enter Your PIN'}</h2><p>${portalBusy?'HotB is checking this private player link.':'Use the six-digit PIN your coach provided. This portal will then connect to this device.'}</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}${portalBusy?'':`<label class="label" for="portalPin">Player PIN</label><input class="input portal-pin" id="portalPin" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000"><button class="btn black block" id="openPlayerPortal">Open My Portal</button>`}</main>`;
+}
+function portalPracticeView(){
+ const practice=portalData?.activePractice;
+ return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${esc(practice.blockMinutes)}-minute blocks</p></section><ol class="portal-practice-card">${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span>${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol>${practice.drills?.length?`<section class="portal-practice-drills"><h3>Practice Drills</h3>${practice.drills.map((drill,index)=>`<p><b>${index+1}</b><span>${esc(drill)}</span></p>`).join('')}</section>`:''}`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
+}
+function portalFocusView(){
+ const focus=portalData?.focus;
+ return `${portalHeader('My Focus',true)}<main class="portal-page">${focus?`<section class="portal-welcome"><span>MY PLAYER FOCUS</span><h2>${esc(focus.title||'Current Hitting Focus')}</h2><p>${esc(focus.summary||'')}</p></section><section class="portal-focus-content">${focus.needsWork?`<div><span>NEEDS WORK</span><b>${esc(focus.needsWork)}</b></div>`:''}${focus.drills?.length?`<div><span>DRILL PLAN</span><b>${esc(focus.drills.join(' · '))}</b></div>`:''}</section>`:`<section class="portal-empty"><span>MY FOCUS</span><h2>No Focus Plan Yet</h2><p>Your private two-week hitting analysis has not been published. No other player’s information is available from this portal.</p></section>`}</main>`;
+}
+function portalLibraryView(){
+ const drills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[],selected=drills.find(drill=>drill.name===portalSelectedDrill);
+ if(selected){const detail=(title,value)=>value?`<section class="practice-drill-detail-section"><h3>${esc(title)}</h3><p>${esc(value)}</p></section>`:'';return `${portalHeader('Drill Library',true)}<main class="portal-page practice-drill-detail"><button class="practice-library-return" id="portalLibraryBack">‹ Back To All Drills</button><section class="practice-drill-detail-head"><span>${esc(selected.category)}</span><h2>${esc(selected.name)}</h2><p>${esc(selected.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(selected.hittingMethod)}</span>${selected.equipment?`<span>${esc(selected.equipment)}</span>`:''}</div></section>${detail('Best Used For',selected.bestUsedFor)}${detail('How It Works',selected.howItWorks)}${detail('Key Coaching Cues',selected.coachingCues)}${detail('What Success Looks Like',selected.success)}${detail('Space / Setup',selected.spaceSetup)}${selected.mediaLink?`<a class="btn black block" href="${esc(selected.mediaLink)}" target="_blank" rel="noopener">Watch Drill</a>`:''}</main>`}
+ const query=portalDrillQuery.trim().toLowerCase(),shown=drills.filter(drill=>!query||Object.values(drill).some(value=>String(value).toLowerCase().includes(query)));
+ return `${portalHeader('Drill Library',true)}<main class="portal-page"><div class="practice-library-search"><input class="input" id="portalDrillSearch" type="search" placeholder="Search drills" value="${esc(portalDrillQuery)}" aria-label="Search drills"></div><p class="practice-library-count">${shown.length} ${shown.length===1?'drill':'drills'}</p><section class="practice-drill-list">${shown.map(drill=>`<button class="practice-drill-card" data-portal-drill="${esc(drill.name)}"><span>${esc(drill.category)}</span><h3>${esc(drill.name)}</h3><p>${esc(drill.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(drill.hittingMethod)}</span></div></button>`).join('')}</section></main>`;
+}
+function portalAskView(){
+ return `${portalHeader('Ask The Library',true)}<main class="portal-page"><section class="portal-welcome"><span>DRILL FINDER</span><h2>What Do You Want To Work On?</h2><p>Describe what is happening in your swing or the pitch you are struggling to hit. HotB will recommend drills only from the KC Rebels library.</p></section><div class="portal-ask"><textarea class="input" id="portalProblem" rows="4" placeholder="Example: I keep popping up.">${esc(portalDrillQuery)}</textarea><button class="btn black block" id="findPortalDrills">Find My Drills</button></div>${portalDrillResults.length?`<section class="portal-recommendations"><h3>Recommended Drills</h3>${portalDrillResults.map((drill,index)=>`<button data-portal-recommendation="${esc(drill.name)}"><b>${index+1}</b><span><strong>${esc(drill.name)}</strong><small>${esc(drill.bestUsedFor||drill.primaryPurpose)}</small></span></button>`).join('')}</section>`:portalDrillQuery?`<section class="portal-empty compact"><h2>No Strong Match Yet</h2><p>Try describing the result, pitch location, timing problem, or part of the swing you want to improve.</p></section>`:''}</main>`;
+}
+function portalDashboardView(){
+ const first=portalData?.firstName||practiceFirstName(portalData?.playerName),active=!!portalData?.activePractice;
+ return `${portalHeader()}<main class="portal-page"><section class="portal-welcome ${active?'active':''}"><span>${active?'PRACTICE ACTIVE':'PLAYER PORTAL'}</span><h2>Hi, ${esc(first)}</h2><p>${active?'Your current practice plan is ready below.':'Your practice, personal focus and KC Rebels drill library are all in one place.'}</p></section><section class="portal-dashboard"><button class="${active?'active':''}" data-portal-view="practice"><span>PRACTICE</span><h3>My Practice</h3><p>${active?'View your active rotation.':'No practice is active.'}</p></button><button data-portal-view="focus"><span>PLAYER</span><h3>My Focus</h3><p>Your private hitting focus and assigned drills.</p></button><button data-portal-view="library"><span>LIBRARY</span><h3>Drill Library</h3><p>Search every approved KC Rebels hitting drill.</p></button><button data-portal-view="ask"><span>DRILL FINDER</span><h3>Ask The Library</h3><p>Describe a problem and find drills that address it.</p></button></section><p class="portal-private-note">This portal is linked only to ${esc(first)}. It does not provide access to another player’s practice or Player Focus.</p></main>`;
+}
+function playerPortalPage(){
+ if(!portalToken)return portalCoachView();
+ if(!portalData)return portalLoginView();
+ if(portalView==='practice')return portalPracticeView();
+ if(portalView==='focus')return portalFocusView();
+ if(portalView==='library')return portalLibraryView();
+ if(portalView==='ask')return portalAskView();
+ return portalDashboardView();
 }
 function practicePlayerModel(player){
  const positions=positionTokens(player);
@@ -1427,6 +1567,28 @@ function practiceDrillResourceWarnings(drills){
  if(!constrained.length)return [];
  return [`${constrained.map(drill=>drill.name).join(', ')} ${constrained.length===1?'uses':'use'} tunnel or delivery space. Confirm the station can run during blocks when live pitching, machine or front toss is active.`];
 }
+function playerPracticePortalPayload(name){
+ const schedule=practicePlan.schedule[name]||[];
+ return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),schedule:schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:practiceEntryText(entry,practicePlan,index)})),drills:practiceChosenDrills.map(drill=>drill.name)};
+}
+async function activatePlayerPlans(){
+ if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before activating player portals.');return}
+ if(!practicePlan||practiceChosenDrills.length!==practicePlan.drillStations){alert('Choose all practice drills before activating player plans.');return}
+ const attending=new Set(practicePlan.players.map(player=>player.name)),missing=db.roster.filter(player=>attending.has(player.name)&&!player.portalId);
+ if(missing.length){alert(`Create Player Portals first. Missing: ${missing.map(player=>practiceFirstName(player.name)).join(', ')}.`);return}
+ const button=$('#activatePlayerPlans');if(button){button.disabled=true;button.textContent='Activating…'}
+ try{
+  const batch=cloudStore.batch();
+  db.roster.filter(player=>player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:attending.has(player.name)?playerPracticePortalPayload(player.name):null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+  await batch.commit();db.activePortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:new Date().toISOString(),players:[...attending]};save();render();alert(`Player plans activated for ${attending.size} ${attending.size===1?'player':'players'}.`);
+ }catch(error){if(button){button.disabled=false;button.textContent='Activate Player Plans'}alert('The player plans could not be activated. Confirm the portal security setup and internet connection.')}
+}
+async function deactivatePlayerPlans(){
+ if(!cloudUser||!cloudStore||!confirm('Remove the active practice from every player portal?'))return;
+ const button=$('#deactivatePlayerPlans');if(button)button.disabled=true;
+ try{const batch=cloudStore.batch();db.roster.filter(player=>player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));await batch.commit();db.activePortalPractice=null;save();render();alert('Player practice plans are no longer active.')}
+ catch(error){if(button)button.disabled=false;alert('The active player plans could not be removed.')}
+}
 function practiceDrillPicker(){
  const needed=practicePlan.drillStations,drills=practiceSelectableDrills(),filters=['All Drills',...new Set(drills.map(drill=>drill.category).filter(Boolean))],query=practicePickerQuery.trim().toLowerCase();
  const shown=drills.filter(drill=>(practicePickerCategory==='All Drills'||drill.category===practicePickerCategory)&&(!query||Object.values(drill).some(value=>String(value).toLowerCase().includes(query))));
@@ -1439,12 +1601,13 @@ function practicePage(){
  if(!practicePlan)return practiceSetup();
  if(practiceDrillPickerOpen)return practiceDrillPicker();
  const catcherText=practicePlan.catcherLoads.map(item=>`${item.name.split(' ')[0]} ${item.liveBlocks}`).join(' · ');
- const chosenComplete=practiceChosenDrills.length===practicePlan.drillStations,resourceWarnings=practiceDrillResourceWarnings(practiceChosenDrills);
+ const chosenComplete=practiceChosenDrills.length===practicePlan.drillStations,resourceWarnings=practiceDrillResourceWarnings(practiceChosenDrills),portalsActive=!!db.activePortalPractice?.active,currentPortalsActive=portalsActive&&db.activePortalPractice.id===practicePlan.portalDraftId;
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
  <div class="practice-results">
   <section class="practice-summary no-print"><div><b>${practicePlan.attendance}</b><span>Player</span></div><div><b>10</b><span>${practicePlan.blockMinutes}M Blocks</span></div><div><b>${practicePlan.drillStations}</b><span>Drills</span></div></section>
   <section class="practice-live-control no-print"><div class="practice-clock-actions"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart':'Start'}</button><button class="btn" id="editPracticePlayers">Edit</button><button class="btn black" id="endPracticeClock" ${practiceClock.running?'':'disabled'}>End</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Time</span><b id="practiceCurrentTime">${practiceClock.finished?practiceClockText():'--:--'}</b></div><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':'1 of 10'}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${practicePlan.blockMinutes}:00`}</b></div></div></section>
   <section class="practice-selected-drills no-print"><div><span>DRILL STATIONS</span><h2>${chosenComplete?'Practice Drills Selected':`Choose ${practicePlan.drillStations} Practice Drills`}</h2>${chosenComplete?`<ol>${practiceChosenDrills.map((drill,index)=>`<li><b>${index+1}</b><span>${esc(drill.name)}</span></li>`).join('')}</ol>`:'<p>Select the actual drills before printing the coach schedule or player cards.</p>'}</div><button class="btn ${chosenComplete?'':'red'}" id="choosePracticeDrills">${chosenComplete?'Change Drills':'Choose Drills'}</button></section>
+  <section class="practice-portal-publish no-print"><div><span>PLAYER PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Replace Active Practice':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players can view their individual plans now.':portalsActive?'A previous practice is active. Replace it when this schedule is ready.':'Publish each attending player’s individual rotation after you finish reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${chosenComplete?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Replace Plans':'Activate Player Plans'}</button></section>
   ${resourceWarnings.map(warning=>`<div class="practice-resource-warning no-print"><b>Resource Check</b><p>${esc(warning)}</p></div>`).join('')}
   <div class="practice-actions practice-actions-three no-print"><button class="btn ${practiceCoachOpen?'active':''}" id="togglePracticeCoach" aria-pressed="${practiceCoachOpen}">Coach</button><button class="btn ${practiceCardsOpen?'active':''}" id="togglePracticeCards" aria-pressed="${practiceCardsOpen}">Player</button><button class="btn black" id="printPracticeCards" ${chosenComplete?'':'disabled'}>Print</button></div>
   ${catcherText?`<p class="practice-catcher-load no-print"><b>Live Catching Blocks:</b> ${esc(catcherText)}</p>`:''}
@@ -2249,6 +2412,7 @@ function bind(){
  if(route==='eval')bindEval();
  if(route==='reports')bindReportsPage();
  if(route==='practice')bindPractice();
+ if(route==='portal')bindPlayerPortal();
  if(modal==='HIT'||modal==='H4O')bindContact();
  if(modal==='reports')bindReports();
  if(modal==='record')bindRecord();
@@ -2300,6 +2464,25 @@ function finishPracticeClock(){
  practiceClock.running=false;practiceClock.finished=true;
  speakPracticeClock('Times Up, Good Practice, Please start to clean up');render();
 }
+function bindPlayerPortal(){
+ $('#setupPlayerPortals')?.addEventListener('click',setupPlayerPortals);
+ $$('[data-share-portal]').forEach(button=>button.addEventListener('click',async()=>{
+  const player=db.roster.find(item=>item.name===button.dataset.sharePortal);if(!player?.portalId)return;
+  const share={title:`${practiceFirstName(player.name)}’s HotB Player Portal`,text:`${practiceFirstName(player.name)}’s private HotB Player Portal\nPIN: ${player.portalPin}\n${playerPortalUrl(player)}`};
+  try{if(navigator.share)await navigator.share(share);else{await navigator.clipboard.writeText(share.text);portalMessage='Portal link and PIN copied.';render()}}catch(error){if(error?.name!=='AbortError'){portalMessage='The portal link could not be shared from this device.';render()}}
+ }));
+ $$('[data-reset-portal]').forEach(button=>button.addEventListener('click',()=>resetPlayerPortal(db.roster.find(item=>item.name===button.dataset.resetPortal))));
+ $('#openPlayerPortal')?.addEventListener('click',()=>claimPlayerPortal($('#portalPin')?.value));
+ $('#portalPin')?.addEventListener('keydown',event=>{if(event.key==='Enter')claimPlayerPortal(event.currentTarget.value)});
+ $('#portalDashboard')?.addEventListener('click',()=>{portalView='home';portalSelectedDrill='';portalDrillResults=[];render();window.scrollTo(0,0)});
+ $('#portalBack')?.addEventListener('click',()=>{portalView='home';portalSelectedDrill='';render();window.scrollTo(0,0)});
+ $$('[data-portal-view]').forEach(button=>button.addEventListener('click',()=>{portalView=button.dataset.portalView;portalSelectedDrill='';portalDrillQuery='';portalDrillResults=[];render();window.scrollTo(0,0)}));
+ $('#portalDrillSearch')?.addEventListener('input',event=>{portalDrillQuery=event.target.value;render();const search=$('#portalDrillSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
+ $$('[data-portal-drill]').forEach(button=>button.addEventListener('click',()=>{portalSelectedDrill=button.dataset.portalDrill;render();window.scrollTo(0,0)}));
+ $('#portalLibraryBack')?.addEventListener('click',()=>{portalSelectedDrill='';render();window.scrollTo(0,0)});
+ $('#findPortalDrills')?.addEventListener('click',()=>{portalDrillQuery=$('#portalProblem')?.value.trim()||'';portalDrillResults=recommendPortalDrills(portalDrillQuery);render();window.scrollTo(0,0)});
+ $$('[data-portal-recommendation]').forEach(button=>button.addEventListener('click',()=>{portalSelectedDrill=button.dataset.portalRecommendation;portalView='library';render();window.scrollTo(0,0)}));
+}
 function bindPractice(){
  $('#choosePracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice(0,practicePlan.drillStations);practiceDrillPickerOpen=true;practicePickerQuery='';practicePickerCategory='All Drills';render();window.scrollTo(0,0)});
  $('#cancelPracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=[];practiceDrillPickerOpen=false;render();window.scrollTo(0,0)});
@@ -2329,6 +2512,7 @@ function bindPractice(){
   const noPitchersMode=practicePlayers.some(player=>player.isPitcher)?null:(confirm('No pitchers are attending.\n\nPress OK to use Coach Pitch for live at-bats.\nPress Cancel to replace live with additional skill work.')?'coach':'skills');
   stopPracticeClock();practiceSetupState={selectedNames:attendees.map(player=>player.name),startTime,durationMinutes};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;
   practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});
+  practicePlan.portalDraftId=crypto.randomUUID();
   const errors=window.HotBPracticeScheduler.validate(practicePlan);
   if(errors.length)practicePlan.warnings.push(...errors);
   render();window.scrollTo(0,0);
@@ -2338,6 +2522,8 @@ function bindPractice(){
  $('#togglePracticeCards')?.addEventListener('click',()=>{practiceCardsOpen=!practiceCardsOpen;if(practiceCardsOpen)practiceCoachOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#startPracticeClock')?.addEventListener('click',beginPracticeClock);
  $('#endPracticeClock')?.addEventListener('click',finishPracticeClock);
+ $('#activatePlayerPlans')?.addEventListener('click',activatePlayerPlans);
+ $('#deactivatePlayerPlans')?.addEventListener('click',deactivatePlayerPlans);
  $('#printPracticeCards')?.addEventListener('click',()=>window.print());
 }
 
