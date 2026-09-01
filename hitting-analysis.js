@@ -7,8 +7,8 @@
  const SWING_RESULTS=new Set(['F','HIT','H4O','E','FC','SAC','K']);
  const CONTACT_RESULTS=new Set(['F','HIT','H4O','E','FC','SAC']);
  const DEFAULT_THRESHOLDS={
-  player:{minimumPA:10,standardPA:25,relevantPitches:8,relevantSwings:6,battedBalls:6,executionAttempts:10},
-  team:{minimumPA:40,standardPA:75,relevantPitches:20,relevantSwings:15,battedBalls:18,executionAttempts:30}
+  player:{minimumPA:10,standardPA:25,relevantPitches:8,relevantSwings:6,battedBalls:6,executionAttempts:10,chaseOpportunities:6,outsideBattedBalls:5},
+  team:{minimumPA:40,standardPA:75,relevantPitches:20,relevantSwings:15,battedBalls:18,executionAttempts:30,chaseOpportunities:15,outsideBattedBalls:12}
  };
 
  function normalizeContact(pa){
@@ -82,6 +82,12 @@
   const preTwoStrikeSwings=swings.filter(pitch=>Number(pitch.strikesBefore)<2),preTwoStrikeFouls=preTwoStrikeSwings.filter(pitch=>pitch.result==='F'),foulRate=ratio(preTwoStrikeFouls.length,preTwoStrikeSwings.length),minimumFouls=scope==='team'?8:4;
   if(preTwoStrikeSwings.length>=thresholds.relevantPitches&&preTwoStrikeFouls.length>=minimumFouls&&foulRate>=.35)issues.push(issue('foul-balls','Frequent Foul Balls','Barrel Path',foulRate,preTwoStrikeSwings.length,`${preTwoStrikeFouls.length} fouls on ${preTwoStrikeSwings.length} pre-two-strike swings`,'Stay Above The Ball / Prevent Hand Drop'));
 
+  const outerZones=new Set(['T','T1','T2','B','B1','B2','L','L1','L2','R','R1','R2']),preTwoStrikeOuter=pitches.filter(pitch=>Number(pitch.strikesBefore)<2&&outerZones.has(String(pitch.zone||'').toUpperCase())),chases=preTwoStrikeOuter.filter(isSwing),chaseRate=ratio(chases.length,preTwoStrikeOuter.length),minimumChases=scope==='team'?6:3;
+  if(preTwoStrikeOuter.length>=thresholds.chaseOpportunities&&chases.length>=minimumChases&&chaseRate>=.35)issues.push(issue('chase-rate','Chasing Pitches Outside The Zone','Swing Decisions',chaseRate,preTwoStrikeOuter.length,`${chases.length} swings on ${preTwoStrikeOuter.length} pre-two-strike pitches outside the zone`,'Pitch Recognition / Zone Discipline'));
+
+  const twoStrikeSwings=swings.filter(pitch=>Number(pitch.strikesBefore)>=2),twoStrikeContacts=twoStrikeSwings.filter(isContact),twoStrikeContactRate=ratio(twoStrikeContacts.length,twoStrikeSwings.length);
+  if(twoStrikeSwings.length>=thresholds.relevantSwings&&twoStrikeContactRate<.65)issues.push(issue('two-strike-contact','Poor Two-Strike Contact','Two-Strike Approach',1-twoStrikeContactRate,twoStrikeSwings.length,`${twoStrikeContacts.length} contacts on ${twoStrikeSwings.length} two-strike swings`,'Two-Strike Approach / Shorten To Contact'));
+
   const contactCounts={GROUND:0,LINE:0,FLY:0,POPUP:0};
   batted.forEach(pa=>contactCounts[normalizeContact(pa)]++);
   const popupRate=ratio(contactCounts.POPUP,batted.length);
@@ -94,6 +100,12 @@
 
   const groundThird=batted.filter(pa=>normalizeContact(pa)==='GROUND'&&Number(pa.fielder)===5&&pa.outcome==='H4O').length,thirdRate=ratio(groundThird,batted.length);
   if(batted.length>=thresholds.battedBalls&&groundThird>=2&&thirdRate>=.25)issues.push(issue('groundouts-third','Repeated Groundouts To Third','Contact Direction',thirdRate,batted.length,`${groundThird} groundouts to third in ${batted.length} batted balls`,'Timing / Opposite-Field Direction'));
+
+  const outsideBatted=battedRecords.filter(record=>locationGroup(record.pitches[record.pitches.length-1],player)==='OUTSIDE'),outsidePullGrounders=outsideBatted.filter(record=>{
+   const last=record.pitches[record.pitches.length-1],left=['L','SL'].includes(sideFor(last,player)),pullFielders=new Set(left?[3,4]:[5,6]);
+   return normalizeContact(record.pa)==='GROUND'&&record.pa.outcome==='H4O'&&pullFielders.has(Number(record.pa.fielder));
+  }),outsidePullRate=ratio(outsidePullGrounders.length,outsideBatted.length);
+  if(outsideBatted.length>=thresholds.outsideBattedBalls&&outsidePullGrounders.length>=2&&outsidePullRate>=.35)issues.push(issue('outside-pull-grounders','Pulling Off Outside Pitches','Timing / Direction',outsidePullRate,outsideBatted.length,`${outsidePullGrounders.length} pull-side groundouts on ${outsideBatted.length} outside-pitch batted balls`,'Stay Through The Outside Pitch / Opposite-Field Direction'));
 
   function contactIssue(id,label,category,filter,focus){
    const relevant=pitches.filter(filter),relevantSwings=relevant.filter(isSwing),contacts=relevantSwings.filter(isContact),contactRate=ratio(contacts.length,relevantSwings.length);
