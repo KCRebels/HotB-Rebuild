@@ -62,6 +62,24 @@ const changeupGame=makeGame({pas:repeat(12,index=>({
 const changeup=analysis.analyzePlayer([changeupGame],{name:'Test Hitter',side:'R'},{now:NOW});
 assert.ok(changeup.issues.some(item=>item.id==='changeup'));
 
+const foulGame=makeGame({pas:repeat(10,index=>({
+ outcome:'H4O',contactType:'LO',
+ pitches:index<8
+  ?[{result:'F',zone:'C1',pitchType:'FB',strikesBefore:index%2},{result:'H4O',zone:'C1',pitchType:'FB',strikesBefore:1}]
+  :[{result:'H4O',zone:'C1',pitchType:'FB',strikesBefore:1}]
+}))});
+const fouls=analysis.analyzePlayer([foulGame],{name:'Test Hitter',side:'R'},{now:NOW});
+assert.ok(fouls.issues.some(item=>item.id==='foul-balls'));
+
+const twoStrikeFoulGame=makeGame({pas:repeat(10,index=>({
+ outcome:'H4O',contactType:'LO',
+ pitches:index<8
+  ?[{result:'F',zone:'C1',pitchType:'FB',strikesBefore:2},{result:'H4O',zone:'C1',pitchType:'FB',strikesBefore:2}]
+  :[{result:'H4O',zone:'C1',pitchType:'FB',strikesBefore:1}]
+}))});
+const twoStrikeFouls=analysis.analyzePlayer([twoStrikeFoulGame],{name:'Test Hitter',side:'R'},{now:NOW});
+assert.ok(!twoStrikeFouls.issues.some(item=>item.id==='foul-balls'),'two-strike spoil fouls should not trigger the under-ball rule');
+
 const fallbackGame=makeGame({date:'2026-08-10T12:00:00.000Z',pas:repeat(10,()=>({outcome:'HIT',contactType:'LD'}))});
 const fallback=analysis.analyzePlayer([fallbackGame],{name:'Test Hitter',side:'R'},{now:NOW});
 assert.equal(fallback.window,'fallback-30-days');
