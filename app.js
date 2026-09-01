@@ -887,7 +887,12 @@ async function loadPlayerPortal(){
   if(snapshot.exists){
    portalData={id:snapshot.id,...snapshot.data()};portalMessage='';
    if(portalUnsubscribe)portalUnsubscribe();
-   portalUnsubscribe=portalDoc().onSnapshot(next=>{if(next.exists){portalData={id:next.id,...next.data()};if(route==='portal')render()}},()=>{});
+   portalUnsubscribe=portalDoc().onSnapshot(next=>{
+    if(next.exists){portalData={id:next.id,...next.data()};if(route==='portal')render()}
+   },()=>{
+    portalData=null;portalMessage='This portal is no longer connected to this device.';
+    if(route==='portal')render();
+   });
   }
   else portalMessage='This player portal link is not valid.';
  }catch(error){
