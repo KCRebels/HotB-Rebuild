@@ -32,8 +32,16 @@ const popupGame=makeGame({pas:[
 const popup=analysis.analyzePlayer([popupGame],{name:'Test Hitter',side:'R'},{now:NOW});
 assert.equal(popup.confidence,'standard');
 assert.ok(popup.issues.some(item=>item.id==='popups'));
+assert.equal(popup.issues.find(item=>item.id==='popups').label,'Too Many Pop Flies');
 assert.ok(popup.issues.some(item=>item.id==='groundouts-third'));
 assert.ok(popup.issues.some(item=>item.id==='groundballs'));
+
+const twoStrikePopupGame=makeGame({pas:repeat(10,index=>({
+ outcome:'H4O',contactType:index<4?'PO':'LD',fielder:index<4?2:6,
+ pitches:[{result:'H4O',zone:'C1',pitchType:'FB',strikesBefore:2}]
+}))});
+const twoStrikePopups=analysis.analyzePlayer([twoStrikePopupGame],{name:'Test Hitter',side:'R'},{now:NOW});
+assert.ok(twoStrikePopups.issues.some(item=>item.id==='popups'),'pop flies with two strikes must count');
 
 const slapperGame=makeGame({style:'SL',pas:repeat(25,()=>({outcome:'H4O',contactType:'GO',fielder:5}))});
 const slapper=analysis.analyzePlayer([slapperGame],{name:'Test Hitter',side:'SL'},{now:NOW});
@@ -93,6 +101,20 @@ const twoStrikeGame=makeGame({pas:repeat(10,index=>({
 }))});
 const twoStrike=analysis.analyzePlayer([twoStrikeGame],{name:'Test Hitter',side:'R'},{now:NOW});
 assert.ok(twoStrike.issues.some(item=>item.id==='two-strike-contact'));
+
+const highStrikeMissGame=makeGame({pas:repeat(10,index=>({
+ outcome:index<4?'K':'H4O',contactType:index<4?'':'LD',
+ pitches:[{result:index<4?'K':'H4O',zone:index%2?'C1':'C2',pitchType:'FB',strikesBefore:index<2?2:1}]
+}))});
+const highStrikeMisses=analysis.analyzePlayer([highStrikeMissGame],{name:'Test Hitter',side:'R'},{now:NOW});
+assert.ok(highStrikeMisses.issues.some(item=>item.id==='high-strike-misses'));
+
+const highBallMissGame=makeGame({pas:repeat(10,index=>({
+ outcome:index<4?'K':'H4O',contactType:index<4?'':'LD',
+ pitches:[{result:index<4?'K':'H4O',zone:index%2?'T1':'T2',pitchType:'FB',strikesBefore:2}]
+}))});
+const highBallMisses=analysis.analyzePlayer([highBallMissGame],{name:'Test Hitter',side:'R'},{now:NOW});
+assert.ok(!highBallMisses.issues.some(item=>item.id==='high-strike-misses'),'high balls outside the strike zone must not trigger the high-strike rule');
 
 const outsidePullGame=makeGame({pas:repeat(10,index=>({
  outcome:index<5?'H4O':'HIT',contactType:index<5?'GO':'LD',fielder:index<5?5:9,
