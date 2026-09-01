@@ -981,3 +981,6 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .practice-player-cards{display:block}.practice-card-page{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:560px){.practice-card-page{grid-template-columns:1fr}}
 @media print{.practice-player-cards{display:block!important}.practice-card-page{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;break-after:page;page-break-after:always}.practice-card-page:last-child{break-after:auto;page-break-after:auto}.practice-player-card{break-after:auto!important;page-break-after:auto!important}.practice-player-card li{grid-template-columns:21px 76px 1fr}}
+
+/* Keep the user's compact a/p clock notation lowercase inside uppercase labels. */
+.practice-time-shell #practiceStartTimeDisplay{text-transform:none}
