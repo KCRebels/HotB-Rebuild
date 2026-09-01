@@ -18,25 +18,29 @@
   return Array.from({length:BLOCK_COUNT},(_,index)=>({block:index+1,start:label(start+index*blockMinutes),end:label(start+(index+1)*blockMinutes)}));
  }
  function buildSchedule(players,startTime='18:00',durationMinutes=120,options={}){
-  const attendees=(players||[]).filter(player=>player&&player.name).map(player=>({...player,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher}));
+  const attendees=(players||[]).filter(player=>player&&player.name).map(player=>{
+   const from=Math.max(0,Math.min(BLOCK_COUNT,Number(player.availableFromBlock)||0));
+   const until=Math.max(from,Math.min(BLOCK_COUNT,Number.isFinite(Number(player.availableUntilBlock))?Number(player.availableUntilBlock):BLOCK_COUNT));
+   return {...player,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,canPitch:!!player.isPitcher&&player.canPitch!==false,requiresPitchWarmup:!!player.isPitcher&&player.canPitch!==false&&player.requiresPitchWarmup!==false,canCatch:!!player.isCatcher&&player.canCatch!==false,availableFromBlock:from,availableUntilBlock:until};
+  });
   const duration=Math.max(10,Math.round((Number(durationMinutes)||120)/10)*10),blockMinutes=duration/BLOCK_COUNT;
   const times=blockTimes(startTime,duration),warnings=[];
-  const schedule=Object.fromEntries(attendees.map(player=>[player.name,Array(BLOCK_COUNT).fill(null)]));
-  const frontTossBlocks=attendees.length>=4?[8,9]:[9];
-  attendees.forEach(player=>{schedule[player.name][0]={activity:fixedActivities[0]};schedule[player.name][1]={activity:fixedActivities[1]}});
-  const frontTossAssignments=[];
-  const frontTossGroups=attendees.length>=4
-   ? [attendees.slice(0,Math.ceil(attendees.length/2)),attendees.slice(Math.ceil(attendees.length/2))]
-   : [attendees];
-  frontTossGroups.forEach((group,index)=>{
-   const block=frontTossBlocks[index],laneOneSize=Math.ceil(group.length/2);
-   group.forEach((player,playerIndex)=>{
-    const lane=playerIndex<laneOneSize?1:2;
-    schedule[player.name][block]={activity:`Front Toss Lane ${lane}`};
-    frontTossAssignments.push({player:player.name,block,lane});
-   });
+  const schedule=Object.fromEntries(attendees.map(player=>[player.name,Array.from({length:BLOCK_COUNT},(_,block)=>block<player.availableFromBlock||block>=player.availableUntilBlock?{activity:'Not Present'}:null)]));
+  const teeBlocks={};
+  attendees.forEach(player=>{
+   if(player.availableFromBlock>=player.availableUntilBlock){warnings.push(`${player.name} is not available for a complete practice block.`);return}
+   if(player.availableFromBlock===0){
+    schedule[player.name][0]={activity:fixedActivities[0]};
+    if(player.availableUntilBlock>1){schedule[player.name][1]={activity:fixedActivities[1]};teeBlocks[player.name]=1}
+    else warnings.push(`${player.name} leaves before completing Tee Work.`);
+   }else{
+    teeBlocks[player.name]=player.availableFromBlock;
+    schedule[player.name][player.availableFromBlock]={activity:fixedActivities[1]};
+    warnings.push(`${player.name} arrives late and is assigned Tee Work in the first available block.`);
+   }
   });
-  const pitchers=attendees.filter(player=>player.isPitcher),catchers=attendees.filter(player=>player.isCatcher);
+  const isOpen=(player,block)=>block>=0&&block<BLOCK_COUNT&&schedule[player.name][block]===null&&block>(teeBlocks[player.name]??-1);
+  const pitchers=attendees.filter(player=>player.canPitch),catchers=attendees.filter(player=>player.canCatch);
   const liveSessions=[];
   const coachPitch=!pitchers.length&&options.noPitchersMode==='coach';
   if(!pitchers.length&&!coachPitch)warnings.push('Live pitching was replaced because no pitchers are attending.');
@@ -51,15 +55,23 @@
    ? Math.min(5,Math.max(1,hitterSessionsNeeded))
    : pitchers.length?Math.min(5,pitchers.length*3,Math.max(pitchers.length,hitterSessionsNeeded)):0;
   const onePitcherCoachBlocks=pitchers.length===1?Math.min(5-baseSessionCount,Math.max(1,hitterSessionsNeeded-baseSessionCount)):0;
-  const livePitchers=[...Array.from({length:baseSessionCount},(_,index)=>coachPitch?null:pitchers[index%pitchers.length]),...Array(onePitcherCoachBlocks).fill(null)];
-  const sessionCount=livePitchers.length;
+  const orderedPitchers=pitchers.slice().sort((a,b)=>a.availableUntilBlock-b.availableUntilBlock||a.availableFromBlock-b.availableFromBlock||a.name.localeCompare(b.name));
+  const livePitchers=[...Array.from({length:baseSessionCount},(_,index)=>coachPitch?null:orderedPitchers[index%orderedPitchers.length]),...Array(onePitcherCoachBlocks).fill(null)];
+  const plannedSessions=[];
+  const unusedLiveBlocks=[3,4,5,6,7,8,9];
+  livePitchers.forEach((pitcher,index)=>{
+   const blockAt=unusedLiveBlocks.findIndex(block=>!pitcher||isOpen(pitcher,block));
+   if(blockAt<0){warnings.push(`${pitcher.name} could not be scheduled to pitch while present.`);return}
+   plannedSessions.push({pitcher,index,liveBlock:unusedLiveBlocks.splice(blockAt,1)[0]});
+  });
+  plannedSessions.sort((a,b)=>a.liveBlock-b.liveBlock);
+  const sessionCount=plannedSessions.length;
   const firstChunk=Math.ceil(sessionCount/2);
-  const sessionPlans=livePitchers.map((pitcher,index)=>{
-   const liveBlock=3+index;
+  const sessionPlans=plannedSessions.map((item,index)=>{
+   const {pitcher,liveBlock}=item;
    const singleCatcherBlocks=Math.min(3,Math.max(0,sessionCount-1));
-   const catcher=catchers.length>1&&sessionCount>1
-    ? (index<firstChunk?orderedCatchers[0]:orderedCatchers[1])
-    : catchers.length===1&&index>=sessionCount-singleCatcherBlocks?catchers[0]:null;
+   const preferred=catchers.length>1&&sessionCount>1?(index<firstChunk?orderedCatchers[0]:orderedCatchers[1]):catchers.length===1&&index>=sessionCount-singleCatcherBlocks?catchers[0]:null;
+   const catcher=[preferred,...orderedCatchers].find((candidate,candidateIndex,list)=>candidate&&list.indexOf(candidate)===candidateIndex&&candidate.name!==pitcher?.name&&isOpen(candidate,liveBlock))||null;
    return {pitcher,index,liveBlock,catcher};
   });
   sessionPlans.forEach(({pitcher,liveBlock,catcher})=>{
@@ -70,24 +82,24 @@
   });
   const warmedPitchers=new Set();
   sessionPlans.forEach(({pitcher,liveBlock,catcher})=>{
-   if(!pitcher||warmedPitchers.has(pitcher.name))return;
+   if(!pitcher||!pitcher.requiresPitchWarmup||warmedPitchers.has(pitcher.name))return;
    warmedPitchers.add(pitcher.name);
-   const warmBlock=[Math.max(2,liveBlock-2),Math.max(2,liveBlock-1)].find(block=>block<liveBlock&&schedule[pitcher.name][block]===null);
+   const warmBlock=[liveBlock-1,liveBlock-2].find(block=>block>=2&&isOpen(pitcher,block));
    if(warmBlock===undefined){warnings.push(`${pitcher.name} could not be assigned a pitching warm-up.`);return}
-   const warmCatcher=catchers.length>1&&attendees.length>=8?[catcher,...orderedCatchers].find((candidate,candidateIndex,list)=>{
-    if(!candidate||list.indexOf(candidate)!==candidateIndex||candidate.name===pitcher.name||schedule[candidate.name][warmBlock]!==null)return false;
+   const warmCatcher=[catcher,...orderedCatchers].find((candidate,candidateIndex,list)=>{
+    if(!candidate||list.indexOf(candidate)!==candidateIndex||candidate.name===pitcher.name||!isOpen(candidate,warmBlock))return false;
     const remainingOpen=schedule[candidate.name].slice(2,8).filter(entry=>entry===null).length;
     return remainingOpen>2;
-   }):null;
+   })||null;
    const warmPartner=warmCatcher?.name||'Coach';
    schedule[pitcher.name][warmBlock]={activity:'Pitch Warm-Up',partner:warmPartner};
    if(warmCatcher)schedule[warmCatcher.name][warmBlock]={activity:'Catch Warm-Up',partner:pitcher.name};
   });
-  const livePriority=[...catchers,...pitchers,...attendees.filter(player=>!player.isPitcher&&!player.isCatcher)];
+  const livePriority=[...catchers,...pitchers,...attendees].filter((player,index,list)=>list.findIndex(item=>item.name===player.name)===index);
   const needsLive=new Set(attendees.map(player=>player.name));
   livePriority.forEach(player=>{
    const session=liveSessions
-    .filter(item=>item.hitters.length<3&&item.pitcher!==player.name&&item.catcher!==player.name&&schedule[player.name][item.block]===null)
+    .filter(item=>item.hitters.length<3&&item.pitcher!==player.name&&item.catcher!==player.name&&isOpen(player,item.block))
     .sort((a,b)=>a.hitters.length-b.hitters.length||a.block-b.block)[0];
    if(session){session.hitters.push(player.name);schedule[player.name][session.block]={activity:'Hit Live',partner:session.pitcher};needsLive.delete(player.name)}
   });
@@ -95,7 +107,7 @@
   liveSessions.forEach(session=>{
    while(session.hitters.length<2){
     const candidate=attendees
-     .filter(player=>!session.hitters.includes(player.name)&&session.pitcher!==player.name&&session.catcher!==player.name&&schedule[player.name][session.block]===null)
+     .filter(player=>!session.hitters.includes(player.name)&&session.pitcher!==player.name&&session.catcher!==player.name&&isOpen(player,session.block))
      .sort((a,b)=>liveHitCounts[a.name]-liveHitCounts[b.name]||a.name.localeCompare(b.name))[0];
     if(!candidate)break;
     session.hitters.push(candidate.name);schedule[candidate.name][session.block]={activity:'Hit Live',partner:session.pitcher};liveHitCounts[candidate.name]++;
@@ -104,29 +116,51 @@
   liveSessions.filter(session=>session.hitters.length===1).forEach(session=>{
    const donor=liveSessions.find(other=>other!==session&&other.hitters.length===3&&other.hitters.some(name=>{
     const player=attendees.find(item=>item.name===name);
-    return player&&session.pitcher!==name&&session.catcher!==name&&!session.hitters.includes(name)&&schedule[name][session.block]===null;
+    return player&&session.pitcher!==name&&session.catcher!==name&&!session.hitters.includes(name)&&isOpen(player,session.block);
    }));
    if(!donor)return;
-   const name=donor.hitters.find(candidate=>session.pitcher!==candidate&&session.catcher!==candidate&&!session.hitters.includes(candidate)&&schedule[candidate][session.block]===null);
+   const name=donor.hitters.find(candidate=>{const player=attendees.find(item=>item.name===candidate);return player&&session.pitcher!==candidate&&session.catcher!==candidate&&!session.hitters.includes(candidate)&&isOpen(player,session.block)});
    donor.hitters=donor.hitters.filter(candidate=>candidate!==name);schedule[name][donor.block]=null;
    session.hitters.push(name);schedule[name][session.block]={activity:'Hit Live',partner:session.pitcher};
   });
+  liveSessions.filter(session=>session.hitters.length<2).forEach(session=>{
+   attendees.forEach(player=>{const entry=schedule[player.name][session.block];if(entry&&['Pitch Live','Catch Live','Hit Live'].includes(entry.activity))schedule[player.name][session.block]=null});
+   warnings.push(`Live pitching in Block ${session.block+1} was removed because fewer than two hitters were available.`);
+  });
+  const validLiveSessions=liveSessions.filter(session=>session.hitters.length>=2);
+  liveSessions.length=0;liveSessions.push(...validLiveSessions);
   if(liveSessions.length&&needsLive.size)warnings.push(`${needsLive.size} player${needsLive.size===1?'':'s'} could not be assigned live hitting with the attending pitchers and catchers.`);
+  const liveBlocks=new Set(liveSessions.map(session=>session.block));
+  const frontTossAssignments=[],frontTossCounts={};
+  const frontTossCandidates=[2,3,4,5,6,7,8,9].filter(block=>!liveBlocks.has(block));
+  attendees.slice().sort((a,b)=>a.availableUntilBlock-b.availableUntilBlock||a.availableFromBlock-b.availableFromBlock||a.name.localeCompare(b.name)).forEach(player=>{
+   const preferred=player.availableUntilBlock<BLOCK_COUNT
+    ? frontTossCandidates.slice().sort((a,b)=>a-b)
+    : frontTossCandidates.slice().sort((a,b)=>{
+      const aLate=a>=8?0:1,bLate=b>=8?0:1;
+      return aLate-bLate||a-b;
+     });
+   const block=preferred.find(index=>isOpen(player,index)&&(frontTossCounts[index]||0)<8);
+   if(block===undefined){warnings.push(`${player.name} could not be assigned Front Toss during the time present.`);return}
+   const count=frontTossCounts[block]||0,lane=count<4?1:2;
+   frontTossCounts[block]=count+1;schedule[player.name][block]={activity:`Front Toss Lane ${lane}`};frontTossAssignments.push({player:player.name,block,lane});
+  });
+  const frontTossBlocks=Object.keys(frontTossCounts).map(Number).sort((a,b)=>a-b);
   function assignOnce(activity,capacity,preferredBlocks){
    const counts=Object.fromEntries(preferredBlocks.map(block=>[block,0]));
    const missed=[];
    attendees.forEach(player=>{
-    const block=preferredBlocks.filter(index=>schedule[player.name][index]===null&&counts[index]<capacity).sort((a,b)=>counts[a]-counts[b]||a-b)[0];
+    const block=preferredBlocks.filter(index=>isOpen(player,index)&&counts[index]<capacity).sort((a,b)=>counts[a]-counts[b]||a-b)[0];
     if(block===undefined)missed.push(player.name);
     else{schedule[player.name][block]={activity};counts[block]++}
    });
    if(missed.length)warnings.push(`${missed.length} player${missed.length===1?'':'s'} could not be assigned ${activity}.`);
   }
-  assignOnce('Machine',3,[2,3,4,5,6,7,8].filter(block=>!frontTossBlocks.includes(block)));
+  assignOnce('Machine',3,[2,3,4,5,6,7,8,9]);
   attendees.forEach(player=>{
-   for(let block=2;block<BLOCK_COUNT;block++)if(schedule[player.name][block]===null)schedule[player.name][block]={activity:'Drill'};
+   for(let block=0;block<BLOCK_COUNT;block++)if(schedule[player.name][block]===null)schedule[player.name][block]={activity:'Drill'};
   });
-  for(let block=2;block<BLOCK_COUNT;block++){
+  for(let block=0;block<BLOCK_COUNT;block++){
    const drillPlayers=attendees.filter(player=>schedule[player.name][block].activity==='Drill');
    if(drillPlayers.length===1)schedule[drillPlayers[0].name][block]={activity:'Tee Work'};
   }
@@ -137,7 +171,7 @@
    attendees.forEach(player=>schedule[player.name].forEach(entry=>{if(entry.activity.startsWith('Drill #'))entry.activity='Drill'}));
    const usedByPlayer=Object.fromEntries(attendees.map(player=>[player.name,new Set()]));
    let failed=false;
-   for(let block=2;block<BLOCK_COUNT&&!failed;block++){
+   for(let block=0;block<BLOCK_COUNT&&!failed;block++){
     const drillPlayers=drillPlayersByBlock[block].slice().sort((a,b)=>drillSlotsByPlayer[b.name].length-drillSlotsByPlayer[a.name].length||a.name.localeCompare(b.name));
     if(!drillPlayers.length)continue;
     const groupCount=Math.ceil(drillPlayers.length/3),smallGroups=groupCount*3-drillPlayers.length;
@@ -179,9 +213,10 @@
   const errors=[];
   if(!plan||plan.times?.length!==BLOCK_COUNT)errors.push('Schedule must contain ten blocks.');
   Object.entries(plan?.schedule||{}).forEach(([name,entries])=>{
-   if(entries.length!==BLOCK_COUNT||entries.some(entry=>!entry?.activity))errors.push(`${name} has downtime.`);
-   if(entries[0]?.activity!=='Stretch')errors.push(`${name} must stretch first.`);
-   if(entries[1]?.activity!=='Tee Work')errors.push(`${name} must complete tee work second.`);
+   if(entries.length!==BLOCK_COUNT||entries.some(entry=>!entry?.activity))errors.push(`${name} has downtime while present.`);
+   const player=plan.players?.find(item=>item.name===name),from=player?.availableFromBlock||0;
+   if(from===0&&entries[0]?.activity!=='Stretch')errors.push(`${name} must stretch first.`);
+   if(entries[from===0?1:from]?.activity!=='Tee Work')errors.push(`${name} must complete Tee Work before other activities.`);
    if(!entries.some(entry=>entry.activity==='Machine'))errors.push(`${name} is missing Machine.`);
    if(!entries.some(entry=>entry.activity.startsWith('Front Toss')))errors.push(`${name} is missing Front Toss.`);
    if(!entries.some(entry=>entry.activity.startsWith('Drill #')))errors.push(`${name} is missing drill work.`);
@@ -191,15 +226,16 @@
   });
   (plan?.players||[]).forEach(player=>{
    const entries=plan.schedule[player.name]||[];
-   if(player.isPitcher&&plan.liveSessions?.some(session=>session.pitcher===player.name)){
+   if(player.requiresPitchWarmup&&plan.liveSessions?.some(session=>session.pitcher===player.name)){
     const warm=entries.findIndex(entry=>entry?.activity==='Pitch Warm-Up'),live=entries.findIndex(entry=>entry?.activity==='Pitch Live');
     if(warm<0||live<0||warm>=live||live-warm>2)errors.push(`${player.name}'s pitching warm-up is not within two blocks before live.`);
    }
   });
-  for(let block=2;block<BLOCK_COUNT;block++){
+  for(let block=0;block<BLOCK_COUNT;block++){
    const entries=Object.values(plan.schedule||{}).map(items=>items[block]);
    if(entries.filter(entry=>entry?.activity==='Machine').length>3)errors.push(`Block ${block+1} exceeds machine capacity.`);
-   if(block<8&&entries.some(entry=>entry?.activity.startsWith('Front Toss')))errors.push(`Block ${block+1} has Front Toss before the final two blocks.`);
+   if(entries.filter(entry=>entry?.activity.startsWith('Front Toss')).length>8)errors.push(`Block ${block+1} exceeds Front Toss capacity.`);
+   if(plan.liveSessions?.some(session=>session.block===block)&&entries.some(entry=>entry?.activity.startsWith('Front Toss')))errors.push(`Block ${block+1} has Front Toss while live pitching is active.`);
    const drillCounts={};entries.filter(entry=>entry?.activity.startsWith('Drill #')).forEach(entry=>drillCounts[entry.activity]=(drillCounts[entry.activity]||0)+1);
    if(Object.values(drillCounts).some(count=>count<2||count>3))errors.push(`Block ${block+1} has a drill station without 2–3 players.`);
   }
