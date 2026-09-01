@@ -1419,9 +1419,8 @@ function homeView(){
     <button class="home-card" data-go="roster"><h3>Edit Roster</h3></button>
     <button class="home-card" data-go="practice"><h3>Hitting Practice</h3></button>
     <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><h3>Cloud Backup</h3></button>
-    <button class="home-card portal-home-card" data-go="portal"><h3>Player Portal</h3></button>
    </div>
- </div><div class="home-footer">HOTB (THE ELITE HITTING APP) · REBUILD<button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button></div>`;
+ </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD</span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
 }
 function portalHeader(title='Player Portal',showBack=false){
  return `<div class="page-match-head page-head-centered portal-head"><button class="page-head-nav" ${showBack?'id="portalBack"':portalToken?'id="portalDashboard"':'data-go="home"'}>${showBack?'Back':portalToken?'Portal':'Home'}</button><h1>${esc(title)}</h1><span class="page-head-spacer"></span></div>`;
@@ -1459,7 +1458,8 @@ function portalLoginView(){
 }
 function portalPracticeView(){
  const practice=portalData?.activePractice;
- return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${esc(practice.blockMinutes)}-minute blocks</p></section><ol class="portal-practice-card">${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span>${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol>${practice.drills?.length?`<section class="portal-practice-drills"><h3>Practice Drills</h3>${practice.drills.map((drill,index)=>`<p><b>${index+1}</b><span>${esc(drill)}</span></p>`).join('')}</section>`:''}`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
+ const first=portalData?.firstName||practiceFirstName(portalData?.playerName),role=practice?.role;
+ return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${esc(practice.blockMinutes)}-minute blocks</p></section><article class="practice-player-card portal-player-card"><header><h2>${esc(first)}${role?` <small>(${esc(role)})</small>`:''}</h2></header><ol>${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol></article>${practice.drills?.length?`<section class="portal-practice-drills"><h3>Practice Drills</h3>${practice.drills.map((drill,index)=>`<p><b>${index+1}</b><span>${esc(drill)}</span></p>`).join('')}</section>`:''}`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
 }
 function portalFocusView(){
  const focus=portalData?.focus;
@@ -1574,7 +1574,8 @@ function practiceDrillResourceWarnings(drills){
 }
 function playerPracticePortalPayload(name){
  const schedule=practicePlan.schedule[name]||[];
- return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),schedule:schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:practiceEntryText(entry,practicePlan,index)})),drills:practiceChosenDrills.map(drill=>drill.name)};
+ const player=db.roster.find(item=>item.name===name);
+ return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),schedule:schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:practiceEntryText(entry,practicePlan,index)})),drills:practiceChosenDrills.map(drill=>drill.name)};
 }
 async function activatePlayerPlans(){
  if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before activating player portals.');return}
