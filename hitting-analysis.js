@@ -79,6 +79,9 @@
   const swings=pitches.filter(isSwing),misses=swings.filter(pitch=>pitch.result==='K'),missRate=ratio(misses.length,swings.length);
   if(swings.length>=thresholds.relevantPitches&&missRate>=.3)issues.push(issue('swing-miss','High Swing-and-Miss Rate','Contact / Barrel Control',missRate,swings.length,`${misses.length} misses on ${swings.length} swings`,'Contact / Barrel Control'));
 
+  const preTwoStrikeSwings=swings.filter(pitch=>Number(pitch.strikesBefore)<2),preTwoStrikeFouls=preTwoStrikeSwings.filter(pitch=>pitch.result==='F'),foulRate=ratio(preTwoStrikeFouls.length,preTwoStrikeSwings.length),minimumFouls=scope==='team'?8:4;
+  if(preTwoStrikeSwings.length>=thresholds.relevantPitches&&preTwoStrikeFouls.length>=minimumFouls&&foulRate>=.35)issues.push(issue('foul-balls','Frequent Foul Balls','Barrel Path',foulRate,preTwoStrikeSwings.length,`${preTwoStrikeFouls.length} fouls on ${preTwoStrikeSwings.length} pre-two-strike swings`,'Stay Above The Ball / Prevent Hand Drop'));
+
   const contactCounts={GROUND:0,LINE:0,FLY:0,POPUP:0};
   batted.forEach(pa=>contactCounts[normalizeContact(pa)]++);
   const popupRate=ratio(contactCounts.POPUP,batted.length);
