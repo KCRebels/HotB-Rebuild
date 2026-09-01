@@ -12,6 +12,9 @@ const requestedPlanPreferences={
  'Tayte Stepps':'OUT','Claire Jack':'OUT','Mattingly Hardy':'OUT','Lydia Copeland':'OUT'
 };
 const heatColors={B:'#3d8c52',F:'#f0c94d',HIT:'#3862db',K:'#cd3a32',H4O:'#cd3a32',FPS:'#cd3a32',REPORT:'#101011'};
+const chartZoneIds=['T1','T2','L1','L2','C1','C2','C3','C4','R1','R2','B1','B2'];
+const legacyChartZone={T:'T1',L:'L1',R:'R1',B:'B1'};
+const displayedChartZone=zone=>legacyChartZone[zone]||zone;
 
 const defaultRoster = [
  {name:'Aniesa Rohleder',side:'R',jersey:'9',grad:'2029',positions:'RHP | 1B',gpa:'3.98',interest:'Sports Medicine',school:'Olathe South HS',photo:'Aniesa.jpg'},
@@ -1071,8 +1074,8 @@ function pitchExecutesPlan(pitch,player){
  if(plan==='CH')return pitch.pitchType==='CH';
  if(plan==='NO')return true;
  const leftHanded=isLeftBatter(player);
- const insideZones=new Set(leftHanded?['L','C1','C3']:['R','C2','C4']);
- const outsideZones=new Set(leftHanded?['R','C2','C4']:['L','C1','C3']);
+ const insideZones=new Set(leftHanded?['L','L1','L2','C1','C3']:['R','R1','R2','C2','C4']);
+ const outsideZones=new Set(leftHanded?['R','R1','R2','C2','C4']:['L','L1','L2','C1','C3']);
  return plan==='IN'?insideZones.has(pitch.zone):plan==='OUT'?outsideZones.has(pitch.zone):false;
 }
 function executionFromPitches(pitches,player){
@@ -1503,13 +1506,13 @@ function liveView(){
  const histPitches=g.firstPitchView?firstPitches.filter(p=>p.result!=='B'):percentMode?sourcePitches.filter(p=>resultGroup(p)===filter):sourcePitches;
  const abTabNames=aps.map((p,i)=>`AB${i+1}`);
  const showAll=aps.length>=2;
- const zoneFreq={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0}; const hp=histPitches.length||1;
- histPitches.forEach(p=>{if(zoneFreq[p.zone]!=null)zoneFreq[p.zone]++});
+ const zoneFreq=Object.fromEntries(chartZoneIds.map(zone=>[zone,0])); const hp=histPitches.length||1;
+ histPitches.forEach(p=>{const zone=displayedChartZone(p.zone);if(zoneFreq[zone]!=null)zoneFreq[zone]++});
  const showPct=percentMode;
  const heat=heatStyles(zoneFreq,heatColors[filter]||heatColors.K);
  const zoneContent=z=>{
   if(showPct)return `<span class="pct">${Math.round(zoneFreq[z]/hp*100)}%</span>`;
-  const pitches=histPitches.filter(p=>p.zone===z), horizontal=['T','B'].includes(z), vertical=['L','R'].includes(z);
+  const pitches=histPitches.filter(p=>displayedChartZone(p.zone)===z), horizontal=/^[TB]/.test(z), vertical=/^[LR]/.test(z);
   const cols=horizontal?8:vertical?2:4, rows=Math.max(1,Math.ceil(pitches.length/cols));
   const available=horizontal?44:vertical?140:70;
   const dotSize=Math.max(3,Math.min(16,Math.floor(available/rows)-3));
@@ -1536,11 +1539,11 @@ function liveView(){
   <div class="pitchtypes">${['FB','CH','RS','DP','CV','SC'].map(x=>`<button class="pitchtype ${activePitchType===x?'active':''}" data-ptype="${x}">${x}</button>`).join('')}</div>
   <div class="zone-layout">
    <button class="zone-scope ${g.zoneScope==='TEAM'?'active':''}" id="zoneScope">${g.zoneScope==='TEAM'?'HTR':'TM'}</button>
-   <div class="zone zone-top ${showPct?'heat-zone':''} ${g.pendingZone==='T'?'selected':''}" style="${showPct?heat.T:''}" data-zone="T">${zoneContent('T')}</div>
-   <div class="zone zone-left ${showPct?'heat-zone':''} ${g.pendingZone==='L'?'selected':''}" style="${showPct?heat.L:''}" data-zone="L">${zoneContent('L')}</div>
+   ${['T1','T2'].map(z=>`<div class="zone zone-${z.toLowerCase()} ${showPct?'heat-zone':''} ${g.pendingZone===z?'selected':''}" style="${showPct?heat[z]:''}" data-zone="${z}">${zoneContent(z)}</div>`).join('')}
+   ${['L1','L2'].map(z=>`<div class="zone zone-${z.toLowerCase()} ${showPct?'heat-zone':''} ${g.pendingZone===z?'selected':''}" style="${showPct?heat[z]:''}" data-zone="${z}">${zoneContent(z)}</div>`).join('')}
    <div class="core-grid">${['C1','C2','C3','C4'].map(z=>`<div class="zone core ${showPct?'heat-zone':''} ${g.pendingZone===z?'selected':''}" style="${showPct?heat[z]:''}" data-zone="${z}">${zoneContent(z)}</div>`).join('')}</div>
-   <div class="zone zone-right ${showPct?'heat-zone':''} ${g.pendingZone==='R'?'selected':''}" style="${showPct?heat.R:''}" data-zone="R">${zoneContent('R')}</div>
-   <div class="zone zone-bottom ${showPct?'heat-zone':''} ${g.pendingZone==='B'?'selected':''}" style="${showPct?heat.B:''}" data-zone="B">${zoneContent('B')}</div>
+   ${['R1','R2'].map(z=>`<div class="zone zone-${z.toLowerCase()} ${showPct?'heat-zone':''} ${g.pendingZone===z?'selected':''}" style="${showPct?heat[z]:''}" data-zone="${z}">${zoneContent(z)}</div>`).join('')}
+   ${['B1','B2'].map(z=>`<div class="zone zone-${z.toLowerCase()} ${showPct?'heat-zone':''} ${g.pendingZone===z?'selected':''}" style="${showPct?heat[z]:''}" data-zone="${z}">${zoneContent(z)}</div>`).join('')}
    <button class="zone-next ${g.previewNext?'active':''}" id="zoneNext" ${nextName?'': 'disabled'}>${g.previewNext?nextInitials:'NXT'}</button>
    <button class="fps ${g.firstPitchView?'active':''}" id="fpsBtn" aria-label="First-pitch strike percentage"><strong class="${Math.round(fps(g)*100)===100?'fps-compact':'fps-standard'}">${Math.round(fps(g)*100)}%</strong></button>
   </div>
@@ -1566,16 +1569,16 @@ function historyHtml(g,hitter){
  return ordered.map((p,i)=>{
    const divider=tab==='ALL'&&i>0&&p.pa!==ordered[i-1].pa?'<div class="history-ab-divider" aria-hidden="true"></div>':'';
    return `${divider}<div class="history-chip"><div class="history-chip-head"><strong>${esc(p.result)}</strong><span>${esc(p.pitchType)}</span></div><div class="mini-zone">
- ${['T','L','C1','C2','C3','C4','R','B'].map(z=>`<span class="mini-zone-cell mz-${z.toLowerCase()} ${p.zone===z?pitchMarkClass(p):''}"></span>`).join('')}</div></div>`;
+ ${chartZoneIds.map(z=>`<span class="mini-zone-cell mz-${z.toLowerCase()} ${displayedChartZone(p.zone)===z?pitchMarkClass(p):''}"></span>`).join('')}</div></div>`;
  }).join('')||'<div class="history-empty" aria-label="Next pitch"></div>';
 }
 function zoneGroup(zone,player){
  const leftHanded=isLeftBatter(player);
- const inside=new Set(leftHanded?['L','C1','C3']:['R','C2','C4']);
- const outside=new Set(leftHanded?['R','C2','C4']:['L','C1','C3']);
+ const inside=new Set(leftHanded?['L','L1','L2','C1','C3']:['R','R1','R2','C2','C4']);
+ const outside=new Set(leftHanded?['R','R1','R2','C2','C4']:['L','L1','L2','C1','C3']);
  if(inside.has(zone))return'IN';
  if(outside.has(zone))return'OUT';
- return zone==='T'?'HIGH':zone==='B'?'LOW':'';
+ return ['T','T1','T2'].includes(zone)?'HIGH':['B','B1','B2'].includes(zone)?'LOW':'';
 }
 function normalized(value){return String(value||'').trim().toLowerCase()}
 function aiSeason(game){return seasonMeta(game?.date).season||currentSeasonLabel(new Date(game?.date||Date.now()))}
@@ -1774,12 +1777,12 @@ function outcomeReport(pas){
 function zoneReport(pas){
  const pitchSource=reportMode==='current'?(currentGame()?.pitches||[]):reportMode==='game'?(db.savedGames.find(game=>game.id===reportGameId)?.pitches||[]):filteredPitches(false);
  const ps=pitchSource.filter(p=>reportFilterHitter==='All Hitters'||p.hitter===reportFilterHitter);
- const z={T:0,L:0,R:0,B:0,C1:0,C2:0,C3:0,C4:0};ps.forEach(p=>z[p.zone]=(z[p.zone]||0)+1);const n=ps.length||1;
+ const z=Object.fromEntries(chartZoneIds.map(zone=>[zone,0]));ps.forEach(p=>{const zone=displayedChartZone(p.zone);if(z[zone]!=null)z[zone]++});const n=ps.length||1;
  const heat=heatStyles(z,heatColors.REPORT);
  return `<h3 style="margin-top:22px">ZONE CHART</h3><div class="zone-layout" style="max-width:480px;margin:10px auto">
- <div class="zone zone-top heat-zone" style="${heat.T}"><span class="pct">${Math.round(z.T/n*100)}%</span></div><div class="zone zone-left heat-zone" style="${heat.L}"><span class="pct">${Math.round(z.L/n*100)}%</span></div>
+ ${['T1','T2','L1','L2'].map(zone=>`<div class="zone zone-${zone.toLowerCase()} heat-zone" style="${heat[zone]}"><span class="pct">${Math.round(z[zone]/n*100)}%</span></div>`).join('')}
  <div class="core-grid">${['C1','C2','C3','C4'].map(k=>`<div class="zone core heat-zone" style="${heat[k]}"><span class="pct">${Math.round(z[k]/n*100)}%</span></div>`).join('')}</div>
- <div class="zone zone-right heat-zone" style="${heat.R}"><span class="pct">${Math.round(z.R/n*100)}%</span></div><div class="zone zone-bottom heat-zone" style="${heat.B}"><span class="pct">${Math.round(z.B/n*100)}%</span></div></div>`;
+ ${['R1','R2','B1','B2'].map(zone=>`<div class="zone zone-${zone.toLowerCase()} heat-zone" style="${heat[zone]}"><span class="pct">${Math.round(z[zone]/n*100)}%</span></div>`).join('')}</div>`;
 }
 function reportsPage(){
  const games=filteredGames(false);
