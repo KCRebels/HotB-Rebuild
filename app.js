@@ -818,9 +818,9 @@ if((db.battingStyleVersion||0)<1){
  db.battingStyleVersion=1;
  localStorage.setItem(DBKEY,JSON.stringify(db));
 }
-// For now, a refresh abandons only the unfinished game and returns to setup.
-if(db.route==='live'){
- db.currentGame=null;
+// Preserve an unfinished game across refreshes and Home Screen app restarts.
+// Only return to setup when the saved route says live but no game exists.
+if(db.route==='live'&&!db.currentGame){
  db.route='new';
  localStorage.setItem(DBKEY,JSON.stringify(db));
 }
