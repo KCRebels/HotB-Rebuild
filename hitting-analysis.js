@@ -64,6 +64,40 @@
  function issue(id,label,category,rate,opportunities,evidence,focus,diagnosis=''){
   return{id,label,category,rate,opportunities,evidence,focus,diagnosis};
  }
+ function teamComparisonIssues(games,player,minimumPA){
+  const grouped=new Map();
+  collectRecords(games,null).forEach(record=>{
+   const name=record.pa.hitter;if(!name)return;
+   if(!grouped.has(name))grouped.set(name,[]);
+   grouped.get(name).push(record);
+  });
+  const players=[...grouped].map(([name,records])=>{
+   const pas=records.map(record=>record.pa),PA=pas.length;
+   let AB=0,hits=0,contacts=0,walks=0,calledStrikeouts=0;
+   records.forEach(({pa,pitches})=>{
+    if(['HIT','H4O','E','FC','K'].includes(pa.outcome))AB++;
+    if(pa.outcome==='HIT')hits++;
+    if(['HIT','H4O','E','FC'].includes(pa.outcome))contacts++;
+    if(pa.outcome==='BB')walks++;
+    if(pa.outcome==='K'&&pitches[pitches.length-1]?.result==='KL')calledStrikeouts++;
+   });
+   return{name,PA,contactRate:ratio(contacts,AB),battingAverage:ratio(hits,AB),walkRate:ratio(walks,PA),calledStrikeoutRate:ratio(calledStrikeouts,PA)};
+  }).filter(item=>item.PA>=minimumPA);
+  if(players.length<5)return[];
+  const target=players.find(item=>item.name===player?.name);if(!target)return[];
+  const cutoff=(key,count,direction)=>{
+   const values=players.map(item=>item[key]).sort((a,b)=>direction==='high'?b-a:a-b);
+   return values[Math.min(count,values.length)-1];
+  };
+  const topContact=cutoff('contactRate',3,'high'),bottomAverage=cutoff('battingAverage',2,'low'),topWalks=cutoff('walkRate',3,'high'),topCalled=cutoff('calledStrikeoutRate',3,'high'),issues=[];
+  if(target.contactRate>=topContact&&target.battingAverage<=bottomAverage){
+   issues.push(issue('poor-pitch-selection','Likely Cause: Poor Pitch Selection','Swing Decisions',1-target.battingAverage,target.PA,`Top 3 on the team in contact percentage and bottom 2 in batting average among ${players.length} qualified hitters`,'Pitch Recognition / Select Better Pitches To Attack','She consistently makes contact but may be swinging at pitches that are difficult to hit successfully. Focus on pitch recognition and selecting better pitches to attack. Video or a coach’s observation should confirm the cause.'));
+  }
+  if(target.walkRate>=topWalks&&target.calledStrikeoutRate>=topCalled){
+   issues.push(issue('overly-passive-approach','Likely Cause: Overly Passive Approach','Swing Decisions',target.walkRate+target.calledStrikeoutRate,target.PA,`Top 3 on the team in both walk rate and called-strikeout rate among ${players.length} qualified hitters`,'Controlled Aggression / Two-Strike Approach','She recognizes balls and earns walks, but may be hesitant or afraid to swing at hittable strikes. Identify what is creating the hesitation and work on controlled aggression and a confident two-strike approach. Video or a coach’s observation should confirm the cause.'));
+  }
+  return issues;
+ }
  function detectIssues(records,player,scope,thresholds){
   const issues=[],pas=records.map(record=>record.pa),pitches=records.flatMap(record=>record.pitches);
   const battedRecords=records.filter(record=>normalizeContact(record.pa)&&!record.pa.bunt&&!record.pa.slap),batted=battedRecords.map(record=>record.pa),strikeouts=pas.filter(pa=>pa.outcome==='K');
@@ -133,6 +167,8 @@
   const thresholds={...DEFAULT_THRESHOLDS[scope],...(options.thresholds||{})},hitter=scope==='player'?player?.name:null;
   const selection=selectAnalysisGames(games,hitter,options.now,thresholds),records=collectRecords(selection.games,hitter),PA=records.length,confidence=confidenceFor(PA,thresholds);
   const issues=['preliminary','standard'].includes(confidence)?detectIssues(records,player,scope,thresholds):[];
+  if(scope==='player'&&['preliminary','standard'].includes(confidence))issues.push(...teamComparisonIssues(selection.games,player,thresholds.minimumPA));
+  issues.sort((a,b)=>b.rate-a.rate||b.opportunities-a.opportunities||a.label.localeCompare(b.label));
   return{scope,playerName:hitter||null,window:selection.window,gameCount:selection.games.length,plateAppearances:PA,confidence,thresholds,issues};
  }
  function analyzePlayer(games,player,options={}){return summarize('player',games,player,options)}
