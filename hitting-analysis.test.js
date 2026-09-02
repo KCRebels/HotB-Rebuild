@@ -144,6 +144,29 @@ assert.ok(!rolloverExcluded.issues.some(item=>item.id==='likely-rollover'),'excl
 const leftHandedRollover=analysis.analyzePlayer([rolloverGame],{name:'Test Hitter',side:'L'},{now:NOW});
 assert.ok(!leftHandedRollover.issues.some(item=>item.id==='likely-rollover'),'right-handed rollover rule must not trigger for a left-handed hitter');
 
+const qualifiedTeam=[
+ makeGame({hitter:'Target',pas:[{outcome:'HIT',contactType:'LD'},...repeat(8,()=>({outcome:'H4O',contactType:'GO'})),{outcome:'K'}]}),
+ makeGame({hitter:'Player B',pas:[...repeat(6,()=>({outcome:'HIT',contactType:'LD'})),...repeat(4,()=>({outcome:'H4O',contactType:'GO'}))]}),
+ makeGame({hitter:'Player C',pas:[...repeat(5,()=>({outcome:'HIT',contactType:'LD'})),...repeat(4,()=>({outcome:'H4O',contactType:'GO'})),{outcome:'K'}]}),
+ makeGame({hitter:'Player D',pas:[...repeat(4,()=>({outcome:'HIT',contactType:'LD'})),...repeat(4,()=>({outcome:'H4O',contactType:'GO'})),...repeat(2,()=>({outcome:'K'}))]}),
+ makeGame({hitter:'Player E',pas:[...repeat(3,()=>({outcome:'HIT',contactType:'LD'})),...repeat(4,()=>({outcome:'H4O',contactType:'GO'})),...repeat(3,()=>({outcome:'K'}))]})
+];
+const poorSelection=analysis.analyzePlayer(qualifiedTeam,{name:'Target',side:'R'},{now:NOW});
+assert.equal(poorSelection.issues.find(item=>item.id==='poor-pitch-selection')?.label,'Likely Cause: Poor Pitch Selection');
+const insufficientTeam=analysis.analyzePlayer(qualifiedTeam.slice(0,4),{name:'Target',side:'R'},{now:NOW});
+assert.ok(!insufficientTeam.issues.some(item=>item.id==='poor-pitch-selection'),'team comparison requires five qualified hitters');
+
+const passiveTeam=[
+ makeGame({hitter:'Passive Target',pas:[...repeat(4,()=>({outcome:'BB'})),...repeat(3,()=>({outcome:'K',pitches:[{result:'KL'}]})),...repeat(3,()=>({outcome:'HIT',contactType:'LD'}))]}),
+ makeGame({hitter:'Passive B',pas:[...repeat(3,()=>({outcome:'BB'})),...repeat(2,()=>({outcome:'K',pitches:[{result:'KL'}]})),...repeat(5,()=>({outcome:'HIT',contactType:'LD'}))]}),
+ makeGame({hitter:'Passive C',pas:[...repeat(2,()=>({outcome:'BB'})),{outcome:'K',pitches:[{result:'KL'}]},...repeat(7,()=>({outcome:'HIT',contactType:'LD'}))]}),
+ makeGame({hitter:'Passive D',pas:[{outcome:'BB'},{outcome:'K',pitches:[{result:'K'}]},...repeat(8,()=>({outcome:'HIT',contactType:'LD'}))]}),
+ makeGame({hitter:'Passive E',pas:[...repeat(2,()=>({outcome:'K',pitches:[{result:'K'}]})),...repeat(8,()=>({outcome:'HIT',contactType:'LD'}))]})
+];
+const passive=analysis.analyzePlayer(passiveTeam,{name:'Passive Target',side:'R'},{now:NOW});
+assert.equal(passive.issues.find(item=>item.id==='overly-passive-approach')?.label,'Likely Cause: Overly Passive Approach');
+assert.match(passive.issues.find(item=>item.id==='overly-passive-approach')?.diagnosis||'',/two-strike approach/);
+
 const outsidePullGame=makeGame({pas:repeat(10,index=>({
  outcome:index<5?'H4O':'HIT',contactType:index<5?'GO':'LD',fielder:index<5?5:9,
  pitches:[{result:index<5?'H4O':'HIT',zone:'L1',pitchType:'FB',strikesBefore:1}]
