@@ -1042,7 +1042,10 @@ function save(){
  scheduleCloudBackup();
 }
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
-function go(r){if(route==='practice'&&r==='home'){stopPracticeClock();practicePlan=null;db.activePracticeSession=null;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{}};practiceCoachOpen=false;practiceCardsOpen=false;practiceSection='hub';practiceFocusPlayer='';practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false}if(r==='practice'&&route!=='practice')practiceSection='hub';route=r;modal=null;save();render();window.scrollTo(0,0)}
+function go(r){
+ if(r==='practice'&&route!=='practice')practiceSection='hub';
+ route=r;modal=null;save();render();window.scrollTo(0,0);
+}
 function currentGame(){return db.currentGame}
 function planFor(name){
  const saved=db.planPreferences?.[name];
@@ -1439,7 +1442,7 @@ function homeView(){
     <button class="home-card" data-go="reports"><h3>Reports</h3></button>
     <button class="home-card" data-go="eval"><h3>Player Eval</h3></button>
     <button class="home-card" data-go="roster"><h3>Edit Roster</h3></button>
-    <button class="home-card" data-go="practice"><h3>Hitting Practice</h3></button>
+    <button class="home-card" data-go="practice"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting Practice':'Hitting Practice'}</h3></button>
     <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><h3>Cloud Backup</h3></button>
    </div>
  </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD</span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
