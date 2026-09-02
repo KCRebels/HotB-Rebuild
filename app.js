@@ -797,6 +797,7 @@ const seed = {
  measurements:[],
  coaches:defaultCoaches,
  practiceHistory:[],
+ activePracticeSession:null,
  planPreferences:{},
  currentGame:null,
  route:'home'
@@ -847,6 +848,16 @@ let practiceClock={running:false,finished:false,startAt:0,lastBlock:1},practiceC
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null;
+
+const recoveredPracticeSession=!portalToken&&window.HotBPracticeSession?.restore(db.activePracticeSession);
+if(recoveredPracticeSession){
+ practicePlan=recoveredPracticeSession.plan;
+ practiceChosenDrills=recoveredPracticeSession.chosenDrills;
+ practiceSetupState={...practiceSetupState,...recoveredPracticeSession.setupState};
+ practiceClock=recoveredPracticeSession.clock;
+ practiceSection='builder';route='practice';db.route='practice';
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+}
 
 function initCloud(){
  if(!window.firebase)return;
@@ -1031,7 +1042,7 @@ function save(){
  scheduleCloudBackup();
 }
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
-function go(r){if(route==='practice'&&r==='home'){stopPracticeClock();practicePlan=null;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{}};practiceCoachOpen=false;practiceCardsOpen=false;practiceSection='hub';practiceFocusPlayer='';practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false}if(r==='practice'&&route!=='practice')practiceSection='hub';route=r;modal=null;save();render();window.scrollTo(0,0)}
+function go(r){if(route==='practice'&&r==='home'){stopPracticeClock();practicePlan=null;db.activePracticeSession=null;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{}};practiceCoachOpen=false;practiceCardsOpen=false;practiceSection='hub';practiceFocusPlayer='';practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false}if(r==='practice'&&route!=='practice')practiceSection='hub';route=r;modal=null;save();render();window.scrollTo(0,0)}
 function currentGame(){return db.currentGame}
 function planFor(name){
  const saved=db.planPreferences?.[name];
@@ -2522,6 +2533,20 @@ function stopPracticeClock(){
  practiceClockTimer=null;practiceClock={running:false,finished:false,startAt:0,lastBlock:1};
  if('speechSynthesis'in window)window.speechSynthesis.cancel();
 }
+function persistPracticeSession(){
+ if(!practicePlan||!window.HotBPracticeSession)return;
+ db.activePracticeSession=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,setupState:practiceSetupState,clock:practiceClock});
+ save();
+}
+function clearPracticeSession(){
+ if(db.activePracticeSession==null)return;
+ db.activePracticeSession=null;save();
+}
+function resumeRecoveredPracticeClock(){
+ if(!practicePlan||!practiceClock.running)return;
+ updatePracticeClock();
+ if(practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
+}
 function speakPracticeClock(message,quiet=false){
  if(!('speechSynthesis'in window))return;
  const voice=new SpeechSynthesisUtterance(message);voice.rate=.92;voice.volume=quiet?0:1;
@@ -2543,7 +2568,7 @@ function updatePracticeClock(){
 function beginPracticeClock(){
  if(practiceClockTimer)clearInterval(practiceClockTimer);
  practiceClock={running:true,finished:false,startAt:Date.now(),lastBlock:1};
- speakPracticeClock('.',true);render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);syncPlayerPracticeClock();
+ persistPracticeSession();speakPracticeClock('.',true);render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);syncPlayerPracticeClock();
 }
 let practiceCompletionBusy=false;
 async function finishPracticeClock(automatic=false){
@@ -2551,7 +2576,7 @@ async function finishPracticeClock(automatic=false){
  practiceCompletionBusy=true;
  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
  practiceClock.running=false;practiceClock.finished=true;
- const completedAt=new Date();archiveCompletedPractice(completedAt);speakPracticeClock('Times Up, Good Practice, Please start to clean up');render();
+ const completedAt=new Date();archiveCompletedPractice(completedAt);clearPracticeSession();speakPracticeClock('Times Up, Good Practice, Please start to clean up');render();
  const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
  if(shouldClearPortals){
   try{await clearActivePlayerPlans();render()}
@@ -2606,8 +2631,8 @@ function bindPractice(){
  $('#practicePickerSearch')?.addEventListener('input',event=>{practicePickerQuery=event.target.value;render();const search=$('#practicePickerSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
  $$('[data-picker-category]').forEach(button=>button.addEventListener('click',()=>{practicePickerCategory=button.dataset.pickerCategory;render();window.scrollTo(0,0)}));
  $$('[data-picker-drill]').forEach(button=>button.addEventListener('click',()=>{const drill=practiceSelectableDrills().find(item=>item.name===button.dataset.pickerDrill);if(!drill)return;const index=practiceDraftDrills.findIndex(item=>item.name===drill.name);if(index>=0)practiceDraftDrills.splice(index,1);else if(practiceDraftDrills.length<practicePlan.drillStations)practiceDraftDrills.push(drill);render()}));
- $('#savePracticeDrills')?.addEventListener('click',()=>{if(practiceDraftDrills.length!==practicePlan.drillStations)return;practiceChosenDrills=practiceDraftDrills.slice();practiceDraftDrills=[];practiceDrillPickerOpen=false;render();window.scrollTo(0,0)});
- $('#practiceHubBack')?.addEventListener('click',()=>{stopPracticeClock();practicePlan=null;practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)});
+ $('#savePracticeDrills')?.addEventListener('click',()=>{if(practiceDraftDrills.length!==practicePlan.drillStations)return;practiceChosenDrills=practiceDraftDrills.slice();practiceDraftDrills=[];practiceDrillPickerOpen=false;persistPracticeSession();render();window.scrollTo(0,0)});
+ $('#practiceHubBack')?.addEventListener('click',()=>{stopPracticeClock();practicePlan=null;clearPracticeSession();practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)});
  $('#openPracticeBuilder')?.addEventListener('click',()=>{practiceSection='setup';render();window.scrollTo(0,0)});
  $('#openDrillLibrary')?.addEventListener('click',()=>{practiceSection='library';render();window.scrollTo(0,0)});
  $('#practiceDrillSearch')?.addEventListener('input',event=>{practiceDrillQuery=event.target.value;render();const search=$('#practiceDrillSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
@@ -2636,9 +2661,9 @@ function bindPractice(){
   practicePlan.portalDraftId=crypto.randomUUID();
   const errors=window.HotBPracticeScheduler.validate(practicePlan);
   if(errors.length)practicePlan.warnings.push(...errors);
-  render();window.scrollTo(0,0);
+  persistPracticeSession();render();window.scrollTo(0,0);
  });
- $('#editPracticePlayers')?.addEventListener('click',()=>{stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;practiceSection='setup';render();window.scrollTo(0,0)});
+ $('#editPracticePlayers')?.addEventListener('click',()=>{stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;clearPracticeSession();practiceSection='setup';render();window.scrollTo(0,0)});
  $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;if(practiceCoachOpen)practiceCardsOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#togglePracticeCards')?.addEventListener('click',()=>{practiceCardsOpen=!practiceCardsOpen;if(practiceCardsOpen)practiceCoachOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#startPracticeClock')?.addEventListener('click',beginPracticeClock);
@@ -3010,4 +3035,5 @@ function bindRecord(){
 }
 render();
 initCloud();
+resumeRecoveredPracticeClock();
 })();
