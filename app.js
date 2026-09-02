@@ -796,12 +796,14 @@ const seed = {
  savedGames:[],
  measurements:[],
  coaches:defaultCoaches,
+ practiceHistory:[],
  planPreferences:{},
  currentGame:null,
  route:'home'
 };
 let db = load();
 if(!Array.isArray(db.coaches))db.coaches=structuredClone(defaultCoaches);
+if(!Array.isArray(db.practiceHistory))db.practiceHistory=[];
 // Apply the requested player plans once, then preserve any changes made in the app.
 if((db.planPreferencesVersion||0)<2){
  db.planPreferences={...(db.planPreferences||{}),...requestedPlanPreferences};
@@ -1574,6 +1576,13 @@ function practiceActivityLabel(activity){
 function practiceHeader(title='Hitting Practice',backToHub=false){
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" ${backToHub?'id="practiceHubBack"':'data-go="home"'}>${backToHub?'Back':'Home'}</button><h1>${esc(title)}</h1><span class="page-head-spacer"></span></div>`;
 }
+function practiceHistoryDateValue(date=new Date()){return`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`}
+function practiceDrillUsage(name){return window.HotBPracticeHistory?.drillUsage(db.practiceHistory,name)||{percentage:null,lastDate:null}}
+function practiceAttendanceRate(name){return window.HotBPracticeHistory?.attendance(db.practiceHistory,name)?.percentage??null}
+function practiceUsageBoxes(name){
+ const usage=practiceDrillUsage(name),percent=usage.percentage===null?'—%':`${usage.percentage}%`,date=window.HotBPracticeHistory?.dateLabel(usage.lastDate)||'—';
+ return`<div class="practice-usage-stats"><span>${esc(percent)}</span><span>${esc(date)}</span></div>`;
+}
 function practiceHub(){
  return `${practiceHeader()}<main class="practice-hub no-print"><section class="practice-hub-intro"><h2>Plan Your Hitting Practice</h2><p>Build today’s schedule, organize your drills, or focus on one player.</p></section><section class="practice-hub-actions"><button class="practice-hub-card primary" id="openPracticeBuilder"><span>PLAN</span><h3>Build Practice</h3><p>Choose attendance, time and create the complete rotation.</p></button><button class="practice-hub-card" id="openDrillLibrary"><span>LIBRARY</span><h3>Drill Library</h3><p>Search your hitting drills, setups and coaching purposes.</p></button><button class="practice-hub-card" id="openPlayerFocus"><span>PLAYER</span><h3>Player Focus</h3><p>Select one player for a future two-week review and targeted drill plan.</p><small>LOOK ONLY</small></button></section></main>`;
 }
@@ -1582,12 +1591,12 @@ function practiceLibrary(){
  const selected=drills.find(drill=>drill.name===practiceSelectedDrill);
  if(selected){
   const detail=(title,value)=>value?`<section class="practice-drill-detail-section"><h3>${esc(title)}</h3><p>${esc(value)}</p></section>`:'';
-  return `${practiceHeader('Drill Library',true)}<main class="practice-feature-page practice-drill-detail no-print"><button class="practice-library-return" id="backToDrillList">‹ Back To All Drills</button><section class="practice-drill-detail-head"><span>${esc(selected.category)}</span><h2>${esc(selected.name)}</h2><p>${esc(selected.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(selected.hittingMethod)}</span>${selected.equipment?`<span>${esc(selected.equipment)}</span>`:''}</div></section>${detail('Best Used For',selected.bestUsedFor)}${detail('How It Works',selected.howItWorks)}${detail('Key Coaching Cues',selected.coachingCues)}${detail('What Success Looks Like',selected.success)}${detail('Secondary Focus',selected.secondaryFocus)}${detail('Space / Setup',selected.spaceSetup)}${detail('Equipment',selected.equipment)}${detail('Notes / Variations',selected.notes)}${selected.mediaLink?`<a class="btn black block practice-drill-media-link" href="${esc(selected.mediaLink)}" target="_blank" rel="noopener">Watch Drill</a>`:''}</main>`;
+  return `${practiceHeader('Drill Library',true)}<main class="practice-feature-page practice-drill-detail no-print"><button class="practice-library-return" id="backToDrillList">‹ Back To All Drills</button><section class="practice-drill-detail-head"><span>${esc(selected.category)}</span><h2>${esc(selected.name)}</h2><p>${esc(selected.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(selected.hittingMethod)}</span>${selected.equipment?`<span>${esc(selected.equipment)}</span>`:''}</div>${practiceUsageBoxes(selected.name)}</section>${detail('Best Used For',selected.bestUsedFor)}${detail('How It Works',selected.howItWorks)}${detail('Key Coaching Cues',selected.coachingCues)}${detail('What Success Looks Like',selected.success)}${detail('Secondary Focus',selected.secondaryFocus)}${detail('Space / Setup',selected.spaceSetup)}${detail('Equipment',selected.equipment)}${detail('Notes / Variations',selected.notes)}${selected.mediaLink?`<a class="btn black block practice-drill-media-link" href="${esc(selected.mediaLink)}" target="_blank" rel="noopener">Watch Drill</a>`:''}</main>`;
  }
  const filters=['All Drills',...new Set(drills.map(drill=>drill.category).filter(Boolean))];
  const query=practiceDrillQuery.trim().toLowerCase();
  const shown=drills.filter(drill=>(practiceDrillCategory==='All Drills'||drill.category===practiceDrillCategory)&&(!query||Object.values(drill).some(value=>String(value).toLowerCase().includes(query))));
- return `${practiceHeader('Drill Library',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>HITTING LIBRARY</span><h2>${drills.length} Hitting Drills</h2><p>Search by drill name, hitting problem, purpose, equipment or coaching cue. This library does not change the practice scheduler yet.</p></section><div class="practice-library-search"><input class="input" id="practiceDrillSearch" type="search" placeholder="Search drills" value="${esc(practiceDrillQuery)}" aria-label="Search drills"></div><div class="practice-filter-preview">${filters.map(filter=>`<button class="${filter===practiceDrillCategory?'active':''}" data-drill-category="${esc(filter)}">${esc(filter)}</button>`).join('')}</div><p class="practice-library-count">${shown.length} ${shown.length===1?'drill':'drills'}</p><section class="practice-drill-list">${shown.map(drill=>`<button class="practice-drill-card" data-drill-name="${esc(drill.name)}"><span>${esc(drill.category)}</span><h3>${esc(drill.name)}</h3><p>${esc(drill.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(drill.hittingMethod)}</span>${drill.equipment?`<span>${esc(drill.equipment)}</span>`:''}</div></button>`).join('')||`<div class="practice-library-empty"><b>No Drills Found</b><p>Try another search or category.</p></div>`}</section></main>`;
+ return `${practiceHeader('Drill Library',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>HITTING LIBRARY</span><h2>${drills.length} Hitting Drills</h2><p>Search by drill name, hitting problem, purpose, equipment or coaching cue. This library does not change the practice scheduler yet.</p></section><div class="practice-library-search"><input class="input" id="practiceDrillSearch" type="search" placeholder="Search drills" value="${esc(practiceDrillQuery)}" aria-label="Search drills"></div><div class="practice-filter-preview">${filters.map(filter=>`<button class="${filter===practiceDrillCategory?'active':''}" data-drill-category="${esc(filter)}">${esc(filter)}</button>`).join('')}</div><p class="practice-library-count">${shown.length} ${shown.length===1?'drill':'drills'}</p><section class="practice-drill-list">${shown.map(drill=>`<button class="practice-drill-card" data-drill-name="${esc(drill.name)}"><span>${esc(drill.category)}</span><h3>${esc(drill.name)}</h3><p>${esc(drill.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(drill.hittingMethod)}</span>${drill.equipment?`<span>${esc(drill.equipment)}</span>`:''}</div>${practiceUsageBoxes(drill.name)}</button>`).join('')||`<div class="practice-library-empty"><b>No Drills Found</b><p>Try another search or category.</p></div>`}</section></main>`;
 }
 function practicePlayerFocus(){
  const selected=db.roster.find(player=>player.name===practiceFocusPlayer);
@@ -1631,6 +1640,17 @@ function playerPracticePortalPayload(name){
  const player=db.roster.find(item=>item.name===name);
  return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:practiceClockPortalPayload(),schedule:schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:practiceEntryText(entry,practicePlan,index)})),drills:practiceChosenDrills.map(drill=>drill.name)};
 }
+function archiveCompletedPractice(completedAt=new Date()){
+ if(!practicePlan||!window.HotBPracticeHistory)return;
+ const record={id:practicePlan.portalDraftId,practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees:practicePlan.players.map(player=>player.name),drills:practiceChosenDrills.map(drill=>drill.name)};
+ db.practiceHistory=window.HotBPracticeHistory.saveCompleted(db.practiceHistory,record);save();
+}
+async function clearActivePlayerPlans(){
+ if(!cloudUser||!cloudStore)throw new Error('cloud-unavailable');
+ const batch=cloudStore.batch();
+ db.roster.filter(player=>player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+ await batch.commit();db.activePortalPractice=null;save();
+}
 async function syncPlayerPracticeClock(){
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return;
  try{
@@ -1654,7 +1674,7 @@ async function activatePlayerPlans(){
 async function deactivatePlayerPlans(){
  if(!cloudUser||!cloudStore||!confirm('Remove the active practice from every player portal?'))return;
  const button=$('#deactivatePlayerPlans');if(button)button.disabled=true;
- try{const batch=cloudStore.batch();db.roster.filter(player=>player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));await batch.commit();db.activePortalPractice=null;save();render();alert('Player practice plans are no longer active.')}
+ try{await clearActivePlayerPlans();render();alert('Player practice plans are no longer active.')}
  catch(error){if(button)button.disabled=false;alert('The active player plans could not be removed.')}
 }
 function practiceDrillPicker(){
@@ -2051,6 +2071,7 @@ function grade(value,metric){
 }
 function evalView(){
  const player=evalPlayer==='Team'?null:hitterObj(evalPlayer);
+ const practiceRate=player?practiceAttendanceRate(player.name):null;
  const teamPas=filteredPAs();
  const pas=teamPas.filter(p=>!player||p.hitter===player.name);
  const s=statsForPAs(pas);
@@ -2070,7 +2091,7 @@ function evalView(){
  return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><button class="btn eval-email" id="openRecruitingEmail" ${player?'':'disabled'}>Email</button></div>
  <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  ${dateFilterControls('eval')}
- ${player?`<div class="player-card player-profile"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div></div>`:
+ ${player?`<div class="player-card player-profile ${practiceRate===null?'':'has-practice-rate'}"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div>${practiceRate===null?'':`<div class="player-practice-rate">${practiceRate}%</div>`}</div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
   <div class="eval-tile dark">${metricHead('HotB+')} ${hotb===null?emptyComparison():(player?comparison(hotb,hotb-100,0):`<div class="value">${hotb}</div>`)}<div class="note">Production vs Team</div></div>
@@ -2512,10 +2533,7 @@ function updatePracticeClock(){
  const currentTime=$('#practiceCurrentTime'),currentBlock=$('#practiceCurrentBlock'),timeLeft=$('#practiceTimeLeft');
  if(currentTime)currentTime.textContent=practiceClockText(new Date(now));
  if(elapsed>=totalMs){
-  if(currentBlock)currentBlock.textContent='DONE!';if(timeLeft)timeLeft.textContent='0:00';
-  practiceClock.running=false;practiceClock.finished=true;if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
-  const endButton=$('#endPracticeClock');if(endButton)endButton.disabled=true;
-  syncPlayerPracticeClock();speakPracticeClock('Times Up, Good Practice, Please start to clean up');return;
+  finishPracticeClock(true);return;
  }
  const block=Math.floor(elapsed/blockMs)+1,remaining=Math.max(0,blockMs-(elapsed%blockMs)),seconds=Math.ceil(remaining/1000);
  if(block>practiceClock.lastBlock){practiceClock.lastBlock=block;speakPracticeClock('Ladies, Time to Rotate')}
@@ -2527,10 +2545,19 @@ function beginPracticeClock(){
  practiceClock={running:true,finished:false,startAt:Date.now(),lastBlock:1};
  speakPracticeClock('.',true);render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);syncPlayerPracticeClock();
 }
-function finishPracticeClock(){
+let practiceCompletionBusy=false;
+async function finishPracticeClock(automatic=false){
+ if(practiceCompletionBusy||practiceClock.finished)return;
+ practiceCompletionBusy=true;
  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
  practiceClock.running=false;practiceClock.finished=true;
- syncPlayerPracticeClock();speakPracticeClock('Times Up, Good Practice, Please start to clean up');render();
+ const completedAt=new Date();archiveCompletedPractice(completedAt);speakPracticeClock('Times Up, Good Practice, Please start to clean up');render();
+ const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
+ if(shouldClearPortals){
+  try{await clearActivePlayerPlans();render()}
+  catch(error){alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap Deactivate.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in, then tap Deactivate.')}
+ }
+ practiceCompletionBusy=false;
 }
 function bindPlayerPortal(){
  $('#setupPlayerPortals')?.addEventListener('click',setupPlayerPortals);
@@ -2615,7 +2642,7 @@ function bindPractice(){
  $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;if(practiceCoachOpen)practiceCardsOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#togglePracticeCards')?.addEventListener('click',()=>{practiceCardsOpen=!practiceCardsOpen;if(practiceCardsOpen)practiceCoachOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#startPracticeClock')?.addEventListener('click',beginPracticeClock);
- $('#endPracticeClock')?.addEventListener('click',finishPracticeClock);
+ $('#endPracticeClock')?.addEventListener('click',()=>finishPracticeClock(false));
  $('#activatePlayerPlans')?.addEventListener('click',activatePlayerPlans);
  $('#deactivatePlayerPlans')?.addEventListener('click',deactivatePlayerPlans);
  $('#printPracticeCards')?.addEventListener('click',()=>window.print());
