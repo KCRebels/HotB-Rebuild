@@ -29,15 +29,11 @@
   const teeBlocks={};
   attendees.forEach(player=>{
    if(player.availableFromBlock>=player.availableUntilBlock){warnings.push(`${player.name} is not available for a complete practice block.`);return}
-   if(player.availableFromBlock===0){
-    schedule[player.name][0]={activity:fixedActivities[0]};
-    if(player.availableUntilBlock>1){schedule[player.name][1]={activity:fixedActivities[1]};teeBlocks[player.name]=1}
-    else warnings.push(`${player.name} leaves before completing Tee Work.`);
-   }else{
-    teeBlocks[player.name]=player.availableFromBlock;
-    schedule[player.name][player.availableFromBlock]={activity:fixedActivities[1]};
-    warnings.push(`${player.name} arrives late and is assigned Tee Work in the first available block.`);
-   }
+   const warmupBlock=player.availableFromBlock,teeBlock=warmupBlock+1;
+   schedule[player.name][warmupBlock]={activity:fixedActivities[0]};
+   if(teeBlock<player.availableUntilBlock){schedule[player.name][teeBlock]={activity:fixedActivities[1]};teeBlocks[player.name]=teeBlock}
+   else{teeBlocks[player.name]=warmupBlock;warnings.push(`${player.name} is not present long enough to complete both Warm-Up and Tee Work.`)}
+   if(player.availableFromBlock>0)warnings.push(`${player.name} arrives late and is assigned Warm-Up, then Tee Work, in the first two available blocks.`);
   });
   const isOpen=(player,block)=>block>=0&&block<BLOCK_COUNT&&schedule[player.name][block]===null&&block>(teeBlocks[player.name]??-1);
   const pitchers=attendees.filter(player=>player.canPitch),catchers=attendees.filter(player=>player.canCatch);
@@ -162,7 +158,11 @@
   });
   for(let block=0;block<BLOCK_COUNT;block++){
    const drillPlayers=attendees.filter(player=>schedule[player.name][block].activity==='Drill');
-   if(drillPlayers.length===1)schedule[drillPlayers[0].name][block]={activity:'Tee Work'};
+   if(drillPlayers.length===1){
+    const activities=attendees.map(player=>schedule[player.name][block].activity);
+    const support=activities.includes('Machine')?'Machine Feed':activities.some(activity=>activity.startsWith('Front Toss'))?'Front Toss Support':liveSessions.some(session=>session.block===block)?'Live Pitching Support':'Equipment / Ball Reset';
+    schedule[drillPlayers[0].name][block]={activity:support};
+   }
   }
   const drillSlotsByPlayer=Object.fromEntries(attendees.map(player=>[player.name,schedule[player.name].map((entry,index)=>entry.activity==='Drill'?index:-1).filter(index=>index>=0)]));
   const drillPlayersByBlock=Array.from({length:BLOCK_COUNT},(_,block)=>attendees.filter(player=>schedule[player.name][block].activity==='Drill'));
@@ -214,9 +214,10 @@
   if(!plan||plan.times?.length!==BLOCK_COUNT)errors.push('Schedule must contain ten blocks.');
   Object.entries(plan?.schedule||{}).forEach(([name,entries])=>{
    if(entries.length!==BLOCK_COUNT||entries.some(entry=>!entry?.activity))errors.push(`${name} has downtime while present.`);
-   const player=plan.players?.find(item=>item.name===name),from=player?.availableFromBlock||0;
-   if(from===0&&entries[0]?.activity!=='Stretch')errors.push(`${name} must stretch first.`);
-   if(entries[from===0?1:from]?.activity!=='Tee Work')errors.push(`${name} must complete Tee Work before other activities.`);
+   const player=plan.players?.find(item=>item.name===name),from=player?.availableFromBlock||0,until=player?.availableUntilBlock??BLOCK_COUNT;
+   if(from<until&&entries[from]?.activity!=='Stretch')errors.push(`${name} must complete Warm-Up in the first attended block.`);
+   if(from+1<until&&entries[from+1]?.activity!=='Tee Work')errors.push(`${name} must complete Tee Work in the second attended block.`);
+   if(entries.some((entry,index)=>entry?.activity==='Tee Work'&&index!==from+1))errors.push(`${name} repeats Tee Work after the required block.`);
    if(!entries.some(entry=>entry.activity==='Machine'))errors.push(`${name} is missing Machine.`);
    if(!entries.some(entry=>entry.activity.startsWith('Front Toss')))errors.push(`${name} is missing Front Toss.`);
    if(!entries.some(entry=>entry.activity.startsWith('Drill #')))errors.push(`${name} is missing drill work.`);
