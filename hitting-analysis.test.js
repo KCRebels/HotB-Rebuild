@@ -6,7 +6,7 @@ function makeGame({date='2026-08-28T12:00:00.000Z',hitter='Test Hitter',style='R
  const game={id:`g-${date}-${Math.random()}`,date,plateAppearances:[],pitches:[]};
  pas.forEach((spec,index)=>{
   const pa=index+1,contactType=spec.contactType||'',outcome=spec.outcome||'H4O';
-  game.plateAppearances.push({id:`pa-${pa}`,hitter,pa,outcome,contactType,fielder:spec.fielder||null,weak:!!spec.weak,hhb:!!spec.hhb,bunt:!!spec.bunt,slap:!!spec.slap,executionSuccesses:spec.executionSuccesses||0,executionAttempts:spec.executionAttempts||0});
+  game.plateAppearances.push({id:`pa-${pa}`,hitter,pa,outcome,contactType,fielder:spec.fielder||null,weak:!!spec.weak,hhb:!!spec.hhb,bunt:!!spec.bunt,slap:!!spec.slap,sac:!!spec.sac,executionSuccesses:spec.executionSuccesses||0,executionAttempts:spec.executionAttempts||0});
   const pitchSpecs=spec.pitches||[{result:outcome==='K'?'K':'H4O',zone:'C1',pitchType:'FB'}];
   pitchSpecs.forEach((pitch,pitchIndex)=>game.pitches.push({id:`p-${pa}-${pitchIndex}`,hitter,pa,hitterStyle:style,zone:'C1',pitchType:'FB',...pitch}));
  });
@@ -115,6 +115,34 @@ const highBallMissGame=makeGame({pas:repeat(10,index=>({
 }))});
 const highBallMisses=analysis.analyzePlayer([highBallMissGame],{name:'Test Hitter',side:'R'},{now:NOW});
 assert.ok(!highBallMisses.issues.some(item=>item.id==='high-strike-misses'),'high balls outside the strike zone must not trigger the high-strike rule');
+
+const rolloverGame=makeGame({pas:[
+ ...repeat(4,()=>({outcome:'HIT',contactType:'LD',fielder:8})),
+ {outcome:'H4O',contactType:'GO',fielder:5,weak:true},
+ {outcome:'HIT',contactType:'LD',fielder:7},
+ {outcome:'H4O',contactType:'GO',fielder:6,weak:true},
+ {outcome:'H4O',contactType:'GO',fielder:4,weak:true},
+ {outcome:'H4O',contactType:'GO',fielder:5,weak:true},
+ {outcome:'HIT',contactType:'LD',fielder:9}
+]});
+const rollover=analysis.analyzePlayer([rolloverGame],{name:'Test Hitter',side:'R'},{now:NOW});
+const rolloverIssue=rollover.issues.find(item=>item.id==='likely-rollover');
+assert.equal(rolloverIssue?.label,'Likely Cause: Rolling Over');
+assert.match(rolloverIssue?.diagnosis||'',/Video or a coach’s observation should confirm/);
+
+const rolloverExcludedGame=makeGame({pas:[
+ ...repeat(4,()=>({outcome:'HIT',contactType:'LD',fielder:8})),
+ {outcome:'H4O',contactType:'GO',fielder:5,weak:true,bunt:true},
+ {outcome:'H4O',contactType:'GO',fielder:6,weak:true,slap:true},
+ {outcome:'SAC',contactType:'GO',fielder:5,weak:true,sac:true},
+ {outcome:'H4O',contactType:'GO',fielder:6,weak:true,hhb:true},
+ {outcome:'H4O',contactType:'GO',fielder:5,weak:true},
+ {outcome:'H4O',contactType:'GO',fielder:6,weak:true}
+]});
+const rolloverExcluded=analysis.analyzePlayer([rolloverExcludedGame],{name:'Test Hitter',side:'R'},{now:NOW});
+assert.ok(!rolloverExcluded.issues.some(item=>item.id==='likely-rollover'),'excluded and isolated grounders must not trigger rollover');
+const leftHandedRollover=analysis.analyzePlayer([rolloverGame],{name:'Test Hitter',side:'L'},{now:NOW});
+assert.ok(!leftHandedRollover.issues.some(item=>item.id==='likely-rollover'),'right-handed rollover rule must not trigger for a left-handed hitter');
 
 const outsidePullGame=makeGame({pas:repeat(10,index=>({
  outcome:index<5?'H4O':'HIT',contactType:index<5?'GO':'LD',fielder:index<5?5:9,
