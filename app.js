@@ -1552,8 +1552,10 @@ function practiceEntryText(entry,plan=null,blockIndex=-1){
  const partner=practiceFirstName(entry.partner);
  if(entry.activity==='Hit Live'&&plan){
   const session=plan.liveSessions?.find(item=>item.block===blockIndex);
-  if(session)return `Hit Live — ${practiceFirstName(session.pitcher)} (${practiceFirstName(session.catcher||'Coach')})`;
+  if(session)return `Hit Live — 12 pitches minimum — ${practiceFirstName(session.pitcher)} (${practiceFirstName(session.catcher||'Coach')})`;
  }
+ if(entry.activity==='Pitch Live')return `Pitch Live (${partner}) — 12 pitches minimum per hitter`;
+ if(entry.activity==='Catch Live')return `Catch Live — ${partner} — 12 pitches minimum per hitter`;
  return entry.activity.startsWith('Pitch ')?`${entry.activity} (${partner})`:`${entry.activity} — ${partner}`;
 }
 function practiceCoachLabel(label,plan=null,blockIndex=-1){
@@ -1561,8 +1563,10 @@ function practiceCoachLabel(label,plan=null,blockIndex=-1){
  if(!partner)return practiceActivityLabel(activity);
  if(activity==='Hit Live'&&plan){
   const session=plan.liveSessions?.find(item=>item.block===blockIndex);
-  if(session)return `Hit Live — ${practiceFirstName(session.pitcher)} (${practiceFirstName(session.catcher||'Coach')})`;
+  if(session)return `Hit Live — 12 pitches minimum — ${practiceFirstName(session.pitcher)} (${practiceFirstName(session.catcher||'Coach')})`;
  }
+ if(activity==='Pitch Live')return `Pitch Live (${practiceFirstName(partner)}) — 12 pitches minimum per hitter`;
+ if(activity==='Catch Live')return `Catch Live — ${practiceFirstName(partner)} — 12 pitches minimum per hitter`;
  return activity.startsWith('Pitch ')?`${activity} (${practiceFirstName(partner)})`:`${activity} — ${practiceFirstName(partner)}`;
 }
 function practiceClockText(date=new Date()){
