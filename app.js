@@ -875,6 +875,13 @@ function newPortalId(){
 }
 function newPortalPin(){return String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0')}
 function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}`}
+function playerPortalTextUrl(player){
+ const phone=String(player?.phone||'').replace(/[^\d+]/g,'');
+ if(!phone||!player?.portalId||!player?.portalPin)return'';
+ const first=practiceFirstName(player.name),message=`${first}’s private HotB Player Portal\n${playerPortalUrl(player)}\nPIN: ${player.portalPin}`;
+ const separator=/iPad|iPhone|iPod/.test(navigator.userAgent)?'&':'?';
+ return`sms:${phone}${separator}body=${encodeURIComponent(message)}`;
+}
 async function loadPlayerPortal(){
  if(!portalToken||!cloudAuth||!cloudStore)return;
  portalBusy=true;portalMessage='';
@@ -1453,7 +1460,7 @@ function recommendPortalDrills(query){
 function portalCoachView(){
  const players=db.roster.filter(player=>!player.isGuest),ready=players.length&&players.every(player=>player.portalId&&player.portalPin);
  if(!cloudUser)return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>Private Player Access</h2><p>Sign in through Cloud Backup on this device before creating or managing player links.</p></section><button class="btn black block" data-go="home">Return Home</button></main>`;
- return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>${ready?'Player Portals Are Ready':'Create Private Player Portals'}</h2><p>Each player receives one private link and a six-digit PIN. Her first successful login connects that portal to her device.</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}<button class="btn black block portal-setup-button" id="setupPlayerPortals" ${cloudBusy?'disabled':''}>${ready?'Refresh Portal Records':'Create Player Portals'}</button>${ready?`<section class="portal-player-list">${players.map(player=>`<article><div><b>${esc(practiceFirstName(player.name))}</b><span>PIN ${esc(player.portalPin)}</span></div><div class="portal-player-actions"><button class="btn" data-share-portal="${esc(player.name)}">Share</button><button class="btn" data-reset-portal="${esc(player.name)}">Reset</button></div></article>`).join('')}</section><p class="portal-private-note">Share each link and PIN only with that player. Reset connects the portal to a replacement phone without changing her link or PIN.</p>`:''}</main>`;
+ return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>${ready?'Player Portals Are Ready':'Create Private Player Portals'}</h2><p>Each player receives one private link and a six-digit PIN. Her first successful login connects that portal to her device.</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}<button class="btn black block portal-setup-button" id="setupPlayerPortals" ${cloudBusy?'disabled':''}>${ready?'Refresh Portal Records':'Create Player Portals'}</button>${ready?`<section class="portal-player-list">${players.map(player=>`<article><div><b>${esc(practiceFirstName(player.name))}</b><span>PIN ${esc(player.portalPin)}</span></div><div class="portal-player-actions"><button class="btn" data-share-portal="${esc(player.name)}">Share</button><button class="btn" data-text-portal="${esc(player.name)}" ${player.phone?'':'disabled'}>${player.phone?'Text':'No Cell'}</button><button class="btn" data-reset-portal="${esc(player.name)}">Reset</button></div></article>`).join('')}</section><p class="portal-private-note">Text opens an individual message with that player’s private link and PIN. You review it and tap Send. Reset connects the portal to a replacement phone without changing her link or PIN.</p>`:''}</main>`;
 }
 function portalLoginView(){
  return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>PRIVATE ACCESS</span><h2>${portalBusy?'Opening Your Portal':'Enter Your PIN'}</h2><p>${portalBusy?'HotB is checking this private player link.':'Use the six-digit PIN your coach provided. This portal will then connect to this device.'}</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}${portalBusy?'':`<label class="label" for="portalPin">Player PIN</label><input class="input portal-pin" id="portalPin" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000"><button class="btn black block" id="openPlayerPortal">Open My Portal</button>`}</main>`;
@@ -2530,7 +2537,12 @@ function bindPlayerPortal(){
  $$('[data-share-portal]').forEach(button=>button.addEventListener('click',async()=>{
   const player=db.roster.find(item=>item.name===button.dataset.sharePortal);if(!player?.portalId)return;
   const share={title:`${practiceFirstName(player.name)}’s HotB Player Portal`,text:`${practiceFirstName(player.name)}’s private HotB Player Portal\nPIN: ${player.portalPin}\n${playerPortalUrl(player)}`};
-  try{if(navigator.share)await navigator.share(share);else{await navigator.clipboard.writeText(share.text);portalMessage='Portal link and PIN copied.';render()}}catch(error){if(error?.name!=='AbortError'){portalMessage='The portal link could not be shared from this device.';render()}}
+ try{if(navigator.share)await navigator.share(share);else{await navigator.clipboard.writeText(share.text);portalMessage='Portal link and PIN copied.';render()}}catch(error){if(error?.name!=='AbortError'){portalMessage='The portal link could not be shared from this device.';render()}}
+ }));
+ $$('[data-text-portal]').forEach(button=>button.addEventListener('click',()=>{
+  const player=db.roster.find(item=>item.name===button.dataset.textPortal),url=playerPortalTextUrl(player);
+  if(!url){portalMessage=`${practiceFirstName(player?.name||'This player')} does not have a saved cell number.`;render();return}
+  window.location.href=url;
  }));
  $$('[data-reset-portal]').forEach(button=>button.addEventListener('click',()=>resetPlayerPortal(db.roster.find(item=>item.name===button.dataset.resetPortal))));
  $('#openPlayerPortal')?.addEventListener('click',()=>claimPlayerPortal($('#portalPin')?.value));
