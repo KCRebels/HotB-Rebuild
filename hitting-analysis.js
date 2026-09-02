@@ -61,8 +61,8 @@
   }));
   return records;
  }
- function issue(id,label,category,rate,opportunities,evidence,focus){
-  return{id,label,category,rate,opportunities,evidence,focus};
+ function issue(id,label,category,rate,opportunities,evidence,focus,diagnosis=''){
+  return{id,label,category,rate,opportunities,evidence,focus,diagnosis};
  }
  function detectIssues(records,player,scope,thresholds){
   const issues=[],pas=records.map(record=>record.pa),pitches=records.flatMap(record=>record.pitches);
@@ -97,6 +97,12 @@
 
   const weak=pas.filter(pa=>pa.weak).length,weakRate=ratio(weak,batted.length);
   if(batted.length>=thresholds.battedBalls&&weak>=2&&weakRate>=.3)issues.push(issue('weak-contact','Frequent Weak Contact','Contact Quality',weakRate,batted.length,`${weak} weak-contact results in ${batted.length} batted balls`,'Power / Centered Contact'));
+
+  if(scope==='player'&&String(player?.side||'').toUpperCase()==='R'){
+   const recentSixBatted=records.filter(record=>normalizeContact(record.pa)).sort((a,b)=>gameTime(b.game)-gameTime(a.game)||(Number(b.pa.pa)||0)-(Number(a.pa.pa)||0)).slice(0,6);
+   const rolloverGrounders=recentSixBatted.filter(({pa})=>normalizeContact(pa)==='GROUND'&&[5,6].includes(Number(pa.fielder))&&pa.weak&&!pa.hhb&&!pa.bunt&&!pa.slap&&!pa.sac&&pa.outcome!=='SAC');
+   if(rolloverGrounders.length>=3)issues.push(issue('likely-rollover','Likely Cause: Rolling Over','Contact / Barrel Control',ratio(rolloverGrounders.length,recentSixBatted.length),recentSixBatted.length,`${rolloverGrounders.length} weak ground balls to third base or shortstop in the most recent ${recentSixBatted.length} balls put in play`,'Prevent Early Top-Hand Rollover','Rolling over — the top hand is turning over too early, causing the barrel to cut across the ball and produce weak topspin ground balls to the left side. Video or a coach’s observation should confirm the cause.'));
+  }
 
   const groundThird=batted.filter(pa=>normalizeContact(pa)==='GROUND'&&Number(pa.fielder)===5&&pa.outcome==='H4O').length,thirdRate=ratio(groundThird,batted.length);
   if(batted.length>=thresholds.battedBalls&&groundThird>=2&&thirdRate>=.25)issues.push(issue('groundouts-third','Repeated Groundouts To Third','Contact Direction',thirdRate,batted.length,`${groundThird} groundouts to third in ${batted.length} batted balls`,'Timing / Opposite-Field Direction'));
