@@ -844,7 +844,7 @@ let practicePlan=null;
 let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{}},practiceCoachOpen=false,practiceCardsOpen=false;
 let practiceSection='hub',practiceFocusPlayer='',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
-let practiceClock={running:false,finished:false,startAt:0,lastBlock:1},practiceClockTimer=null,portalClockTimer=null;
+let practiceClock={running:false,finished:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0},practiceClockTimer=null,portalClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null;
@@ -2537,7 +2537,7 @@ function bind(){
 
 function stopPracticeClock(){
  if(practiceClockTimer)clearInterval(practiceClockTimer);
- practiceClockTimer=null;practiceClock={running:false,finished:false,startAt:0,lastBlock:1};
+ practiceClockTimer=null;practiceClock={running:false,finished:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0};
  if('speechSynthesis'in window)window.speechSynthesis.cancel();
 }
 function persistPracticeSession(){
@@ -2569,12 +2569,14 @@ function updatePracticeClock(){
  }
  const block=Math.floor(elapsed/blockMs)+1,remaining=Math.max(0,blockMs-(elapsed%blockMs)),seconds=Math.ceil(remaining/1000);
  if(block>practiceClock.lastBlock){practiceClock.lastBlock=block;speakPracticeClock('Ladies, Time to Rotate')}
+ const warningBlock=window.HotBPracticeSession?.pendingTwoMinuteWarning(practicePlan,practiceClock,now);
+ if(warningBlock){practiceClock.lastTwoMinuteBlock=warningBlock;speakPracticeClock('Two minutes left');persistPracticeSession()}
  if(currentBlock)currentBlock.textContent=`${block} of 10`;
  if(timeLeft)timeLeft.textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
 }
 function beginPracticeClock(){
  if(practiceClockTimer)clearInterval(practiceClockTimer);
- practiceClock={running:true,finished:false,startAt:Date.now(),lastBlock:1};
+ practiceClock={running:true,finished:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0};
  persistPracticeSession();speakPracticeClock('.',true);render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);syncPlayerPracticeClock();
 }
 let practiceCompletionBusy=false;
