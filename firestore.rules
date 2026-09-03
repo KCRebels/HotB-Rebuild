@@ -22,16 +22,36 @@ service cloud.firestore {
     match /playerPortals/{portalId} {
       allow create, delete: if isCoach();
       allow read: if isCoach()
-        || (signedIn() && resource.data.ownerUid == request.auth.uid);
+        || (
+          signedIn()
+          && (
+            resource.data.ownerUid == request.auth.uid
+            || (
+              resource.data.keys().hasAny(['authorizedUids'])
+              && resource.data.authorizedUids.hasAny([request.auth.uid])
+            )
+          )
+        );
       allow update: if isCoach()
         || (
           signedIn()
           && request.auth.token.firebase.sign_in_provider == 'anonymous'
-          && resource.data.ownerUid == null
-          && request.resource.data.ownerUid == request.auth.uid
           && request.resource.data.pinProof == resource.data.pinHash
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['ownerUid', 'pinProof', 'claimedAt'])
+          && (
+            (
+              resource.data.ownerUid == null
+              && request.resource.data.ownerUid == request.auth.uid
+              && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['ownerUid', 'pinProof', 'claimedAt'])
+            )
+            || (
+              request.resource.data.authorizedUids is list
+              && request.resource.data.authorizedUids.hasAny([request.auth.uid])
+              && request.resource.data.authorizedUids.size() <= 5
+              && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['authorizedUids', 'pinProof', 'claimedAt'])
+            )
+          )
         );
     }
 
