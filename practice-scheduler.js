@@ -108,9 +108,9 @@
   });
   sessionPlans.forEach(({pitcher,liveBlock,catcher})=>{
    const pitcherName=pitcher?.name||'Coach';
-   if(pitcher)schedule[pitcher.name][liveBlock]={activity:'Pitch Live',partner:catcher?.name||'Coach'};
+   if(pitcher)schedule[pitcher.name][liveBlock]={activity:'Pitch Live',partner:catcher?.name||'9Square'};
    if(catcher)schedule[catcher.name][liveBlock]={activity:'Catch Live',partner:pitcherName};
-   liveSessions.push({block:liveBlock,pitcher:pitcherName,catcher:catcher?.name||'Coach',hitters:[]});
+   liveSessions.push({block:liveBlock,pitcher:pitcherName,catcher:catcher?.name||'9Square',hitters:[]});
   });
   const warmedPitchers=new Set();
   sessionPlans.forEach(({pitcher,liveBlock,catcher})=>{
