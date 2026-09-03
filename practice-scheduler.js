@@ -158,7 +158,7 @@
   });
   for(let block=0;block<BLOCK_COUNT;block++){
    const drillPlayers=attendees.filter(player=>schedule[player.name][block].activity==='Drill');
-   if(drillPlayers.length===1){
+   if(drillPlayers.length===1&&attendees.length>1){
     const activities=attendees.map(player=>schedule[player.name][block].activity);
     const support=activities.includes('Machine')?'Machine Feed':activities.some(activity=>activity.startsWith('Front Toss'))?'Front Toss Support':liveSessions.some(session=>session.block===block)?'Live Pitching Support':'Equipment / Ball Reset';
     schedule[drillPlayers[0].name][block]={activity:support};
@@ -174,8 +174,8 @@
    for(let block=0;block<BLOCK_COUNT&&!failed;block++){
     const drillPlayers=drillPlayersByBlock[block].slice().sort((a,b)=>drillSlotsByPlayer[b.name].length-drillSlotsByPlayer[a.name].length||a.name.localeCompare(b.name));
     if(!drillPlayers.length)continue;
-    const groupCount=Math.ceil(drillPlayers.length/3),smallGroups=groupCount*3-drillPlayers.length;
-    const groupSizes=Array.from({length:groupCount},(_,index)=>index<smallGroups?2:3);
+    const groupSizes=drillPlayers.length===1?[1]:drillPlayers.length%2?[3,...Array((drillPlayers.length-3)/2).fill(2)]:Array(drillPlayers.length/2).fill(2);
+    const groupCount=groupSizes.length;
     const groups=[];
     let cursor=0;
     for(const size of groupSizes){groups.push(drillPlayers.slice(cursor,cursor+size));cursor+=size}
@@ -238,7 +238,8 @@
    if(entries.filter(entry=>entry?.activity.startsWith('Front Toss')).length>8)errors.push(`Block ${block+1} exceeds Front Toss capacity.`);
    if(plan.liveSessions?.some(session=>session.block===block)&&entries.some(entry=>entry?.activity.startsWith('Front Toss')))errors.push(`Block ${block+1} has Front Toss while live pitching is active.`);
    const drillCounts={};entries.filter(entry=>entry?.activity.startsWith('Drill #')).forEach(entry=>drillCounts[entry.activity]=(drillCounts[entry.activity]||0)+1);
-   if(Object.values(drillCounts).some(count=>count<2||count>3))errors.push(`Block ${block+1} has a drill station without 2–3 players.`);
+   if(Object.values(drillCounts).some(count=>count>3||(count<2&&plan.attendance>1)))errors.push(`Block ${block+1} has a drill station without 2–3 players.`);
+   if(Object.values(drillCounts).includes(1)&&Object.values(drillCounts).includes(3))errors.push(`Block ${block+1} must rebalance one- and three-player drill groups into two-player groups.`);
   }
   (plan?.liveSessions||[]).forEach(session=>{
    if(session.hitters.length<2||session.hitters.length>3)errors.push(`Block ${session.block+1} must have 2–3 live hitters.`);
