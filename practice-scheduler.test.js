@@ -49,9 +49,10 @@ function scenario(count,pitchers,catchers){
  return Array.from({length:count},(_,index)=>({name:`Scenario ${count}-${index+1}`,isPitcher:index<pitchers,isCatcher:index>=pitchers&&index<pitchers+catchers,canPitch:index<pitchers,requiresPitchWarmup:index<pitchers,canCatch:index>=pitchers&&index<pitchers+catchers,availableFromBlock:0,availableUntilBlock:10}));
 }
 const nineFourOne=scheduler.buildSchedule(scenario(9,4,1));
-assert.deepEqual(nineFourOne.feasibilityErrors,[],'nine players, four pitchers and one catcher should work using Coach for one live block');
+assert.deepEqual(nineFourOne.feasibilityErrors,[],'nine players, four pitchers and one catcher should work using 9Square for one live block');
 assert.deepEqual(nineFourOne.liveSessions.map(session=>session.hitters.length).sort(),[2,2,2,3]);
-assert.equal(nineFourOne.liveSessions.filter(session=>session.catcher==='Coach').length,1);
+assert.equal(nineFourOne.liveSessions.filter(session=>session.catcher==='9Square').length,1);
+assert.equal(nineFourOne.liveSessions.filter(session=>session.catcher==='Coach').length,0,'Coach must never be assigned as a live catcher');
 assert.deepEqual(scheduler.validate(nineFourOne),[]);
 const nineTwoOne=scheduler.buildSchedule(scenario(9,2,1));
 assert.deepEqual(nineTwoOne.feasibilityErrors,[],'nine players, two pitchers and one catcher must remain feasible');
