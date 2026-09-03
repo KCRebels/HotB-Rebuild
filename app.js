@@ -9,7 +9,7 @@ const pct0 = n => `${Math.round(n*100)}%`;
 const requestedPlanPreferences={
  'Lakyn Farley':'IN','Maleah Pena':'IN','Hailey Marsh':'NO','Maia Waddell':'NO',
  'Aniesa Rohleder':'OUT','Makenna Whitaker':'OUT','Brynna Peter':'OUT',
- 'Tayte Stepps':'OUT','Claire Jack':'OUT','Mattingly Hardy':'OUT','Lydia Copeland':'OUT'
+ 'Tayte Stepps':'OUT','Claire Jack':'OUT','Mattingly Hardy':'IN','Lydia Copeland':'OUT'
 };
 const heatColors={B:'#3d8c52',F:'#f0c94d',HIT:'#3862db',K:'#cd3a32',H4O:'#cd3a32',FPS:'#cd3a32',REPORT:'#101011'};
 const chartZoneIds=['T1','T2','L1','L2','C1','C2','C3','C4','R1','R2','B1','B2'];
