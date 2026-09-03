@@ -11,8 +11,7 @@
    const namesFor=predicate=>entries.filter(([label])=>predicate(label)).flatMap(([,names])=>names||[]).map(first);
    const coachWarmups=namesFor(label=>/^Pitch Warm-Up — Coach$/.test(label));
    let assignment='Equipment / Float';
-   if(live?.catcher==='Coach')assignment=`Catch Live — ${first(live.pitcher)} — 12 pitches minimum per hitter`;
-   else if(live?.pitcher==='Coach')assignment=`Coach Pitch Live — ${(live.hitters||[]).map(first).join(', ')}`;
+   if(live?.pitcher==='Coach')assignment=`Coach Pitch Live — ${(live.hitters||[]).map(first).join(', ')}`;
    else if(coachWarmups.length)assignment=`Catch Pitch Warm-Up — ${coachWarmups[0]}`;
    else{
     const front=entries.find(([label])=>/^Front Toss Lane 1$/.test(label));
