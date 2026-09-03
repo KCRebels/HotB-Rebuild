@@ -94,7 +94,9 @@
   plannedSessions.sort((a,b)=>a.liveBlock-b.liveBlock);
   const sessionCount=plannedSessions.length;
   if(attendees.length<2)feasibilityErrors.push('At least two attending players are required because every hitting station must have 2–3 players.');
-  if(sessionCount>Math.floor(attendees.length/2))feasibilityErrors.push(`${sessionCount} live-pitching blocks require at least ${sessionCount*2} unique live hitters, but only ${attendees.length} players are attending. Mark at least ${sessionCount-Math.floor(attendees.length/2)} pitcher${sessionCount-Math.floor(attendees.length/2)===1?'':'s'} Hitting Only and build again.`);
+  const maximumPitchers=Math.floor(attendees.length/2),pitchersToRemove=Math.max(0,pitchers.length-maximumPitchers);
+  if(pitchersToRemove)feasibilityErrors.push(`${pitchers.length} available pitchers would require at least ${pitchers.length*2} unique live-hitting assignments, but only ${attendees.length} players are attending. At least ${pitchersToRemove} of the ${pitchers.length} available pitchers must be marked Hitting Only. Then build the practice again.`);
+  else if(sessionCount>maximumPitchers)feasibilityErrors.push(`${sessionCount} live-pitching blocks require at least ${sessionCount*2} unique live hitters, but only ${attendees.length} players are attending. Reduce live pitching by at least ${sessionCount-maximumPitchers} block${sessionCount-maximumPitchers===1?'':'s'} and build again.`);
   const firstChunk=Math.ceil(sessionCount/2);
   const sessionPlans=plannedSessions.map((item,index)=>{
    const {pitcher,liveBlock}=item;
