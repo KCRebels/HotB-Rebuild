@@ -57,6 +57,11 @@ const nineTwoOne=scheduler.buildSchedule(scenario(9,2,1));
 assert.deepEqual(nineTwoOne.feasibilityErrors,[],'nine players, two pitchers and one catcher must remain feasible');
 assert.deepEqual(scheduler.validate(nineTwoOne),[]);
 const eightFiveTwo=scheduler.buildSchedule(scenario(8,5,2));
-assert.ok(eightFiveTwo.feasibilityErrors.some(error=>error.includes('require at least 10 unique live hitters')),'an impossible pitcher-to-attendance ratio must produce a clear warning');
+assert.ok(eightFiveTwo.feasibilityErrors.some(error=>error.includes('At least 1 of the 5 available pitchers must be marked Hitting Only')),'an impossible pitcher-to-attendance ratio must state how many pitchers need to be Hitting Only');
+const sevenFourOne=scheduler.buildSchedule(scenario(7,4,1));
+assert.ok(sevenFourOne.feasibilityErrors.some(error=>error.includes('At least 1 of the 4 available pitchers must be marked Hitting Only')),'seven players with four pitchers must say exactly one of four pitchers cannot pitch');
+const sevenThreeOne=scheduler.buildSchedule(scenario(7,3,1));
+assert.deepEqual(sevenThreeOne.feasibilityErrors,[],'seven players with three pitchers and one catcher should work');
+assert.deepEqual(scheduler.validate(sevenThreeOne),[]);
 
 console.log('practice-scheduler tests passed');
