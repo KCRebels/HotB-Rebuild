@@ -931,9 +931,13 @@ async function claimPlayerPortal(pin){
  portalBusy=true;portalMessage='Checking your PIN…';render();
  try{
   const proof=await portalHash(portalToken,pin);
-  await portalDoc().update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  try{
+   await portalDoc().update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  }catch(firstError){
+   await portalDoc().update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  }
   await loadPlayerPortal();
- }catch(error){portalBusy=false;portalMessage='That PIN did not work, or this portal is already linked to another device.'}
+ }catch(error){portalBusy=false;portalMessage='That PIN did not work. Ask your coach to reset the portal if the problem continues.'}
  render();
 }
 async function setupPlayerPortals(){
@@ -972,13 +976,13 @@ async function setupCoachPortal(){
 }
 async function resetCoachPortal(){
  if(!cloudUser||!db.coachPortal?.portalId||!confirm(`Reset ${db.coachPortal.name||'Coach'}’s saved portal device? The link and PIN will stay the same.`))return;
- try{await portalDoc(db.coachPortal.portalId).update({ownerUid:null,pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete()});portalMessage=`${practiceFirstName(db.coachPortal.name)} can connect a new device.`}
+ try{await portalDoc(db.coachPortal.portalId).update({ownerUid:null,authorizedUids:firebase.firestore.FieldValue.delete(),pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete()});portalMessage=`${practiceFirstName(db.coachPortal.name)} can connect a new device.`}
  catch(error){portalMessage='The coach portal could not be reset.'}
  render();
 }
 async function resetPlayerPortal(player){
  if(!cloudUser||!player?.portalId||!confirm(`Reset ${practiceFirstName(player.name)}’s saved portal device? Her link and PIN will stay the same.`))return;
- try{await portalDoc(player.portalId).update({ownerUid:null,pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete()});portalMessage=`${practiceFirstName(player.name)} can connect a new device.`}
+ try{await portalDoc(player.portalId).update({ownerUid:null,authorizedUids:firebase.firestore.FieldValue.delete(),pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete()});portalMessage=`${practiceFirstName(player.name)} can connect a new device.`}
  catch(error){portalMessage='That portal could not be reset.'}
  render();
 }
