@@ -2670,6 +2670,7 @@ function storePracticeAccommodation(index){
  const player=db.roster[Number(index)];if(!player)return;
  const start=$('#practiceStartTime')?.value||practiceSetupState.startTime||'18:00',duration=Number($('#practiceDuration')?.value)||practiceSetupState.durationMinutes||120,end=practiceEndValue(start,duration);
  const arrival=$(`[data-accommodation-arrival="${index}"]`),departure=$(`[data-accommodation-departure="${index}"]`),pitch=$(`[data-accommodation-pitch="${index}"]`),warmup=$(`[data-accommodation-warmup="${index}"]`),catching=$(`[data-accommodation-catch="${index}"]`);
+ if(pitch&&warmup&&!pitch.checked)warmup.checked=false;
  if(arrival)arrival.dataset.custom=arrival.value!==start?'true':'false';if(departure)departure.dataset.custom=departure.value!==end?'true':'false';
  [arrival,departure].forEach(input=>{const display=input?.parentElement?.querySelector('.practice-accommodation-time-display');if(display)display.textContent=practiceTimeLabel(input.value)});
  const accommodation={arrival:arrival?.value!==start?arrival.value:'',departure:departure?.value!==end?departure.value:'',canPitch:pitch?pitch.checked:false,requiresPitchWarmup:warmup?warmup.checked:false,canCatch:catching?catching.checked:false};
