@@ -8,13 +8,13 @@ const plan={blocks:[
  {block:5,start:'6:48p',end:'7:00p',assignments:{Machine:['Claire Jack']}},
  {block:6,start:'7:00p',end:'7:12p',assignments:{'Pitch Live — Brooklyn Gering':['Brooklyn Gering'],'Hit Live — Brooklyn Gering':['Maia Waddell','Claire Jack']}},
  {block:7,start:'7:12p',end:'7:24p',assignments:{'Drill #1':['A','B']}}
-],liveSessions:[{block:5,pitcher:'Brooklyn Gering',catcher:'Coach',hitters:['Maia Waddell','Claire Jack']} ]};
+],liveSessions:[{block:5,pitcher:'Brooklyn Gering',catcher:'9Square',hitters:['Maia Waddell','Claire Jack']} ]};
 const schedule=coach.build(plan,[{name:'High Tee'}]);
 assert.equal(schedule[0].assignment,'Help Lead Warm-Up');
 assert.equal(schedule[1].assignment,'Help With Tee Work');
 assert.equal(schedule[2].assignment,'Catch Pitch Warm-Up — Aniesa');
 assert.equal(schedule[3].assignment,'Throw Front Toss — Lane 1 — Maia, Brynna');
 assert.equal(schedule[4].assignment,'Run Machine — Claire');
-assert.equal(schedule[5].assignment,'Catch Live — Brooklyn — 12 pitches minimum per hitter');
+assert.equal(schedule[5].assignment,'Live Support — Brooklyn (9Square)');
 assert.equal(schedule[6].assignment,'Help With High Tee — A, B');
 console.log('coach-practice tests passed');
