@@ -1,0 +1,11 @@
+const assert=require('assert');
+const fs=require('fs');
+const app=fs.readFileSync('app.js','utf8');
+const rules=fs.readFileSync('firestore.rules','utf8');
+assert(app.includes('authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid)'));
+assert(app.includes('ownerUid:portalAuthUser.uid'));
+assert(app.includes('authorizedUids:firebase.firestore.FieldValue.delete()'));
+assert(rules.includes("resource.data.authorizedUids.hasAny([request.auth.uid])"));
+assert(rules.includes("request.resource.data.authorizedUids.hasAny([request.auth.uid])"));
+assert(rules.includes('request.resource.data.authorizedUids.size() <= 5'));
+console.log('portal-auth tests passed');
