@@ -844,10 +844,11 @@ let practicePlan=null;
 let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{}},practiceCoachOpen=false,practiceCardsOpen=false;
 let practiceSection='hub',practiceFocusPlayer='',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
-let practiceClock={running:false,finished:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0},practiceClockTimer=null,portalClockTimer=null;
+let practiceClock={running:false,finished:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0},practiceClockTimer=null,portalClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null;
+if(!db.coachPortal||typeof db.coachPortal!=='object')db.coachPortal={name:'',phone:'',portalId:'',portalPin:'',portalPinHash:''};
 
 const recoveredPracticeSession=!portalToken&&window.HotBPracticeSession?.restore(db.activePracticeSession);
 if(recoveredPracticeSession){
@@ -895,6 +896,8 @@ function playerPortalTextUrl(player){
  const separator=/iPad|iPhone|iPod/.test(navigator.userAgent)?'&':'?';
  return`sms:${phone}${separator}body=${encodeURIComponent(message)}`;
 }
+function coachPortalUrl(){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(db.coachPortal?.portalId||'')}`}
+function coachPortalShareText(){return `${db.coachPortal?.name||'Coach'}’s private HotB Coach Portal\n${coachPortalUrl()}\nPIN: ${db.coachPortal?.portalPin||''}`}
 async function loadPlayerPortal(){
  if(!portalToken||!cloudAuth||!cloudStore)return;
  portalBusy=true;portalMessage='';
@@ -949,6 +952,29 @@ async function setupPlayerPortals(){
   await batch.commit();save();portalMessage='Private links and PINs are ready.';
  }catch(error){originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});portalMessage='Player portals could not be created. Confirm Anonymous Authentication and the Player Portal security rules are active.'}
  cloudBusy=false;render();
+}
+async function setupCoachPortal(){
+ if(!cloudUser||!cloudStore||cloudBusy)return;
+ const name=$('#coachPortalName')?.value.trim()||db.coachPortal?.name||'';
+ const phone=$('#coachPortalPhone')?.value.trim()||db.coachPortal?.phone||'';
+ if(!name){portalMessage='Enter the coach’s name before creating the coach portal.';render();return}
+ cloudBusy=true;portalMessage='Creating the private coach portal…';render();
+ try{
+  if(!db.coachPortal.portalId)db.coachPortal.portalId=newPortalId();
+  if(!db.coachPortal.portalPin)db.coachPortal.portalPin=newPortalPin();
+  db.coachPortal.name=name;db.coachPortal.phone=phone;db.coachPortal.portalPinHash=await portalHash(db.coachPortal.portalId,db.coachPortal.portalPin);
+  const ref=portalDoc(db.coachPortal.portalId),existing=await ref.get();
+  const activePractice=db.activePortalPractice?.id===practicePlan?.portalDraftId?coachPracticePortalPayload():null;
+  await ref.set({portalType:'coach',coachName:name,firstName:practiceFirstName(name),pinHash:db.coachPortal.portalPinHash,...(!existing.exists?{ownerUid:null}:{}),activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  save();portalMessage='The private coach link and PIN are ready.';
+ }catch(error){portalMessage='The coach portal could not be created. Confirm the portal security setup and internet connection.'}
+ cloudBusy=false;render();
+}
+async function resetCoachPortal(){
+ if(!cloudUser||!db.coachPortal?.portalId||!confirm(`Reset ${db.coachPortal.name||'Coach'}’s saved portal device? The link and PIN will stay the same.`))return;
+ try{await portalDoc(db.coachPortal.portalId).update({ownerUid:null,pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete()});portalMessage=`${practiceFirstName(db.coachPortal.name)} can connect a new device.`}
+ catch(error){portalMessage='The coach portal could not be reset.'}
+ render();
 }
 async function resetPlayerPortal(player){
  if(!cloudUser||!player?.portalId||!confirm(`Reset ${practiceFirstName(player.name)}’s saved portal device? Her link and PIN will stay the same.`))return;
@@ -1418,7 +1444,7 @@ function render(){
  route==='new'?newGameView():route==='roster'?rosterView():
  route==='live'?liveView():route==='eval'?evalView():route==='reports'?reportsPage():route==='practice'?practicePage():route==='portal'?playerPortalPage():homeView()}</div>${modal?modalView():''}`;
  bind();
- if(route==='portal'&&portalView==='practice'&&portalData?.activePractice){updatePortalPracticeClock();portalClockTimer=setInterval(updatePortalPracticeClock,500)}
+ if(route==='portal'&&portalData?.activePractice&&(portalView==='practice'||portalData.portalType==='coach')){updatePortalPracticeClock();portalClockTimer=setInterval(updatePortalPracticeClock,500)}
  if(route==='eval')requestAnimationFrame(fitEvalMetricValues);
 }
 function fitEvalMetricValues(){
@@ -1475,11 +1501,16 @@ function recommendPortalDrills(query){
 }
 function portalCoachView(){
  const players=db.roster.filter(player=>!player.isGuest),ready=players.length&&players.every(player=>player.portalId&&player.portalPin);
+ const coachReady=!!(db.coachPortal?.portalId&&db.coachPortal?.portalPin);
  if(!cloudUser)return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>Private Player Access</h2><p>Sign in through Cloud Backup on this device before creating or managing player links.</p></section><button class="btn black block" data-go="home">Return Home</button></main>`;
- return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>${ready?'Player Portals Are Ready':'Create Private Player Portals'}</h2><p>Each player receives one private link and a six-digit PIN. Her first successful login connects that portal to her device.</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}<button class="btn black block portal-setup-button" id="setupPlayerPortals" ${cloudBusy?'disabled':''}>${ready?'Refresh Portal Records':'Create Player Portals'}</button>${ready?`<section class="portal-player-list">${players.map(player=>`<article><div><b>${esc(practiceFirstName(player.name))}</b><span>PIN ${esc(player.portalPin)}</span></div><div class="portal-player-actions"><button class="btn" data-share-portal="${esc(player.name)}">Share</button><button class="btn" data-text-portal="${esc(player.name)}" ${player.phone?'':'disabled'}>${player.phone?'Text':'No Cell'}</button><button class="btn" data-reset-portal="${esc(player.name)}">Reset</button></div></article>`).join('')}</section><p class="portal-private-note">Text opens an individual message with that player’s private link and PIN. You review it and tap Send. Reset connects the portal to a replacement phone without changing her link or PIN.</p>`:''}</main>`;
+ return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>${ready?'Player Portals Are Ready':'Create Private Player Portals'}</h2><p>Each player receives one private link and a six-digit PIN. Her first successful login connects that portal to her device.</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}<section class="portal-coach-setup"><span>ONE COACH</span><h2>${coachReady?'Coach Portal Is Ready':'Create Coach Portal'}</h2><p>This coach receives one private, block-by-block duty plan for each active practice.</p><label class="label" for="coachPortalName">Coach Name</label><input class="input" id="coachPortalName" value="${esc(db.coachPortal?.name||'')}" placeholder="Coach name"><label class="label" for="coachPortalPhone">Cell Number (optional)</label><input class="input" id="coachPortalPhone" inputmode="tel" value="${esc(db.coachPortal?.phone||'')}" placeholder="Cell number"><button class="btn black block" id="setupCoachPortal" ${cloudBusy?'disabled':''}>${coachReady?'Refresh Coach Portal':'Create Coach Portal'}</button>${coachReady?`<div class="portal-coach-ready"><b>${esc(db.coachPortal.name)}</b><span>PIN ${esc(db.coachPortal.portalPin)}</span><div class="portal-player-actions"><button class="btn" id="shareCoachPortal">Share</button><button class="btn" id="textCoachPortal" ${db.coachPortal.phone?'':'disabled'}>${db.coachPortal.phone?'Text':'No Cell'}</button><button class="btn" id="resetCoachPortal">Reset</button></div></div>`:''}</section><button class="btn black block portal-setup-button" id="setupPlayerPortals" ${cloudBusy?'disabled':''}>${ready?'Refresh Player Records':'Create Player Portals'}</button>${ready?`<section class="portal-player-list">${players.map(player=>`<article><div><b>${esc(practiceFirstName(player.name))}</b><span>PIN ${esc(player.portalPin)}</span></div><div class="portal-player-actions"><button class="btn" data-share-portal="${esc(player.name)}">Share</button><button class="btn" data-text-portal="${esc(player.name)}" ${player.phone?'':'disabled'}>${player.phone?'Text':'No Cell'}</button><button class="btn" data-reset-portal="${esc(player.name)}">Reset</button></div></article>`).join('')}</section><p class="portal-private-note">Text opens an individual message with that player’s private link and PIN. You review it and tap Send. Reset connects the portal to a replacement phone without changing her link or PIN.</p>`:''}</main>`;
 }
 function portalLoginView(){
- return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>PRIVATE ACCESS</span><h2>${portalBusy?'Opening Your Portal':'Enter Your PIN'}</h2><p>${portalBusy?'HotB is checking this private player link.':'Use the six-digit PIN your coach provided. This portal will then connect to this device.'}</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}${portalBusy?'':`<label class="label" for="portalPin">Player PIN</label><input class="input portal-pin" id="portalPin" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000"><button class="btn black block" id="openPlayerPortal">Open My Portal</button>`}</main>`;
+ return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>PRIVATE ACCESS</span><h2>${portalBusy?'Opening Your Portal':'Enter Your PIN'}</h2><p>${portalBusy?'HotB is checking this private link.':'Use the six-digit PIN provided by the head coach. This portal will then connect to this device.'}</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}${portalBusy?'':`<label class="label" for="portalPin">Portal PIN</label><input class="input portal-pin" id="portalPin" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000"><button class="btn black block" id="openPlayerPortal">Open My Portal</button>`}</main>`;
+}
+function coachPortalPracticeView(){
+ const practice=portalData?.activePractice,name=portalData?.firstName||practiceFirstName(portalData?.coachName)||'Coach';
+ return `${portalHeader('Coach Practice')}<main class="portal-page"><section class="portal-welcome ${practice?'active':''}"><span>${practice?'ACTIVE PRACTICE':'COACH PORTAL'}</span><h2>Hi, ${esc(name)}</h2><p>${practice?'Your current coaching assignments are below.':'No practice is active right now.'}</p></section>${practice?`<section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card portal-coach-card"><header><h2>${esc(name)} <small>(Coach)</small></h2></header><ol>${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol></article>`:''}</main>`;
 }
 function portalPracticeView(){
  const practice=portalData?.activePractice;
@@ -1506,6 +1537,7 @@ function portalDashboardView(){
 function playerPortalPage(){
  if(!portalToken)return portalCoachView();
  if(!portalData)return portalLoginView();
+ if(portalData.portalType==='coach')return coachPortalPracticeView();
  if(portalView==='practice')return portalPracticeView();
  if(portalView==='focus')return portalFocusView();
  if(portalView==='library')return portalLibraryView();
@@ -1581,7 +1613,7 @@ function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.
  const blockMs=(Number(practice.blockMinutes)||12)*60000,totalMs=blockMs*10,elapsed=Math.max(0,now-startedAt);
  if(elapsed>=totalMs)return {time:currentTime,block:'DONE!',left:'0:00'};
  const block=Math.floor(elapsed/blockMs)+1,remaining=Math.max(0,blockMs-(elapsed%blockMs)),seconds=Math.ceil(remaining/1000);
- return {time:currentTime,block:`${block} of 10`,left:`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`};
+ return {time:currentTime,block:block<10&&remaining<=60000?'TRANSITION':`${block} of 10`,left:`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`};
 }
 function updatePortalPracticeClock(){
  const values=portalPracticeClockValues(),time=$('#portalCurrentTime'),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
@@ -1658,6 +1690,10 @@ function playerPracticePortalPayload(name){
  const player=db.roster.find(item=>item.name===name);
  return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:practiceClockPortalPayload(),schedule:schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:practiceEntryText(entry,practicePlan,index)})),drills:practiceChosenDrills.map(drill=>drill.name)};
 }
+function coachPracticePortalPayload(){
+ const schedule=window.HotBCoachPractice?.build(practicePlan,practiceChosenDrills)||[];
+ return{id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',coachName:db.coachPortal?.name||'Coach',startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:practiceClockPortalPayload(),schedule};
+}
 function archiveCompletedPractice(completedAt=new Date()){
  if(!practicePlan||!window.HotBPracticeHistory)return;
  const record={id:practicePlan.portalDraftId,practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees:practicePlan.players.map(player=>player.name),drills:practiceChosenDrills.map(drill=>drill.name)};
@@ -1667,6 +1703,7 @@ async function clearActivePlayerPlans(){
  if(!cloudUser||!cloudStore)throw new Error('cloud-unavailable');
  const batch=cloudStore.batch();
  db.roster.filter(player=>player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+ if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
  await batch.commit();db.activePortalPractice=null;save();
 }
 async function syncPlayerPracticeClock(){
@@ -1674,6 +1711,7 @@ async function syncPlayerPracticeClock(){
  try{
   const attending=new Set(db.activePortalPractice.players||[]),clock=practiceClockPortalPayload(),batch=cloudStore.batch();
   db.roster.filter(player=>attending.has(player.name)&&player.portalId).forEach(player=>batch.update(portalDoc(player.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
+  if(db.coachPortal?.portalId)batch.update(portalDoc(db.coachPortal.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
   await batch.commit();
  }catch(error){console.warn('Player portal clock sync failed',error)}
 }
@@ -1686,7 +1724,8 @@ async function activatePlayerPlans(){
  try{
   const batch=cloudStore.batch();
   db.roster.filter(player=>player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:attending.has(player.name)?playerPracticePortalPayload(player.name):null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
-  await batch.commit();db.activePortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:new Date().toISOString(),players:[...attending]};save();render();alert(`Player plans activated for ${attending.size} ${attending.size===1?'player':'players'}.`);
+  if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:coachPracticePortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  await batch.commit();db.activePortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:new Date().toISOString(),players:[...attending]};save();render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}.`);
  }catch(error){if(button){button.disabled=false;button.textContent='Activate Player Plans'}alert('The player plans could not be activated. Confirm the portal security setup and internet connection.')}
 }
 async function deactivatePlayerPlans(){
@@ -1711,9 +1750,9 @@ function practicePage(){
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
  <div class="practice-results">
   <section class="practice-summary no-print"><div><b>${practicePlan.attendance}</b><span>Player</span></div><div><b>10</b><span>${practicePlan.blockMinutes}M Blocks</span></div><div><b>${practicePlan.drillStations}</b><span>Drills</span></div></section>
-  <section class="practice-live-control no-print"><div class="practice-clock-actions"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart':'Start'}</button><button class="btn" id="editPracticePlayers">Edit</button><button class="btn black" id="endPracticeClock" ${practiceClock.running?'':'disabled'}>End</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Time</span><b id="practiceCurrentTime">${practiceClock.finished?practiceClockText():'--:--'}</b></div><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':'1 of 10'}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${practicePlan.blockMinutes}:00`}</b></div></div></section>
+  <section class="practice-live-control no-print"><div class="practice-clock-actions"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart':'Start'}</button><button class="btn" id="editPracticePlayers">Edit</button><button class="btn black" id="endPracticeClock" ${practiceClock.running?'':'disabled'}>DONE!</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Time</span><b id="practiceCurrentTime">${practiceClock.finished?practiceClockText():'--:--'}</b></div><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':'1 of 10'}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${practicePlan.blockMinutes}:00`}</b></div></div></section>
   <section class="practice-selected-drills no-print"><div><span>DRILL STATIONS</span><h2>${chosenComplete?'Practice Drills Selected':`Choose ${practicePlan.drillStations} Practice Drills`}</h2>${chosenComplete?`<ol>${practiceChosenDrills.map((drill,index)=>`<li><b>${index+1}</b><span>${esc(drill.name)}</span></li>`).join('')}</ol>`:'<p>Select the actual drills before printing the coach schedule or player cards.</p>'}</div><button class="btn ${chosenComplete?'':'red'}" id="choosePracticeDrills">${chosenComplete?'Change Drills':'Choose Drills'}</button></section>
-  <section class="practice-portal-publish no-print"><div><span>PLAYER PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Replace Active Practice':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players can view their individual plans now.':portalsActive?'A previous practice is active. Replace it when this schedule is ready.':'Publish each attending player’s individual rotation after you finish reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${chosenComplete?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Replace Plans':'Activate Player Plans'}</button></section>
+  <section class="practice-portal-publish no-print"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Replace Active Practice':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':portalsActive?'A previous practice is active. Replace it when this schedule is ready.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${chosenComplete?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Replace Plans':'Activate Player Plans'}</button></section>
   ${resourceWarnings.map(warning=>`<div class="practice-resource-warning no-print"><b>Resource Check</b><p>${esc(warning)}</p></div>`).join('')}
   <div class="practice-actions practice-actions-three no-print"><button class="btn ${practiceCoachOpen?'active':''}" id="togglePracticeCoach" aria-pressed="${practiceCoachOpen}">Coach</button><button class="btn ${practiceCardsOpen?'active':''}" id="togglePracticeCards" aria-pressed="${practiceCardsOpen}">Player</button><button class="btn black" id="printPracticeCards" ${chosenComplete?'':'disabled'}>Print</button></div>
   ${catcherText?`<p class="practice-catcher-load no-print"><b>Live Catching Blocks:</b> ${esc(catcherText)}</p>`:''}
@@ -2537,7 +2576,7 @@ function bind(){
 
 function stopPracticeClock(){
  if(practiceClockTimer)clearInterval(practiceClockTimer);
- practiceClockTimer=null;practiceClock={running:false,finished:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0};
+ practiceClockTimer=null;practiceClock={running:false,finished:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0};
  if('speechSynthesis'in window)window.speechSynthesis.cancel();
 }
 function persistPracticeSession(){
@@ -2568,15 +2607,17 @@ function updatePracticeClock(){
   finishPracticeClock(true);return;
  }
  const block=Math.floor(elapsed/blockMs)+1,remaining=Math.max(0,blockMs-(elapsed%blockMs)),seconds=Math.ceil(remaining/1000);
- if(block>practiceClock.lastBlock){practiceClock.lastBlock=block;speakPracticeClock('Ladies, Time to Rotate')}
+ if(block>practiceClock.lastBlock){practiceClock.lastBlock=block;speakPracticeClock(`Begin Block ${block}`)}
  const warningBlock=window.HotBPracticeSession?.pendingTwoMinuteWarning(practicePlan,practiceClock,now);
  if(warningBlock){practiceClock.lastTwoMinuteBlock=warningBlock;speakPracticeClock('Two minutes left');persistPracticeSession()}
- if(currentBlock)currentBlock.textContent=`${block} of 10`;
+ const transitionBlock=window.HotBPracticeSession?.pendingTransitionWarning(practicePlan,practiceClock,now);
+ if(transitionBlock){practiceClock.lastTransitionBlock=transitionBlock;speakPracticeClock('Ladies, Time to Rotate. One minute until the next block');persistPracticeSession()}
+ if(currentBlock)currentBlock.textContent=block<10&&remaining<=60000?'TRANSITION':`${block} of 10`;
  if(timeLeft)timeLeft.textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
 }
 function beginPracticeClock(){
  if(practiceClockTimer)clearInterval(practiceClockTimer);
- practiceClock={running:true,finished:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0};
+ practiceClock={running:true,finished:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0};
  persistPracticeSession();speakPracticeClock('.',true);render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);syncPlayerPracticeClock();
 }
 let practiceCompletionBusy=false;
@@ -2595,6 +2636,10 @@ async function finishPracticeClock(automatic=false){
 }
 function bindPlayerPortal(){
  $('#setupPlayerPortals')?.addEventListener('click',setupPlayerPortals);
+ $('#setupCoachPortal')?.addEventListener('click',setupCoachPortal);
+ $('#resetCoachPortal')?.addEventListener('click',resetCoachPortal);
+ $('#shareCoachPortal')?.addEventListener('click',async()=>{const share={title:`${db.coachPortal.name}’s HotB Coach Portal`,text:coachPortalShareText()};try{if(navigator.share)await navigator.share(share);else{await navigator.clipboard.writeText(share.text);portalMessage='Coach portal link and PIN copied.';render()}}catch(error){if(error?.name!=='AbortError'){portalMessage='The coach portal link could not be shared from this device.';render()}}});
+ $('#textCoachPortal')?.addEventListener('click',()=>{const phone=String(db.coachPortal?.phone||'').replace(/[^\d+]/g,'');if(!phone)return;const separator=/iPad|iPhone|iPod/.test(navigator.userAgent)?'&':'?';window.location.href=`sms:${phone}${separator}body=${encodeURIComponent(coachPortalShareText())}`});
  $$('[data-share-portal]').forEach(button=>button.addEventListener('click',async()=>{
   const player=db.roster.find(item=>item.name===button.dataset.sharePortal);if(!player?.portalId)return;
   const share={title:`${practiceFirstName(player.name)}’s HotB Player Portal`,text:`${practiceFirstName(player.name)}’s private HotB Player Portal\nPIN: ${player.portalPin}\n${playerPortalUrl(player)}`};
