@@ -2745,6 +2745,12 @@ function bindPractice(){
    const message=`HotB cannot build this practice without breaking a scheduling rule:\n\n${practicePlan.feasibilityErrors.join('\n\n')}\n\nAdjust attendance or player availability, then build again.`;
    practicePlan=null;alert(message);render();return;
   }
+  if(practicePlan.fallbackWarnings?.length){
+   const repeatedHitters=practicePlan.liveHitterRepeats?.length||0,markHittingOnly=Math.ceil(repeatedHitters/2);
+   const alternative=repeatedHitters?`\n\nIf you do not want repeated live hitting, press Cancel and mark at least ${markHittingOnly} pitcher${markHittingOnly===1?'':'s'} Hitting Only.`:'\n\nPress Cancel to return and change the available pitchers.';
+   const message=`HotB can build this practice using the following fallback:\n\n${practicePlan.fallbackWarnings.join('\n\n')}${alternative}\n\nPress OK to use this schedule.`;
+   if(!confirm(message)){practicePlan=null;render();return}
+  }
   practicePlan.portalDraftId=crypto.randomUUID();
   const errors=window.HotBPracticeScheduler.validate(practicePlan);
   if(errors.length)practicePlan.warnings.push(...errors);
