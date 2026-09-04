@@ -51,7 +51,7 @@ function scenario(count,pitchers,catchers){
 const nineFourOne=scheduler.buildSchedule(scenario(9,4,1));
 assert.deepEqual(nineFourOne.feasibilityErrors,[],'nine players, four pitchers and one catcher should work using 9Square for one live block');
 assert.deepEqual(nineFourOne.liveSessions.map(session=>session.hitters.length).sort(),[2,2,2,3]);
-assert.equal(nineFourOne.liveSessions.filter(session=>session.catcher==='9Square').length,1);
+assert.equal(nineFourOne.liveSessions.filter(session=>session.catcher==='9Square').length,2,'one catcher may catch only two of four live blocks');
 assert.equal(nineFourOne.liveSessions.filter(session=>session.catcher==='Coach').length,0,'Coach must never be assigned as a live catcher');
 assert.deepEqual(scheduler.validate(nineFourOne),[]);
 const nineTwoOne=scheduler.buildSchedule(scenario(9,2,1));
@@ -64,5 +64,17 @@ assert.ok(sevenFourOne.feasibilityErrors.some(error=>error.includes('At least 1 
 const sevenThreeOne=scheduler.buildSchedule(scenario(7,3,1));
 assert.deepEqual(sevenThreeOne.feasibilityErrors,[],'seven players with three pitchers and one catcher should work');
 assert.deepEqual(scheduler.validate(sevenThreeOne),[]);
+const tenFiveTwo=scheduler.buildSchedule(scenario(10,5,2));
+assert.deepEqual(tenFiveTwo.feasibilityErrors,[],'ten players, five pitchers and two catchers should work');
+assert.equal(tenFiveTwo.liveSessions.filter(session=>session.catcher==='9Square').length,1,'9Square must catch the fifth live block');
+assert.ok(tenFiveTwo.catcherLoads.every(catcher=>catcher.liveBlocks===2),'each catcher must catch exactly two live blocks');
+for(const player of tenFiveTwo.players.filter(player=>player.isPitcher))assert.equal(tenFiveTwo.schedule[player.name].filter(entry=>entry.activity.startsWith('Drill #')).length,3,`${player.name} should receive three numbered drills`);
+for(const player of tenFiveTwo.players.filter(player=>player.isCatcher)){
+ const entries=tenFiveTwo.schedule[player.name];
+ assert.equal(entries.filter(entry=>entry.activity==='Catch Warm-Up').length,1,`${player.name} must catch no more than one warm-up`);
+ assert.equal(entries.filter(entry=>entry.activity.startsWith('Drill #')).length,2,`${player.name} should receive two numbered drills`);
+}
+for(let block=0;block<10;block++)assert.ok(Object.values(tenFiveTwo.schedule).filter(entries=>entries[block].activity==='Pitch Warm-Up'&&entries[block].partner==='Coach').length<=1,'the coach may catch only one pitching warm-up per block');
+assert.deepEqual(scheduler.validate(tenFiveTwo),[]);
 
 console.log('practice-scheduler tests passed');
