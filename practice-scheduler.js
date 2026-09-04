@@ -97,13 +97,21 @@
   const maximumPitchers=Math.floor(attendees.length/2),pitchersToRemove=Math.max(0,pitchers.length-maximumPitchers);
   if(pitchersToRemove)feasibilityErrors.push(`${pitchers.length} available pitchers would require at least ${pitchers.length*2} unique live-hitting assignments, but only ${attendees.length} players are attending. At least ${pitchersToRemove} of the ${pitchers.length} available pitchers must be marked Hitting Only. Then build the practice again.`);
   else if(sessionCount>maximumPitchers)feasibilityErrors.push(`${sessionCount} live-pitching blocks require at least ${sessionCount*2} unique live hitters, but only ${attendees.length} players are attending. Reduce live pitching by at least ${sessionCount-maximumPitchers} block${sessionCount-maximumPitchers===1?'':'s'} and build again.`);
-  const firstChunk=Math.ceil(sessionCount/2);
+  const catcherTargets=[];
+  if(sessionCount===1)catcherTargets.push(null);
+  else if(orderedCatchers.length>1){
+   const playerCaughtBlocks=Math.min(sessionCount,orderedCatchers.length*2),firstCount=Math.ceil(playerCaughtBlocks/2),secondCount=Math.floor(playerCaughtBlocks/2),nineSquareCount=sessionCount-playerCaughtBlocks;
+   catcherTargets.push(...Array(firstCount).fill(orderedCatchers[0]),...Array(nineSquareCount).fill(null),...Array(secondCount).fill(orderedCatchers[1]));
+  }else if(orderedCatchers.length===1){
+   const playerCaughtBlocks=Math.min(2,sessionCount-1);
+   catcherTargets.push(...Array(sessionCount-playerCaughtBlocks).fill(null),...Array(playerCaughtBlocks).fill(orderedCatchers[0]));
+  }else catcherTargets.push(...Array(sessionCount).fill(null));
+  const liveCatcherLoads=new Map(orderedCatchers.map(catcher=>[catcher.name,0]));
   const sessionPlans=plannedSessions.map((item,index)=>{
    const {pitcher,liveBlock}=item;
-   const singleCatcherBlocks=Math.min(3,Math.max(0,sessionCount-1));
-   const preferred=catchers.length>1&&sessionCount>1?(index<firstChunk?orderedCatchers[0]:orderedCatchers[1]):catchers.length===1&&index>=sessionCount-singleCatcherBlocks?catchers[0]:null;
-   const catcherChoices=catchers.length===1?[preferred]:[preferred,...orderedCatchers];
-   const catcher=catcherChoices.find((candidate,candidateIndex,list)=>candidate&&list.indexOf(candidate)===candidateIndex&&candidate.name!==pitcher?.name&&isOpen(candidate,liveBlock))||null;
+   const preferred=catcherTargets[index],catcherChoices=preferred?[preferred,...orderedCatchers]:[];
+   const catcher=catcherChoices.find((candidate,candidateIndex,list)=>candidate&&list.indexOf(candidate)===candidateIndex&&(liveCatcherLoads.get(candidate.name)||0)<2&&candidate.name!==pitcher?.name&&isOpen(candidate,liveBlock))||null;
+   if(catcher)liveCatcherLoads.set(catcher.name,(liveCatcherLoads.get(catcher.name)||0)+1);
    return {pitcher,index,liveBlock,catcher};
   });
   sessionPlans.forEach(({pitcher,liveBlock,catcher})=>{
@@ -112,19 +120,19 @@
    if(catcher)schedule[catcher.name][liveBlock]={activity:'Catch Live',partner:pitcherName};
    liveSessions.push({block:liveBlock,pitcher:pitcherName,catcher:catcher?.name||'9Square',hitters:[]});
   });
-  const warmedPitchers=new Set();
+  const warmedPitchers=new Set(),warmupCatcherLoads=new Map(orderedCatchers.map(catcher=>[catcher.name,0])),coachWarmupBlocks=new Set();
   sessionPlans.forEach(({pitcher,liveBlock,catcher})=>{
    if(!pitcher||!pitcher.requiresPitchWarmup||warmedPitchers.has(pitcher.name))return;
    warmedPitchers.add(pitcher.name);
-   const warmBlock=[liveBlock-1,liveBlock-2].find(block=>block>=2&&isOpen(pitcher,block));
-   if(warmBlock===undefined){warnings.push(`${pitcher.name} could not be assigned a pitching warm-up.`);return}
-   const warmCatcher=[catcher,...orderedCatchers].find((candidate,candidateIndex,list)=>{
-    if(!candidate||list.indexOf(candidate)!==candidateIndex||candidate.name===pitcher.name||!isOpen(candidate,warmBlock))return false;
-    if(catchers.length===1&&sessionCount>1)return false;
-    const remainingOpen=schedule[candidate.name].slice(2,8).filter(entry=>entry===null).length;
-    return remainingOpen>2;
-   })||null;
-   const warmPartner=warmCatcher?.name||'Coach';
+   let warmBlock,warmCatcher=null,warmPartner='';
+   for(const candidateBlock of [liveBlock-1,liveBlock-2]){
+    if(candidateBlock<2||!isOpen(pitcher,candidateBlock))continue;
+    const playerCatcher=[catcher,...orderedCatchers].find((candidate,candidateIndex,list)=>candidate&&list.indexOf(candidate)===candidateIndex&&(warmupCatcherLoads.get(candidate.name)||0)<1&&candidate.name!==pitcher.name&&isOpen(candidate,candidateBlock));
+    if(playerCatcher){warmBlock=candidateBlock;warmCatcher=playerCatcher;warmPartner=playerCatcher.name;break}
+    if(!coachWarmupBlocks.has(candidateBlock)){warmBlock=candidateBlock;warmPartner='Coach';coachWarmupBlocks.add(candidateBlock);break}
+   }
+   if(warmBlock===undefined){warnings.push(`${pitcher.name} could not be assigned a pitching warm-up with one available warm-up coach.`);return}
+   if(warmCatcher)warmupCatcherLoads.set(warmCatcher.name,(warmupCatcherLoads.get(warmCatcher.name)||0)+1);
    schedule[pitcher.name][warmBlock]={activity:'Pitch Warm-Up',partner:warmPartner};
    if(warmCatcher)schedule[warmCatcher.name][warmBlock]={activity:'Catch Warm-Up',partner:pitcher.name};
   });
@@ -222,6 +230,8 @@
   });
   (plan?.players||[]).forEach(player=>{
    const entries=plan.schedule[player.name]||[];
+   if(entries.filter(entry=>entry?.activity==='Catch Live').length>2)errors.push(`${player.name} catches more than two live blocks.`);
+   if(entries.filter(entry=>entry?.activity==='Catch Warm-Up').length>1)errors.push(`${player.name} catches more than one pitching warm-up.`);
    if(player.requiresPitchWarmup&&plan.liveSessions?.some(session=>session.pitcher===player.name)){
     const warm=entries.findIndex(entry=>entry?.activity==='Pitch Warm-Up'),live=entries.findIndex(entry=>entry?.activity==='Pitch Live');
     if(warm<0||live<0||warm>=live||live-warm>2)errors.push(`${player.name}'s pitching warm-up is not within two blocks before live.`);
@@ -229,6 +239,7 @@
   });
   for(let block=0;block<BLOCK_COUNT;block++){
    const entries=Object.values(plan.schedule||{}).map(items=>items[block]);
+   if(entries.filter(entry=>entry?.activity==='Pitch Warm-Up'&&entry?.partner==='Coach').length>1)errors.push(`Block ${block+1} assigns the warm-up coach to more than one pitcher.`);
    const machineCount=entries.filter(entry=>entry?.activity==='Machine').length;
    if(machineCount!==0&&(machineCount<2||machineCount>3))errors.push(`Block ${block+1} Machine must have 2–3 players.`);
    const frontCounts={};entries.filter(entry=>entry?.activity.startsWith('Front Toss Lane')).forEach(entry=>frontCounts[entry.activity]=(frontCounts[entry.activity]||0)+1);
@@ -240,6 +251,7 @@
   }
   (plan?.liveSessions||[]).forEach(session=>{
    if(session.hitters.length<2||session.hitters.length>3)errors.push(`Block ${session.block+1} must have 2–3 live hitters.`);
+   if(session.catcher==='Coach')errors.push(`Block ${session.block+1} assigns Coach as the live catcher.`);
   });
   const pitcherBlockCounts={};
   (plan?.liveSessions||[]).filter(session=>session.pitcher&&session.pitcher!=='Coach').forEach(session=>pitcherBlockCounts[session.pitcher]=(pitcherBlockCounts[session.pitcher]||0)+1);
