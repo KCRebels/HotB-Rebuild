@@ -1754,7 +1754,7 @@ function practicePage(){
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
  <div class="practice-results">
   <section class="practice-summary no-print"><div><b>${practicePlan.attendance}</b><span>Player</span></div><div><b>10</b><span>${practicePlan.blockMinutes}M Blocks</span></div><div><b>${practicePlan.drillStations}</b><span>Drills</span></div></section>
-  <section class="practice-live-control no-print"><div class="practice-clock-actions"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart':'Start'}</button><button class="btn" id="editPracticePlayers">Edit</button><button class="btn black" id="endPracticeClock" ${practiceClock.running?'':'disabled'}>DONE!</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Time</span><b id="practiceCurrentTime">${practiceClock.finished?practiceClockText():'--:--'}</b></div><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':'1 of 10'}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${practicePlan.blockMinutes}:00`}</b></div></div></section>
+  <section class="practice-live-control no-print"><div class="practice-clock-actions"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart':'Start'}</button><button class="btn" id="editPracticePlayers">Edit</button><button class="btn black" id="endPracticeClock">DONE!</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Time</span><b id="practiceCurrentTime">${practiceClock.finished?practiceClockText():'--:--'}</b></div><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':'1 of 10'}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${practicePlan.blockMinutes}:00`}</b></div></div></section>
   <section class="practice-selected-drills no-print"><div><span>DRILL STATIONS</span><h2>${chosenComplete?'Practice Drills Selected':`Choose ${practicePlan.drillStations} Practice Drills`}</h2>${chosenComplete?`<ol>${practiceChosenDrills.map((drill,index)=>`<li><b>${index+1}</b><span>${esc(drill.name)}</span></li>`).join('')}</ol>`:'<p>Select the actual drills before printing the coach schedule or player cards.</p>'}</div><button class="btn ${chosenComplete?'':'red'}" id="choosePracticeDrills">${chosenComplete?'Change Drills':'Choose Drills'}</button></section>
   <section class="practice-portal-publish no-print"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Replace Active Practice':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':portalsActive?'A previous practice is active. Replace it when this schedule is ready.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${chosenComplete?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Replace Plans':'Activate Player Plans'}</button></section>
   ${resourceWarnings.map(warning=>`<div class="practice-resource-warning no-print"><b>Resource Check</b><p>${esc(warning)}</p></div>`).join('')}
@@ -2637,6 +2637,26 @@ async function finishPracticeClock(automatic=false){
   catch(error){alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap Deactivate.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in, then tap Deactivate.')}
  }
  practiceCompletionBusy=false;
+ if(!automatic)closePracticeWorkspace();
+}
+function closePracticeWorkspace(){
+ stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSection='hub';clearPracticeSession();render();window.scrollTo(0,0);
+}
+async function endPracticeFromScreen(){
+ if(practiceCompletionBusy)return;
+ if(practiceClock.finished){closePracticeWorkspace();return}
+ if(practiceClock.running){
+  if(!confirm('End this practice now? It will be saved to Practice History and removed from the player and coach portals.'))return;
+  await finishPracticeClock(false);return;
+ }
+ if(!confirm('Discard this practice plan before it starts? It will not be added to Practice History.'))return;
+ practiceCompletionBusy=true;
+ const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
+ if(shouldClearPortals){
+  try{await clearActivePlayerPlans()}
+  catch(error){alert(cloudUser&&cloudStore?'The plan was discarded, but the player plans could not be removed. Check your connection, then use Deactivate.':'The plan was discarded, but the player plans could not be removed because Cloud Backup is not signed in. Sign in, then use Deactivate.')}
+ }
+ practiceCompletionBusy=false;closePracticeWorkspace();
 }
 function bindPlayerPortal(){
  $('#setupPlayerPortals')?.addEventListener('click',setupPlayerPortals);
@@ -2734,7 +2754,7 @@ function bindPractice(){
  $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;if(practiceCoachOpen)practiceCardsOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#togglePracticeCards')?.addEventListener('click',()=>{practiceCardsOpen=!practiceCardsOpen;if(practiceCardsOpen)practiceCoachOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#startPracticeClock')?.addEventListener('click',beginPracticeClock);
- $('#endPracticeClock')?.addEventListener('click',()=>finishPracticeClock(false));
+ $('#endPracticeClock')?.addEventListener('click',endPracticeFromScreen);
  $('#activatePlayerPlans')?.addEventListener('click',activatePlayerPlans);
  $('#deactivatePlayerPlans')?.addEventListener('click',deactivatePlayerPlans);
  $('#printPracticeCards')?.addEventListener('click',()=>window.print());
