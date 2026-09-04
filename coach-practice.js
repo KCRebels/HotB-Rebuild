@@ -16,8 +16,8 @@
    else{
     const front=entries.find(([label])=>/^Front Toss Lane 1$/.test(label));
     const machine=entries.find(([label])=>label==='Machine');
-    if(front)assignment=`Throw Front Toss — Lane 1 — ${(front[1]||[]).map(first).join(', ')}`;
-    else if(machine)assignment=`Run Machine — ${(machine[1]||[]).map(first).join(', ')}`;
+    if(front)assignment=`Throw Front Toss — Lane 1${plan.frontTossFocus&&plan.frontTossFocus!=='Standard'?` — ${plan.frontTossFocus}`:''} — ${(front[1]||[]).map(first).join(', ')}`;
+    else if(machine)assignment=`Run Machine${plan.machineFocus&&plan.machineFocus!=='Standard'?` — ${plan.machineFocus}`:''} — ${(machine[1]||[]).map(first).join(', ')}`;
     else if(index===0)assignment='Help Lead Warm-Up';
     else if(index===1)assignment='Help With Tee Work';
     else if(live)assignment=`Live Support — ${first(live.pitcher)} (${first(live.catcher)})`;

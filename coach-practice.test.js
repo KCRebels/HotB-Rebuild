@@ -17,4 +17,7 @@ assert.equal(schedule[3].assignment,'Throw Front Toss — Lane 1 — Maia, Brynn
 assert.equal(schedule[4].assignment,'Run Machine — Claire');
 assert.equal(schedule[5].assignment,'Live Support — Brooklyn (9Square)');
 assert.equal(schedule[6].assignment,'Help With High Tee — A, B');
+const focused=coach.build({...plan,machineFocus:'Velocity Training',frontTossFocus:'Hunt Your Zone'},[{name:'High Tee'}]);
+assert.equal(focused[3].assignment,'Throw Front Toss — Lane 1 — Hunt Your Zone — Maia, Brynna');
+assert.equal(focused[4].assignment,'Run Machine — Velocity Training — Claire');
 console.log('coach-practice tests passed');

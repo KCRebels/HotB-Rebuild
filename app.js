@@ -1584,7 +1584,7 @@ function practiceRole(player){
 }
 function practiceFirstName(name){return String(name||'').trim().split(/\s+/)[0]||''}
 function practiceEntryText(entry,plan=null,blockIndex=-1){
- if(!entry.partner)return practiceActivityLabel(entry.activity);
+ if(!entry.partner)return practiceActivityLabel(entry.activity,plan);
  const partner=practiceFirstName(entry.partner);
  if(entry.activity==='Hit Live'&&plan){
   const session=plan.liveSessions?.find(item=>item.block===blockIndex);
@@ -1596,7 +1596,7 @@ function practiceEntryText(entry,plan=null,blockIndex=-1){
 }
 function practiceCoachLabel(label,plan=null,blockIndex=-1){
  const [activity,partner]=String(label).split(' — ');
- if(!partner)return practiceActivityLabel(activity);
+ if(!partner)return practiceActivityLabel(activity,plan);
  if(activity==='Hit Live'&&plan){
   const session=plan.liveSessions?.find(item=>item.block===blockIndex);
   if(session)return `Hit Live — 12 pitches minimum — ${practiceFirstName(session.pitcher)} (${practiceFirstName(session.catcher||'9Square')})`;
@@ -1623,9 +1623,13 @@ function updatePortalPracticeClock(){
  const values=portalPracticeClockValues(),time=$('#portalCurrentTime'),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
  if(time)time.textContent=values.time;if(block)block.textContent=values.block;if(left)left.textContent=values.left;
 }
-function practiceActivityLabel(activity){
+function practiceActivityLabel(activity,plan=null){
  const match=String(activity||'').match(/^Drill #(\d+)$/),drill=match?practiceChosenDrills[Number(match[1])-1]:null;
- return drill?.name||activity;
+ if(drill)return drill.name;
+ const machineFocus=plan?.machineFocus||'Standard',frontTossFocus=plan?.frontTossFocus||'Standard';
+ if(activity==='Machine'&&machineFocus!=='Standard')return `Machine — ${machineFocus}`;
+ if(String(activity||'').startsWith('Front Toss')&&frontTossFocus!=='Standard')return `${activity} — ${frontTossFocus}`;
+ return activity;
 }
 function practiceHeader(title='Hitting Practice',backToHub=false){
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" ${backToHub?'id="practiceHubBack"':'data-go="home"'}>${backToHub?'Back':'Home'}</button><h1>${esc(title)}</h1><span class="page-head-spacer"></span></div>`;
@@ -1676,8 +1680,23 @@ function practicePlayerCards(plan,hidden=false){
  }).join('')}</div>`).join('')}</section>`;
 }
 function practiceSelectableDrills(){
- const excluded=new Set(['Basic Tee Work','Front Toss','Machine Pitch']);
- return (Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[]).filter(drill=>!excluded.has(drill.name));
+ return (Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[]).filter(drill=>drill.name!=='Basic Tee Work'&&!['Machine','Front Toss'].includes(drill.hittingMethod));
+}
+function practiceFocusDrills(method){
+ const baseName=method==='Machine'?'Machine Pitch':'Front Toss';
+ return (Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[]).filter(drill=>drill.hittingMethod===method&&drill.name!==baseName);
+}
+function practiceFocusSelection(method){
+ const key=method==='Machine'?'machineFocus':'frontTossFocus',name=practicePlan?.[key]||'Standard';
+ return name==='Standard'?null:practiceFocusDrills(method).find(drill=>drill.name===name)||null;
+}
+function practiceAllSelectedDrills(){
+ return [...practiceChosenDrills,...['Machine','Front Toss'].map(practiceFocusSelection).filter(Boolean)];
+}
+function practiceFocusSelector(method){
+ const key=method==='Machine'?'machineFocus':'frontTossFocus',id=method==='Machine'?'practiceMachineFocus':'practiceFrontTossFocus',selected=practicePlan?.[key]||'Standard';
+ const options=['Standard',...practiceFocusDrills(method).map(drill=>drill.name)];
+ return `<label><span>${method}</span><select class="input" id="${id}">${options.map(name=>`<option value="${esc(name)}" ${name===selected?'selected':''}>${esc(name)}</option>`).join('')}</select></label>`;
 }
 function practiceDrillResourceWarnings(drills){
  const constrained=drills.filter(drill=>/tunnel/i.test(`${drill.spaceSetup} ${drill.equipment}`)||['Front Toss','Machine','Live Pitching'].includes(drill.hittingMethod));
@@ -1692,7 +1711,7 @@ function practiceClockPortalPayload(){
 function playerPracticePortalPayload(name){
  const schedule=practicePlan.schedule[name]||[];
  const player=db.roster.find(item=>item.name===name);
- return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:practiceClockPortalPayload(),schedule:schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:practiceEntryText(entry,practicePlan,index)})),drills:practiceChosenDrills.map(drill=>drill.name)};
+ return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:practiceClockPortalPayload(),schedule:schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:practiceEntryText(entry,practicePlan,index)})),drills:practiceAllSelectedDrills().map(drill=>drill.name)};
 }
 function coachPracticePortalPayload(){
  const schedule=window.HotBCoachPractice?.build(practicePlan,practiceChosenDrills)||[];
@@ -1700,7 +1719,7 @@ function coachPracticePortalPayload(){
 }
 function archiveCompletedPractice(completedAt=new Date()){
  if(!practicePlan||!window.HotBPracticeHistory)return;
- const record={id:practicePlan.portalDraftId,practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees:practicePlan.players.map(player=>player.name),drills:practiceChosenDrills.map(drill=>drill.name)};
+ const record={id:practicePlan.portalDraftId,practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees:practicePlan.players.map(player=>player.name),drills:practiceAllSelectedDrills().map(drill=>drill.name)};
  db.practiceHistory=window.HotBPracticeHistory.saveCompleted(db.practiceHistory,record);save();
 }
 async function clearActivePlayerPlans(){
@@ -1741,7 +1760,7 @@ async function deactivatePlayerPlans(){
 function practiceDrillPicker(){
  const needed=practicePlan.drillStations,drills=practiceSelectableDrills(),filters=['All Drills',...new Set(drills.map(drill=>drill.category).filter(Boolean))],query=practicePickerQuery.trim().toLowerCase();
  const shown=drills.filter(drill=>(practicePickerCategory==='All Drills'||drill.category===practicePickerCategory)&&(!query||Object.values(drill).some(value=>String(value).toLowerCase().includes(query))));
- return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" id="cancelPracticeDrills">Back</button><h1>Choose Drills</h1><span class="page-head-spacer"></span></div><main class="practice-feature-page practice-drill-picker no-print"><section class="practice-feature-lead"><span>PRACTICE DRILLS</span><h2>Choose ${needed} Drills</h2><p>Select exactly ${needed}. The order you select them assigns Drill #1 through Drill #${needed}.</p></section><div class="practice-picker-progress"><b>${practiceDraftDrills.length} of ${needed} selected</b><div>${practiceDraftDrills.map((drill,index)=>`<span>${index+1}. ${esc(drill.name)}</span>`).join('')||'<span>No drills selected yet</span>'}</div></div><div class="practice-library-search"><input class="input" id="practicePickerSearch" type="search" placeholder="Search drills" value="${esc(practicePickerQuery)}" aria-label="Search practice drills"></div><div class="practice-filter-preview">${filters.map(filter=>`<button class="${filter===practicePickerCategory?'active':''}" data-picker-category="${esc(filter)}">${esc(filter)}</button>`).join('')}</div><section class="practice-picker-list">${shown.map(drill=>{const selectedIndex=practiceDraftDrills.findIndex(item=>item.name===drill.name),selected=selectedIndex>=0,full=practiceDraftDrills.length>=needed&&!selected;return `<button class="practice-picker-card ${selected?'selected':''}" data-picker-drill="${esc(drill.name)}" ${full?'disabled':''}><span class="practice-picker-number">${selected?selectedIndex+1:'+'}</span><span><b>${esc(drill.name)}</b><small>${esc(drill.category)} · ${esc(drill.hittingMethod)}</small></span></button>`}).join('')}</section><button class="btn black block practice-save-drills" id="savePracticeDrills" ${practiceDraftDrills.length===needed?'':'disabled'}>Use These ${needed} Drills</button><p class="practice-picker-note">Basic Tee Work, Front Toss and Machine Pitch are already built into every practice and are not listed as drill-station choices.</p></main>`;
+ return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" id="cancelPracticeDrills">Back</button><h1>Choose Drills</h1><span class="page-head-spacer"></span></div><main class="practice-feature-page practice-drill-picker no-print"><section class="practice-feature-lead"><span>PRACTICE DRILLS</span><h2>Choose ${needed} Drills</h2><p>Select exactly ${needed}. The order you select them assigns Drill #1 through Drill #${needed}.</p></section><div class="practice-picker-progress"><b>${practiceDraftDrills.length} of ${needed} selected</b><div>${practiceDraftDrills.map((drill,index)=>`<span>${index+1}. ${esc(drill.name)}</span>`).join('')||'<span>No drills selected yet</span>'}</div></div><div class="practice-library-search"><input class="input" id="practicePickerSearch" type="search" placeholder="Search drills" value="${esc(practicePickerQuery)}" aria-label="Search practice drills"></div><div class="practice-filter-preview">${filters.map(filter=>`<button class="${filter===practicePickerCategory?'active':''}" data-picker-category="${esc(filter)}">${esc(filter)}</button>`).join('')}</div><section class="practice-picker-list">${shown.map(drill=>{const selectedIndex=practiceDraftDrills.findIndex(item=>item.name===drill.name),selected=selectedIndex>=0,full=practiceDraftDrills.length>=needed&&!selected;return `<button class="practice-picker-card ${selected?'selected':''}" data-picker-drill="${esc(drill.name)}" ${full?'disabled':''}><span class="practice-picker-number">${selected?selectedIndex+1:'+'}</span><span><b>${esc(drill.name)}</b><small>${esc(drill.category)} · ${esc(drill.hittingMethod)}</small></span></button>`}).join('')}</section><button class="btn black block practice-save-drills" id="savePracticeDrills" ${practiceDraftDrills.length===needed?'':'disabled'}>Use These ${needed} Drills</button><p class="practice-picker-note">Tee Work is already built in. Machine and Front Toss drills are selected from their own focus menus on the practice plan.</p></main>`;
 }
 function practicePage(){
  if(!practicePlan&&practiceSection==='hub')return practiceHub();
@@ -1755,6 +1774,7 @@ function practicePage(){
  <div class="practice-results">
   <section class="practice-summary no-print"><div><b>${practicePlan.attendance}</b><span>Player</span></div><div><b>10</b><span>${practicePlan.blockMinutes}M Blocks</span></div><div><b>${practicePlan.drillStations}</b><span>Drills</span></div></section>
   <section class="practice-live-control no-print"><div class="practice-clock-actions"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart':'Start'}</button><button class="btn" id="editPracticePlayers">Edit</button><button class="btn black" id="endPracticeClock">DONE!</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Time</span><b id="practiceCurrentTime">${practiceClock.finished?practiceClockText():'--:--'}</b></div><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':'1 of 10'}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${practicePlan.blockMinutes}:00`}</b></div></div></section>
+  <section class="practice-delivery-focus no-print"><div><span>BUILT-IN HITTING</span><h2>Machine + Front Toss Focus</h2><p>Choose Standard or a library drill. This changes the existing rotation—it does not add another block.</p></div><div class="practice-delivery-focus-fields">${practiceFocusSelector('Machine')}${practiceFocusSelector('Front Toss')}</div></section>
   <section class="practice-selected-drills no-print"><div><span>DRILL STATIONS</span><h2>${chosenComplete?'Practice Drills Selected':`Choose ${practicePlan.drillStations} Practice Drills`}</h2>${chosenComplete?`<ol>${practiceChosenDrills.map((drill,index)=>`<li><b>${index+1}</b><span>${esc(drill.name)}</span></li>`).join('')}</ol>`:'<p>Select the actual drills before printing the coach schedule or player cards.</p>'}</div><button class="btn ${chosenComplete?'':'red'}" id="choosePracticeDrills">${chosenComplete?'Change Drills':'Choose Drills'}</button></section>
   <section class="practice-portal-publish no-print"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Replace Active Practice':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':portalsActive?'A previous practice is active. Replace it when this schedule is ready.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${chosenComplete?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Replace Plans':'Activate Player Plans'}</button></section>
   ${resourceWarnings.map(warning=>`<div class="practice-resource-warning no-print"><b>Resource Check</b><p>${esc(warning)}</p></div>`).join('')}
@@ -2705,6 +2725,8 @@ function refreshPracticeAccommodationDefaults(){
  db.roster.forEach((player,index)=>storePracticeAccommodation(index));
 }
 function bindPractice(){
+ $('#practiceMachineFocus')?.addEventListener('change',event=>{practicePlan.machineFocus=event.target.value||'Standard';persistPracticeSession();render()});
+ $('#practiceFrontTossFocus')?.addEventListener('change',event=>{practicePlan.frontTossFocus=event.target.value||'Standard';persistPracticeSession();render()});
  $('#choosePracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice(0,practicePlan.drillStations);practiceDrillPickerOpen=true;practicePickerQuery='';practicePickerCategory='All Drills';render();window.scrollTo(0,0)});
  $('#cancelPracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=[];practiceDrillPickerOpen=false;render();window.scrollTo(0,0)});
  $('#practicePickerSearch')?.addEventListener('input',event=>{practicePickerQuery=event.target.value;render();const search=$('#practicePickerSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
@@ -2752,6 +2774,7 @@ function bindPractice(){
    if(!confirm(message)){practicePlan=null;render();return}
   }
   practicePlan.portalDraftId=crypto.randomUUID();
+  practicePlan.machineFocus='Standard';practicePlan.frontTossFocus='Standard';
   const errors=window.HotBPracticeScheduler.validate(practicePlan);
   if(errors.length)practicePlan.warnings.push(...errors);
   persistPracticeSession();render();window.scrollTo(0,0);
