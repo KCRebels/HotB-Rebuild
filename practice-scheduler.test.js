@@ -58,9 +58,14 @@ const nineTwoOne=scheduler.buildSchedule(scenario(9,2,1));
 assert.deepEqual(nineTwoOne.feasibilityErrors,[],'nine players, two pitchers and one catcher must remain feasible');
 assert.deepEqual(scheduler.validate(nineTwoOne),[]);
 const eightFiveTwo=scheduler.buildSchedule(scenario(8,5,2));
-assert.ok(eightFiveTwo.feasibilityErrors.some(error=>error.includes('At least 1 of the 5 available pitchers must be marked Hitting Only')),'an impossible pitcher-to-attendance ratio must state how many pitchers need to be Hitting Only');
+assert.deepEqual(eightFiveTwo.feasibilityErrors,[],'eight players and five pitchers should work with the minimum repeated live hitters');
+assert.equal(eightFiveTwo.liveHitterRepeats.length,2,'eight players and five pitchers require exactly two second live-hitting assignments');
+assert.ok(eightFiveTwo.fallbackWarnings.some(warning=>warning.includes('second live-hitting session')),'repeated live hitting must generate an explicit warning');
+assert.deepEqual(scheduler.validate(eightFiveTwo),[]);
 const sevenFourOne=scheduler.buildSchedule(scenario(7,4,1));
-assert.ok(sevenFourOne.feasibilityErrors.some(error=>error.includes('At least 1 of the 4 available pitchers must be marked Hitting Only')),'seven players with four pitchers must say exactly one of four pitchers cannot pitch');
+assert.deepEqual(sevenFourOne.feasibilityErrors,[],'seven players and four pitchers should work with one repeated live hitter');
+assert.equal(sevenFourOne.liveHitterRepeats.length,1,'seven players and four pitchers require exactly one second live-hitting assignment');
+assert.deepEqual(scheduler.validate(sevenFourOne),[]);
 const sevenThreeOne=scheduler.buildSchedule(scenario(7,3,1));
 assert.deepEqual(sevenThreeOne.feasibilityErrors,[],'seven players with three pitchers and one catcher should work');
 assert.deepEqual(scheduler.validate(sevenThreeOne),[]);
@@ -76,5 +81,19 @@ for(const player of tenFiveTwo.players.filter(player=>player.isCatcher)){
 }
 for(let block=0;block<10;block++)assert.ok(Object.values(tenFiveTwo.schedule).filter(entries=>entries[block].activity==='Pitch Warm-Up'&&entries[block].partner==='Coach').length<=1,'the coach may catch only one pitching warm-up per block');
 assert.deepEqual(scheduler.validate(tenFiveTwo),[]);
+
+const tenTwoTwo=scheduler.buildSchedule(scenario(10,2,2));
+assert.deepEqual(tenTwoTwo.feasibilityErrors,[],'ten players and two pitchers should work when each pitcher throws twice');
+assert.equal(tenTwoTwo.pitcherRepeats.length,2,'both pitchers must be identified as repeat pitchers');
+for(const pitcher of tenTwoTwo.pitcherRepeats){
+ const blocks=tenTwoTwo.liveSessions.filter(session=>session.pitcher===pitcher).map(session=>session.block).sort((a,b)=>a-b);
+ assert.equal(blocks.length,2,`${pitcher} must never pitch more than twice`);
+ assert.equal(blocks[1],blocks[0]+1,`${pitcher}'s repeated live sessions must be consecutive`);
+}
+assert.ok(tenTwoTwo.fallbackWarnings.every(warning=>warning.includes('consecutive live sessions')),'each repeated pitcher must be named in the fallback warning');
+assert.deepEqual(scheduler.validate(tenTwoTwo),[]);
+
+const thirteenTwoTwo=scheduler.buildSchedule(scenario(13,2,2));
+assert.ok(thirteenTwoTwo.feasibilityErrors.some(error=>error.includes('short 1 live block')),'the scheduler must reject a plan that would require a pitcher to throw more than twice');
 
 console.log('practice-scheduler tests passed');
