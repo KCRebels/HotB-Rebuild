@@ -2919,7 +2919,7 @@ function bindRecruitingEmail(){
   const matches=[...(db.coaches||[])].filter(coach=>normalizeName(coach[key]).includes(query)).sort((a,b)=>{
    const aStart=normalizeName(a[key]).startsWith(query),bStart=normalizeName(b[key]).startsWith(query);return Number(bStart)-Number(aStart)||(a[key]||'').localeCompare(b[key]||'');
   }).slice(0,8);
-  matches.forEach(coach=>{const button=document.createElement('button');button.type='button';button.className='coach-search-result';const primary=document.createElement('b'),secondary=document.createElement('span');primary.textContent=coach.coachName;secondary.textContent=`${coach.collegeName} · ${coach.coachEmail}`;button.append(primary,secondary);button.addEventListener('pointerdown',event=>{event.preventDefault();chooseCoach(coach)});container.append(button)});
+  matches.forEach(coach=>{const button=document.createElement('button');button.type='button';button.className='coach-search-result';const primary=document.createElement('b'),secondary=document.createElement('span');primary.textContent=coach.coachName;secondary.textContent=`${coach.collegeName} · ${coach.coachEmail}`;button.append(primary,secondary);button.addEventListener('click',()=>chooseCoach(coach));container.append(button)});
   container.hidden=!matches.length;
  };
  coachName.addEventListener('input',()=>showCoachMatches(coachName,nameMatches,'coachName'));
