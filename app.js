@@ -2838,18 +2838,18 @@ function bindNew(){
    else menu.hidden=true;
   };
  });
- $$('[data-opponent-choice]').forEach(button=>button.onpointerdown=event=>{event.preventDefault();opponent.value=button.dataset.opponentChoice;opponentMenu.hidden=true;update()});
- $$('[data-pitcher-choice]').forEach(button=>button.onpointerdown=event=>{event.preventDefault();pitcherName.value=button.dataset.pitcherChoice;pitcherNumber.value=button.dataset.pitcherNumber||'';pitcherMenu.hidden=true;update()});
- $$('[data-delete-opponent]').forEach(button=>button.onpointerdown=event=>{
-  event.preventDefault();event.stopPropagation();
+ $$('[data-opponent-choice]').forEach(button=>button.onclick=()=>{opponent.value=button.dataset.opponentChoice;opponentMenu.hidden=true;update()});
+ $$('[data-pitcher-choice]').forEach(button=>button.onclick=()=>{pitcherName.value=button.dataset.pitcherChoice;pitcherNumber.value=button.dataset.pitcherNumber||'';pitcherMenu.hidden=true;update()});
+ $$('[data-delete-opponent]').forEach(button=>button.onclick=event=>{
+  event.stopPropagation();
   const team=button.dataset.deleteOpponent;
   if(!confirm(`Remove ${team} from the saved opponent list? Previous games and hitter data will not be changed.`))return;
   db.teams=(db.teams||[]).filter(item=>item!==team);
   if(opponent.value===team)opponent.value='';
   save();button.closest('.matchup-picker-option')?.remove();update();
  });
- $$('[data-delete-pitcher-name]').forEach(button=>button.onpointerdown=event=>{
-  event.preventDefault();event.stopPropagation();
+ $$('[data-delete-pitcher-name]').forEach(button=>button.onclick=event=>{
+  event.stopPropagation();
   const name=button.dataset.deletePitcherName,number=button.dataset.deletePitcherNumber||'';
   if(!confirm(`Remove ${name}${number?` #${number}`:''} from the saved pitcher list? Previous games and hitter data will not be changed.`))return;
   db.pitchers=(db.pitchers||[]).filter(item=>!(item.name===name&&String(item.number||'')===number));
