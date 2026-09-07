@@ -2589,15 +2589,17 @@ function openCoachObservation(){
 function coachObservationModal(){
  const g=currentGame(),api=window.HotBCoachObservations;if(!g||!api)return'';
  if(!observationTargetPlayer)setObservationTarget(currentHitter(g).name,'');
- const recent=api.recentTargets(g),recentNames=recent.map(item=>item.playerName),players=[...new Set([...recentNames,...g.battingOrder,...db.roster.map(player=>player.name)])];
+ const recent=api.recentTargets(g),recentNames=recent.map(item=>item.playerName),gamePlayers=g.hittersUsed?.length?g.hittersUsed:g.battingOrder,players=[...new Set([...recentNames,...gamePlayers])];
  const targetPa=(g.plateAppearances||[]).find(pa=>pa.id===observationTargetPaId),existing=api.observationFor(g,observationTargetPaId,observationTargetPlayer),selected=new Set(existing?.tags||[]);
+ const usage=api.tagUsage([...(db.savedGames||[]),g]);
+ const categoryOptions=category=>category.options.map((option,index)=>({option,index})).sort((a,b)=>Number(selected.has(b.option))-Number(selected.has(a.option))||(usage[b.option]||0)-(usage[a.option]||0)||a.index-b.index).map(item=>item.option);
  const context=targetPa?`Inning ${targetPa.inning} · completed at-bat ${targetPa.pa}`:'Player observation · no completed at-bat linked';
  return `<div class="modal-backdrop observation-backdrop"><div class="modal observation-modal"><div class="modal-header"><div><div class="small info-kicker">LIVE OR DUGOUT REVIEW</div><h2>Coach Observation</h2></div><button class="btn" data-close>Close</button></div>
   <p class="observation-help">Defaults to the last completed hitter. Choose up to 3 items, then save.</p>
   ${recent.length?`<div class="observation-recent"><span>RECENT HITTERS</span><div>${recent.map(item=>`<button class="${item.paId===observationTargetPaId?'active':''}" data-observation-target="${esc(item.paId)}" data-observation-player="${esc(item.playerName)}"><b>${esc(practiceFirstName(item.playerName))}</b>${item.observed?`<small>✓ ${item.tagCount||'Note'}</small>`:''}</button>`).join('')}</div></div>`:''}
   <label class="observation-player"><span>PLAYER</span><select class="input" id="observationPlayer">${players.map(name=>`<option value="${esc(name)}" ${name===observationTargetPlayer?'selected':''}>${esc(name)}</option>`).join('')}</select><small>${esc(context)}${existing?' · Existing observation loaded':''}</small></label>
   <div class="observation-count"><b id="observationSelectionCount">${selected.size}</b><span>of 3 selected</span></div>
-  <div class="observation-categories">${api.CATEGORIES.map(category=>`<section><h3>${esc(category.name)}</h3><div>${category.options.map(option=>`<button type="button" class="observation-option ${selected.has(option)?'active':''}" data-observation-option="${esc(option)}" aria-pressed="${selected.has(option)}">${esc(option)}</button>`).join('')}</div></section>`).join('')}</div>
+  <div class="observation-categories">${api.CATEGORIES.map(category=>{const selectedCount=category.options.filter(option=>selected.has(option)).length;return `<details class="observation-category"><summary><span>${esc(category.name)}</span><small>${selectedCount?`${selectedCount} selected`:'Choose'}</small></summary><div>${categoryOptions(category).map(option=>`<button type="button" class="observation-option ${selected.has(option)?'active':''}" data-observation-option="${esc(option)}" aria-pressed="${selected.has(option)}">${esc(option)}</button>`).join('')}</div></details>`}).join('')}</div>
   <label class="observation-note"><span>OTHER / NOTE</span><textarea class="input" id="observationNote" rows="2" maxlength="160" placeholder="Optional short note">${esc(existing?.note||'')}</textarea></label>
   <button class="btn black block" id="saveCoachObservation">${existing?'Update Observation':'Save Observation'}</button>
  </div></div>`;
@@ -3011,6 +3013,7 @@ function bindCoachObservation(){
  $$('.observation-option').forEach(button=>button.onclick=()=>{
   if(!button.classList.contains('active')&&$$('.observation-option.active').length>=3){alert('Choose up to 3 observations.');return}
   button.classList.toggle('active');button.setAttribute('aria-pressed',String(button.classList.contains('active')));updateCount();
+  const category=button.closest('.observation-category'),categoryCount=category?.querySelectorAll('.observation-option.active').length||0,summary=category?.querySelector('summary small');if(summary)summary.textContent=categoryCount?`${categoryCount} selected`:'Choose';
  });
  $('#saveCoachObservation')?.addEventListener('click',()=>{
   try{
