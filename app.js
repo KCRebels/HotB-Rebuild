@@ -807,6 +807,14 @@ let db = load();
 if(!Array.isArray(db.coaches))db.coaches=structuredClone(defaultCoaches);
 if(!Array.isArray(db.practiceHistory))db.practiceHistory=[];
 if(!Array.isArray(db.coachObservations))db.coachObservations=[];
+// One-time cleanup: September 6, 2026 is the first legitimate HotB game date.
+// This removes only older game records; roster, opponents, pitchers and practice data remain intact.
+if((db.gameDataCleanupVersion||0)<1&&window.HotBGameDataCleanup){
+ window.HotBGameDataCleanup.cleanup(db,'2026-09-06');
+ db.gameDataCleanupVersion=1;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+ if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+}
 // Apply the requested player plans once, then preserve any changes made in the app.
 if((db.planPreferencesVersion||0)<2){
  db.planPreferences={...(db.planPreferences||{}),...requestedPlanPreferences};
@@ -1661,7 +1669,8 @@ function practiceLibrary(){
  return `${practiceHeader('Drill Library',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>HITTING LIBRARY</span><h2>${drills.length} Hitting Drills</h2><p>Search by drill name, hitting problem, purpose, equipment or coaching cue. This library does not change the practice scheduler yet.</p></section><div class="practice-library-search"><input class="input" id="practiceDrillSearch" type="search" placeholder="Search drills" value="${esc(practiceDrillQuery)}" aria-label="Search drills"></div><div class="practice-filter-preview">${filters.map(filter=>`<button class="${filter===practiceDrillCategory?'active':''}" data-drill-category="${esc(filter)}">${esc(filter)}</button>`).join('')}</div><p class="practice-library-count">${shown.length} ${shown.length===1?'drill':'drills'}</p><section class="practice-drill-list">${shown.map(drill=>`<button class="practice-drill-card" data-drill-name="${esc(drill.name)}"><span>${esc(drill.category)}</span><h3>${esc(drill.name)}</h3><p>${esc(drill.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(drill.hittingMethod)}</span>${drill.equipment?`<span>${esc(drill.equipment)}</span>`:''}</div>${practiceUsageBoxes(drill.name)}</button>`).join('')||`<div class="practice-library-empty"><b>No Drills Found</b><p>Try another search or category.</p></div>`}</section></main>`;
 }
 function playerFocusGames(range=practiceFocusRange){
- const games=[...(db.savedGames||[]),...(db.currentGame?[db.currentGame]:[])];
+ // Player Focus is an audit of completed, saved games. An unfinished live game is excluded.
+ const games=[...(db.savedGames||[])];
  return window.HotBCoachObservations?.gamesInRange(games,range)||games;
 }
 function practicePlayerFocus(){
@@ -1677,7 +1686,7 @@ function practicePlayerFocus(){
  const observationDate=item=>new Date(item.createdAt||item.updatedAt||item.gameDate||Date.now()).toLocaleDateString(undefined,{month:'short',day:'numeric'});
  return `${practiceHeader('Player Focus',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>PLAYER FOCUS</span><h2>${esc(selected.name)}</h2><p>Game results and coach observations are reviewed together. Repeated observations carry more weight than a one-time tag.</p></section>
  <div class="focus-range-toggle" role="group" aria-label="Player Focus date range"><button class="${practiceFocusRange==='weekend'?'active':''}" data-focus-range="weekend">This Past Weekend</button><button class="${practiceFocusRange==='two-weeks'?'active':''}" data-focus-range="two-weeks">Past Two Weeks</button></div>
- <section class="practice-focus-summary"><div><span>${rangeLabel}</span><b>${games.length} game${games.length===1?'':'s'} · ${evidenceCount} PA</b></div><div><span>COACH OBSERVATIONS</span><b>${observed.total||0}</b></div></section>
+ <section class="practice-focus-summary"><button type="button" class="focus-game-count" id="focusGameCount" aria-label="View games included in ${rangeLabel.toLowerCase()}"><span>${rangeLabel}</span><b>${games.length} game${games.length===1?'':'s'} · ${evidenceCount} PA</b><small>Tap to view games</small></button><div><span>COACH OBSERVATIONS</span><b>${observed.total||0}</b></div></section>
  <section class="focus-evidence-section"><div class="focus-observation-head"><h3>Coach Observations</h3><button type="button" id="addFocusObservation">+ Add Observation</button></div>${observed.patterns.length?observed.patterns.map(item=>`<article class="focus-evidence-row ${item.count>=2?'recurring':''}"><div><b>${esc(item.tag)}</b><span>${esc(item.status)}</span></div><strong>${item.count}×</strong></article>`).join(''):`<p class="focus-empty-copy">No coach observations for ${practiceFocusRange==='weekend'?'this past weekend':'the past two weeks'}.</p>`}${notes.map(item=>`<article class="focus-note-row"><time>${esc(observationDate(item))}</time><p>${esc(item.note)}</p></article>`).join('')}</section>
  <section class="focus-evidence-section"><h3>What HotB Detects</h3>${analysis.issues?.length?analysis.issues.slice(0,5).map(item=>`<article class="focus-evidence-row"><div><b>${esc(item.label)}</b><span>${esc(item.evidence)}</span></div></article>`).join(''):`<p class="focus-empty-copy">${evidenceCount?'Not enough repeated statistical evidence to identify a tendency yet.':'No plate appearances in this range.'}</p>`}</section>
  <section class="focus-evidence-section"><h3>Suggested Drills</h3>${drills.length?drills.map((drill,index)=>`<article class="focus-drill-row"><strong>${index+1}</strong><div><b>${esc(drill.name)}</b><span>${esc(drill.bestUsedFor||drill.primaryPurpose)}</span></div></article>`).join(''):`<p class="focus-empty-copy">Suggestions will appear when HotB or the coach identifies something to work on.</p>`}</section>
@@ -2614,6 +2623,16 @@ function coachObservationModal(){
   <button class="btn black block" id="saveCoachObservation">${existing?'Update Observation':'Save Observation'}</button>
  </div></div>`;
 }
+function focusGameAuditModal(){
+ const games=playerFocusGames().slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+ const label=practiceFocusRange==='weekend'?'This Past Weekend':'Past Two Weeks';
+ const rows=games.map(game=>{
+  const appearances=(game.plateAppearances||[]).filter(pa=>pa.hitter===practiceFocusPlayer).length;
+  const date=new Date(game.date).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+  return `<article class="focus-game-audit-row"><div><b>${esc(game.opponent||'Opponent')}</b><span>${esc(date)}</span></div><strong>${appearances} PA</strong></article>`;
+ }).join('');
+ return `<div class="modal-backdrop"><div class="modal focus-game-audit-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER FOCUS</div><h2>Included Games</h2></div><button class="btn" data-close>Close</button></div><p class="focus-game-audit-player"><b>${esc(practiceFocusPlayer)}</b><span>${esc(label)}</span></p><section>${rows||'<p class="focus-empty-copy">No saved games are included in this time period.</p>'}</section></div></div>`;
+}
 function modalView(){
  if(modal==='recoveryGuide')return recoveryGuideModal();
  if(modal==='cloudBackup')return cloudBackupModal();
@@ -2624,6 +2643,7 @@ function modalView(){
  if(modal==='recruitingEmailPreview')return recruitingEmailPreviewModal();
  if(modal==='importRoster')return importRosterModal();
  if(modal==='coachObservation')return coachObservationModal();
+ if(modal==='focusGameAudit')return focusGameAuditModal();
  if(modal?.startsWith('ranking:'))return evalRankingModal(modal.slice(8));
  if(modal?.startsWith('pitchRanking:'))return pitcherRankingModal(modal.slice(13));
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
@@ -2804,6 +2824,7 @@ function bindPractice(){
  $('#openPlayerFocus')?.addEventListener('click',()=>{practiceSection='player';practiceFocusPlayer='';render();window.scrollTo(0,0)});
  $$('[data-focus-player]').forEach(button=>button.addEventListener('click',()=>{practiceFocusPlayer=button.dataset.focusPlayer;render();window.scrollTo(0,0)}));
  $$('[data-focus-range]').forEach(button=>button.addEventListener('click',()=>{practiceFocusRange=button.dataset.focusRange;render();window.scrollTo(0,0)}));
+ $('#focusGameCount')?.addEventListener('click',()=>{modal='focusGameAudit';render()});
  $('#addFocusObservation')?.addEventListener('click',openFocusObservation);
  $('#changeFocusPlayer')?.addEventListener('click',()=>{practiceFocusPlayer='';render();window.scrollTo(0,0)});
  $('#practiceSelectAll')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=true));
