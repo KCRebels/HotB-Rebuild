@@ -41,6 +41,13 @@ const playerPhotoUpdatesV1={
  'Claire Jack':'player-photos/claire-2026.jpg',
  'Lakyn Farley':'player-photos/lakyn-2026.jpg'
 };
+const pitchingStatUpdatesV1={
+ 'Aniesa Rohleder':{pitcherIP:'2',pitcherERA:'10.5',pitcherWHIP:'2.5',pitcherKBB:'3',pitcherOBA:'.333',pitcherStrikePct:'62.75%'},
+ 'Brooklyn Gering':{pitcherIP:'1.1',pitcherERA:'0',pitcherWHIP:'0',pitcherKBB:'—',pitcherOBA:'.000',pitcherStrikePct:'76.47%'},
+ 'Megan Ryan':{pitcherIP:'1',pitcherERA:'7',pitcherWHIP:'3',pitcherKBB:'1',pitcherOBA:'.500',pitcherStrikePct:'66.67%'},
+ 'Lakyn Farley':{pitcherIP:'2',pitcherERA:'0',pitcherWHIP:'.5',pitcherKBB:'0',pitcherOBA:'.000',pitcherStrikePct:'52.38%'},
+ 'Makenna Whitaker':{pitcherIP:'2',pitcherERA:'7',pitcherWHIP:'2.5',pitcherKBB:'0',pitcherOBA:'.286',pitcherStrikePct:'44.12%'}
+};
 
 const defaultCoaches = [
  {
@@ -853,6 +860,13 @@ if((db.battingStyleVersion||0)<1){
 if((db.playerPhotoVersion||0)<1){
  db.roster.forEach(player=>{if(playerPhotoUpdatesV1[player.name])player.photo=playerPhotoUpdatesV1[player.name]});
  db.playerPhotoVersion=1;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+ if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+}
+// Import the September 6 GameChanger pitching totals into the six Evaluation fields only.
+if((db.pitchingStatsVersion||0)<1){
+ db.roster.forEach(player=>{if(pitchingStatUpdatesV1[player.name])Object.assign(player,pitchingStatUpdatesV1[player.name])});
+ db.pitchingStatsVersion=1;
  localStorage.setItem(DBKEY,JSON.stringify(db));
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
 }
