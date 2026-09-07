@@ -3042,6 +3042,12 @@ function bindCoachObservation(){
  const updateCount=()=>{
   const count=$$('.observation-option.active').length,label=$('#observationSelectionCount');if(label)label.textContent=String(count);
  };
+ $$('.observation-category>div').forEach(list=>{
+  let startY=0,moved=false;
+  list.addEventListener('pointerdown',event=>{startY=event.clientY;moved=false});
+  list.addEventListener('pointermove',event=>{if(Math.abs(event.clientY-startY)>8)moved=true});
+  list.addEventListener('click',event=>{if(!moved)return;event.preventDefault();event.stopImmediatePropagation();moved=false},true);
+ });
  $$('.observation-option').forEach(button=>button.onclick=()=>{
   if(!button.classList.contains('active')&&$$('.observation-option.active').length>=3){alert('Choose up to 3 observations.');return}
   button.classList.toggle('active');button.setAttribute('aria-pressed',String(button.classList.contains('active')));updateCount();
