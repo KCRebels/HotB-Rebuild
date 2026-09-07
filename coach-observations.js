@@ -67,5 +67,10 @@
   const patterns=[...counts].map(([tag,count])=>({tag,count,status:count>=3?'Strong recurring pattern':count===2?'Recurring pattern':'One-time observation'})).sort((a,b)=>b.count-a.count||a.tag.localeCompare(b.tag));
   return{rows,patterns,total:rows.length};
  }
- return{CATEGORIES,observations,observationFor,lastCompletedTarget,recentTargets,saveObservation,rangeBounds,gamesInRange,summarize};
+ function tagUsage(games){
+  const counts={};
+  (games||[]).forEach(game=>observations(game).forEach(item=>(item.tags||[]).forEach(tag=>counts[tag]=(counts[tag]||0)+1)));
+  return counts;
+ }
+ return{CATEGORIES,observations,observationFor,lastCompletedTarget,recentTargets,saveObservation,rangeBounds,gamesInRange,summarize,tagUsage};
 });
