@@ -1403,24 +1403,7 @@ function undo(){
  save();render();
 }
 function statsForPAs(pas){
- let AB=0,H=0,TB=0,BB=0,HBP=0,K=0,contact=0,RBI=0,HHB=0,WEAK=0;
- pas.forEach(pa=>{
-   if(pa.outcome==='HIT'){H++;AB++;contact++;TB += ({'1B':1,'2B':2,'3B':3,'HR':4}[pa.hitType]||1)}
-   else if(pa.outcome==='H4O'){AB++;contact++}
-   else if(pa.outcome==='E'||pa.outcome==='FC'){AB++;contact++}
-   else if(pa.outcome==='SAC'){contact++}
-   else if(pa.outcome==='K'){AB++;K++}
-   else if(pa.outcome==='BB'){BB++}
-   else if(pa.outcome==='HBP'){HBP++}
-   RBI+=Number(pa.rbiCount??(pa.rbi?1:0));
-   if(pa.hhb)HHB++;
-   if(pa.weak)WEAK++;
- });
- const PA=pas.length, AVG=AB?H/AB:0, OBP=(AB+BB+HBP)?(H+BB+HBP)/(AB+BB+HBP):0, SLG=AB?TB/AB:0;
- const OPS=OBP+SLG, contactPct=AB?contact/AB:0, kPct=PA?K/PA:0, bbPct=PA?BB/PA:0;
- // Provisional Runs Produced model for rebuild; calibrate against legacy app.
- const rp = H + Math.max(0,TB-H)*0.65 + BB*0.7 + HBP*0.7 + RBI*0.75 + HHB*0.25 - WEAK*0.25;
- return {PA,AB,H,TB,BB,HBP,K,RBI,HHB,WEAK,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,rp};
+ return HotBEvaluationStats.statsForPAs(pas);
 }
 function allPAs(includeCurrent=true){
  let arr=[...db.savedGames.flatMap(g=>g.plateAppearances||[])];
@@ -2254,6 +2237,9 @@ function evalView(){
  const execution=executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null;
  const ms=measurementTypes(player);
  const metricHead=(metric,label=metric)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${metric}">${label}</button><button class="metric-all" data-ranking="${metric}">ALL</button></div>`;
+ const resultRate=player&&['Maia Waddell','Hailey Marsh'].includes(player.name)
+  ?['QAB%',pct1(s.qabPct),'qabPct']
+  :['HHB%',pct1(s.hhbPct),'hhbPct'];
  return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><button class="btn eval-email" id="openRecruitingEmail" ${player?'':'disabled'}>Email</button></div>
  <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  ${dateFilterControls('eval')}
@@ -2265,7 +2251,7 @@ function evalView(){
   <div class="eval-tile">${metricHead('Execution','HP%')}<div class="value">${execution===null?'—%':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
  </div>
  <div class="performance"><h2>Hitting Results <span class="small" style="float:right">${esc(activeDateFilterLabel())}</span></h2><div class="perf-grid">
- ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],['BB%',pct1(s.bbPct),'BB']].map(([label,val,key])=>`<div class="perf ${s.PA>=25?grade(s[key==='contact'?'contactPct':key==='K'?'kPct':key==='BB'?'bbPct':key],key):''}" data-guide="${label}"><b>${val}</b><span>${label}</span></div>`).join('')}
+ ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],resultRate].map(([label,val,key])=>`<div class="perf ${s.PA>=25&&!['hhbPct','qabPct'].includes(key)?grade(s[key==='contact'?'contactPct':key==='K'?'kPct':key],key):''}" data-guide="${label}"><b>${val}</b><span>${label}</span></div>`).join('')}
  </div></div>
  ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2><div class="pitcher-stat-grid">
   ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<button class="pitcher-stat" data-pitch-ranking="${key}"><b>${esc(player[key]||'—')}</b><span>${label}</span></button>`).join('')}
@@ -2304,6 +2290,11 @@ function measurementCard(player,type){
  return `<button class="measure" data-measure="${esc(type)}"><h3>${type}</h3><div class="best">${best===null?'—':formatMeasurementValue(type,best)}</div><div class="note">${vals.length?`${vals.length} attempt${vals.length===1?'':'s'} recorded`:'Tap to record'}</div></button>`;
 }
 function evalGuide(title){
+ if(title==='HHB%'||title==='QAB%'){
+  const isHHB=title==='HHB%';
+  const description=isHHB?'Hard-Hit Ball Percentage is balls marked HHB divided by all tracked balls put in play.':'Quality At-Bat Percentage is quality at-bats divided by total plate appearances. A plate appearance counts once when it includes a hit, walk, hit-by-pitch, successful sacrifice, RBI, RBA, HHB, or eight or more pitches.';
+  return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>${isHHB?'Hard-Hit Ball Percentage':'Quality At-Bat Percentage'}</h2></div><button class="btn" data-close>Close</button></div><hr style="border-color:#555"><p style="font-size:22px;line-height:1.45;font-weight:400">${description}</p><p class="small" style="color:#ddd">No color-grading ranges have been assigned to this metric.</p></div></div>`;
+ }
  const content={
  'HotB+':`HotB+ compares the hitter’s Runs Produced rate with the current team rate. Runs Produced assigns 1.00 for a single, 1.65 for a double, 2.30 for a triple, 2.95 for a home run, 0.70 for a walk or hit-by-pitch, 0.75 for each RBI, plus 0.25 for hard-hit contact and minus 0.25 for weak contact. The app divides the hitter’s Runs Produced by her plate appearances, divides that rate by the team’s Runs Produced-per-plate-appearance rate, then multiplies by 100. A score of 100 is team average; 120 is 20% above the team rate; 80 is 20% below.`,
  'Runs Produced':`Runs Produced estimates the hitter’s total accumulated offensive contribution. It credits hits, extra bases, walks, hit-by-pitches, each RBI, and hard-hit balls; weak contact reduces the total. Because it is cumulative, hitters with more plate appearances have more opportunities to add Runs Produced. The comparison shows how her total differs from the average total of teammates with saved plate appearances.`,
