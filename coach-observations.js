@@ -48,6 +48,14 @@
   if(existing)Object.assign(existing,record);else list.push(record);
   return record;
  }
+ function saveStandalone(list,{playerName,tags=[],note=''}){
+  if(!Array.isArray(list))throw new Error('Coach observations are not available.');
+  if(!playerName)throw new Error('Choose a player.');
+  const cleanTags=[...new Set(tags.map(value=>String(value||'').trim()).filter(Boolean))].slice(0,3),cleanNote=String(note||'').trim().slice(0,160);
+  if(!cleanTags.length&&!cleanNote)throw new Error('Select an observation or enter a short note.');
+  const now=Date.now(),record={id:(globalThis.crypto?.randomUUID&&globalThis.crypto.randomUUID())||`obs-${now}-${Math.random()}`,playerName,paId:'',inning:null,pa:null,tags:cleanTags,note:cleanNote,source:'player-focus',createdAt:now,updatedAt:now};
+  list.push(record);return record;
+ }
  function rangeBounds(mode,now=Date.now()){
   const current=new Date(now),endOfToday=new Date(current);endOfToday.setHours(23,59,59,999);
   if(mode==='two-weeks')return{start:new Date(current.getFullYear(),current.getMonth(),current.getDate()-13).getTime(),end:endOfToday.getTime()};
@@ -60,17 +68,22 @@
   const bounds=rangeBounds(mode,now);
   return (games||[]).filter(game=>{const time=new Date(game?.date).getTime();return Number.isFinite(time)&&time>=bounds.start&&time<=bounds.end});
  }
- function summarize(games,playerName){
-  const rows=(games||[]).flatMap(game=>observations(game).filter(item=>item.playerName===playerName).map(item=>({...item,gameId:game.id,gameDate:game.date})));
+ function standaloneInRange(rows,mode,now=Date.now()){
+  const bounds=rangeBounds(mode,now);
+  return (rows||[]).filter(item=>{const time=new Date(item.createdAt||item.date||item.updatedAt||0).getTime();return Number.isFinite(time)&&time>=bounds.start&&time<=bounds.end});
+ }
+ function summarize(games,playerName,standalone=[]){
+  const rows=[...(games||[]).flatMap(game=>observations(game).filter(item=>item.playerName===playerName).map(item=>({...item,gameId:game.id,gameDate:game.date}))),...(standalone||[]).filter(item=>item.playerName===playerName)];
   const counts=new Map();
   rows.forEach(row=>(row.tags||[]).forEach(tag=>counts.set(tag,(counts.get(tag)||0)+1)));
   const patterns=[...counts].map(([tag,count])=>({tag,count,status:count>=3?'Strong recurring pattern':count===2?'Recurring pattern':'One-time observation'})).sort((a,b)=>b.count-a.count||a.tag.localeCompare(b.tag));
   return{rows,patterns,total:rows.length};
  }
- function tagUsage(games){
+ function tagUsage(games,standalone=[]){
   const counts={};
   (games||[]).forEach(game=>observations(game).forEach(item=>(item.tags||[]).forEach(tag=>counts[tag]=(counts[tag]||0)+1)));
+  (standalone||[]).forEach(item=>(item.tags||[]).forEach(tag=>counts[tag]=(counts[tag]||0)+1));
   return counts;
  }
- return{CATEGORIES,observations,observationFor,lastCompletedTarget,recentTargets,saveObservation,rangeBounds,gamesInRange,summarize,tagUsage};
+ return{CATEGORIES,observations,observationFor,lastCompletedTarget,recentTargets,saveObservation,saveStandalone,rangeBounds,gamesInRange,standaloneInRange,summarize,tagUsage};
 });
