@@ -1705,11 +1705,11 @@ function practicePlayerFocus(){
  const rangeLabel=practiceFocusRange==='weekend'?'THIS PAST WEEKEND':'PAST TWO WEEKS';
  const evidenceCount=analysis.plateAppearances||0;
  const notes=(observed.rows||[]).filter(item=>item.note).sort((a,b)=>Number(b.createdAt||b.updatedAt||0)-Number(a.createdAt||a.updatedAt||0));
- const observationDate=item=>new Date(item.createdAt||item.updatedAt||item.gameDate||Date.now()).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+ const observationDate=item=>new Date(item.observedAt||item.gameDate||item.createdAt||item.updatedAt||Date.now()).toLocaleDateString(undefined,{month:'short',day:'numeric'});
  return `${practiceHeader('Player Focus',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>PLAYER FOCUS</span><h2>${esc(selected.name)}</h2><p>Game results and coach observations are reviewed together. Repeated observations carry more weight than a one-time tag.</p></section>
  <div class="focus-range-toggle" role="group" aria-label="Player Focus date range"><button class="${practiceFocusRange==='weekend'?'active':''}" data-focus-range="weekend">This Past Weekend</button><button class="${practiceFocusRange==='two-weeks'?'active':''}" data-focus-range="two-weeks">Past Two Weeks</button></div>
  <section class="practice-focus-summary"><button type="button" class="focus-game-count" id="focusGameCount" aria-label="View games included in ${rangeLabel.toLowerCase()}"><span>${rangeLabel}</span><b>${games.length} game${games.length===1?'':'s'} · ${evidenceCount} PA</b><small>Tap to view games</small></button><div><span>COACH OBSERVATIONS</span><b>${observed.total||0}</b></div></section>
- <section class="focus-evidence-section"><div class="focus-observation-head"><h3>Coach Observations</h3><button type="button" id="addFocusObservation">+ Add Observation</button></div>${observed.patterns.length?observed.patterns.map(item=>`<article class="focus-evidence-row ${item.count>=2?'recurring':''}"><div><b>${esc(item.tag)}</b><span>${esc(item.status)}</span></div><strong>${item.count}×</strong></article>`).join(''):`<p class="focus-empty-copy">No coach observations for ${practiceFocusRange==='weekend'?'this past weekend':'the past two weeks'}.</p>`}${notes.map(item=>`<article class="focus-note-row"><time>${esc(observationDate(item))}</time><p>${esc(item.note)}</p></article>`).join('')}</section>
+ <section class="focus-evidence-section"><div class="focus-observation-head"><h3>Coach Observations</h3><div class="focus-observation-actions"><button type="button" id="manageFocusObservations">Manage</button><button type="button" id="addFocusObservation">+ Add Observation</button></div></div>${observed.patterns.length?observed.patterns.map(item=>`<article class="focus-evidence-row ${item.count>=2?'recurring':''}"><div><b>${esc(item.tag)}</b><span>${esc(item.status)}</span></div><strong>${item.count}×</strong></article>`).join(''):`<p class="focus-empty-copy">No coach observations for ${practiceFocusRange==='weekend'?'this past weekend':'the past two weeks'}.</p>`}${notes.map(item=>`<article class="focus-note-row"><time>${esc(observationDate(item))}</time><p>${esc(item.note)}</p></article>`).join('')}</section>
  <section class="focus-evidence-section"><h3>What HotB Detects</h3>${analysis.issues?.length?analysis.issues.slice(0,5).map(item=>`<article class="focus-evidence-row"><div><b>${esc(item.label)}</b><span>${esc(item.evidence)}</span></div></article>`).join(''):`<p class="focus-empty-copy">${evidenceCount?'Not enough repeated statistical evidence to identify a tendency yet.':'No plate appearances in this range.'}</p>`}</section>
  <section class="focus-evidence-section"><h3>Suggested Drills</h3>${drills.length?drills.map((drill,index)=>`<article class="focus-drill-row"><strong>${index+1}</strong><div><b>${esc(drill.name)}</b><span>${esc(drill.bestUsedFor||drill.primaryPurpose)}</span></div></article>`).join(''):`<p class="focus-empty-copy">Suggestions will appear when HotB or the coach identifies something to work on.</p>`}</section>
  <div class="focus-bottom-actions"><button class="btn black" id="changeFocusPlayer">Choose Another Player</button><button class="btn red" id="previewPlayerFocus">Publish</button></div></main>`;
@@ -2655,6 +2655,17 @@ function focusGameAuditModal(){
  }).join('');
  return `<div class="modal-backdrop"><div class="modal focus-game-audit-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER FOCUS</div><h2>Included Games</h2></div><button class="btn" data-close>Close</button></div><p class="focus-game-audit-player"><b>${esc(practiceFocusPlayer)}</b><span>${esc(label)}</span></p><section>${rows||'<p class="focus-empty-copy">No saved games are included in this time period.</p>'}</section></div></div>`;
 }
+function manageFocusObservationsModal(){
+ const games=playerFocusGames(),standalone=window.HotBCoachObservations?.standaloneInRange(db.coachObservations,practiceFocusRange)||[];
+ const observed=window.HotBCoachObservations?.summarize(games,practiceFocusPlayer,standalone)||{rows:[]};
+ const rows=(observed.rows||[]).slice().sort((a,b)=>new Date(b.observedAt||b.gameDate||b.createdAt||0)-new Date(a.observedAt||a.gameDate||a.createdAt||0));
+ const first=practiceFirstName(practiceFocusPlayer),rangeLabel=practiceFocusRange==='weekend'?'This Past Weekend':'Past Two Weeks';
+ const cards=rows.map(item=>{
+  const game=item.gameId?(db.savedGames||[]).find(saved=>saved.id===item.gameId):null,date=new Date(item.observedAt||item.gameDate||item.createdAt||Date.now()).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+  return `<article class="focus-manage-row"><div class="focus-manage-meta"><span>${esc(game?`vs ${game.opponent||'Opponent'}`:'General Observation')}</span><time>${esc(date)}</time></div>${item.tags?.length?`<p class="focus-manage-tags">${item.tags.map(esc).join(' · ')}</p>`:''}${item.note?`<p class="focus-manage-note">${esc(item.note)}</p>`:''}<button type="button" data-delete-focus-observation="${esc(item.id)}" data-observation-game-id="${esc(item.gameId||'')}">Delete</button></article>`;
+ }).join('');
+ return `<div class="modal-backdrop"><div class="modal focus-manage-modal"><div class="modal-header"><div><div class="small info-kicker">${esc(rangeLabel)}</div><h2>${esc(first)}’s Observations</h2></div><button class="btn" data-close>Close</button></div><p class="focus-manage-help">Delete only the extra entry. ${esc(first)}’s game and statistics will not be changed.</p><section class="focus-manage-list">${cards||'<p class="focus-empty-copy">There are no observations to manage in this time period.</p>'}</section></div></div>`;
+}
 function focusPublishPreviewModal(){
  const focus=playerFocusPortalPayload(),first=practiceFirstName(practiceFocusPlayer);
  if(!focus)return'';
@@ -2671,6 +2682,7 @@ function modalView(){
  if(modal==='importRoster')return importRosterModal();
  if(modal==='coachObservation')return coachObservationModal();
  if(modal==='focusGameAudit')return focusGameAuditModal();
+ if(modal==='manageFocusObservations')return manageFocusObservationsModal();
  if(modal==='focusPublishPreview')return focusPublishPreviewModal();
  if(modal?.startsWith('ranking:'))return evalRankingModal(modal.slice(8));
  if(modal?.startsWith('pitchRanking:'))return pitcherRankingModal(modal.slice(13));
@@ -2854,6 +2866,15 @@ function bindPractice(){
  $$('[data-focus-player]').forEach(button=>button.addEventListener('click',()=>{practiceFocusPlayer=button.dataset.focusPlayer;render();window.scrollTo(0,0)}));
  $$('[data-focus-range]').forEach(button=>button.addEventListener('click',()=>{practiceFocusRange=button.dataset.focusRange;render();window.scrollTo(0,0)}));
  $('#focusGameCount')?.addEventListener('click',()=>{modal='focusGameAudit';render()});
+ $('#manageFocusObservations')?.addEventListener('click',()=>{modal='manageFocusObservations';render()});
+ $$('[data-delete-focus-observation]').forEach(button=>button.addEventListener('click',()=>{
+  const first=practiceFirstName(practiceFocusPlayer);
+  if(!confirm(`Delete this coach observation? ${first}’s game and statistics will not be changed.`))return;
+  const id=button.dataset.deleteFocusObservation,gameId=button.dataset.observationGameId;
+  if(gameId){const game=(db.savedGames||[]).find(item=>item.id===gameId);if(game)game.observations=(game.observations||[]).filter(item=>item.id!==id)}
+  else db.coachObservations=(db.coachObservations||[]).filter(item=>item.id!==id);
+  save();render();
+ }));
  $('#addFocusObservation')?.addEventListener('click',openFocusObservation);
  $('#previewPlayerFocus')?.addEventListener('click',()=>{modal='focusPublishPreview';render()});
  $('#changeFocusPlayer')?.addEventListener('click',()=>{practiceFocusPlayer='';render();window.scrollTo(0,0)});
