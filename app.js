@@ -1533,9 +1533,11 @@ function portalPracticeView(){
  const first=portalData?.firstName||practiceFirstName(portalData?.playerName),role=practice?.role;
  return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${esc(practice.blockMinutes)}-minute blocks</p></section><section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card"><header><h2>${esc(first)}${role?` <small>(${esc(role)})</small>`:''}</h2></header><ol>${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol></article>${practice.drills?.length?`<section class="portal-practice-drills"><h3>Practice Drills</h3>${practice.drills.map((drill,index)=>`<p><b>${index+1}</b><span>${esc(drill)}</span></p>`).join('')}</section>`:''}`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
 }
+function portalFocusBody(focus){
+ return focus?`<section class="portal-welcome"><span>MY PLAYER FOCUS</span><h2>${esc(focus.title||'Current Hitting Focus')}</h2><p>${esc(focus.summary||'')}</p></section><section class="portal-focus-content">${focus.needsWork?`<div><span>NEEDS WORK</span><b>${esc(focus.needsWork)}</b></div>`:''}${focus.coachNote?`<div><span>COACH NOTE</span><b>${esc(focus.coachNote)}</b></div>`:''}${focus.drills?.length?`<div><span>DRILL PLAN</span><b>${esc(focus.drills.join(' · '))}</b></div>`:''}</section>`:`<section class="portal-empty"><span>MY FOCUS</span><h2>No Focus Plan Yet</h2><p>Your private two-week hitting analysis has not been published. No other player’s information is available from this portal.</p></section>`;
+}
 function portalFocusView(){
- const focus=portalData?.focus;
- return `${portalHeader('My Focus',true)}<main class="portal-page">${focus?`<section class="portal-welcome"><span>MY PLAYER FOCUS</span><h2>${esc(focus.title||'Current Hitting Focus')}</h2><p>${esc(focus.summary||'')}</p></section><section class="portal-focus-content">${focus.needsWork?`<div><span>NEEDS WORK</span><b>${esc(focus.needsWork)}</b></div>`:''}${focus.drills?.length?`<div><span>DRILL PLAN</span><b>${esc(focus.drills.join(' · '))}</b></div>`:''}</section>`:`<section class="portal-empty"><span>MY FOCUS</span><h2>No Focus Plan Yet</h2><p>Your private two-week hitting analysis has not been published. No other player’s information is available from this portal.</p></section>`}</main>`;
+ return `${portalHeader('My Focus',true)}<main class="portal-page">${portalFocusBody(portalData?.focus)}</main>`;
 }
 function portalLibraryView(){
  const drills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[],selected=drills.find(drill=>drill.name===portalSelectedDrill);
@@ -1673,6 +1675,18 @@ function playerFocusGames(range=practiceFocusRange){
  const games=[...(db.savedGames||[])];
  return window.HotBCoachObservations?.gamesInRange(games,range)||games;
 }
+function playerFocusPortalPayload(playerName=practiceFocusPlayer,range=practiceFocusRange){
+ const selected=db.roster.find(player=>player.name===playerName);if(!selected)return null;
+ const games=playerFocusGames(range),standalone=window.HotBCoachObservations?.standaloneInRange(db.coachObservations,range)||[];
+ const analysis=window.HotBHittingAnalysis?.analyzePlayer(games,selected)||{issues:[],plateAppearances:0};
+ const observed=window.HotBCoachObservations?.summarize(games,selected.name,standalone)||{patterns:[],rows:[]};
+ const focusItems=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>item.label)].filter((item,index,list)=>item&&list.indexOf(item)===index).slice(0,3);
+ const query=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>`${item.label} ${item.focus||''}`)].join(' ');
+ const drills=query?recommendPortalDrills(query).slice(0,3).map(drill=>drill.name):[];
+ const latestNote=(observed.rows||[]).filter(item=>item.note).sort((a,b)=>Number(b.createdAt||b.updatedAt||0)-Number(a.createdAt||a.updatedAt||0))[0]?.note||'';
+ const rangeText=range==='weekend'?'this past weekend':'the past two weeks',plateAppearances=analysis.plateAppearances||0;
+ return{title:'Current Hitting Focus',summary:`Based on ${games.length} saved game${games.length===1?'':'s'} and ${plateAppearances} plate appearance${plateAppearances===1?'':'s'} from ${rangeText}.`,needsWork:focusItems.join(' · '),coachNote:latestNote,drills,range,publishedAt:new Date().toISOString()};
+}
 function practicePlayerFocus(){
  const selected=db.roster.find(player=>player.name===practiceFocusPlayer);
  if(!selected)return `${practiceHeader('Player Focus',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>PLAYER FOCUS</span><h2>Choose A Player</h2><p>Review what HotB detects together with what you observed as a coach.</p></section><section class="practice-focus-roster">${db.roster.map(player=>`<button data-focus-player="${esc(player.name)}"><b>${esc(player.name)}</b><span>${practiceRole(player)||'Hitter'}</span></button>`).join('')}</section></main>`;
@@ -1690,7 +1704,7 @@ function practicePlayerFocus(){
  <section class="focus-evidence-section"><div class="focus-observation-head"><h3>Coach Observations</h3><button type="button" id="addFocusObservation">+ Add Observation</button></div>${observed.patterns.length?observed.patterns.map(item=>`<article class="focus-evidence-row ${item.count>=2?'recurring':''}"><div><b>${esc(item.tag)}</b><span>${esc(item.status)}</span></div><strong>${item.count}×</strong></article>`).join(''):`<p class="focus-empty-copy">No coach observations for ${practiceFocusRange==='weekend'?'this past weekend':'the past two weeks'}.</p>`}${notes.map(item=>`<article class="focus-note-row"><time>${esc(observationDate(item))}</time><p>${esc(item.note)}</p></article>`).join('')}</section>
  <section class="focus-evidence-section"><h3>What HotB Detects</h3>${analysis.issues?.length?analysis.issues.slice(0,5).map(item=>`<article class="focus-evidence-row"><div><b>${esc(item.label)}</b><span>${esc(item.evidence)}</span></div></article>`).join(''):`<p class="focus-empty-copy">${evidenceCount?'Not enough repeated statistical evidence to identify a tendency yet.':'No plate appearances in this range.'}</p>`}</section>
  <section class="focus-evidence-section"><h3>Suggested Drills</h3>${drills.length?drills.map((drill,index)=>`<article class="focus-drill-row"><strong>${index+1}</strong><div><b>${esc(drill.name)}</b><span>${esc(drill.bestUsedFor||drill.primaryPurpose)}</span></div></article>`).join(''):`<p class="focus-empty-copy">Suggestions will appear when HotB or the coach identifies something to work on.</p>`}</section>
- <button class="btn block" id="changeFocusPlayer">Choose Another Player</button></main>`;
+ <div class="focus-bottom-actions"><button class="btn black" id="changeFocusPlayer">Choose Another Player</button><button class="btn red" id="previewPlayerFocus">Publish</button></div></main>`;
 }
 function practiceSetup(){
  const selected=practiceSetupState.selectedNames?new Set(practiceSetupState.selectedNames):null,duration=practiceSetupState.durationMinutes||120,startTime=practiceSetupState.startTime||'18:00',endTime=practiceEndValue(startTime,duration);
@@ -2633,6 +2647,11 @@ function focusGameAuditModal(){
  }).join('');
  return `<div class="modal-backdrop"><div class="modal focus-game-audit-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER FOCUS</div><h2>Included Games</h2></div><button class="btn" data-close>Close</button></div><p class="focus-game-audit-player"><b>${esc(practiceFocusPlayer)}</b><span>${esc(label)}</span></p><section>${rows||'<p class="focus-empty-copy">No saved games are included in this time period.</p>'}</section></div></div>`;
 }
+function focusPublishPreviewModal(){
+ const focus=playerFocusPortalPayload(),first=practiceFirstName(practiceFocusPlayer);
+ if(!focus)return'';
+ return `<div class="modal-backdrop"><div class="modal focus-publish-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER PORTAL PREVIEW</div><h2>${esc(first)}’s My Focus</h2></div><button class="btn" data-close>Close</button></div><p class="focus-publish-help">This is exactly what ${esc(first)} will see after you publish it.</p><div class="focus-preview-shell"><div class="focus-preview-header"><span>Back</span><b>My Focus</b><i></i></div><div class="focus-portal-preview">${portalFocusBody(focus)}</div></div><div class="focus-publish-actions"><button class="btn" data-close>Cancel</button><button class="btn red" id="confirmPublishPlayerFocus">Publish to ${esc(first)}</button></div></div></div>`;
+}
 function modalView(){
  if(modal==='recoveryGuide')return recoveryGuideModal();
  if(modal==='cloudBackup')return cloudBackupModal();
@@ -2644,6 +2663,7 @@ function modalView(){
  if(modal==='importRoster')return importRosterModal();
  if(modal==='coachObservation')return coachObservationModal();
  if(modal==='focusGameAudit')return focusGameAuditModal();
+ if(modal==='focusPublishPreview')return focusPublishPreviewModal();
  if(modal?.startsWith('ranking:'))return evalRankingModal(modal.slice(8));
  if(modal?.startsWith('pitchRanking:'))return pitcherRankingModal(modal.slice(13));
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
@@ -2674,6 +2694,7 @@ function bind(){
  if(modal==='recruitingEmailPreview')bindRecruitingEmailPreview();
  if(modal==='importRoster')$('#confirmRosterImport')?.addEventListener('click',applyRosterImport);
  if(modal==='coachObservation')bindCoachObservation();
+ if(modal==='focusPublishPreview')bindFocusPublishPreview();
  if(modal==='cloudBackup')bindCloudBackup();
  $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
  $('#openRecoveryGuide')?.addEventListener('click',()=>{modal='recoveryGuide';render()});
@@ -2826,6 +2847,7 @@ function bindPractice(){
  $$('[data-focus-range]').forEach(button=>button.addEventListener('click',()=>{practiceFocusRange=button.dataset.focusRange;render();window.scrollTo(0,0)}));
  $('#focusGameCount')?.addEventListener('click',()=>{modal='focusGameAudit';render()});
  $('#addFocusObservation')?.addEventListener('click',openFocusObservation);
+ $('#previewPlayerFocus')?.addEventListener('click',()=>{modal='focusPublishPreview';render()});
  $('#changeFocusPlayer')?.addEventListener('click',()=>{practiceFocusPlayer='';render();window.scrollTo(0,0)});
  $('#practiceSelectAll')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=true));
  $('#practiceSelectNone')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=false));
@@ -3034,6 +3056,19 @@ function bindRecruitingEmailPreview(){
   const cc=player.email?`&cc=${encodeURIComponent(player.email)}`:'';
   window.location.href=`mailto:${encodeURIComponent(recruitingEmail.coachEmail)}?subject=${encodeURIComponent(recruitingEmail.subject)}${cc}&body=${encodeURIComponent(body)}`;
  };
+}
+function bindFocusPublishPreview(){
+ $('#confirmPublishPlayerFocus')?.addEventListener('click',async()=>{
+  const player=db.roster.find(item=>item.name===practiceFocusPlayer),focus=playerFocusPortalPayload();
+  if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before publishing Player Focus.');return}
+  if(!player?.portalId){alert(`Create ${practiceFirstName(practiceFocusPlayer)}’s Player Portal before publishing.`);return}
+  if(!focus)return;
+  const button=$('#confirmPublishPlayerFocus');if(button){button.disabled=true;button.textContent='Publishing…'}
+  try{
+   await portalDoc(player.portalId).set({focus,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+   modal=null;render();alert(`${practiceFirstName(player.name)}’s Player Focus is now available in her portal.`);
+  }catch(error){if(button){button.disabled=false;button.textContent=`Publish to ${practiceFirstName(player.name)}`}alert('Player Focus could not be published. Check Cloud Backup and your internet connection.')}
+ });
 }
 function bindCoachObservation(){
  const g=currentGame(),api=window.HotBCoachObservations,focusMode=observationMode==='focus';if(!api||(!focusMode&&!g))return;
