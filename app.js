@@ -815,6 +815,14 @@ if((db.gameDataCleanupVersion||0)<1&&window.HotBGameDataCleanup){
  localStorage.setItem(DBKEY,JSON.stringify(db));
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
 }
+// Recover Player Focus observations saved after a weekend by anchoring them to the
+// latest included game for that player. This preserves the existing observation.
+if((db.coachObservationAnchorVersion||0)<1&&window.HotBCoachObservations){
+ window.HotBCoachObservations.anchorLegacyStandalone(db.coachObservations,db.savedGames);
+ db.coachObservationAnchorVersion=1;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+ if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+}
 // Apply the requested player plans once, then preserve any changes made in the app.
 if((db.planPreferencesVersion||0)<2){
  db.planPreferences={...(db.planPreferences||{}),...requestedPlanPreferences};
@@ -3091,6 +3099,7 @@ function bindCoachObservation(){
  $('#saveCoachObservation')?.addEventListener('click',()=>{
   try{
    const payload={playerName:observationTargetPlayer,paId:observationTargetPaId,tags:$$('.observation-option.active').map(button=>button.dataset.observationOption),note:$('#observationNote')?.value||''};
+   if(focusMode)payload.observedAt=new Date(api.rangeBounds(practiceFocusRange).end).toISOString();
    if(focusMode)api.saveStandalone(db.coachObservations,payload);else api.saveObservation(g,payload);
    modal=null;save();render();
   }catch(error){alert(error.message||'HotB could not save that observation.')}
