@@ -1013,6 +1013,18 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .practice-focus-summary{display:grid;grid-template-columns:1.5fr 1fr;gap:8px;margin:10px 0}.practice-focus-summary>div{padding:13px;border:2px solid #d7ddda;border-radius:12px;background:#fff;display:flex;flex-direction:column;gap:5px}.practice-focus-summary span{color:#9d252c;font-size:11px;font-weight:950;letter-spacing:.8px}.practice-focus-summary b{font-size:19px}
 .focus-evidence-section{margin:12px 0;padding:14px;border:2px solid #d7ddda;border-radius:14px;background:#fff}.focus-evidence-section>h3{margin:0 0 10px;font-size:20px}.focus-evidence-row,.focus-drill-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid #e0e5e2}.focus-evidence-row:first-of-type,.focus-drill-row:first-of-type{border-top:0}.focus-evidence-row>div,.focus-drill-row>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}.focus-evidence-row span,.focus-drill-row span{color:#667085;font-size:13px;font-weight:700;line-height:1.3}.focus-evidence-row>strong{flex:0 0 auto;padding:5px 8px;border-radius:8px;background:#eef2ef}.focus-evidence-row.recurring>strong{background:#fde7e7;color:#aa252c}.focus-drill-row>strong{display:grid;place-items:center;flex:0 0 30px;height:30px;border-radius:50%;background:#111;color:#fff}.focus-empty-copy{margin:0;color:#667085;font-weight:700;line-height:1.4}
 
+/* Compact observation categories; frequent choices rise within their category. */
+.observation-categories{display:grid;gap:8px}
+.observation-category{border:2px solid #d4dcda;border-radius:11px;background:#f8faf9;overflow:hidden}
+.observation-category>summary{min-height:52px;padding:11px 13px;display:flex;align-items:center;justify-content:space-between;gap:10px;list-style:none;color:#961f28;font-size:17px;font-weight:950;text-transform:uppercase;letter-spacing:.5px;cursor:pointer}
+.observation-category>summary::-webkit-details-marker{display:none}
+.observation-category>summary::after{content:'⌄';order:3;color:#111;font-size:22px;line-height:1;transform-origin:center}
+.observation-category[open]>summary::after{transform:rotate(180deg)}
+.observation-category>summary small{margin-left:auto;color:#667085;font-size:12px;font-weight:850;letter-spacing:0;text-transform:none}
+.observation-category>div{display:flex;flex-wrap:wrap;gap:7px;padding:0 10px 11px;border-top:1px solid #e0e5e2}
+.observation-category .observation-option{min-height:44px;margin-top:9px;padding:9px 11px;font-size:15px}
+@media(max-width:560px){.observation-category>summary{min-height:50px;font-size:16px}.observation-category .observation-option{font-size:15px;padding:9px 10px}}
+
 /* Private player portal */
 .portal-coach-setup{margin-top:13px;padding:16px;border:2px solid #111;border-radius:15px;background:#fff}.portal-coach-setup>span{color:#a51e27;font-size:11px;font-weight:950;letter-spacing:.08em}.portal-coach-setup h2{margin:4px 0 5px;font-size:23px}.portal-coach-setup p{margin:0 0 11px;color:#596579;font-size:14px;font-weight:700;line-height:1.35}.portal-coach-setup .label{margin-top:9px}.portal-coach-ready{display:grid;gap:5px;margin-top:10px;padding:11px;border-radius:11px;background:#f1f3f2}.portal-coach-ready>b{font-size:18px}.portal-coach-ready>span{color:#596579;font-size:13px;font-weight:850}.portal-coach-ready .portal-player-actions{margin-top:4px}.portal-coach-card header{background:linear-gradient(135deg,#111,#7f141b 78%,#b51f28);color:#fff}
 .portal-home-card{grid-column:1/-1;border-color:#9f2028;background:#fff4f4;box-shadow:0 5px 0 #9f2028}.portal-home-card h3{color:#8f1820}
