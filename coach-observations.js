@@ -48,13 +48,26 @@
   if(existing)Object.assign(existing,record);else list.push(record);
   return record;
  }
- function saveStandalone(list,{playerName,tags=[],note=''}){
+ function saveStandalone(list,{playerName,tags=[],note='',observedAt=''}){
   if(!Array.isArray(list))throw new Error('Coach observations are not available.');
   if(!playerName)throw new Error('Choose a player.');
   const cleanTags=[...new Set(tags.map(value=>String(value||'').trim()).filter(Boolean))].slice(0,3),cleanNote=String(note||'').trim().slice(0,160);
   if(!cleanTags.length&&!cleanNote)throw new Error('Select an observation or enter a short note.');
-  const now=Date.now(),record={id:(globalThis.crypto?.randomUUID&&globalThis.crypto.randomUUID())||`obs-${now}-${Math.random()}`,playerName,paId:'',inning:null,pa:null,tags:cleanTags,note:cleanNote,source:'player-focus',createdAt:now,updatedAt:now};
+  const now=Date.now(),anchorTime=new Date(observedAt||now).getTime(),record={id:(globalThis.crypto?.randomUUID&&globalThis.crypto.randomUUID())||`obs-${now}-${Math.random()}`,playerName,paId:'',inning:null,pa:null,tags:cleanTags,note:cleanNote,source:'player-focus',observedAt:new Date(Number.isFinite(anchorTime)?anchorTime:now).toISOString(),createdAt:now,updatedAt:now};
   list.push(record);return record;
+ }
+ function anchorLegacyStandalone(rows,games){
+  let updated=0;
+  (rows||[]).forEach(item=>{
+   if(item?.source!=='player-focus'||item.observedAt)return;
+   const createdTime=new Date(item.createdAt||item.updatedAt||Date.now()).getTime();
+   const matching=(games||[]).filter(game=>{
+    const gameTime=new Date(game?.date).getTime(),names=[...(game?.battingOrder||[]),...(game?.hittersUsed||[]),...(game?.plateAppearances||[]).map(pa=>pa.hitter)];
+    return Number.isFinite(gameTime)&&gameTime<=createdTime&&names.includes(item.playerName);
+   }).sort((a,b)=>new Date(b.date)-new Date(a.date));
+   item.observedAt=matching[0]?.date||new Date(createdTime).toISOString();updated++;
+  });
+  return updated;
  }
  function rangeBounds(mode,now=Date.now()){
   const current=new Date(now),endOfToday=new Date(current);endOfToday.setHours(23,59,59,999);
@@ -70,7 +83,7 @@
  }
  function standaloneInRange(rows,mode,now=Date.now()){
   const bounds=rangeBounds(mode,now);
-  return (rows||[]).filter(item=>{const time=new Date(item.createdAt||item.date||item.updatedAt||0).getTime();return Number.isFinite(time)&&time>=bounds.start&&time<=bounds.end});
+  return (rows||[]).filter(item=>{const time=new Date(item.observedAt||item.date||item.createdAt||item.updatedAt||0).getTime();return Number.isFinite(time)&&time>=bounds.start&&time<=bounds.end});
  }
  function summarize(games,playerName,standalone=[]){
   const rows=[...(games||[]).flatMap(game=>observations(game).filter(item=>item.playerName===playerName).map(item=>({...item,gameId:game.id,gameDate:game.date}))),...(standalone||[]).filter(item=>item.playerName===playerName)];
@@ -85,5 +98,5 @@
   (standalone||[]).forEach(item=>(item.tags||[]).forEach(tag=>counts[tag]=(counts[tag]||0)+1));
   return counts;
  }
- return{CATEGORIES,observations,observationFor,lastCompletedTarget,recentTargets,saveObservation,saveStandalone,rangeBounds,gamesInRange,standaloneInRange,summarize,tagUsage};
+ return{CATEGORIES,observations,observationFor,lastCompletedTarget,recentTargets,saveObservation,saveStandalone,anchorLegacyStandalone,rangeBounds,gamesInRange,standaloneInRange,summarize,tagUsage};
 });
