@@ -842,12 +842,13 @@ let timerInt=null,timerStart=0,timerElapsed=0;
 let lastRenderedUndoState=null;
 let practicePlan=null;
 let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{}},practiceCoachOpen=false,practiceCardsOpen=false;
-let practiceSection='hub',practiceFocusPlayer='',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
+let practiceSection='hub',practiceFocusPlayer='',practiceFocusRange='weekend',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
 let practiceClock={running:false,finished:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0},practiceClockTimer=null,portalClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null;
+let observationTargetPaId='',observationTargetPlayer='';
 if(!db.coachPortal||typeof db.coachPortal!=='object')db.coachPortal={name:'',phone:'',portalId:'',portalPin:'',portalPinHash:''};
 
 const recoveredPracticeSession=!portalToken&&window.HotBPracticeSession?.restore(db.activePracticeSession);
@@ -1104,7 +1105,7 @@ function createGame(opponent,pitcherName,pitcherNumber,order){
  const g={
   id:crypto.randomUUID(),date:new Date().toISOString(),opponent,pitcherName,pitcherNumber,
   pitchersUsed:[openingPitcher],battingOrder:order,hittersUsed:[...order],hitterSubstitutions:[],currentIdx:0,inning:1,outs:0,runners:[],plan:planFor(order[0]),pitchType:'FB',
-  balls:0,strikes:0,paNumber:1,pitches:[],plateAppearances:[],ended:false,
+  balls:0,strikes:0,paNumber:1,pitches:[],plateAppearances:[],observations:[],ended:false,
   pendingZone:null,zoneScope:'HITTER',zoneFilter:'K',previewNext:false,showAi:false,historyTab:'LIVE',allView:'DOTS',firstPitchView:false
  };
  db.currentGame=g;
@@ -1174,7 +1175,7 @@ function gameWithoutUndoViews(game){
 }
 function gameUndoState(g){
  if(!g)return null;
- const {pitches=[],plateAppearances=[],undoStack,...game}=g;
+ const {pitches=[],plateAppearances=[],observations=[],undoStack,...game}=g;
  return {gameId:g.id,game:gameWithoutUndoViews(game),pitchesLength:pitches.length,plateAppearancesLength:plateAppearances.length,pitchHitters:pitches.map(pitch=>[pitch.id,pitch.hitter])};
 }
 function captureGameUndo(){
@@ -1343,11 +1344,12 @@ function undo(){
   if(JSON.stringify(normalized)!==JSON.stringify(current)){previous=normalized;break}
  }
  if(!previous)return;
+ const observations=structuredClone(g.observations||[]);
  const pitches=g.pitches.slice(0,previous.pitchesLength);
  const hitterByPitch=new Map(previous.pitchHitters||[]);
  pitches.forEach(pitch=>{if(hitterByPitch.has(pitch.id))pitch.hitter=hitterByPitch.get(pitch.id)});
  const plateAppearances=g.plateAppearances.slice(0,previous.plateAppearancesLength);
- db.currentGame={...structuredClone(previous.game),...viewState,pitches,plateAppearances,undoStack:stack};
+ db.currentGame={...structuredClone(previous.game),...viewState,pitches,plateAppearances,observations,undoStack:stack};
  lastRenderedUndoState=gameUndoState(db.currentGame);
  save();render();
 }
@@ -1642,7 +1644,7 @@ function practiceUsageBoxes(name){
  return`<div class="practice-usage-stats"><span>${esc(percent)}</span><span>${esc(date)}</span></div>`;
 }
 function practiceHub(){
- return `${practiceHeader()}<main class="practice-hub no-print"><section class="practice-hub-intro"><h2>Plan Your Hitting Practice</h2><p>Build today’s schedule, organize your drills, or focus on one player.</p></section><section class="practice-hub-actions"><button class="practice-hub-card primary" id="openPracticeBuilder"><span>PLAN</span><h3>Build Practice</h3><p>Choose attendance, time and create the complete rotation.</p></button><button class="practice-hub-card" id="openDrillLibrary"><span>LIBRARY</span><h3>Drill Library</h3><p>Search your hitting drills, setups and coaching purposes.</p></button><button class="practice-hub-card" id="openPlayerFocus"><span>PLAYER</span><h3>Player Focus</h3><p>Select one player for a future two-week review and targeted drill plan.</p><small>LOOK ONLY</small></button></section></main>`;
+ return `${practiceHeader()}<main class="practice-hub no-print"><section class="practice-hub-intro"><h2>Plan Your Hitting Practice</h2><p>Build today's schedule, organize your drills, or focus on one player.</p></section><section class="practice-hub-actions"><button class="practice-hub-card primary" id="openPracticeBuilder"><span>PLAN</span><h3>Build Practice</h3><p>Choose attendance, time and create the complete rotation.</p></button><button class="practice-hub-card" id="openDrillLibrary"><span>LIBRARY</span><h3>Drill Library</h3><p>Search your hitting drills, setups and coaching purposes.</p></button><button class="practice-hub-card" id="openPlayerFocus"><span>PLAYER</span><h3>Player Focus</h3><p>Combine game data and coach observations into an individual hitting focus.</p></button></section></main>`;
 }
 function practiceLibrary(){
  const drills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[];
@@ -1656,9 +1658,26 @@ function practiceLibrary(){
  const shown=drills.filter(drill=>(practiceDrillCategory==='All Drills'||drill.category===practiceDrillCategory)&&(!query||Object.values(drill).some(value=>String(value).toLowerCase().includes(query))));
  return `${practiceHeader('Drill Library',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>HITTING LIBRARY</span><h2>${drills.length} Hitting Drills</h2><p>Search by drill name, hitting problem, purpose, equipment or coaching cue. This library does not change the practice scheduler yet.</p></section><div class="practice-library-search"><input class="input" id="practiceDrillSearch" type="search" placeholder="Search drills" value="${esc(practiceDrillQuery)}" aria-label="Search drills"></div><div class="practice-filter-preview">${filters.map(filter=>`<button class="${filter===practiceDrillCategory?'active':''}" data-drill-category="${esc(filter)}">${esc(filter)}</button>`).join('')}</div><p class="practice-library-count">${shown.length} ${shown.length===1?'drill':'drills'}</p><section class="practice-drill-list">${shown.map(drill=>`<button class="practice-drill-card" data-drill-name="${esc(drill.name)}"><span>${esc(drill.category)}</span><h3>${esc(drill.name)}</h3><p>${esc(drill.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(drill.hittingMethod)}</span>${drill.equipment?`<span>${esc(drill.equipment)}</span>`:''}</div>${practiceUsageBoxes(drill.name)}</button>`).join('')||`<div class="practice-library-empty"><b>No Drills Found</b><p>Try another search or category.</p></div>`}</section></main>`;
 }
+function playerFocusGames(range=practiceFocusRange){
+ const games=[...(db.savedGames||[]),...(db.currentGame?[db.currentGame]:[])];
+ return window.HotBCoachObservations?.gamesInRange(games,range)||games;
+}
 function practicePlayerFocus(){
  const selected=db.roster.find(player=>player.name===practiceFocusPlayer);
- return `${practiceHeader('Player Focus',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>FUTURE FEATURE</span><h2>${selected?esc(selected.name):'Choose A Player'}</h2><p>${selected?'This is how her two-week hitting review and targeted drill plan will be displayed. No performance analysis is active yet.':'Select a player to preview where her future two-week review and drill plan will appear.'}</p></section>${selected?`<section class="practice-focus-preview"><div><span>PAST 14 DAYS</span><b>Waiting for analysis</b></div><div><span>NEEDS WORK</span><b>Not calculated yet</b></div><div><span>DRILL PLAN</span><b>Not created yet</b></div></section><button class="btn block" id="changeFocusPlayer">Choose Another Player</button>`:`<section class="practice-focus-roster">${db.roster.map(player=>`<button data-focus-player="${esc(player.name)}"><b>${esc(player.name)}</b><span>${practiceRole(player)||'Hitter'}</span></button>`).join('')}</section>`}</main>`;
+ if(!selected)return `${practiceHeader('Player Focus',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>PLAYER FOCUS</span><h2>Choose A Player</h2><p>Review what HotB detects together with what you observed as a coach.</p></section><section class="practice-focus-roster">${db.roster.map(player=>`<button data-focus-player="${esc(player.name)}"><b>${esc(player.name)}</b><span>${practiceRole(player)||'Hitter'}</span></button>`).join('')}</section></main>`;
+ const games=playerFocusGames(),analysis=window.HotBHittingAnalysis?.analyzePlayer(games,selected)||{issues:[],plateAppearances:0,confidence:'no-data'};
+ const observed=window.HotBCoachObservations?.summarize(games,selected.name)||{patterns:[],total:0};
+ const combinedQuery=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>`${item.label} ${item.focus||''}`)].join(' ');
+ const drills=combinedQuery?recommendPortalDrills(combinedQuery).slice(0,3):[];
+ const rangeLabel=practiceFocusRange==='weekend'?'THIS PAST WEEKEND':'PAST TWO WEEKS';
+ const evidenceCount=analysis.plateAppearances||0;
+ return `${practiceHeader('Player Focus',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>PLAYER FOCUS</span><h2>${esc(selected.name)}</h2><p>Game results and coach observations are reviewed together. Repeated observations carry more weight than a one-time tag.</p></section>
+ <div class="focus-range-toggle" role="group" aria-label="Player Focus date range"><button class="${practiceFocusRange==='weekend'?'active':''}" data-focus-range="weekend">This Past Weekend</button><button class="${practiceFocusRange==='two-weeks'?'active':''}" data-focus-range="two-weeks">Past Two Weeks</button></div>
+ <section class="practice-focus-summary"><div><span>${rangeLabel}</span><b>${games.length} game${games.length===1?'':'s'} · ${evidenceCount} PA</b></div><div><span>COACH OBSERVATIONS</span><b>${observed.total||0}</b></div></section>
+ <section class="focus-evidence-section"><h3>Coach Observations</h3>${observed.patterns.length?observed.patterns.map(item=>`<article class="focus-evidence-row ${item.count>=2?'recurring':''}"><div><b>${esc(item.tag)}</b><span>${esc(item.status)}</span></div><strong>${item.count}×</strong></article>`).join(''):`<p class="focus-empty-copy">No coach observations for ${practiceFocusRange==='weekend'?'this past weekend':'the past two weeks'}.</p>`}</section>
+ <section class="focus-evidence-section"><h3>What HotB Detects</h3>${analysis.issues?.length?analysis.issues.slice(0,5).map(item=>`<article class="focus-evidence-row"><div><b>${esc(item.label)}</b><span>${esc(item.evidence)}</span></div></article>`).join(''):`<p class="focus-empty-copy">${evidenceCount?'Not enough repeated statistical evidence to identify a tendency yet.':'No plate appearances in this range.'}</p>`}</section>
+ <section class="focus-evidence-section"><h3>Suggested Drills</h3>${drills.length?drills.map((drill,index)=>`<article class="focus-drill-row"><strong>${index+1}</strong><div><b>${esc(drill.name)}</b><span>${esc(drill.bestUsedFor||drill.primaryPurpose)}</span></div></article>`).join(''):`<p class="focus-empty-copy">Suggestions will appear when HotB or the coach identifies something to work on.</p>`}</section>
+ <button class="btn block" id="changeFocusPlayer">Choose Another Player</button></main>`;
 }
 function practiceSetup(){
  const selected=practiceSetupState.selectedNames?new Set(practiceSetupState.selectedNames):null,duration=practiceSetupState.durationMinutes||120,startTime=practiceSetupState.startTime||'18:00',endTime=practiceEndValue(startTime,duration);
@@ -1886,8 +1905,8 @@ function liveView(){
  <div class="tabs ${showAll?'with-all':'without-all'}"><button class="tab fixed-tab ${(g.historyTab||'LIVE')==='LIVE'?'active':''}" data-tab="LIVE">LIVE</button><div class="ab-scroll">${abTabNames.map(t=>`<button class="tab ${(g.historyTab||'LIVE')===t?'active':''}" data-tab="${t}">${t}</button>`).join('')}${showAll?`<button class="tab ${(g.historyTab||'LIVE')==='ALL'?'active':''}" data-tab="ALL">${g.historyTab==='ALL'&&(g.allView||'DOTS')==='DOTS'?'%':'ALL'}</button>`:''}</div></div>
  <div class="results">
   <button class="result hbp" data-result="HBP" ${statsMode?'disabled':''}>HBP</button><button class="result ball ${percentMode&&filter==='B'?'filter-active':''}" data-result="B">B</button><button class="result foul ${percentMode&&filter==='F'?'filter-active':''}" data-result="F">F</button><button class="result hit ${percentMode&&filter==='HIT'?'filter-active':''}" data-result="HIT">HIT</button>
-  <button class="result undo" id="undo">Undo</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="K">K</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="KL">KL</button><button class="result out ${percentMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
- </div></div><div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div></div>`;
+  <button class="result undo" id="undo">Undo</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="K">KS</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="KL">KL</button><button class="result out ${percentMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
+ </div></div><div class="history-column"><div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div><button class="coach-observation-button" id="coachObservation" aria-label="Coach Observation"><svg viewBox="0 0 64 44" aria-hidden="true"><path d="M9 35a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm46 0a9 9 0 1 0 0-18 9 9 0 0 0 0 0 18ZM18 25h28M20 25l6-16h12l6 16M7 17l4-8h8l1 6M57 17l-4-8h-8l-1 6"/></svg><span>OBS</span>${(g.observations||[]).length?`<b>${g.observations.length}</b>`:''}</button></div></div>`;
 }
 function historyHtml(g,hitter){
  const pitches=g.pitches.filter(p=>p.hitter===hitter);
@@ -2555,6 +2574,34 @@ async function importCoachWorkbook(file){
  rows.slice(headerIndex+1).forEach(row=>{const data={};coachColumns.forEach(([label,key])=>data[key]=cleanCell(row[headers.indexOf(label)]));if(!data.coachName&&!data.coachEmail&&!data.collegeName)return;if(!data.coachName||!data.coachEmail||!data.collegeName||!/^\S+@\S+\.\S+$/.test(data.coachEmail)){skipped++;return}const existing=db.coaches.find(coach=>coachEmailKey(coach.coachEmail)===coachEmailKey(data.coachEmail));if(existing){Object.assign(existing,data);updated++}else{db.coaches.push(data);added++}});
  save();render();alert(`Coach list imported. ${added} added, ${updated} updated${skipped?`, ${skipped} skipped because information was missing or invalid`:''}.`);
 }
+function setObservationTarget(playerName='',paId=''){
+ const g=currentGame();if(!g)return;
+ const target=paId?(g.plateAppearances||[]).find(pa=>pa.id===paId):window.HotBCoachObservations?.lastCompletedTarget(g,playerName);
+ observationTargetPlayer=target?.hitter||target?.playerName||playerName||currentHitter(g).name;
+ observationTargetPaId=target?.id||target?.paId||'';
+}
+function openCoachObservation(){
+ const g=currentGame();if(!g)return;
+ const target=window.HotBCoachObservations?.lastCompletedTarget(g);
+ setObservationTarget(target?.playerName||currentHitter(g).name,target?.paId||'');
+ modal='coachObservation';render();
+}
+function coachObservationModal(){
+ const g=currentGame(),api=window.HotBCoachObservations;if(!g||!api)return'';
+ if(!observationTargetPlayer)setObservationTarget(currentHitter(g).name,'');
+ const recent=api.recentTargets(g),recentNames=recent.map(item=>item.playerName),players=[...new Set([...recentNames,...g.battingOrder,...db.roster.map(player=>player.name)])];
+ const targetPa=(g.plateAppearances||[]).find(pa=>pa.id===observationTargetPaId),existing=api.observationFor(g,observationTargetPaId,observationTargetPlayer),selected=new Set(existing?.tags||[]);
+ const context=targetPa?`Inning ${targetPa.inning} · completed at-bat ${targetPa.pa}`:'Player observation · no completed at-bat linked';
+ return `<div class="modal-backdrop observation-backdrop"><div class="modal observation-modal"><div class="modal-header"><div><div class="small info-kicker">LIVE OR DUGOUT REVIEW</div><h2>Coach Observation</h2></div><button class="btn" data-close>Close</button></div>
+  <p class="observation-help">Defaults to the last completed hitter. Choose up to 3 items, then save.</p>
+  ${recent.length?`<div class="observation-recent"><span>RECENT HITTERS</span><div>${recent.map(item=>`<button class="${item.paId===observationTargetPaId?'active':''}" data-observation-target="${esc(item.paId)}" data-observation-player="${esc(item.playerName)}"><b>${esc(practiceFirstName(item.playerName))}</b>${item.observed?`<small>✓ ${item.tagCount||'Note'}</small>`:''}</button>`).join('')}</div></div>`:''}
+  <label class="observation-player"><span>PLAYER</span><select class="input" id="observationPlayer">${players.map(name=>`<option value="${esc(name)}" ${name===observationTargetPlayer?'selected':''}>${esc(name)}</option>`).join('')}</select><small>${esc(context)}${existing?' · Existing observation loaded':''}</small></label>
+  <div class="observation-count"><b id="observationSelectionCount">${selected.size}</b><span>of 3 selected</span></div>
+  <div class="observation-categories">${api.CATEGORIES.map(category=>`<section><h3>${esc(category.name)}</h3><div>${category.options.map(option=>`<button type="button" class="observation-option ${selected.has(option)?'active':''}" data-observation-option="${esc(option)}" aria-pressed="${selected.has(option)}">${esc(option)}</button>`).join('')}</div></section>`).join('')}</div>
+  <label class="observation-note"><span>OTHER / NOTE</span><textarea class="input" id="observationNote" rows="2" maxlength="160" placeholder="Optional short note">${esc(existing?.note||'')}</textarea></label>
+  <button class="btn black block" id="saveCoachObservation">${existing?'Update Observation':'Save Observation'}</button>
+ </div></div>`;
+}
 function modalView(){
  if(modal==='recoveryGuide')return recoveryGuideModal();
  if(modal==='cloudBackup')return cloudBackupModal();
@@ -2564,6 +2611,7 @@ function modalView(){
  if(modal==='recruitingEmail')return recruitingEmailModal();
  if(modal==='recruitingEmailPreview')return recruitingEmailPreviewModal();
  if(modal==='importRoster')return importRosterModal();
+ if(modal==='coachObservation')return coachObservationModal();
  if(modal?.startsWith('ranking:'))return evalRankingModal(modal.slice(8));
  if(modal?.startsWith('pitchRanking:'))return pitcherRankingModal(modal.slice(13));
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
@@ -2593,6 +2641,7 @@ function bind(){
  if(modal==='recruitingEmail')bindRecruitingEmail();
  if(modal==='recruitingEmailPreview')bindRecruitingEmailPreview();
  if(modal==='importRoster')$('#confirmRosterImport')?.addEventListener('click',applyRosterImport);
+ if(modal==='coachObservation')bindCoachObservation();
  if(modal==='cloudBackup')bindCloudBackup();
  $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
  $('#openRecoveryGuide')?.addEventListener('click',()=>{modal='recoveryGuide';render()});
@@ -2742,6 +2791,7 @@ function bindPractice(){
  $('#backToDrillList')?.addEventListener('click',()=>{practiceSelectedDrill='';render();window.scrollTo(0,0)});
  $('#openPlayerFocus')?.addEventListener('click',()=>{practiceSection='player';practiceFocusPlayer='';render();window.scrollTo(0,0)});
  $$('[data-focus-player]').forEach(button=>button.addEventListener('click',()=>{practiceFocusPlayer=button.dataset.focusPlayer;render();window.scrollTo(0,0)}));
+ $$('[data-focus-range]').forEach(button=>button.addEventListener('click',()=>{practiceFocusRange=button.dataset.focusRange;render();window.scrollTo(0,0)}));
  $('#changeFocusPlayer')?.addEventListener('click',()=>{practiceFocusPlayer='';render();window.scrollTo(0,0)});
  $('#practiceSelectAll')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=true));
  $('#practiceSelectNone')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=false));
@@ -2951,6 +3001,24 @@ function bindRecruitingEmailPreview(){
   window.location.href=`mailto:${encodeURIComponent(recruitingEmail.coachEmail)}?subject=${encodeURIComponent(recruitingEmail.subject)}${cc}&body=${encodeURIComponent(body)}`;
  };
 }
+function bindCoachObservation(){
+ const g=currentGame(),api=window.HotBCoachObservations;if(!g||!api)return;
+ $$('[data-observation-target]').forEach(button=>button.onclick=()=>{setObservationTarget(button.dataset.observationPlayer,button.dataset.observationTarget);render()});
+ $('#observationPlayer')?.addEventListener('change',event=>{setObservationTarget(event.target.value,'');render()});
+ const updateCount=()=>{
+  const count=$$('.observation-option.active').length,label=$('#observationSelectionCount');if(label)label.textContent=String(count);
+ };
+ $$('.observation-option').forEach(button=>button.onclick=()=>{
+  if(!button.classList.contains('active')&&$$('.observation-option.active').length>=3){alert('Choose up to 3 observations.');return}
+  button.classList.toggle('active');button.setAttribute('aria-pressed',String(button.classList.contains('active')));updateCount();
+ });
+ $('#saveCoachObservation')?.addEventListener('click',()=>{
+  try{
+   api.saveObservation(g,{playerName:observationTargetPlayer,paId:observationTargetPaId,tags:$$('.observation-option.active').map(button=>button.dataset.observationOption),note:$('#observationNote')?.value||''});
+   modal=null;save();render();
+  }catch(error){alert(error.message||'HotB could not save that observation.')}
+ });
+}
 function bindLive(){
  const g=currentGame();
  $('.live-app')?.addEventListener('click',event=>{
@@ -2980,6 +3048,7 @@ function bindLive(){
    if(r==='HIT'||r==='H4O'){modal=r;render()} else addPitch(r);
  });
  $('#undo').onclick=undo;
+ $('#coachObservation').onclick=openCoachObservation;
  $('#openProfile').onclick=()=>{evalPlayer=currentHitter(g).name;go('eval')};
  $('#openReports').onclick=()=>{modal='reports';reportMode='current';render()};
  $('#endGame').onclick=()=>{modal='endGame';render()};
