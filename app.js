@@ -18,19 +18,29 @@ const displayedChartZone=zone=>legacyChartZone[zone]||zone;
 
 const defaultRoster = [
  {name:'Aniesa Rohleder',side:'R',jersey:'9',grad:'2029',positions:'RHP | 1B',gpa:'3.98',interest:'Sports Medicine',school:'Olathe South HS',photo:'Aniesa.jpg'},
- {name:'Brooklyn Gering',side:'R',jersey:'16',grad:'2029',positions:'RHP | OF',gpa:'4.0',interest:'Nursing',school:'Spring Hill HS',photo:'Brooklyn.JPEG'},
+ {name:'Brooklyn Gering',side:'R',jersey:'16',grad:'2029',positions:'RHP | OF',gpa:'4.0',interest:'Nursing',school:'Spring Hill HS',photo:'player-photos/brooklyn-2026.jpg'},
  {name:'Brynna Peter',side:'R',jersey:'11',grad:'2028',positions:'SS | UT',gpa:'3.78',interest:'Occupational Therapy',school:'Chanute HS',photo:'Brynna.jpg'},
- {name:'Claire Jack',side:'R',jersey:'25',grad:'2029',positions:'CIF | OF',gpa:'4.0',interest:'Biology',school:'Pratt HS',photo:'Claire-headshot-small.png'},
+ {name:'Claire Jack',side:'R',jersey:'25',grad:'2029',positions:'CIF | OF',gpa:'4.0',interest:'Biology',school:'Pratt HS',photo:'player-photos/claire-2026.jpg'},
  {name:'Hailey Marsh',side:'SL',jersey:'23',grad:'2029',positions:'CF | OF',gpa:'4.0',interest:'Dentist',school:'Louisburg HS',photo:'Hailey.jpg'},
- {name:'Lakyn Farley',side:'R',jersey:'8',grad:'2028',positions:'RHP | OF',gpa:'4.0',interest:'Sports Medicine',school:'Fort Scott HS',photo:'lakyn.jpg'},
- {name:'Lydia Copeland',side:'R',jersey:'27',grad:'2028',positions:'C | CIF',gpa:'4.0',interest:'Child Psychology',school:'Louisburg HS',photo:'Lydia.JPEG'},
+ {name:'Lakyn Farley',side:'R',jersey:'8',grad:'2028',positions:'RHP | OF',gpa:'4.0',interest:'Sports Medicine',school:'Fort Scott HS',photo:'player-photos/lakyn-2026.jpg'},
+ {name:'Lydia Copeland',side:'R',jersey:'27',grad:'2028',positions:'C | CIF',gpa:'4.0',interest:'Child Psychology',school:'Louisburg HS',photo:'player-photos/lydia-2026.jpg'},
  {name:'Maia Waddell',side:'SL',jersey:'1',grad:'2028',positions:'2B | OF',gpa:'4.1',interest:'Criminal Justice / Film',school:'Olathe NW HS',photo:'Maia.jpg'},
- {name:'Makenna Whitaker',side:'R',jersey:'10',grad:'2029',positions:'RHP | UT',gpa:'4.3',interest:'Undecided',school:'Olathe NW HS',photo:'makenna.jpg'},
+ {name:'Makenna Whitaker',side:'R',jersey:'10',grad:'2029',positions:'RHP | UT',gpa:'4.3',interest:'Undecided',school:'Olathe NW HS',photo:'player-photos/makenna-2026.jpg'},
  {name:'Maleah Pena',side:'R',jersey:'20',grad:'2028',positions:'3B | 1B',gpa:'3.52',interest:'Sports Medicine',school:'Olathe NW HS',photo:'Maleah.jpg'},
- {name:'Mattingly Hardy',side:'R',jersey:'99',grad:'2029',positions:'OF | UT',gpa:'3.81',interest:'Biology',school:'Pembroke Hill HS',photo:'matti.jpg'},
- {name:'Megan Ryan',side:'R',jersey:'22',grad:'2028',positions:'RHP | UT',gpa:'4.0',interest:'Engineering',school:'Rock Creek HS',photo:'meg.jpg'},
- {name:'Tayte Stepps',side:'R',jersey:'00',grad:'2029',positions:'C | OF',gpa:'3.9',interest:'Nursing',school:'Fort Scott HS',photo:'Tayte.JPEG'}
+ {name:'Mattingly Hardy',side:'R',jersey:'99',grad:'2029',positions:'OF | UT',gpa:'3.81',interest:'Biology',school:'Pembroke Hill HS',photo:'player-photos/mattingly-2026.jpg'},
+ {name:'Megan Ryan',side:'R',jersey:'22',grad:'2028',positions:'RHP | UT',gpa:'4.0',interest:'Engineering',school:'Rock Creek HS',photo:'player-photos/megan-2026.jpg'},
+ {name:'Tayte Stepps',side:'R',jersey:'00',grad:'2029',positions:'C | OF',gpa:'3.9',interest:'Nursing',school:'Fort Scott HS',photo:'player-photos/tayte-2026.jpg'}
 ];
+const playerPhotoUpdatesV1={
+ 'Tayte Stepps':'player-photos/tayte-2026.jpg',
+ 'Makenna Whitaker':'player-photos/makenna-2026.jpg',
+ 'Brooklyn Gering':'player-photos/brooklyn-2026.jpg',
+ 'Lydia Copeland':'player-photos/lydia-2026.jpg',
+ 'Mattingly Hardy':'player-photos/mattingly-2026.jpg',
+ 'Megan Ryan':'player-photos/megan-2026.jpg',
+ 'Claire Jack':'player-photos/claire-2026.jpg',
+ 'Lakyn Farley':'player-photos/lakyn-2026.jpg'
+};
 
 const defaultCoaches = [
  {
@@ -838,6 +848,13 @@ if((db.battingStyleVersion||0)<1){
  db.roster.forEach(player=>{if(['Maia Waddell','Hailey Marsh'].includes(player.name))player.side='SL'});
  db.battingStyleVersion=1;
  localStorage.setItem(DBKEY,JSON.stringify(db));
+}
+// Replace only the eight requested Evaluation portraits on existing devices.
+if((db.playerPhotoVersion||0)<1){
+ db.roster.forEach(player=>{if(playerPhotoUpdatesV1[player.name])player.photo=playerPhotoUpdatesV1[player.name]});
+ db.playerPhotoVersion=1;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+ if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
 }
 // Preserve an unfinished game across refreshes and Home Screen app restarts.
 // Only return to setup when the saved route says live but no game exists.
