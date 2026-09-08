@@ -1058,3 +1058,5 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 
 /* Keep the user's compact a/p clock notation lowercase inside uppercase labels. */
 .practice-time-shell #practiceStartTimeDisplay{text-transform:none}
+.portal-practice-drill-link{appearance:none;border:0;background:transparent;color:inherit;font:inherit;font-weight:800;text-align:left;padding:8px 0;text-decoration:underline;text-decoration-color:#c52631;text-underline-offset:4px;cursor:pointer}
+.coach-eval-button{margin:18px 0 22px;min-height:58px;font-size:20px}

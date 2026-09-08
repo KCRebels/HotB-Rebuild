@@ -803,6 +803,8 @@ const CLOUD_LAST_SUCCESS_KEY='hotbCloudLastSuccessV1';
 const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
+const GMAIL_CLIENT_ID='412203516902-el4rhl939lb6frbbvh4krvqequ8ut7v3.apps.googleusercontent.com';
+const GMAIL_SEND_SCOPE='https://www.googleapis.com/auth/gmail.send';
 const PORTAL_QUERY_KEY='portal';
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -883,7 +885,7 @@ let reportMode='current', reportSub='spray', reportFilterHitter='All Hitters';
 let reportGameId=null;
 let reportSelectedPaId=null;
 let selectedSeason=currentSeasonLabel(), dateFilterMode='full', customDateStart='', customDateEnd='';
-let evalPlayer='Team';
+let evalPlayer='Team',evaluationReadOnly=false;
 let recordType='';
 let infoPlayerIndex=0;
 let pendingRosterImport=null;
@@ -898,7 +900,8 @@ let focusDrillReplaceIndex=-1,focusDrillQuery='';
 let practiceClock={running:false,finished:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0},practiceClockTimer=null,portalClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
-let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null;
+let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLibraryReturnView='library';
+let recruitingPlayerName='';
 let observationTargetPaId='',observationTargetPlayer='',observationMode='game',observationScope='current',observationPromptInning=0,observationFromInningPrompt=false,observationRecognition=null;
 let observationEditId='',observationEditGameId='';
 if(!db.coachPortal||typeof db.coachPortal!=='object')db.coachPortal={name:'',phone:'',portalId:'',portalPin:'',portalPinHash:''};
@@ -1022,7 +1025,7 @@ async function setupCoachPortal(){
   db.coachPortal.name=name;db.coachPortal.phone=phone;db.coachPortal.portalPinHash=await portalHash(db.coachPortal.portalId,db.coachPortal.portalPin);
   const ref=portalDoc(db.coachPortal.portalId),existing=await ref.get();
   const activePractice=db.activePortalPractice?.id===practicePlan?.portalDraftId?coachPracticePortalPayload():null;
-  await ref.set({portalType:'coach',coachName:name,firstName:practiceFirstName(name),pinHash:db.coachPortal.portalPinHash,...(!existing.exists?{ownerUid:null}:{}),activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  await ref.set({portalType:'coach',coachName:name,firstName:practiceFirstName(name),pinHash:db.coachPortal.portalPinHash,...(!existing.exists?{ownerUid:null}:{}),activePractice,evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   save();portalMessage='The private coach link and PIN are ready.';
  }catch(error){portalMessage='The coach portal could not be created. Confirm the portal security setup and internet connection.'}
  cloudBusy=false;render();
@@ -1063,6 +1066,7 @@ async function backupToCloud(automatic=false){
   batch.set(root,{email:CLOUD_EMAIL,chunkCount:chunks.length,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),formatVersion:1});
   if(!daily.exists){chunks.forEach((data,index)=>batch.set(dailyRef.collection('chunks').doc(String(index).padStart(4,'0')),{index,data}));batch.set(dailyRef,{email:CLOUD_EMAIL,chunkCount:chunks.length,createdAt:firebase.firestore.FieldValue.serverTimestamp(),formatVersion:1})}
   await batch.commit();if(!daily.exists){cloudSnapshotCount++;pruneDailySnapshots(root).catch(()=>{})}
+  if(db.coachPortal?.portalId)portalDoc(db.coachPortal.portalId).set({evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{});
   localStorage.setItem(CLOUD_ENABLED_KEY,'true');localStorage.setItem(CLOUD_PENDING_KEY,'false');localStorage.removeItem(CLOUD_ERROR_KEY);cloudLastBackup=new Date();localStorage.setItem(CLOUD_LAST_SUCCESS_KEY,cloudLastBackup.toISOString());cloudMessage=automatic?'':'Cloud backup completed.';
  }catch(error){localStorage.setItem(CLOUD_PENDING_KEY,'true');localStorage.setItem(CLOUD_ERROR_KEY,new Date().toISOString());cloudMessage='Backup needs attention. Your phone data is safe; HotB will retry when it is online.'}
  cloudBusy=false;if(route==='home')render();
@@ -1559,12 +1563,20 @@ function portalLoginView(){
 }
 function coachPortalPracticeView(){
  const practice=portalData?.activePractice,name=portalData?.firstName||practiceFirstName(portalData?.coachName)||'Coach';
- return `${portalHeader('Coach Practice')}<main class="portal-page"><section class="portal-welcome ${practice?'active':''}"><span>${practice?'ACTIVE PRACTICE':'COACH PORTAL'}</span><h2>Hi, ${esc(name)}</h2><p>${practice?'Your current coaching assignments are below.':'No practice is active right now.'}</p></section>${practice?`<section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card portal-coach-card"><header><h2>${esc(name)} <small>(Coach)</small></h2></header><ol>${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol></article>`:''}</main>`;
+ return `${portalHeader('Coach Portal')}<main class="portal-page"><section class="portal-welcome ${practice?'active':''}"><span>${practice?'ACTIVE PRACTICE':'COACH PORTAL'}</span><h2>Hi, ${esc(name)}</h2><p>${practice?'Your current coaching assignments are below.':'No practice is active right now.'}</p></section><button class="btn red block coach-eval-button" data-portal-view="evaluation">Player Eval</button>${practice?`<section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card portal-coach-card"><header><h2>${esc(name)} <small>(Coach)</small></h2></header><ol>${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol></article>`:''}</main>`;
 }
+function coachEvaluationPortalPayload(){
+ const fields=['name','jersey','grad','positions','side','throws','gpa','school','interest','email','twitter','sportsRecruits','highlightVideo','ncaaId','recruitingStatement','accomplishments','photo','pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct'];
+ return {roster:db.roster.filter(player=>!player.isGuest).map(player=>Object.fromEntries(fields.map(key=>[key,player[key]??'']))),savedGames:db.savedGames.map(game=>({id:game.id,date:game.date,opponent:game.opponent,plateAppearances:game.plateAppearances||[]})),measurements:(db.measurements||[]).map(({id,player,type,value,date})=>({id,player,type,value,date})),coaches:(db.coaches||[]).map(({coachName,coachEmail,collegeName,lastUpdated})=>({coachName,coachEmail,collegeName,lastUpdated})),practiceHistory:[],currentGame:null};
+}
+function withCoachEvaluationData(callback){const original=db,readOnly=evaluationReadOnly;db=portalData?.evaluationData||{roster:[],savedGames:[],measurements:[],coaches:[],practiceHistory:[],currentGame:null};evaluationReadOnly=true;try{return callback()}finally{db=original;evaluationReadOnly=readOnly}}
+function coachPortalEvaluationView(){return withCoachEvaluationData(()=>evalView())}
+function portalAssignmentDrillName(assignment){return (Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[]).find(drill=>assignment===drill.name||String(assignment||'').endsWith(`— ${drill.name}`))?.name||''}
+function portalPracticeAssignment(entry){const drill=portalAssignmentDrillName(entry.assignment);return drill?`<button class="portal-practice-drill-link" data-portal-practice-drill="${esc(drill)}">${esc(entry.assignment)}</button>`:`<strong>${esc(entry.assignment)}</strong>`}
 function portalPracticeView(){
  const practice=portalData?.activePractice;
  const first=portalData?.firstName||practiceFirstName(portalData?.playerName),role=practice?.role;
- return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${esc(practice.blockMinutes)}-minute blocks</p></section><section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card"><header><h2>${esc(first)}${role?` <small>(${esc(role)})</small>`:''}</h2></header><ol>${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol></article>${practice.drills?.length?`<section class="portal-practice-drills"><h3>Practice Drills</h3>${practice.drills.map((drill,index)=>`<p><b>${index+1}</b><span>${esc(drill)}</span></p>`).join('')}</section>`:''}`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
+ return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${esc(practice.blockMinutes)}-minute blocks</p></section><section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card"><header><h2>${esc(first)}${role?` <small>(${esc(role)})</small>`:''}</h2></header><ol>${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>${practice.drills?.length?`<section class="portal-practice-drills"><h3>Practice Drills</h3>${practice.drills.map((drill,index)=>`<p><b>${index+1}</b><button class="portal-practice-drill-link" data-portal-practice-drill="${esc(drill)}">${esc(drill)}</button></p>`).join('')}</section>`:''}`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
 }
 function portalFocusBody(focus){
  return focus?`<section class="portal-welcome"><span>MY PLAYER FOCUS</span><h2>${esc(focus.title||'Current Hitting Focus')}</h2><p>${esc(focus.summary||'')}</p></section><section class="portal-focus-content">${focus.needsWork?`<div><span>NEEDS WORK</span><b>${esc(focus.needsWork)}</b></div>`:''}${focus.coachNote?`<div><span>COACH NOTE</span><b>${esc(focus.coachNote)}</b></div>`:''}${focus.drills?.length?`<div><span>DRILL PLAN</span><b>${esc(focus.drills.join(' · '))}</b></div>`:''}</section>`:`<section class="portal-empty"><span>MY FOCUS</span><h2>No Focus Plan Yet</h2><p>Your private two-week hitting analysis has not been published. No other player’s information is available from this portal.</p></section>`;
@@ -1574,7 +1586,7 @@ function portalFocusView(){
 }
 function portalLibraryView(){
  const drills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[],selected=drills.find(drill=>drill.name===portalSelectedDrill);
- if(selected){const detail=(title,value)=>value?`<section class="practice-drill-detail-section"><h3>${esc(title)}</h3><p>${esc(value)}</p></section>`:'';return `${portalHeader('Drill Library',true)}<main class="portal-page practice-drill-detail"><button class="practice-library-return" id="portalLibraryBack">‹ Back To All Drills</button><section class="practice-drill-detail-head"><span>${esc(selected.category)}</span><h2>${esc(selected.name)}</h2><p>${esc(selected.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(selected.hittingMethod)}</span>${selected.equipment?`<span>${esc(selected.equipment)}</span>`:''}</div></section>${detail('Best Used For',selected.bestUsedFor)}${detail('How It Works',selected.howItWorks)}${detail('Key Coaching Cues',selected.coachingCues)}${detail('What Success Looks Like',selected.success)}${detail('Space / Setup',selected.spaceSetup)}${selected.mediaLink?`<a class="btn black block" href="${esc(selected.mediaLink)}" target="_blank" rel="noopener">Watch Drill</a>`:''}</main>`}
+ if(selected){const detail=(title,value)=>value?`<section class="practice-drill-detail-section"><h3>${esc(title)}</h3><p>${esc(value)}</p></section>`:'';return `${portalHeader('Drill Library',true)}<main class="portal-page practice-drill-detail"><button class="practice-library-return" id="portalLibraryBack">‹ ${portalLibraryReturnView==='practice'?'Back To My Practice':'Back To All Drills'}</button><section class="practice-drill-detail-head"><span>${esc(selected.category)}</span><h2>${esc(selected.name)}</h2><p>${esc(selected.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(selected.hittingMethod)}</span>${selected.equipment?`<span>${esc(selected.equipment)}</span>`:''}</div></section>${detail('Best Used For',selected.bestUsedFor)}${detail('How It Works',selected.howItWorks)}${detail('Key Coaching Cues',selected.coachingCues)}${detail('What Success Looks Like',selected.success)}${detail('Space / Setup',selected.spaceSetup)}${selected.mediaLink?`<a class="btn black block" href="${esc(selected.mediaLink)}" target="_blank" rel="noopener">Watch Drill</a>`:''}</main>`}
  const query=portalDrillQuery.trim().toLowerCase(),shown=drills.filter(drill=>!query||Object.values(drill).some(value=>String(value).toLowerCase().includes(query)));
  return `${portalHeader('Drill Library',true)}<main class="portal-page"><div class="practice-library-search"><input class="input" id="portalDrillSearch" type="search" placeholder="Search drills" value="${esc(portalDrillQuery)}" aria-label="Search drills"></div><p class="practice-library-count">${shown.length} ${shown.length===1?'drill':'drills'}</p><section class="practice-drill-list">${shown.map(drill=>`<button class="practice-drill-card" data-portal-drill="${esc(drill.name)}"><span>${esc(drill.category)}</span><h3>${esc(drill.name)}</h3><p>${esc(drill.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(drill.hittingMethod)}</span></div></button>`).join('')}</section></main>`;
 }
@@ -1588,7 +1600,7 @@ function portalDashboardView(){
 function playerPortalPage(){
  if(!portalToken)return portalCoachView();
  if(!portalData)return portalLoginView();
- if(portalData.portalType==='coach')return coachPortalPracticeView();
+ if(portalData.portalType==='coach')return portalView==='evaluation'?coachPortalEvaluationView():coachPortalPracticeView();
  if(portalView==='practice')return portalPracticeView();
  if(portalView==='focus')return portalFocusView();
  if(portalView==='library')return portalLibraryView();
@@ -2251,7 +2263,7 @@ function evalView(){
  const resultRate=player&&['Maia Waddell','Hailey Marsh'].includes(player.name)
   ?['QAB%',pct1(s.qabPct),'qabPct']
   :['HHB%',pct1(s.hhbPct),'hhbPct'];
- return `<div class="eval-head"><button class="btn eval-nav" data-go="${currentGame()?'live':'home'}">${currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><button class="btn eval-email" id="openRecruitingEmail" ${player?'':'disabled'}>Email</button></div>
+ return `<div class="eval-head"><button class="btn eval-nav" ${evaluationReadOnly?'id="portalBack"':`data-go="${currentGame()?'live':'home'}"`}>${evaluationReadOnly?'Portal':currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><button class="btn eval-email" id="openRecruitingEmail" ${player?'':'disabled'}>Email</button></div>
  <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  ${dateFilterControls('eval')}
  ${player?`<div class="player-card player-profile ${practiceRate===null?'':'has-practice-rate'}"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div>${practiceRate===null?'':`<div class="player-practice-rate">${practiceRate}%</div>`}</div>`:
@@ -2267,7 +2279,7 @@ function evalView(){
  ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2><div class="pitcher-stat-grid">
   ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<button class="pitcher-stat" data-pitch-ranking="${key}"><b>${esc(player[key]||'—')}</b><span>${label}</span></button>`).join('')}
  </div></section>`:''}
- <div class="athletic"><div class="athletic-head"><h2>Athletic Bests</h2>${player?'<button class="btn black" id="recordMeasure2">+ Record</button>':''}</div>
+ <div class="athletic"><div class="athletic-head"><h2>Athletic Bests</h2>${player&&!evaluationReadOnly?'<button class="btn black" id="recordMeasure2">+ Record</button>':''}</div>
  <div class="measure-grid">${ms.map(m=>measurementCard(player,m)).join('')}</div></div>`;
 }
 function measurementTypes(player){
@@ -2298,6 +2310,7 @@ function measurementCard(player,type){
   const bestPlayers=best===null?[]:[...new Set(entries.filter(entry=>entry.value===best).map(entry=>entry.row.player))];
   return `<div class="measure team-measure"><h3>${type}</h3><div class="best">${best===null?'—':formatMeasurementValue(type,best)}</div><div class="note">${bestPlayers.length?esc(bestPlayers.join(' / ')):'No results recorded'}</div></div>`;
  }
+ if(evaluationReadOnly)return `<div class="measure"><h3>${type}</h3><div class="best">${best===null?'—':formatMeasurementValue(type,best)}</div><div class="note">${vals.length?`${vals.length} attempt${vals.length===1?'':'s'} recorded`:'No result recorded'}</div></div>`;
  return `<button class="measure" data-measure="${esc(type)}"><h3>${type}</h3><div class="best">${best===null?'—':formatMeasurementValue(type,best)}</div><div class="note">${vals.length?`${vals.length} attempt${vals.length===1?'':'s'} recorded`:'Tap to record'}</div></button>`;
 }
 function evalGuide(title){
@@ -2439,12 +2452,16 @@ function playerInfoModal(){
 function playerMeasurementLines(player){
  const units={'Home to First':' sec','Pop Time':' sec','Overhand Throw':' mph','Exit Velocity':' mph','Fastball':' mph','Changeup':' mph','Broad Jump':' in'};
  return measurementTypes(player).flatMap(type=>{
-  const values=db.measurements.filter(m=>m.player===player.name&&m.type===type).map(m=>Number(m.value)).filter(Number.isFinite);
+  const values=recruitingData().measurements.filter(m=>m.player===player.name&&m.type===type).map(m=>Number(m.value)).filter(Number.isFinite);
   if(!values.length)return [];
   const best=['Home to First','Pop Time'].includes(type)?Math.min(...values):Math.max(...values);
   return [`• ${type}: ${formatMeasurementValue(type,best)}${units[type]||''}`];
  });
 }
+function isCoachEvaluation(){return !!(portalToken&&portalData?.portalType==='coach'&&portalView==='evaluation')}
+function recruitingData(){return isCoachEvaluation()?(portalData.evaluationData||{roster:[],measurements:[],coaches:[]}):db}
+function recruitingPlayer(){const data=recruitingData();return data.roster.find(player=>player.name===(recruitingPlayerName||evalPlayer))||{name:recruitingPlayerName||evalPlayer}}
+function recruitingCoaches(){return recruitingData().coaches||[]}
 function emailSubject(player){
  const positions=cleanCell(player.positions).replace(/\s*\|\s*/g,'/');
  return `${player.name} | ${player.grad||'Grad Year'} | ${positions||'Positions'} | ${player.gpa||'—'} GPA | #${player.jersey||'—'}`;
@@ -2483,9 +2500,9 @@ function buildRecruitingEmail(player,details){
  return {subject:emailSubject(player),body:sections.join('\n\n')};
 }
 function recruitingEmailModal(){
- const player=hitterObj(evalPlayer);
- const coaches=[...(db.coaches||[])].sort((a,b)=>(a.coachName||'').localeCompare(b.coachName||'',undefined,{sensitivity:'base'})||(a.collegeName||'').localeCompare(b.collegeName||''));
- const selectedCoach=(db.coaches||[]).find(coach=>coachEmailKey(coach.coachEmail)===coachEmailKey(recruitingEmail.selectedCoachEmail));
+ const player=recruitingPlayer();
+ const coaches=[...recruitingCoaches()].sort((a,b)=>(a.coachName||'').localeCompare(b.coachName||'',undefined,{sensitivity:'base'})||(a.collegeName||'').localeCompare(b.collegeName||''));
+ const selectedCoach=recruitingCoaches().find(coach=>coachEmailKey(coach.coachEmail)===coachEmailKey(recruitingEmail.selectedCoachEmail));
  const shortCollege=value=>String(value||'').replace(/\bUniversity\b/gi,'U');
  const updatedText=selectedCoach?.lastUpdated?`Last updated ${formatCoachUpdated(selectedCoach.lastUpdated)}`:'No changes saved on this device';
  return `<div class="modal-backdrop"><div class="modal recruiting-email-modal"><div class="modal-header"><div><div class="small info-kicker">RECRUITING EMAIL</div><h2>${esc(player.name)}</h2></div><button class="btn" data-close>Cancel</button></div>
@@ -2493,20 +2510,20 @@ function recruitingEmailModal(){
   <label class="info-field coach-search-field"><span>Coach’s Name</span><input id="emailCoachName" value="${esc(recruitingEmail.coachName)}" placeholder="Example: Coach Smith" autocomplete="off"><div class="coach-search-results" id="coachNameMatches" hidden></div></label>
   <label class="info-field"><span>Coach’s Email</span><input id="emailCoachAddress" type="email" value="${esc(recruitingEmail.coachEmail)}" placeholder="coach@college.edu"></label>
   <label class="info-field coach-search-field"><span>College Name</span><input id="emailCollegeName" value="${esc(recruitingEmail.collegeName)}" placeholder="College or university" autocomplete="off"><div class="coach-search-results" id="collegeNameMatches" hidden></div></label>
-  <div class="coach-save-row"><button class="btn black" id="saveCoachChanges" disabled>${selectedCoach?'Save Coach Changes':'Save New Coach'}</button><span id="coachLastUpdated">${esc(updatedText)}</span></div>
+  ${isCoachEvaluation()?'':`<div class="coach-save-row"><button class="btn black" id="saveCoachChanges" disabled>${selectedCoach?'Save Coach Changes':'Save New Coach'}</button><span id="coachLastUpdated">${esc(updatedText)}</span></div>`}
   <label class="info-field"><span>Optional Personal Note</span><textarea id="emailPersonalNote" rows="3" placeholder="Add a personal message for this coach if needed.">${esc(recruitingEmail.personalNote)}</textarea></label>
   <div class="email-preview-group"><button class="btn black block preview-recruiting-email" id="previewRecruitingEmail" disabled>Preview Email</button>
   <div class="email-copy-row"><span><b>CC:</b> ${esc(player.email||'No player email saved')}</span></div></div>
-  <div class="email-template-actions"><button class="btn" id="downloadCoachTemplate">Download Coach Template</button><button class="btn" id="importCoachList">Import Coach List</button><input id="coachImportFile" type="file" accept=".xlsx,.xls,.csv" hidden></div>
+  ${isCoachEvaluation()?'':`<div class="email-template-actions"><button class="btn" id="downloadCoachTemplate">Download Coach Template</button><button class="btn" id="importCoachList">Import Coach List</button><input id="coachImportFile" type="file" accept=".xlsx,.xls,.csv" hidden></div>`}
  </div></div>`;
 }
 function recruitingEmailPreviewModal(){
- const player=hitterObj(evalPlayer);
+ const player=recruitingPlayer();
  return `<div class="modal-backdrop"><div class="modal email-preview-modal"><div class="modal-header"><div><div class="small info-kicker">EMAIL PREVIEW</div><h2>${esc(player.name)}</h2></div><button class="btn" id="backToEmailSetup">Back</button></div>
   <div class="email-addresses"><div><b>To:</b> ${esc(recruitingEmail.coachEmail)}</div><div><b>CC:</b> ${esc(player.email||'None')}</div><div><b>Subject:</b> ${esc(recruitingEmail.subject)}</div></div>
   <label class="info-field"><span>Email Message — You Can Edit It Here</span><textarea id="emailBodyPreview" class="email-body-preview">${esc(recruitingEmail.body)}</textarea></label>
-  <p class="email-note">Gmail will open a new draft. Confirm that recruiting@rebelssoftball.org is selected in the From field before sending.</p>
-  <button class="btn red block" id="openGmailDraft">Open in Gmail</button>
+  <p class="email-note">HotB will connect to the recruiting Gmail account and preserve the headings, paragraphs, bullets, and links shown here. You will confirm once more before it sends.</p>
+  <button class="btn red block" id="openGmailDraft">Send with Gmail</button>
  </div></div>`;
 }
 function importRosterModal(){
@@ -2738,8 +2755,8 @@ function modalView(){
  if(modal==='manageFocusObservations')return manageFocusObservationsModal();
  if(modal==='manageFocusDrills')return manageFocusDrillsModal();
  if(modal==='focusPublishPreview')return focusPublishPreviewModal();
- if(modal?.startsWith('ranking:'))return evalRankingModal(modal.slice(8));
- if(modal?.startsWith('pitchRanking:'))return pitcherRankingModal(modal.slice(13));
+ if(modal?.startsWith('ranking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>evalRankingModal(modal.slice(8))):evalRankingModal(modal.slice(8));
+ if(modal?.startsWith('pitchRanking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>pitcherRankingModal(modal.slice(13))):pitcherRankingModal(modal.slice(13));
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
  if(modal==='reports')return reportModal();
  if(modal==='record')return recordModal();
@@ -2857,6 +2874,7 @@ async function endPracticeFromScreen(){
  practiceCompletionBusy=false;closePracticeWorkspace();
 }
 function bindPlayerPortal(){
+ if(isCoachEvaluation())bindEval();
  $('#setupPlayerPortals')?.addEventListener('click',setupPlayerPortals);
  $('#setupCoachPortal')?.addEventListener('click',setupCoachPortal);
  $('#resetCoachPortal')?.addEventListener('click',resetCoachPortal);
@@ -2880,7 +2898,8 @@ function bindPlayerPortal(){
  $$('[data-portal-view]').forEach(button=>button.addEventListener('click',()=>{portalView=button.dataset.portalView;portalSelectedDrill='';portalDrillQuery='';portalDrillResults=[];render();window.scrollTo(0,0)}));
  $('#portalDrillSearch')?.addEventListener('input',event=>{portalDrillQuery=event.target.value;render();const search=$('#portalDrillSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
  $$('[data-portal-drill]').forEach(button=>button.addEventListener('click',()=>{portalSelectedDrill=button.dataset.portalDrill;render();window.scrollTo(0,0)}));
- $('#portalLibraryBack')?.addEventListener('click',()=>{portalSelectedDrill='';render();window.scrollTo(0,0)});
+ $$('[data-portal-practice-drill]').forEach(button=>button.addEventListener('click',()=>{portalLibraryReturnView='practice';portalSelectedDrill=button.dataset.portalPracticeDrill;portalView='library';render();window.scrollTo(0,0)}));
+ $('#portalLibraryBack')?.addEventListener('click',()=>{if(portalLibraryReturnView==='practice')portalView='practice';portalLibraryReturnView='library';portalSelectedDrill='';render();window.scrollTo(0,0)});
  $('#findPortalDrills')?.addEventListener('click',()=>{portalDrillQuery=$('#portalProblem')?.value.trim()||'';portalDrillResults=recommendPortalDrills(portalDrillQuery);render();window.scrollTo(0,0)});
  $$('[data-portal-recommendation]').forEach(button=>button.addEventListener('click',()=>{portalSelectedDrill=button.dataset.portalRecommendation;portalView='library';render();window.scrollTo(0,0)}));
 }
@@ -3102,14 +3121,14 @@ function bindRecruitingEmail(){
  const update=()=>{
   recruitingEmail.coachName=coachName.value.trim();recruitingEmail.coachEmail=coachEmail.value.trim();recruitingEmail.collegeName=collegeName.value.trim();recruitingEmail.personalNote=note.value.trim();
   const invalid=!recruitingEmail.coachName||!recruitingEmail.coachEmail||!recruitingEmail.collegeName||!coachEmail.validity.valid;
-  preview.disabled=invalid;saveCoachButton.disabled=invalid;
+  preview.disabled=invalid;if(saveCoachButton)saveCoachButton.disabled=invalid;
  };
  [coachName,coachEmail,collegeName,note].forEach(field=>field.addEventListener('input',update));update();
- const chooseCoach=coach=>{recruitingEmail.selectedCoachEmail=coach.coachEmail;coachName.value=coach.coachName;coachEmail.value=coach.coachEmail;collegeName.value=coach.collegeName;coachListToggle.querySelector('b').textContent=coach.coachName;coachListToggle.querySelector('small').textContent=String(coach.collegeName||'').replace(/\bUniversity\b/gi,'U');coachListToggle.setAttribute('aria-expanded','false');coachListMenu.hidden=true;saveCoachButton.textContent='Save Coach Changes';updatedLabel.textContent=coach.lastUpdated?`Last updated ${formatCoachUpdated(coach.lastUpdated)}`:'No changes saved on this device';nameMatches.hidden=true;collegeMatches.hidden=true;update()};
+ const chooseCoach=coach=>{recruitingEmail.selectedCoachEmail=coach.coachEmail;coachName.value=coach.coachName;coachEmail.value=coach.coachEmail;collegeName.value=coach.collegeName;coachListToggle.querySelector('b').textContent=coach.coachName;coachListToggle.querySelector('small').textContent=String(coach.collegeName||'').replace(/\bUniversity\b/gi,'U');coachListToggle.setAttribute('aria-expanded','false');coachListMenu.hidden=true;if(saveCoachButton)saveCoachButton.textContent='Save Coach Changes';if(updatedLabel)updatedLabel.textContent=coach.lastUpdated?`Last updated ${formatCoachUpdated(coach.lastUpdated)}`:'No changes saved on this device';nameMatches.hidden=true;collegeMatches.hidden=true;update()};
  const showCoachMatches=(input,container,key)=>{
   const query=normalizeName(input.value);container.replaceChildren();
   if(!query){container.hidden=true;return}
-  const matches=[...(db.coaches||[])].filter(coach=>normalizeName(coach[key]).includes(query)).sort((a,b)=>{
+  const matches=[...recruitingCoaches()].filter(coach=>normalizeName(coach[key]).includes(query)).sort((a,b)=>{
    const aStart=normalizeName(a[key]).startsWith(query),bStart=normalizeName(b[key]).startsWith(query);return Number(bStart)-Number(aStart)||(a[key]||'').localeCompare(b[key]||'');
   }).slice(0,8);
   matches.forEach(coach=>{const button=document.createElement('button');button.type='button';button.className='coach-search-result';const primary=document.createElement('b'),secondary=document.createElement('span');primary.textContent=coach.coachName;secondary.textContent=`${coach.collegeName} · ${coach.coachEmail}`;button.append(primary,secondary);button.addEventListener('click',()=>chooseCoach(coach));container.append(button)});
@@ -3121,28 +3140,42 @@ function bindRecruitingEmail(){
  collegeName.addEventListener('focus',()=>showCoachMatches(collegeName,collegeMatches,'collegeName'));
  [coachName,collegeName].forEach(input=>input.addEventListener('blur',()=>setTimeout(()=>{nameMatches.hidden=true;collegeMatches.hidden=true},100)));
  coachListToggle.onclick=()=>{coachListMenu.hidden=!coachListMenu.hidden;coachListToggle.setAttribute('aria-expanded',String(!coachListMenu.hidden))};
- $$('.coach-list-option').forEach(button=>button.onclick=()=>{const coach=db.coaches.find(item=>coachEmailKey(item.coachEmail)===coachEmailKey(button.dataset.coachEmail));if(coach)chooseCoach(coach)});
- saveCoachButton.onclick=()=>{
+ $$('.coach-list-option').forEach(button=>button.onclick=()=>{const coach=recruitingCoaches().find(item=>coachEmailKey(item.coachEmail)===coachEmailKey(button.dataset.coachEmail));if(coach)chooseCoach(coach)});
+ if(saveCoachButton)saveCoachButton.onclick=()=>{
   update();const result=rememberCoach(recruitingEmail,recruitingEmail.selectedCoachEmail);
   if(result?.error){alert(result.error);return}
   recruitingEmail.selectedCoachEmail=result.coach.coachEmail;saveCoachButton.textContent='Save Coach Changes';updatedLabel.textContent=`Last updated ${formatCoachUpdated(result.coach.lastUpdated)}`;alert('Coach information saved.');render();
  };
- $('#downloadCoachTemplate').onclick=downloadCoachTemplate;
- $('#importCoachList').onclick=()=>$('#coachImportFile').click();
- $('#coachImportFile').onchange=async event=>{const file=event.target.files[0];if(!file)return;try{await importCoachWorkbook(file)}catch(error){alert(error.message||'HotB could not read that coach spreadsheet.')}};
+ if($('#downloadCoachTemplate'))$('#downloadCoachTemplate').onclick=downloadCoachTemplate;
+ if($('#importCoachList'))$('#importCoachList').onclick=()=>$('#coachImportFile').click();
+ if($('#coachImportFile'))$('#coachImportFile').onchange=async event=>{const file=event.target.files[0];if(!file)return;try{await importCoachWorkbook(file)}catch(error){alert(error.message||'HotB could not read that coach spreadsheet.')}};
  preview.onclick=()=>{
-  update();const saved=rememberCoach(recruitingEmail,recruitingEmail.selectedCoachEmail);if(saved?.error){alert(saved.error);return}recruitingEmail.selectedCoachEmail=saved.coach.coachEmail;const player=hitterObj(evalPlayer),built=buildRecruitingEmail(player,recruitingEmail);
+  update();if(!isCoachEvaluation()){const saved=rememberCoach(recruitingEmail,recruitingEmail.selectedCoachEmail);if(saved?.error){alert(saved.error);return}recruitingEmail.selectedCoachEmail=saved.coach.coachEmail}const player=recruitingPlayer(),built=buildRecruitingEmail(player,recruitingEmail);
   recruitingEmail.subject=built.subject;recruitingEmail.body=built.body;modal='recruitingEmailPreview';render();
  };
 }
 function bindRecruitingEmailPreview(){
  $('#backToEmailSetup').onclick=()=>{recruitingEmail.body=$('#emailBodyPreview').value;modal='recruitingEmail';render()};
- $('#openGmailDraft').onclick=()=>{
-  const player=hitterObj(evalPlayer),body=$('#emailBodyPreview').value;
-  recruitingEmail.body=body;
-  const cc=player.email?`&cc=${encodeURIComponent(player.email)}`:'';
-  window.location.href=`mailto:${encodeURIComponent(recruitingEmail.coachEmail)}?subject=${encodeURIComponent(recruitingEmail.subject)}${cc}&body=${encodeURIComponent(body)}`;
+ $('#openGmailDraft').onclick=async()=>{
+  const player=recruitingPlayer(),body=$('#emailBodyPreview').value,button=$('#openGmailDraft');recruitingEmail.body=body;
+  const destination=`${recruitingEmail.coachEmail}${player.email?` and CC ${player.email}`:''}`;
+  if(!confirm(`Send this recruiting email now to ${destination}?`))return;
+  button.disabled=true;button.textContent='Connecting to Gmail…';
+  try{const token=await requestGmailAccessToken();button.textContent='Sending…';await sendRecruitingEmail(token,player,body);modal=null;render();alert('Recruiting email sent through Gmail.')}catch(error){button.disabled=false;button.textContent='Send with Gmail';alert(error?.message||'Gmail could not send this email. Nothing was sent.')}
  };
+}
+function utf8Base64(value){const bytes=new TextEncoder().encode(String(value)),step=0x8000;let binary='';for(let i=0;i<bytes.length;i+=step)binary+=String.fromCharCode(...bytes.subarray(i,i+step));return btoa(binary)}
+function htmlText(value){return esc(value).replace(/(https?:\/\/[^\s<]+)/g,url=>`<a href="${url}" style="color:#b3262d">${url}</a>`)}
+function recruitingBodyHtml(body){
+ const headings=new Set(['𝗣𝗟𝗔𝗬𝗘𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘','𝗔𝗧𝗛𝗟𝗘𝗧𝗜𝗖 𝗠𝗘𝗔𝗦𝗨𝗥𝗘𝗠𝗘𝗡𝗧𝗦','𝗣𝗟𝗔𝗬𝗘𝗥 𝗦𝗧𝗔𝗧𝗘𝗠𝗘𝗡𝗧','𝗔𝗖𝗖𝗢𝗠𝗣𝗟𝗜𝗦𝗛𝗠𝗘𝗡𝗧𝗦','𝗥𝗘𝗖𝗥𝗨𝗜𝗧𝗜𝗡𝗚 𝗟𝗜𝗡𝗞𝗦','𝗙𝗔𝗟𝗟 𝟮𝟬𝟮𝟲 𝗦𝗖𝗛𝗘𝗗𝗨𝗟𝗘']);
+ let html='',list=false;const closeList=()=>{if(list){html+='</ul>';list=false}};
+ String(body).split(/\r?\n/).forEach(line=>{const value=line.trim();if(!value){closeList();html+='<div style="height:10px"></div>';return}if(headings.has(value)){closeList();html+=`<h3 style="margin:20px 0 8px;font-size:16px">${htmlText(value)}</h3>`;return}if(/^•|^\s*•/.test(line)){if(!list){html+='<ul style="margin:4px 0 14px;padding-left:24px">';list=true}html+=`<li style="margin:3px 0">${htmlText(value.replace(/^•\s*/,''))}</li>`;return}closeList();html+=`<div style="margin:3px 0">${htmlText(value)}</div>`});closeList();return `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#111">${html}</div>`
+}
+function requestGmailAccessToken(){return new Promise((resolve,reject)=>{if(!window.google?.accounts?.oauth2){reject(new Error('Google sign-in is still loading. Wait a few seconds and tap Send with Gmail again.'));return}const client=google.accounts.oauth2.initTokenClient({client_id:GMAIL_CLIENT_ID,scope:GMAIL_SEND_SCOPE,callback:response=>response.error?reject(new Error('Gmail authorization was not completed.')):resolve(response.access_token),error_callback:()=>reject(new Error('Gmail authorization was closed or blocked.'))});client.requestAccessToken({prompt:'select_account consent'})})}
+async function sendRecruitingEmail(token,player,body){
+ const headers=[`To: ${recruitingEmail.coachEmail}`,player.email?`Cc: ${player.email}`:'',`Subject: =?UTF-8?B?${utf8Base64(recruitingEmail.subject)}?=`,'MIME-Version: 1.0','Content-Type: text/html; charset="UTF-8"','Content-Transfer-Encoding: 8bit'].filter(Boolean).join('\r\n');
+ const raw=utf8Base64(`${headers}\r\n\r\n${recruitingBodyHtml(body)}`).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+ const response=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({raw})});if(!response.ok){const detail=await response.json().catch(()=>({}));throw new Error(detail?.error?.message||'Gmail rejected the message. Nothing was sent.')}
 }
 function bindFocusPublishPreview(){
  $('#confirmPublishPlayerFocus')?.addEventListener('click',async()=>{
@@ -3334,7 +3367,7 @@ function exportCsv(){
 function bindEval(){
  $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};
  bindDateFilters('eval');
- $('#openRecruitingEmail').onclick=()=>{recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:'',selectedCoachEmail:''};modal='recruitingEmail';render()};
+ $('#openRecruitingEmail').onclick=()=>{recruitingPlayerName=evalPlayer;recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:'',selectedCoachEmail:''};modal='recruitingEmail';render()};
  const recordMeasureButton=$('#recordMeasure2');
  if(recordMeasureButton)recordMeasureButton.onclick=()=>{recordType='';modal='record';render()};
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
