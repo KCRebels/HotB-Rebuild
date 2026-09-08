@@ -205,6 +205,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .eval-head{min-height:80px;background:linear-gradient(135deg,#1b0405,#d00c28);color:#fff;padding:10px 12px;display:grid;grid-template-columns:64px 1fr 64px;align-items:center}
 .eval-head>.eval-nav{grid-column:1}.eval-title{grid-column:2;text-align:center}.eval-head>.eval-email{grid-column:3;min-width:0;padding:10px 6px}.eval-head h1{font-size:25px;line-height:1.05;margin:4px 0 0;font-weight:400;white-space:nowrap}.eval-head .teamname{font-size:11px;font-weight:950;white-space:nowrap}
 .player-select{margin:22px;width:calc(100% - 44px);padding:18px;border:3px solid #111;border-radius:16px;font-size:22px;font-weight:900}
+.eval-player-filter{display:block;margin-top:14px;color:#667085;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1px}.eval-player-filter>span{display:block;margin:0 22px -13px}.eval-player-filter .player-select{display:block}
 .player-card{margin:0 22px 14px;background:#fff;border:1px solid #ddd;border-radius:14px;min-height:92px;overflow:hidden}
 .player-profile{display:grid;grid-template-columns:23px 82px 1fr;gap:8px;align-items:center;padding:9px}
 .player-profile.has-practice-rate{grid-template-columns:23px 82px minmax(0,1fr) auto}.player-practice-rate{display:grid;place-items:center;min-width:58px;height:48px;padding:0 8px;border:2px solid #111;border-radius:10px;background:#fff;color:#111;font-size:18px;font-weight:950}
@@ -938,6 +939,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .date-filter-controls{display:grid;grid-template-columns:repeat(2,calc((100% - 10px)/2));gap:10px;margin:14px 0}.date-filter-controls>*{width:100%;min-width:0;max-width:100%}.date-filter-controls label{display:block;overflow:hidden;font-size:12px;font-weight:900;color:#667085;text-transform:uppercase;letter-spacing:1px}.date-filter-controls label .input{display:block;box-sizing:border-box;width:100%!important;height:60px;min-width:0!important;max-width:100%!important;inline-size:100%!important;-webkit-appearance:none;appearance:none;margin-top:5px}.saved-game-list{display:grid;gap:10px;margin-top:16px}.saved-game-card{display:flex;align-items:center;justify-content:space-between;gap:12px;border:2px solid #d7dcd9;border-radius:14px;padding:12px;background:#fff}.saved-game-card>div:first-child{display:grid;gap:4px}.saved-game-card b{font-size:17px}.saved-game-card span{font-size:13px;color:#667085;font-weight:800}.saved-game-actions{display:flex;gap:7px}.saved-game-actions .btn{padding:10px 12px;font-size:14px}
 .eval-app{width:100%;max-width:720px;overflow-x:hidden;touch-action:pan-y}.eval-app>*{max-width:100%}.eval-app>.date-filter-controls{margin:14px 22px}
 @media(max-width:560px){.eval-app>.date-filter-controls{margin:10px 8px}.date-filter-controls label .input{height:44px}.saved-game-card{align-items:flex-start;flex-direction:column}.saved-game-actions{width:100%}.saved-game-actions .btn{flex:1}.performance h2 .small{display:block;float:none!important;margin-top:4px}}
+@media(max-width:560px){.eval-player-filter{margin-top:8px}.eval-player-filter>span{margin:0 8px -5px}}
 @media(max-width:560px){.recruiting-email-modal .modal-header h2{font-size:28px}.coach-list-toggle{min-height:62px}}
 @media(max-width:560px){.coach-save-row{grid-template-columns:1fr}.coach-save-row span{text-align:center}}
 
@@ -1060,3 +1062,4 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .practice-time-shell #practiceStartTimeDisplay{text-transform:none}
 .portal-practice-drill-link{appearance:none;border:0;background:transparent;color:inherit;font:inherit;font-weight:800;text-align:left;padding:8px 0;text-decoration:underline;text-decoration-color:#c52631;text-underline-offset:4px;cursor:pointer}
 .coach-eval-button{margin:18px 0 22px;min-height:58px;font-size:20px}
+.portal-app>.date-filter-controls{margin:14px 18px}

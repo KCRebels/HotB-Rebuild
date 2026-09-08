@@ -1466,7 +1466,9 @@ function activeDateFilterLabel(){
 }
 function dateFilterControls(prefix){
  if(dateFilterMode==='offseason')dateFilterMode='full';
- return `<div class="date-filter-controls"><select class="input" id="${prefix}SeasonFilter" aria-label="Season">${availableSeasons().map(season=>`<option ${season===selectedSeason?'selected':''}>${season}</option>`).join('')}</select><select class="input" id="${prefix}DateRange" aria-label="Date range"><option value="full" ${dateFilterMode==='full'?'selected':''}>Full Season</option><option value="fall" ${dateFilterMode==='fall'?'selected':''}>Fall</option><option value="summer" ${dateFilterMode==='summer'?'selected':''}>Summer</option><option value="custom" ${dateFilterMode==='custom'?'selected':''}>Custom Dates</option></select>${dateFilterMode==='custom'?`<label>Start<input class="input" id="${prefix}DateStart" type="date" value="${customDateStart}"></label><label>End<input class="input" id="${prefix}DateEnd" type="date" value="${customDateEnd}"></label>`:''}</div>`;
+ const yearSelect=`<select class="input" id="${prefix}SeasonFilter" aria-label="Year">${availableSeasons().map(season=>`<option ${season===selectedSeason?'selected':''}>${season}</option>`).join('')}</select>`;
+ const seasonSelect=`<select class="input" id="${prefix}DateRange" aria-label="Season"><option value="full" ${dateFilterMode==='full'?'selected':''}>Full Season</option><option value="fall" ${dateFilterMode==='fall'?'selected':''}>Fall</option><option value="summer" ${dateFilterMode==='summer'?'selected':''}>Summer</option><option value="custom" ${dateFilterMode==='custom'?'selected':''}>Custom Dates</option></select>`;
+ return `<div class="date-filter-controls">${prefix==='eval'?`<label><span>Year</span>${yearSelect}</label><label><span>Season</span>${seasonSelect}</label>`:`${yearSelect}${seasonSelect}`}${dateFilterMode==='custom'?`<label>Start<input class="input" id="${prefix}DateStart" type="date" value="${customDateStart}"></label><label>End<input class="input" id="${prefix}DateEnd" type="date" value="${customDateEnd}"></label>`:''}</div>`;
 }
 function bindDateFilters(prefix){
  $(`#${prefix}SeasonFilter`)?.addEventListener('change',event=>{selectedSeason=event.target.value;render()});
@@ -2258,20 +2260,22 @@ function evalView(){
  const emptyComparison=()=>`<div class="value compare-value empty-value"><span>—</span><span class="metric-pipe">|</span><span>—</span></div>`;
  const executionTotals=pas.reduce((totals,pa)=>({successes:totals.successes+Number(pa.executionSuccesses||0),attempts:totals.attempts+Number(pa.executionAttempts||0)}),{successes:0,attempts:0});
  const execution=executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null;
+ const slapHitter=!!(player&&['Maia Waddell','Hailey Marsh'].includes(player.name));
+ const reach=s.PA?s.reachPct:null;
  const ms=measurementTypes(player);
  const metricHead=(metric,label=metric)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${metric}">${label}</button><button class="metric-all" data-ranking="${metric}">ALL</button></div>`;
  const resultRate=player&&['Maia Waddell','Hailey Marsh'].includes(player.name)
   ?['QAB%',pct1(s.qabPct),'qabPct']
   :['HHB%',pct1(s.hhbPct),'hhbPct'];
  return `<div class="eval-head"><button class="btn eval-nav" ${evaluationReadOnly?'id="portalBack"':`data-go="${currentGame()?'live':'home'}"`}>${evaluationReadOnly?'Portal':currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><button class="btn eval-email" id="openRecruitingEmail" ${player?'':'disabled'}>Email</button></div>
- <select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
+ <label class="eval-player-filter"><span>Player</span><select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label>
  ${dateFilterControls('eval')}
  ${player?`<div class="player-card player-profile ${practiceRate===null?'':'has-practice-rate'}"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div>${practiceRate===null?'':`<div class="player-practice-rate">${practiceRate}%</div>`}</div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
   <div class="eval-tile dark">${metricHead('HotB+')} ${hotb===null?emptyComparison():(player?comparison(hotb,hotb-100,0):`<div class="value">${hotb}</div>`)}<div class="note">Production vs Team</div></div>
   <div class="eval-tile">${metricHead('Runs Produced','RP')} ${s.PA?(player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`):emptyComparison()}<div class="note">Runs Produced</div></div>
-  <div class="eval-tile">${metricHead('Execution','HP%')}<div class="value">${execution===null?'—%':pct0(execution)}</div><div class="note">Hitting Plan</div></div>
+  <div class="eval-tile">${slapHitter?metricHead('Reach%'):metricHead('Execution','HP%')}<div class="value">${slapHitter?(reach===null?'—%':pct0(reach)):(execution===null?'—%':pct0(execution))}</div><div class="note">${slapHitter?'Reached Base':'Hitting Plan'}</div></div>
  </div>
  <div class="performance"><h2>Hitting Results <span class="small" style="float:right">${esc(activeDateFilterLabel())}</span></h2><div class="perf-grid">
  ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],resultRate].map(([label,val,key])=>`<div class="perf ${s.PA>=25&&!['hhbPct','qabPct'].includes(key)?grade(s[key==='contact'?'contactPct':key==='K'?'kPct':key],key):''}" data-guide="${label}"><b>${val}</b><span>${label}</span></div>`).join('')}
@@ -2314,6 +2318,7 @@ function measurementCard(player,type){
  return `<button class="measure" data-measure="${esc(type)}"><h3>${type}</h3><div class="best">${best===null?'—':formatMeasurementValue(type,best)}</div><div class="note">${vals.length?`${vals.length} attempt${vals.length===1?'':'s'} recorded`:'Tap to record'}</div></button>`;
 }
 function evalGuide(title){
+ if(title==='Reach%')return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>Reach Percentage</h2></div><button class="btn" data-close>Close</button></div><hr style="border-color:#555"><p style="font-size:22px;line-height:1.45;font-weight:400">Reach% is the percentage of plate appearances in which the hitter reaches base by a hit, walk, hit-by-pitch, error, or fielder’s choice. It gives slap hitters credit for using speed and pressure to reach safely, including outcomes that official OBP does not count.</p><p class="small" style="color:#ddd">Reach% is not color-graded.</p></div></div>`;
  if(title==='HHB%'||title==='QAB%'){
   const isHHB=title==='HHB%';
   const description=isHHB?'Hard-Hit Ball Percentage is balls marked HHB divided by all tracked balls put in play.':'Quality At-Bat Percentage is quality at-bats divided by total plate appearances. A plate appearance counts once when it includes a hit, walk, hit-by-pitch, successful sacrifice, RBI, RBA, HHB, or eight or more pitches.';
@@ -2351,13 +2356,14 @@ function evalRankingModal(metric){
   if(metric==='HotB+')value=stats.PA&&teamRate?(stats.rp/stats.PA)/teamRate*100:null;
   else if(metric==='Runs Produced')value=stats.PA?stats.rp:null;
   else if(metric==='Execution')value=executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null;
+  else if(metric==='Reach%')value=stats.PA?stats.reachPct:null;
   return {player,value};
  }).sort((a,b)=>{
   if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
   if(a.value===null)return 1;if(b.value===null)return-1;
   return b.value-a.value||a.player.name.localeCompare(b.player.name);
  });
- const formatted=value=>value===null?'—':metric==='HotB+'?Math.round(value):metric==='Execution'?pct0(value):value.toFixed(1);
+ const formatted=value=>value===null?'—':metric==='HotB+'?Math.round(value):['Execution','Reach%'].includes(metric)?pct0(value):value.toFixed(1);
  return `<div class="modal-backdrop"><div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">TEAM RANKINGS</div><h2>${esc(metric)}</h2></div><button class="btn" data-close>Close</button></div>
   <div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.player.name===evalPlayer?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-name">${esc(row.player.name)}</span><strong>${formatted(row.value)}</strong></div>`).join('')}</div>
  </div></div>`;

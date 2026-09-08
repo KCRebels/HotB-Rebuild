@@ -33,4 +33,11 @@ assert.equal(stats.qabPct,5/7);
 assert.equal(statsForPAs([{outcome:'BB'}]).hhbPct,0,'HHB% is zero without tracked balls in play');
 assert.equal(statsForPAs([]).qabPct,0,'QAB% is zero without plate appearances');
 
+const reachStats=statsForPAs([
+ {outcome:'HIT'},{outcome:'BB'},{outcome:'HBP'},{outcome:'E'},{outcome:'FC'},
+ {outcome:'H4O'},{outcome:'K'},{outcome:'SAC'}
+]);
+assert.equal(reachStats.REACH,5,'hits, walks, HBP, errors, and fielder choices count as reaching base');
+assert.equal(reachStats.reachPct,5/8,'Reach% uses every plate appearance as its denominator');
+
 console.log('evaluation-stats tests passed');
