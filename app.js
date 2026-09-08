@@ -1027,7 +1027,7 @@ async function setupCoachPortal(){
   const activePractice=db.activePortalPractice?.id===practicePlan?.portalDraftId?coachPracticePortalPayload():null;
   await ref.set({portalType:'coach',coachName:name,firstName:practiceFirstName(name),pinHash:db.coachPortal.portalPinHash,...(!existing.exists?{ownerUid:null}:{}),activePractice,evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   save();portalMessage='The private coach link and PIN are ready.';
- }catch(error){portalMessage='The coach portal could not be created. Confirm the portal security setup and internet connection.'}
+ }catch(error){console.error('Coach portal refresh failed',error);portalMessage=`The coach portal could not be refreshed${error?.message?`: ${error.message}`:'. Check the internet connection and try again.'}`}
  cloudBusy=false;render();
 }
 async function resetCoachPortal(){
@@ -1569,7 +1569,8 @@ function coachPortalPracticeView(){
 }
 function coachEvaluationPortalPayload(){
  const fields=['name','jersey','grad','positions','side','throws','gpa','school','interest','email','twitter','sportsRecruits','highlightVideo','ncaaId','recruitingStatement','accomplishments','photo','pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct'];
- return {roster:db.roster.filter(player=>!player.isGuest).map(player=>Object.fromEntries(fields.map(key=>[key,player[key]??'']))),savedGames:db.savedGames.map(game=>({id:game.id,date:game.date,opponent:game.opponent,plateAppearances:game.plateAppearances||[]})),measurements:(db.measurements||[]).map(({id,player,type,value,date})=>({id,player,type,value,date})),coaches:(db.coaches||[]).map(({coachName,coachEmail,collegeName,lastUpdated})=>({coachName,coachEmail,collegeName,lastUpdated})),practiceHistory:[],currentGame:null};
+ const payload={roster:db.roster.filter(player=>!player.isGuest).map(player=>Object.fromEntries(fields.map(key=>[key,player[key]??'']))),savedGames:db.savedGames.map(game=>({id:game.id,date:game.date,opponent:game.opponent,plateAppearances:game.plateAppearances||[]})),measurements:(db.measurements||[]).map(({id,player,type,value,date})=>({id,player,type,value,date})),coaches:(db.coaches||[]).map(({coachName,coachEmail,collegeName,lastUpdated})=>({coachName,coachEmail,collegeName,lastUpdated})),practiceHistory:[],currentGame:null};
+ return JSON.parse(JSON.stringify(payload));
 }
 function withCoachEvaluationData(callback){const original=db,readOnly=evaluationReadOnly;db=portalData?.evaluationData||{roster:[],savedGames:[],measurements:[],coaches:[],practiceHistory:[],currentGame:null};evaluationReadOnly=true;try{return callback()}finally{db=original;evaluationReadOnly=readOnly}}
 function coachPortalEvaluationView(){return withCoachEvaluationData(()=>evalView())}
