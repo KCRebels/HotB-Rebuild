@@ -67,6 +67,12 @@
   if(existing)Object.assign(existing,record);else list.push(record);
   return record;
  }
+ function updateRecord(record,{tags=[],note=''}){
+  if(!record)throw new Error('That observation could not be found.');
+  const cleanTags=[...new Set(tags.map(value=>String(value||'').trim()).filter(Boolean))].slice(0,3),cleanNote=String(note||'').trim().slice(0,160);
+  if(!cleanTags.length&&!cleanNote)throw new Error('Select an observation or enter a short note.');
+  record.tags=cleanTags;record.note=cleanNote;record.updatedAt=Date.now();return record;
+ }
  function saveStandalone(list,{playerName,tags=[],note='',observedAt=''}){
   if(!Array.isArray(list))throw new Error('Coach observations are not available.');
   if(!playerName)throw new Error('Choose a player.');
@@ -117,5 +123,5 @@
   (standalone||[]).forEach(item=>(item.tags||[]).forEach(tag=>counts[tag]=(counts[tag]||0)+1));
   return counts;
  }
- return{CATEGORIES,observations,observationFor,lastCompletedTarget,recentTargets,targetsForScope,saveObservation,saveStandalone,anchorLegacyStandalone,rangeBounds,gamesInRange,standaloneInRange,summarize,tagUsage};
+ return{CATEGORIES,observations,observationFor,lastCompletedTarget,recentTargets,targetsForScope,saveObservation,updateRecord,saveStandalone,anchorLegacyStandalone,rangeBounds,gamesInRange,standaloneInRange,summarize,tagUsage};
 });
