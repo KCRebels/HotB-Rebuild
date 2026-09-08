@@ -37,6 +37,25 @@
   });
   return targets.sort((a,b)=>Number(b.recentHalf)-Number(a.recentHalf)||Number(b.pa)-Number(a.pa));
  }
+ function orderedUniqueTargets(game,pas,firstPlayer=''){
+  const ordered=[...(pas||[])].sort((a,b)=>Number(b.pa)-Number(a.pa)||Number(b.ts||0)-Number(a.ts||0)),seen=new Set(),targets=[];
+  if(firstPlayer){const existing=observationFor(game,'',firstPlayer);seen.add(firstPlayer);targets.push({playerName:firstPlayer,paId:'',current:true,observed:!!existing,tagCount:existing?.tags?.length||0})}
+  ordered.forEach(pa=>{if(!pa?.hitter||seen.has(pa.hitter))return;seen.add(pa.hitter);const existing=observationFor(game,pa.id,pa.hitter);targets.push({playerName:pa.hitter,paId:pa.id,inning:pa.inning,pa:pa.pa,observed:!!existing,tagCount:existing?.tags?.length||0})});
+  return targets;
+ }
+ function targetsForScope(game,scope='current'){
+  if(!game)return[];
+  const lineup=[...new Set(game.battingOrder||[])],current=lineup[Number(game.currentIdx)||0]||'';
+  if(scope==='previous')return orderedUniqueTargets(game,(game.plateAppearances||[]).filter(pa=>Number(pa.inning)===Number(game.inning)-1));
+  if(scope==='lineup'){
+   const completed=orderedUniqueTargets(game,(game.plateAppearances||[]).filter(pa=>lineup.includes(pa.hitter))),anchor=(game.outs||0)>0||completed.some(item=>Number(item.inning)===Number(game.inning))?current:(completed[0]?.playerName||current),byName=new Map(completed.map(item=>[item.playerName,item])),ordered=[];
+   if(anchor)ordered.push(byName.get(anchor)||{playerName:anchor,paId:'',current:anchor===current});
+   completed.forEach(item=>{if(!ordered.some(row=>row.playerName===item.playerName))ordered.push(item)});
+   if(lineup.length){const start=Math.max(0,lineup.indexOf(anchor));for(let step=1;step<=lineup.length;step++){const name=lineup[(start-step+lineup.length)%lineup.length];if(name&&!ordered.some(row=>row.playerName===name))ordered.push({playerName:name,paId:'',current:name===current})}}
+   return ordered;
+  }
+  return orderedUniqueTargets(game,(game.plateAppearances||[]).filter(pa=>Number(pa.inning)===Number(game.inning)),current);
+ }
  function saveObservation(game,{playerName,paId='',tags=[],note=''}){
   if(!game||!playerName)throw new Error('Choose a player.');
   const cleanTags=[...new Set(tags.map(value=>String(value||'').trim()).filter(Boolean))].slice(0,3);
@@ -98,5 +117,5 @@
   (standalone||[]).forEach(item=>(item.tags||[]).forEach(tag=>counts[tag]=(counts[tag]||0)+1));
   return counts;
  }
- return{CATEGORIES,observations,observationFor,lastCompletedTarget,recentTargets,saveObservation,saveStandalone,anchorLegacyStandalone,rangeBounds,gamesInRange,standaloneInRange,summarize,tagUsage};
+ return{CATEGORIES,observations,observationFor,lastCompletedTarget,recentTargets,targetsForScope,saveObservation,saveStandalone,anchorLegacyStandalone,rangeBounds,gamesInRange,standaloneInRange,summarize,tagUsage};
 });

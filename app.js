@@ -897,7 +897,7 @@ let practiceClock={running:false,finished:false,startAt:0,lastBlock:1,lastTwoMin
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null;
-let observationTargetPaId='',observationTargetPlayer='',observationMode='game';
+let observationTargetPaId='',observationTargetPlayer='',observationMode='game',observationScope='current',observationPromptInning=0,observationFromInningPrompt=false,observationRecognition=null;
 if(!db.coachPortal||typeof db.coachPortal!=='object')db.coachPortal={name:'',phone:'',portalId:'',portalPin:'',portalPinHash:''};
 
 const recoveredPracticeSession=!portalToken&&window.HotBPracticeSession?.restore(db.activePracticeSession);
@@ -1330,7 +1330,8 @@ function runnersAfterRBI(currentRunners,rbiCount){
 }
 function recordOut(g){
  g.outs+=1;
- if(g.outs>=3){g.outs=0;g.inning+=1;g.runners=[]}
+ if(g.outs>=3){g.outs=0;g.inning+=1;g.runners=[];return true}
+ return false;
 }
 function addPitch(result,extra={}){
  const g=currentGame(); if(!g)return;
@@ -1375,11 +1376,12 @@ function closePA(outcome,extra={}){
  if(outcome==='FC')g.runners=batterToFirst(g.runners);
  if(outcome==='H4O'&&extra.rba)g.runners=runnersAfterRBA(g.runners);
  if(outcome==='H4O'&&Number(extra.rbiCount)>0)g.runners=runnersAfterRBI(g.runners,extra.rbiCount);
- if(['H4O','K','SAC'].includes(outcome))recordOut(g);
+ const completedInning=g.inning,inningEnded=['H4O','K','SAC'].includes(outcome)&&recordOut(g);
  g.balls=0;g.strikes=0;g.paNumber++;
  g.currentIdx=(g.currentIdx+1)%g.battingOrder.length;
  g.plan=planFor(g.battingOrder[g.currentIdx]);
  g.pitchType='FB';
+ if(inningEnded){g.observationPromptedInnings=[...new Set([...(g.observationPromptedInnings||[]),completedInning])];observationPromptInning=completedInning;modal='inningObservationPrompt'}
 }
 function undo(){
  const g=currentGame();if(!g)return;
@@ -2637,11 +2639,11 @@ function setObservationTarget(playerName='',paId=''){
  observationTargetPlayer=target?.hitter||target?.playerName||playerName||currentHitter(g).name;
  observationTargetPaId=target?.id||target?.paId||'';
 }
-function openCoachObservation(){
+function openCoachObservation(options={}){
  const g=currentGame();if(!g)return;
- observationMode='game';
- const target=window.HotBCoachObservations?.lastCompletedTarget(g);
- setObservationTarget(target?.playerName||currentHitter(g).name,target?.paId||'');
+ observationMode='game';observationScope=options.scope||'current';observationFromInningPrompt=!!options.fromInningPrompt;
+ const target=window.HotBCoachObservations?.targetsForScope(g,observationScope)?.[0];
+ observationTargetPlayer=target?.playerName||currentHitter(g).name;observationTargetPaId=target?.paId||'';
  modal='coachObservation';render();
 }
 function openFocusObservation(){
@@ -2652,20 +2654,24 @@ function openFocusObservation(){
 function coachObservationModal(){
  const g=currentGame(),api=window.HotBCoachObservations,focusMode=observationMode==='focus';if(!api||(!focusMode&&!g))return'';
  if(!observationTargetPlayer&&!focusMode)setObservationTarget(currentHitter(g).name,'');
- const recent=focusMode?[]:api.recentTargets(g),recentNames=recent.map(item=>item.playerName),gamePlayers=focusMode?[]:(g.hittersUsed?.length?g.hittersUsed:g.battingOrder),players=focusMode?[observationTargetPlayer]:[...new Set([...recentNames,...gamePlayers])];
+ const recent=focusMode?[]:api.targetsForScope(g,observationScope);
  const targetPa=focusMode?null:(g.plateAppearances||[]).find(pa=>pa.id===observationTargetPaId),existing=focusMode?null:api.observationFor(g,observationTargetPaId,observationTargetPlayer),selected=new Set(existing?.tags||[]);
  const usage=api.tagUsage([...(db.savedGames||[]),...(g?[g]:[])],db.coachObservations);
  const categoryOptions=category=>category.options.map((option,index)=>({option,index})).sort((a,b)=>Number(selected.has(b.option))-Number(selected.has(a.option))||(usage[b.option]||0)-(usage[a.option]||0)||a.index-b.index).map(item=>item.option);
  const context=focusMode?'General observation · not linked to a game':targetPa?`Inning ${targetPa.inning} · completed at-bat ${targetPa.pa}`:'Player observation · no completed at-bat linked';
  return `<div class="modal-backdrop observation-backdrop"><div class="modal observation-modal"><div class="modal-header"><div><div class="small info-kicker">${focusMode?'PLAYER FOCUS':'LIVE OR DUGOUT REVIEW'}</div><h2>Coach Observation</h2></div><button class="btn" data-close>Close</button></div>
-  <p class="observation-help">${focusMode?'Choose up to 3 items or enter a short note.':'Defaults to the last completed hitter. Choose up to 3 items, then save.'}</p>
-  ${recent.length?`<div class="observation-recent"><span>RECENT HITTERS</span><div>${recent.map(item=>`<button class="${item.paId===observationTargetPaId?'active':''}" data-observation-target="${esc(item.paId)}" data-observation-player="${esc(item.playerName)}"><b>${esc(practiceFirstName(item.playerName))}</b>${item.observed?`<small>✓ ${item.tagCount||'Note'}</small>`:''}</button>`).join('')}</div></div>`:''}
-  <label class="observation-player ${focusMode?'observation-player-locked':''}"><span>PLAYER</span>${focusMode?`<strong>${esc(observationTargetPlayer)}</strong>`:`<select class="input" id="observationPlayer">${players.map(name=>`<option value="${esc(name)}" ${name===observationTargetPlayer?'selected':''}>${esc(name)}</option>`).join('')}</select>`}<small>${esc(context)}${existing?' · Existing observation loaded':''}</small></label>
+  <p class="observation-help">${focusMode?'Choose up to 3 items or enter a short note.':'Choose a hitter below. They are listed from the current or most recent at-bat backward.'}</p>
+  ${!focusMode?`<div class="observation-scopes">${!observationFromInningPrompt?`<button class="${observationScope==='current'?'active':''}" data-observation-scope="current">Current Inning</button>`:''}${g.inning>1?`<button class="${observationScope==='previous'?'active':''}" data-observation-scope="previous">Previous Inning</button>`:''}<button class="${observationScope==='lineup'?'active':''}" data-observation-scope="lineup">Full Lineup</button></div>`:''}
+  ${recent.length?`<div class="observation-recent"><span>${observationScope==='lineup'?'ACTIVE LINEUP':observationScope==='previous'?`INNING ${g.inning-1}`:`INNING ${g.inning}`}</span><div>${recent.map(item=>`<button class="${item.playerName===observationTargetPlayer&&item.paId===observationTargetPaId?'active':''}" data-observation-target="${esc(item.paId)}" data-observation-player="${esc(item.playerName)}"><b>${esc(practiceFirstName(item.playerName))}</b>${item.current?'<small>At Bat</small>':item.observed?`<small>✓ ${item.tagCount||'Note'}</small>`:''}</button>`).join('')}</div></div>`:'<p class="observation-empty">No completed at-bats in that inning.</p>'}
+  <label class="observation-player observation-player-locked"><span>PLAYER</span><strong>${esc(observationTargetPlayer)}</strong><small>${esc(context)}${existing?' · Existing observation loaded':''}</small></label>
   <div class="observation-count"><b id="observationSelectionCount">${selected.size}</b><span>of 3 selected</span></div>
   <div class="observation-categories">${api.CATEGORIES.map(category=>{const selectedCount=category.options.filter(option=>selected.has(option)).length;return `<details class="observation-category"><summary><span>${esc(category.name)}</span><small>${selectedCount?`${selectedCount} selected`:'Choose'}</small></summary><div>${categoryOptions(category).map(option=>`<button type="button" class="observation-option ${selected.has(option)?'active':''}" data-observation-option="${esc(option)}" aria-pressed="${selected.has(option)}">${esc(option)}</button>`).join('')}</div></details>`}).join('')}</div>
-  <label class="observation-note"><span>OTHER / NOTE</span><textarea class="input" id="observationNote" rows="2" maxlength="160" placeholder="Optional short note">${esc(existing?.note||'')}</textarea></label>
+  <label class="observation-note"><span>OTHER / NOTE</span><textarea class="input" id="observationNote" rows="2" maxlength="160" placeholder="Optional short note">${esc(existing?.note||'')}</textarea></label><div class="observation-dictation"><button type="button" class="btn" id="observationMic">🎙 Dictate Note</button><small id="observationMicStatus">Review the words before saving.</small></div>
   <button class="btn black block" id="saveCoachObservation">${existing?'Update Observation':'Save Observation'}</button>
  </div></div>`;
+}
+function inningObservationPromptModal(){
+ return `<div class="modal-backdrop"><div class="modal inning-observation-prompt"><div class="small info-kicker">INNING ${observationPromptInning} COMPLETE</div><h2>Do you have any observations to record from that inning?</h2><div><button class="btn" id="skipInningObservation">Not Now</button><button class="btn black" id="addInningObservation">Yes — Add Observation</button></div></div></div>`;
 }
 function focusGameAuditModal(){
  const games=playerFocusGames().slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -2703,6 +2709,7 @@ function modalView(){
  if(modal==='recruitingEmailPreview')return recruitingEmailPreviewModal();
  if(modal==='importRoster')return importRosterModal();
  if(modal==='coachObservation')return coachObservationModal();
+ if(modal==='inningObservationPrompt')return inningObservationPromptModal();
  if(modal==='focusGameAudit')return focusGameAuditModal();
  if(modal==='manageFocusObservations')return manageFocusObservationsModal();
  if(modal==='focusPublishPreview')return focusPublishPreviewModal();
@@ -2736,6 +2743,7 @@ function bind(){
  if(modal==='recruitingEmailPreview')bindRecruitingEmailPreview();
  if(modal==='importRoster')$('#confirmRosterImport')?.addEventListener('click',applyRosterImport);
  if(modal==='coachObservation')bindCoachObservation();
+ if(modal==='inningObservationPrompt')bindInningObservationPrompt();
  if(modal==='focusPublishPreview')bindFocusPublishPreview();
  if(modal==='cloudBackup')bindCloudBackup();
  $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
@@ -3123,8 +3131,8 @@ function bindFocusPublishPreview(){
 }
 function bindCoachObservation(){
  const g=currentGame(),api=window.HotBCoachObservations,focusMode=observationMode==='focus';if(!api||(!focusMode&&!g))return;
- $$('[data-observation-target]').forEach(button=>button.onclick=()=>{setObservationTarget(button.dataset.observationPlayer,button.dataset.observationTarget);render()});
- $('#observationPlayer')?.addEventListener('change',event=>{setObservationTarget(event.target.value,'');render()});
+ $$('[data-observation-scope]').forEach(button=>button.onclick=()=>{observationScope=button.dataset.observationScope;const target=api.targetsForScope(g,observationScope)[0];observationTargetPlayer=target?.playerName||'';observationTargetPaId=target?.paId||'';render()});
+ $$('[data-observation-target]').forEach(button=>button.onclick=()=>{observationTargetPlayer=button.dataset.observationPlayer;observationTargetPaId=button.dataset.observationTarget||'';render()});
  const updateCount=()=>{
   const count=$$('.observation-option.active').length,label=$('#observationSelectionCount');if(label)label.textContent=String(count);
  };
@@ -3139,6 +3147,18 @@ function bindCoachObservation(){
   button.classList.toggle('active');button.setAttribute('aria-pressed',String(button.classList.contains('active')));updateCount();
   const category=button.closest('.observation-category'),categoryCount=category?.querySelectorAll('.observation-option.active').length||0,summary=category?.querySelector('summary small');if(summary)summary.textContent=categoryCount?`${categoryCount} selected`:'Choose';
  });
+ const mic=$('#observationMic'),note=$('#observationNote'),status=$('#observationMicStatus'),SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(mic&&note){
+  if(!SpeechRecognition){mic.textContent='🎙 Use Keyboard Mic';mic.onclick=()=>{note.focus();if(status)status.textContent='Tap the microphone on your phone keyboard to dictate.'}}
+  else mic.onclick=()=>{
+   if(observationRecognition){observationRecognition.stop();return}
+   const recognition=new SpeechRecognition();observationRecognition=recognition;recognition.lang='en-US';recognition.interimResults=true;recognition.continuous=false;const original=note.value.trim();
+   recognition.onstart=()=>{mic.classList.add('listening');mic.textContent='■ Stop Listening';if(status)status.textContent='Listening…'};
+   recognition.onresult=event=>{let words='';for(let i=event.resultIndex;i<event.results.length;i++)words+=event.results[i][0].transcript;note.value=[original,words.trim()].filter(Boolean).join(original?' ':'').slice(0,160)};
+   recognition.onerror=()=>{if(status)status.textContent='Could not hear that. Try again or use the keyboard microphone.'};
+   recognition.onend=()=>{observationRecognition=null;mic.classList.remove('listening');mic.textContent='🎙 Dictate Note';if(status&&status.textContent==='Listening…')status.textContent='Review the words before saving.'};recognition.start();
+  };
+ }
  $('#saveCoachObservation')?.addEventListener('click',()=>{
   try{
    const payload={playerName:observationTargetPlayer,paId:observationTargetPaId,tags:$$('.observation-option.active').map(button=>button.dataset.observationOption),note:$('#observationNote')?.value||''};
@@ -3147,6 +3167,10 @@ function bindCoachObservation(){
    modal=null;save();render();
   }catch(error){alert(error.message||'HotB could not save that observation.')}
  });
+}
+function bindInningObservationPrompt(){
+ $('#skipInningObservation')?.addEventListener('click',()=>{modal=null;render()});
+ $('#addInningObservation')?.addEventListener('click',()=>openCoachObservation({scope:'previous',fromInningPrompt:true}));
 }
 function bindLive(){
  const g=currentGame();
