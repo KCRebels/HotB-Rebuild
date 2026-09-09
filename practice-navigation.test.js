@@ -14,5 +14,10 @@ assert.ok(source.includes("if(!confirm('Discard this practice plan before it sta
 assert.ok(source.includes("if(!confirm('End this practice now? It will be saved to Practice History and removed from the player and coach portals.'))return;"),'DONE must confirm before ending an active practice');
 assert.ok(source.includes("$('#endPracticeClock')?.addEventListener('click',endPracticeFromScreen)"),'DONE must use the before-start and active-practice ending flow');
 assert.ok(!source.includes("id=\"endPracticeClock\" ${practiceClock.running?'':'disabled'}"),'DONE must be available before the clock starts');
+assert.ok(source.includes('function persistPracticeDraft()'),'attendance setup must have persistent draft storage');
+assert.ok(source.includes("input.addEventListener('change',persistPracticeDraft)"),'attendance edits must save automatically');
+assert.ok(source.includes("id=\"endPracticeDraft\""),'Build Practice must provide an End button');
+assert.ok(source.includes('every guest link will expire'),'ending a draft must confirm that temporary links expire');
+assert.ok(source.includes("db.activePracticeSession?.stage==='setup'"),'the practice hub must identify a saved setup draft');
 
 console.log('practice-navigation tests passed');
