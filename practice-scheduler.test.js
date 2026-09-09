@@ -96,13 +96,19 @@ assert.deepEqual(scheduler.validate(tenTwoTwo),[]);
 const thirteenTwoTwo=scheduler.buildSchedule(scenario(13,2,2));
 assert.ok(thirteenTwoTwo.feasibilityErrors.some(error=>error.includes('short 1 live block')),'the scheduler must reject a plan that would require a pitcher to throw more than twice');
 
-const earlyGuests=[...scenario(11,4,2),...Array.from({length:6},(_,index)=>({name:`Early Guest ${index+1}`,isPitcher:index<2,isCatcher:index>=2&&index<4,canPitch:index<2,requiresPitchWarmup:index<2,canCatch:index>=2&&index<4,prePracticeComplete:true,availableFromBlock:0,availableUntilBlock:10}))];
+const earlyGuests=[...scenario(11,4,2),...Array.from({length:6},(_,index)=>({name:`Early Guest ${index+1}`,isGuest:true,isPitcher:index<2,isCatcher:index>=2&&index<4,canPitch:index<2,requiresPitchWarmup:index<2,canCatch:index>=2&&index<4,prePracticeComplete:true,availableFromBlock:0,availableUntilBlock:10}))];
 const earlyGuestPlan=scheduler.buildSchedule(earlyGuests);
 assert.deepEqual(earlyGuestPlan.feasibilityErrors,[],'17 players should fit when six guests complete warm-up and tee before practice');
 assert.deepEqual(scheduler.validate(earlyGuestPlan),[],'the early-guest schedule must pass the complete rules audit');
 for(const guest of earlyGuests.filter(player=>player.prePracticeComplete)){
  assert.ok(!earlyGuestPlan.schedule[guest.name].some(entry=>entry.activity==='Stretch'||entry.activity==='Tee Work'),`${guest.name} must not repeat pre-practice work`);
  assert.ok(earlyGuestPlan.schedule[guest.name].slice(0,2).some(entry=>entry.activity.startsWith('Front Toss Lane')),`${guest.name} must use early Front Toss capacity`);
+}
+for(const session of earlyGuestPlan.liveSessions.filter(session=>session.pitcher.startsWith('Early Guest'))){
+ assert.ok(session.catcher.startsWith('Early Guest'),`${session.pitcher} should preferentially throw to a guest catcher`);
+}
+for(const session of earlyGuestPlan.liveSessions.filter(session=>session.pitcher.startsWith('Scenario'))){
+ assert.ok(session.catcher.startsWith('Scenario'),`${session.pitcher} should preferentially throw to a team catcher`);
 }
 
 console.log('practice-scheduler tests passed');
