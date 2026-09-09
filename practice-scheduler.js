@@ -21,7 +21,7 @@
   const attendees=(players||[]).filter(player=>player&&player.name).map(player=>{
    const from=Math.max(0,Math.min(BLOCK_COUNT,Number(player.availableFromBlock)||0));
    const until=Math.max(from,Math.min(BLOCK_COUNT,Number.isFinite(Number(player.availableUntilBlock))?Number(player.availableUntilBlock):BLOCK_COUNT));
-   return {...player,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,canPitch:!!player.isPitcher&&player.canPitch!==false,requiresPitchWarmup:!!player.isPitcher&&player.canPitch!==false&&player.requiresPitchWarmup!==false,canCatch:!!player.isCatcher&&player.canCatch!==false,availableFromBlock:from,availableUntilBlock:until};
+   return {...player,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,prePracticeComplete:!!player.prePracticeComplete,canPitch:!!player.isPitcher&&player.canPitch!==false,requiresPitchWarmup:!!player.isPitcher&&player.canPitch!==false&&player.requiresPitchWarmup!==false,canCatch:!!player.isCatcher&&player.canCatch!==false,availableFromBlock:from,availableUntilBlock:until};
   });
   const duration=Math.max(10,Math.round((Number(durationMinutes)||120)/10)*10),blockMinutes=duration/BLOCK_COUNT;
   const times=blockTimes(startTime,duration),warnings=[],fallbackWarnings=[];
@@ -29,6 +29,7 @@
   const teeBlocks={};
   attendees.forEach(player=>{
    if(player.availableFromBlock>=player.availableUntilBlock){warnings.push(`${player.name} is not available for a complete practice block.`);return}
+   if(player.prePracticeComplete){teeBlocks[player.name]=-1;return}
    const warmupBlock=player.availableFromBlock,teeBlock=warmupBlock+1;
    schedule[player.name][warmupBlock]={activity:fixedActivities[0]};
    if(teeBlock<player.availableUntilBlock){schedule[player.name][teeBlock]={activity:fixedActivities[1]};teeBlocks[player.name]=teeBlock}
@@ -195,16 +196,17 @@
   }
   const liveBlocks=new Set(liveSessions.map(session=>session.block));
   const frontTossAssignments=[];
-  const frontTossCandidates=[2,3,4,5,6,7,8,9].filter(block=>!liveBlocks.has(block));
+  const prePracticePlayers=attendees.filter(player=>player.prePracticeComplete),reserveEarlyFront=prePracticePlayers.length>=2&&prePracticePlayers.length<=12;
+  const frontTossCandidates=[0,1,2,3,4,5,6,7,8,9].filter(block=>!liveBlocks.has(block));
   const orderedFrontBlocks=frontTossCandidates.slice().sort((a,b)=>(a>=8?0:1)-(b>=8?0:1)||a-b),frontSlots=orderedFrontBlocks.flatMap(block=>[{block,lane:1},{block,lane:2}]);
   if(!feasibilityErrors.length){
-   const frontGroups=groupedAssignment(attendees,frontSlots,(player,slot)=>isOpen(player,slot.block));
+   const frontGroups=groupedAssignment(attendees,frontSlots,(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2)));
    if(!frontGroups)feasibilityErrors.push('Front toss cannot be scheduled exactly once per player in groups of 2–3 with the selected attendance and availability.');
    else frontGroups.forEach((names,index)=>names.forEach(name=>{const {block,lane}=frontSlots[index];schedule[name][block]={activity:`Front Toss Lane ${lane}`};frontTossAssignments.push({player:name,block,lane})}));
   }
   const frontTossBlocks=[...new Set(frontTossAssignments.map(item=>item.block))].sort((a,b)=>a-b);
   if(!feasibilityErrors.length){
-   const machineSlots=[2,3,4,5,6,7,8,9].map(block=>({block})),machineGroups=groupedAssignment(attendees,machineSlots,(player,slot)=>isOpen(player,slot.block));
+   const machineSlots=[0,1,2,3,4,5,6,7,8,9].map(block=>({block})),machineGroups=groupedAssignment(attendees,machineSlots,(player,slot)=>isOpen(player,slot.block));
    if(!machineGroups)feasibilityErrors.push('Machine cannot be scheduled exactly once per player in groups of 2–3 with the selected attendance and availability.');
    else machineGroups.forEach((names,index)=>names.forEach(name=>{schedule[name][machineSlots[index].block]={activity:'Machine'}}));
   }
@@ -273,11 +275,11 @@
   Object.entries(plan?.schedule||{}).forEach(([name,entries])=>{
    if(entries.length!==BLOCK_COUNT||entries.some(entry=>!entry?.activity))errors.push(`${name} has downtime while present.`);
    const player=plan.players?.find(item=>item.name===name),from=player?.availableFromBlock||0,until=player?.availableUntilBlock??BLOCK_COUNT;
-   if(from<until&&entries[from]?.activity!=='Stretch')errors.push(`${name} must complete Warm-Up in the first attended block.`);
-   if(from+1<until&&entries[from+1]?.activity!=='Tee Work')errors.push(`${name} must complete Tee Work in the second attended block.`);
-   if(entries.some((entry,index)=>entry?.activity==='Tee Work'&&index!==from+1))errors.push(`${name} repeats Tee Work after the required block.`);
+   if(!player?.prePracticeComplete&&from<until&&entries[from]?.activity!=='Stretch')errors.push(`${name} must complete Warm-Up in the first attended block.`);
+   if(!player?.prePracticeComplete&&from+1<until&&entries[from+1]?.activity!=='Tee Work')errors.push(`${name} must complete Tee Work in the second attended block.`);
+   if(entries.some((entry,index)=>entry?.activity==='Tee Work'&&(!player?.prePracticeComplete&&index!==from+1)))errors.push(`${name} repeats Tee Work after the required block.`);
    if(entries.filter(entry=>entry.activity==='Machine').length!==1)errors.push(`${name} must complete Machine exactly once.`);
-   if(entries.filter(entry=>entry.activity.startsWith('Front Toss')).length!==1)errors.push(`${name} must complete Front Toss exactly once.`);
+   if(entries.filter(entry=>entry.activity.startsWith('Front Toss Lane')).length!==1)errors.push(`${name} must complete Front Toss exactly once.`);
    if(!entries.some(entry=>entry.activity.startsWith('Drill #')))errors.push(`${name} is missing drill work.`);
    const drillEntries=entries.filter(entry=>entry.activity.startsWith('Drill #')).map(entry=>entry.activity);
    if(new Set(drillEntries).size!==drillEntries.length)errors.push(`${name} repeats a drill station.`);
