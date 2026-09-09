@@ -1679,7 +1679,7 @@ function practiceAvailability(startTime,durationMinutes,arrival,departure){
 }
 function practicePlayerModel(player,accommodation=null,startTime='18:00',durationMinutes=120){
  const positions=positionTokens(player);
- const model={name:player.name,isPitcher:isPitcherProfile(player),isCatcher:positions.includes('C')};
+ const model={name:player.name,isPitcher:isPitcherProfile(player),isCatcher:positions.includes('C'),isGuest:!!player.isPracticeGuest};
  if(!accommodation)return model;
  const arrival=accommodation.arrival||startTime,departure=accommodation.departure||practiceEndValue(startTime,durationMinutes),availability=practiceAvailability(startTime,durationMinutes,arrival,departure);
  return {...model,...availability,arrivalTime:arrival,departureTime:departure,prePracticeComplete:!!player.isPracticeGuest&&!!accommodation.prePracticeComplete,canPitch:model.isPitcher&&accommodation.canPitch!==false,requiresPitchWarmup:model.isPitcher&&accommodation.canPitch!==false&&accommodation.requiresPitchWarmup!==false,canCatch:model.isCatcher&&accommodation.canCatch!==false};
