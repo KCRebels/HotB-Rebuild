@@ -4,6 +4,12 @@ const session=require('./practice-session.js');
 assert.equal(session.create(),null);
 assert.equal(session.restore(null),null);
 
+const draft=session.createDraft({setupState:{selectedNames:['Aniesa'],guestPlayers:[{name:'Guest',phone:'9135551212'}]}});
+assert.equal(draft.stage,'setup');
+assert.equal(draft.plan,null);
+assert.deepEqual(session.restore(draft).setupState.selectedNames,['Aniesa'],'an unfinished attendance draft must restore before a schedule exists');
+assert.equal(session.restore(draft).setupState.guestPlayers[0].phone,'9135551212','guest contact information must survive draft recovery');
+
 const source={plan:{portalDraftId:'practice-1',blockMinutes:12,players:[{name:'Aniesa'}]},chosenDrills:[{name:'Two Tee'}],setupState:{selectedNames:['Aniesa']},clock:{running:true,finished:false,startAt:1000,lastBlock:1,lastTwoMinuteBlock:1}};
 const saved=session.create(source);
 source.plan.players[0].name='Changed';
