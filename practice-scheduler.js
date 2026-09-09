@@ -21,7 +21,7 @@
   const attendees=(players||[]).filter(player=>player&&player.name).map(player=>{
    const from=Math.max(0,Math.min(BLOCK_COUNT,Number(player.availableFromBlock)||0));
    const until=Math.max(from,Math.min(BLOCK_COUNT,Number.isFinite(Number(player.availableUntilBlock))?Number(player.availableUntilBlock):BLOCK_COUNT));
-   return {...player,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,prePracticeComplete:!!player.prePracticeComplete,canPitch:!!player.isPitcher&&player.canPitch!==false,requiresPitchWarmup:!!player.isPitcher&&player.canPitch!==false&&player.requiresPitchWarmup!==false,canCatch:!!player.isCatcher&&player.canCatch!==false,availableFromBlock:from,availableUntilBlock:until};
+   return {...player,isGuest:!!player.isGuest,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,prePracticeComplete:!!player.prePracticeComplete,canPitch:!!player.isPitcher&&player.canPitch!==false,requiresPitchWarmup:!!player.isPitcher&&player.canPitch!==false&&player.requiresPitchWarmup!==false,canCatch:!!player.isCatcher&&player.canCatch!==false,availableFromBlock:from,availableUntilBlock:until};
   });
   const duration=Math.max(10,Math.round((Number(durationMinutes)||120)/10)*10),blockMinutes=duration/BLOCK_COUNT;
   const times=blockTimes(startTime,duration),warnings=[],fallbackWarnings=[];
@@ -76,9 +76,8 @@
   const today=new Date(),todayDate=Date.UTC(today.getFullYear(),today.getMonth(),today.getDate());
   const weekNumber=Math.floor((todayDate-Date.UTC(2026,7,31))/(7*24*60*60*1000));
   const heavyCatcherIndex=((weekNumber%2)+2)%2;
-  const orderedCatchers=catchers.length>1
-   ? [catchers[heavyCatcherIndex],catchers[1-heavyCatcherIndex]]
-   : catchers;
+  const catcherRotate=catchers.length?heavyCatcherIndex%catchers.length:0;
+  const orderedCatchers=catchers.slice(catcherRotate).concat(catchers.slice(0,catcherRotate));
   const hitterSessionsNeeded=Math.ceil(attendees.length/3);
   const orderedPitchers=pitchers.slice().sort((a,b)=>a.availableUntilBlock-b.availableUntilBlock||a.availableFromBlock-b.availableFromBlock||a.name.localeCompare(b.name));
   const plannedSessionCount=coachPitch?Math.max(1,hitterSessionsNeeded):pitchers.length?Math.max(pitchers.length,hitterSessionsNeeded):0;
@@ -125,19 +124,22 @@
   if(repeatHittersNeeded>attendees.length)feasibilityErrors.push(`${sessionCount} live blocks require more second live-hitting assignments than the attendance can safely provide.`);
   const catcherTargets=[];
   if(sessionCount===0){}
-  else if(sessionCount===1)catcherTargets.push(null);
+  else if(sessionCount===1)catcherTargets.push(false);
   else if(orderedCatchers.length>1){
    const playerCaughtBlocks=Math.min(sessionCount,orderedCatchers.length*2),firstCount=Math.ceil(playerCaughtBlocks/2),secondCount=Math.floor(playerCaughtBlocks/2),nineSquareCount=sessionCount-playerCaughtBlocks;
-   catcherTargets.push(...Array(firstCount).fill(orderedCatchers[0]),...Array(nineSquareCount).fill(null),...Array(secondCount).fill(orderedCatchers[1]));
+   catcherTargets.push(...Array(firstCount).fill(true),...Array(nineSquareCount).fill(false),...Array(secondCount).fill(true));
   }else if(orderedCatchers.length===1){
    const playerCaughtBlocks=Math.min(2,sessionCount-1);
-   catcherTargets.push(...Array(sessionCount-playerCaughtBlocks).fill(null),...Array(playerCaughtBlocks).fill(orderedCatchers[0]));
-  }else catcherTargets.push(...Array(sessionCount).fill(null));
+   catcherTargets.push(...Array(sessionCount-playerCaughtBlocks).fill(false),...Array(playerCaughtBlocks).fill(true));
+  }else catcherTargets.push(...Array(sessionCount).fill(false));
   const liveCatcherLoads=new Map(orderedCatchers.map(catcher=>[catcher.name,0]));
   const sessionPlans=plannedSessions.map((item,index)=>{
    const {pitcher,liveBlock}=item;
-   const preferred=catcherTargets[index],catcherChoices=preferred?[preferred,...orderedCatchers]:[];
-   const catcher=catcherChoices.find((candidate,candidateIndex,list)=>candidate&&list.indexOf(candidate)===candidateIndex&&(liveCatcherLoads.get(candidate.name)||0)<2&&candidate.name!==pitcher?.name&&isOpen(candidate,liveBlock))||null;
+   const usePlayerCatcher=catcherTargets[index],catcherChoices=usePlayerCatcher?orderedCatchers.slice().sort((a,b)=>{
+    const aMatch=pitcher&&a.isGuest===pitcher.isGuest?0:1,bMatch=pitcher&&b.isGuest===pitcher.isGuest?0:1;
+    return aMatch-bMatch||(liveCatcherLoads.get(a.name)||0)-(liveCatcherLoads.get(b.name)||0)||orderedCatchers.indexOf(a)-orderedCatchers.indexOf(b);
+   }):[];
+   const catcher=catcherChoices.find(candidate=>(liveCatcherLoads.get(candidate.name)||0)<2&&candidate.name!==pitcher?.name&&isOpen(candidate,liveBlock))||null;
    if(catcher)liveCatcherLoads.set(catcher.name,(liveCatcherLoads.get(catcher.name)||0)+1);
    return {pitcher,index,liveBlock,catcher};
   });
@@ -154,7 +156,7 @@
    let warmBlock,warmCatcher=null,warmPartner='';
    for(const candidateBlock of [liveBlock-1,liveBlock-2]){
     if(candidateBlock<2||!isOpen(pitcher,candidateBlock))continue;
-    const playerCatcher=[catcher,...orderedCatchers].find((candidate,candidateIndex,list)=>candidate&&list.indexOf(candidate)===candidateIndex&&(warmupCatcherLoads.get(candidate.name)||0)<1&&candidate.name!==pitcher.name&&isOpen(candidate,candidateBlock));
+    const playerCatcher=[catcher,...orderedCatchers].filter((candidate,candidateIndex,list)=>candidate&&list.indexOf(candidate)===candidateIndex).sort((a,b)=>(a.isGuest===pitcher.isGuest?0:1)-(b.isGuest===pitcher.isGuest?0:1)).find(candidate=>(warmupCatcherLoads.get(candidate.name)||0)<1&&candidate.name!==pitcher.name&&isOpen(candidate,candidateBlock));
     if(playerCatcher){warmBlock=candidateBlock;warmCatcher=playerCatcher;warmPartner=playerCatcher.name;break}
     if(!coachWarmupBlocks.has(candidateBlock)){warmBlock=candidateBlock;warmPartner='Coach';coachWarmupBlocks.add(candidateBlock);break}
    }
