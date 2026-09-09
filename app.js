@@ -807,6 +807,7 @@ const GMAIL_CLIENT_ID='412203516902-el4rhl939lb6frbbvh4krvqequ8ut7v3.apps.google
 const GMAIL_SEND_SCOPE='https://www.googleapis.com/auth/gmail.send';
 const PORTAL_QUERY_KEY='portal';
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
+const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
 const seed = {
  roster: defaultRoster,
@@ -893,7 +894,7 @@ let recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',s
 let timerInt=null,timerStart=0,timerElapsed=0;
 let lastRenderedUndoState=null;
 let practicePlan=null;
-let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{}},practiceCoachOpen=false,practiceCardsOpen=false;
+let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false},practiceCoachOpen=false,practiceCardsOpen=false;
 let practiceSection='hub',practiceFocusPlayer='',practiceFocusRange='weekend',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
 let focusDrillReplaceIndex=-1,focusDrillQuery='';
@@ -944,6 +945,7 @@ function newPortalId(){
  return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
 function newPortalPin(){return String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0')}
+function newGuestSecret(){return newPortalId()+newPortalId()}
 function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}`}
 function playerPortalTextUrl(player){
  const phone=String(player?.phone||'').replace(/[^\d+]/g,'');
@@ -954,12 +956,21 @@ function playerPortalTextUrl(player){
 }
 function coachPortalUrl(){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(db.coachPortal?.portalId||'')}`}
 function coachPortalShareText(){return `${db.coachPortal?.name||'Coach'}’s private HotB Coach Portal\n${coachPortalUrl()}\nPIN: ${db.coachPortal?.portalPin||''}`}
+function guestPortalUrl(guest){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(guest.portalId||'')}&guest=${encodeURIComponent(guest.portalSecret||'')}`}
+function guestPortalShareText(guest){return `${guest.name}’s temporary HotB practice link\n${guestPortalUrl(guest)}\nThis link expires when practice ends.`}
 async function loadPlayerPortal(){
  if(!portalToken||!cloudAuth||!cloudStore)return;
  portalBusy=true;portalMessage='';
  if(!portalAuthUser){
   try{await cloudAuth.signInAnonymously()}catch(error){portalBusy=false;portalMessage='Player access is not active yet. The coach must finish Firebase portal setup.'}
   return;
+ }
+ if(guestPortalSecret&&!isCoachPortalUser()){
+  try{
+   const proof=await portalHash(portalToken,guestPortalSecret);
+   try{await portalDoc().update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+   catch(firstError){await portalDoc().update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+  }catch(error){}
  }
  try{
   const snapshot=await portalDoc().get();
@@ -1493,7 +1504,7 @@ function render(){
  route==='new'?newGameView():route==='roster'?rosterView():
  route==='live'?liveView():route==='eval'?evalView():route==='reports'?reportsPage():route==='practice'?practicePage():route==='portal'?playerPortalPage():homeView()}</div>${modal?modalView():''}`;
  bind();
- if(route==='portal'&&portalData?.activePractice&&(portalView==='practice'||portalData.portalType==='coach')){updatePortalPracticeClock();portalClockTimer=setInterval(updatePortalPracticeClock,500)}
+ if(route==='portal'&&portalData?.activePractice&&(portalView==='practice'||portalData.portalType==='coach'||portalData.portalType?.startsWith('guest'))){updatePortalPracticeClock();portalClockTimer=setInterval(updatePortalPracticeClock,500)}
  if(route==='eval')requestAnimationFrame(fitEvalMetricValues);
 }
 function fitEvalMetricValues(){
@@ -1567,6 +1578,12 @@ function coachPortalPracticeView(){
  const practice=portalData?.activePractice,name=portalData?.firstName||practiceFirstName(portalData?.coachName)||'Coach';
  return `${portalHeader('Coach Portal')}<main class="portal-page"><section class="portal-welcome ${practice?'active':''}"><span>${practice?'ACTIVE PRACTICE':'COACH PORTAL'}</span><h2>Hi, ${esc(name)}</h2><p>${practice?'Your current coaching assignments are below.':'No practice is active right now.'}</p></section><button class="btn red block coach-eval-button" data-portal-view="evaluation">Player Eval</button>${practice?`<section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card portal-coach-card"><header><h2>${esc(name)} <small>(Coach)</small></h2></header><ol>${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol></article>`:''}</main>`;
 }
+function guestPortalEndedView(){return `${portalHeader('Hitting Practice')}<main class="portal-page"><section class="portal-empty"><span>GUEST ACCESS</span><h2>This Practice Has Ended</h2><p>This temporary link is no longer active.</p></section></main>`}
+function guestCoachPracticeView(){
+ const practice=portalData?.activePractice,name=portalData?.firstName||practiceFirstName(portalData?.coachName)||'Coach';
+ if(portalData?.expired||!practice)return guestPortalEndedView();
+ return `${portalHeader('Guest Coach')}<main class="portal-page"><section class="portal-welcome active"><span>GUEST COACH · VIEW ONLY</span><h2>Hi, ${esc(name)}</h2><p>${esc(practice.title||'Current Hitting Practice')}</p></section><section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section>${(practice.players||[]).map(player=>`<article class="practice-player-card portal-player-card portal-guest-coach-card"><header><h2>${esc(player.name)}${player.role?` <small>(${esc(player.role)})</small>`:''}</h2></header><ol>${player.schedule.map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>`).join('')}</main>`;
+}
 function coachEvaluationPortalPayload(){
  const fields=['name','jersey','grad','positions','side','throws','gpa','school','interest','email','twitter','sportsRecruits','highlightVideo','ncaaId','recruitingStatement','accomplishments','photo','pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct'];
  const payload={roster:db.roster.filter(player=>!player.isGuest).map(player=>Object.fromEntries(fields.map(key=>[key,player[key]??'']))),savedGames:db.savedGames.map(game=>({id:game.id,date:game.date,opponent:game.opponent,plateAppearances:game.plateAppearances||[]})),measurements:(db.measurements||[]).map(({id,player,type,value,date})=>({id,player,type,value,date})),coaches:(db.coaches||[]).map(({coachName,coachEmail,collegeName,lastUpdated})=>({coachName,coachEmail,collegeName,lastUpdated})),practiceHistory:[],currentGame:null};
@@ -1579,7 +1596,7 @@ function portalPracticeAssignment(entry){const drill=portalAssignmentDrillName(e
 function portalPracticeView(){
  const practice=portalData?.activePractice;
  const first=portalData?.firstName||practiceFirstName(portalData?.playerName),role=practice?.role;
- return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${esc(practice.blockMinutes)}-minute blocks</p></section><section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card"><header><h2>${esc(first)}${role?` <small>(${esc(role)})</small>`:''}</h2></header><ol>${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>${practice.drills?.length?`<section class="portal-practice-drills"><h3>Practice Drills</h3>${practice.drills.map((drill,index)=>`<p><b>${index+1}</b><button class="portal-practice-drill-link" data-portal-practice-drill="${esc(drill)}">${esc(drill)}</button></p>`).join('')}</section>`:''}`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
+ return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${esc(practice.blockMinutes)}-minute blocks</p></section><section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card"><header><h2>${esc(first)}${role?` <small>(${esc(role)})</small>`:''}</h2></header><ol>${(practice.schedule||[]).map(entry=>`<li data-portal-block="${entry.block}"><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>${practice.drills?.length?`<section class="portal-practice-drills"><h3>Assigned Drills</h3>${practice.drills.map((drill,index)=>`<p><b>${index+1}</b><button class="portal-practice-drill-link" data-portal-practice-drill="${esc(drill)}">${esc(drill)}</button></p>`).join('')}</section>`:''}`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
 }
 function portalFocusBody(focus){
  return focus?`<section class="portal-welcome"><span>MY PLAYER FOCUS</span><h2>${esc(focus.title||'Current Hitting Focus')}</h2><p>${esc(focus.summary||'')}</p></section><section class="portal-focus-content">${focus.needsWork?`<div><span>NEEDS WORK</span><b>${esc(focus.needsWork)}</b></div>`:''}${focus.coachNote?`<div><span>COACH NOTE</span><b>${esc(focus.coachNote)}</b></div>`:''}${focus.drills?.length?`<div><span>DRILL PLAN</span><b>${esc(focus.drills.join(' · '))}</b></div>`:''}</section>`:`<section class="portal-empty"><span>MY FOCUS</span><h2>No Focus Plan Yet</h2><p>Your private two-week hitting analysis has not been published. No other player’s information is available from this portal.</p></section>`;
@@ -1588,7 +1605,7 @@ function portalFocusView(){
  return `${portalHeader('My Focus',true)}<main class="portal-page">${portalFocusBody(portalData?.focus)}</main>`;
 }
 function portalLibraryView(){
- const drills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[],selected=drills.find(drill=>drill.name===portalSelectedDrill);
+ const allDrills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[],allowed=portalData?.portalType?.startsWith('guest')?new Set(portalData?.activePractice?.drills||[]):null,drills=allowed?allDrills.filter(drill=>allowed.has(drill.name)):allDrills,selected=drills.find(drill=>drill.name===portalSelectedDrill);
  if(selected){const detail=(title,value)=>value?`<section class="practice-drill-detail-section"><h3>${esc(title)}</h3><p>${esc(value)}</p></section>`:'';return `${portalHeader('Drill Library',true)}<main class="portal-page practice-drill-detail"><button class="practice-library-return" id="portalLibraryBack">‹ ${portalLibraryReturnView==='practice'?'Back To My Practice':'Back To All Drills'}</button><section class="practice-drill-detail-head"><span>${esc(selected.category)}</span><h2>${esc(selected.name)}</h2><p>${esc(selected.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(selected.hittingMethod)}</span>${selected.equipment?`<span>${esc(selected.equipment)}</span>`:''}</div></section>${detail('Best Used For',selected.bestUsedFor)}${detail('How It Works',selected.howItWorks)}${detail('Key Coaching Cues',selected.coachingCues)}${detail('What Success Looks Like',selected.success)}${detail('Space / Setup',selected.spaceSetup)}${selected.mediaLink?`<a class="btn black block" href="${esc(selected.mediaLink)}" target="_blank" rel="noopener">Watch Drill</a>`:''}</main>`}
  const query=portalDrillQuery.trim().toLowerCase(),shown=drills.filter(drill=>!query||Object.values(drill).some(value=>String(value).toLowerCase().includes(query)));
  return `${portalHeader('Drill Library',true)}<main class="portal-page"><div class="practice-library-search"><input class="input" id="portalDrillSearch" type="search" placeholder="Search drills" value="${esc(portalDrillQuery)}" aria-label="Search drills"></div><p class="practice-library-count">${shown.length} ${shown.length===1?'drill':'drills'}</p><section class="practice-drill-list">${shown.map(drill=>`<button class="practice-drill-card" data-portal-drill="${esc(drill.name)}"><span>${esc(drill.category)}</span><h3>${esc(drill.name)}</h3><p>${esc(drill.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(drill.hittingMethod)}</span></div></button>`).join('')}</section></main>`;
@@ -1603,6 +1620,8 @@ function portalDashboardView(){
 function playerPortalPage(){
  if(!portalToken)return portalCoachView();
  if(!portalData)return portalLoginView();
+ if(portalData.portalType==='guestCoach')return portalData.expired||!portalData.activePractice?guestPortalEndedView():(portalView==='library'?portalLibraryView():guestCoachPracticeView());
+ if(portalData.portalType==='guestPlayer')return portalData.expired||!portalData.activePractice?guestPortalEndedView():(portalView==='library'?portalLibraryView():portalPracticeView());
  if(portalData.portalType==='coach')return portalView==='evaluation'?coachPortalEvaluationView():coachPortalPracticeView();
  if(portalView==='practice')return portalPracticeView();
  if(portalView==='focus')return portalFocusView();
@@ -1616,7 +1635,7 @@ function practiceEndValue(startTime,durationMinutes){return practiceTimeValue(pr
 function practiceTimeLabel(value){const minutes=practiceTimeMinutes(value),hour=Math.floor(minutes/60);return `${hour%12||12}:${String(minutes%60).padStart(2,'0')}${hour<12?'a':'p'}`}
 function practiceAccommodation(player){
  const saved=practiceSetupState.accommodations?.[player.name]||{};
- return {arrival:saved.arrival||'',departure:saved.departure||'',canPitch:isPitcherProfile(player)?saved.canPitch!==false:false,requiresPitchWarmup:isPitcherProfile(player)?saved.requiresPitchWarmup!==false:false,canCatch:positionTokens(player).includes('C')?saved.canCatch!==false:false};
+ return {arrival:saved.arrival||'',departure:saved.departure||'',limitations:saved.limitations||'',canPitch:isPitcherProfile(player)?saved.canPitch!==false:false,requiresPitchWarmup:isPitcherProfile(player)?saved.requiresPitchWarmup!==false:false,canCatch:positionTokens(player).includes('C')?saved.canCatch!==false:false};
 }
 function practiceAccommodationSummary(player,accommodation,startTime,durationMinutes){
  const endTime=practiceEndValue(startTime,durationMinutes),parts=[];
@@ -1625,8 +1644,14 @@ function practiceAccommodationSummary(player,accommodation,startTime,durationMin
  if(isPitcherProfile(player)&&!accommodation.canPitch)parts.push('Hitting Only');
  else if(isPitcherProfile(player)&&!accommodation.requiresPitchWarmup)parts.push('No Pitch Warm-Up');
  if(positionTokens(player).includes('C')&&!accommodation.canCatch)parts.push('Not Catching');
+ if(accommodation.limitations)parts.push(accommodation.limitations);
  return parts.join(' · ')||'Full Practice';
 }
+function practiceGuestPlayers(){return Array.isArray(practiceSetupState.guestPlayers)?practiceSetupState.guestPlayers:[]}
+function practiceGuestCoaches(){return Array.isArray(practiceSetupState.guestCoaches)?practiceSetupState.guestCoaches:[]}
+function practiceAttendanceRoster(){return [...db.roster,...practiceGuestPlayers()]}
+function guestRolePosition(role){return role==='Pitcher'?'P':role==='Catcher'?'C':'UT'}
+function practicePlayerByName(name){return practiceAttendanceRoster().find(player=>player.name===name)}
 function practiceAvailability(startTime,durationMinutes,arrival,departure){
  const start=practiceTimeMinutes(startTime),blockMinutes=(Number(durationMinutes)||120)/10,end=start+(Number(durationMinutes)||120);
  let arrive=practiceTimeMinutes(arrival||startTime),leave=practiceTimeMinutes(departure||practiceEndValue(startTime,durationMinutes));
@@ -1684,6 +1709,7 @@ function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.
 function updatePortalPracticeClock(){
  const values=portalPracticeClockValues(),time=$('#portalCurrentTime'),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
  if(time)time.textContent=values.time;if(block)block.textContent=values.block;if(left)left.textContent=values.left;
+ if(portalData?.portalType==='guestPlayer'){const current=Number.parseInt(values.block,10);$$('[data-portal-block]').forEach(row=>row.hidden=Number.isFinite(current)&&Number(row.dataset.portalBlock)<current)}
 }
 function practiceActivityLabel(activity,plan=null){
  const match=String(activity||'').match(/^Drill #(\d+)$/),drill=match?practiceChosenDrills[Number(match[1])-1]:null;
@@ -1754,12 +1780,17 @@ function practicePlayerFocus(){
  <section class="focus-evidence-section"><div class="focus-drill-head"><h3>Suggested Drills</h3>${drills.length?'<button type="button" id="manageFocusDrills">Manage</button>':''}</div>${drills.length?drills.map((drill,index)=>`<article class="focus-drill-row"><strong>${index+1}</strong><div><b>${esc(drill.name)}</b><span>${esc(drill.bestUsedFor||drill.primaryPurpose)}</span></div></article>`).join(''):`<p class="focus-empty-copy">Suggestions will appear when HotB or the coach identifies something to work on.</p>`}</section>
  <div class="focus-bottom-actions"><button class="btn black" id="changeFocusPlayer">Choose Another Player</button><button class="btn red" id="previewPlayerFocus">Publish</button></div></main>`;
 }
+function practiceAttendanceRow(player,index,selected,startTime,duration,endTime){
+ const accommodation=practiceAccommodation(player),summary=practiceAccommodationSummary(player,accommodation,startTime,duration),pitcher=isPitcherProfile(player),catcher=positionTokens(player).includes('C'),arrivalValue=accommodation.arrival||startTime,departureValue=accommodation.departure||endTime;
+ return `<div class="practice-attendance-row ${player.isPracticeGuest?'practice-guest-attendee':''}"><div class="practice-player-line"><label class="practice-player"><input type="checkbox" data-practice-player="${index}" ${!selected||selected.has(player.name)?'checked':''}><span><b>${esc(player.name)}</b><small>${player.isPracticeGuest?'GUEST ':''}${practiceRole(player)||'Hitter'}</small></span></label><button class="practice-adjust" type="button" data-practice-adjust="${index}">Adjust</button></div><small class="practice-accommodation-summary" data-accommodation-summary="${index}">${esc(summary)}</small><div class="practice-accommodation" data-accommodation-panel="${index}" hidden><div class="practice-accommodation-times"><label>Arrival<div class="practice-field-shell practice-time-shell practice-accommodation-time-shell"><input class="input" type="time" value="${esc(arrivalValue)}" aria-label="Arrival time for ${esc(player.name)}" data-accommodation-arrival="${index}" data-custom="${accommodation.arrival?'true':'false'}"><span class="practice-accommodation-time-display">${esc(practiceTimeLabel(arrivalValue))}</span></div></label><label>Departure<div class="practice-field-shell practice-time-shell practice-accommodation-time-shell"><input class="input" type="time" value="${esc(departureValue)}" aria-label="Departure time for ${esc(player.name)}" data-accommodation-departure="${index}" data-custom="${accommodation.departure?'true':'false'}"><span class="practice-accommodation-time-display">${esc(practiceTimeLabel(departureValue))}</span></div></label></div>${pitcher?`<label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-pitch="${index}" ${accommodation.canPitch?'checked':''}><span>Available to pitch live</span></label><label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-warmup="${index}" ${accommodation.requiresPitchWarmup?'checked':''} ${accommodation.canPitch?'':'disabled'}><span>Pitch warm-up required</span></label>`:''}${catcher?`<label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-catch="${index}" ${accommodation.canCatch?'checked':''}><span>Available to catch</span></label>`:''}<label class="practice-limitations-label">Practice limitations<input class="input" data-accommodation-limitations="${index}" value="${esc(accommodation.limitations||'')}" placeholder="Optional limitation or adjustment"></label>${player.isPracticeGuest?`<button class="practice-remove-guest" type="button" data-remove-guest-player="${esc(player.guestId)}">Remove Guest</button>`:''}<p>Arrival and departure use complete practice blocks. A late player begins with Warm-Up, then Tee Work.</p></div></div>`;
+}
 function practiceSetup(){
- const selected=practiceSetupState.selectedNames?new Set(practiceSetupState.selectedNames):null,duration=practiceSetupState.durationMinutes||120,startTime=practiceSetupState.startTime||'18:00',endTime=practiceEndValue(startTime,duration);
+ const selected=practiceSetupState.selectedNames?new Set(practiceSetupState.selectedNames):null,duration=practiceSetupState.durationMinutes||120,startTime=practiceSetupState.startTime||'18:00',endTime=practiceEndValue(startTime,duration),roster=practiceAttendanceRoster(),guests=practiceGuestPlayers(),guestCoaches=practiceGuestCoaches();
  return `${practiceHeader('Build Practice',true)}
  <div class="panel practice-setup no-print"><section class="practice-team-focus-preview"><div><span>TEAM FOCUS · PAST 14 DAYS</span><b>Drill recommendations will appear here</b></div><small>LOOK ONLY</small></section><div class="practice-intro"><h2>Who Is At Practice?</h2><p>Select everyone attending. HotB will divide the practice into ten blocks with no downtime.</p></div>
  <div class="practice-attendance-tools"><button class="btn" id="practiceSelectAll">All</button><button class="btn" id="practiceSelectNone">None</button><label>Start Time<div class="practice-field-shell practice-time-shell"><input class="input" id="practiceStartTime" type="time" value="${esc(startTime)}" aria-label="Practice start time"><span id="practiceStartTimeDisplay">${esc(window.HotBPracticeScheduler.blockTimes(startTime,duration)[0].start)}</span></div></label><label>Duration<div class="practice-field-shell"><select class="input" id="practiceDuration">${Array.from({length:13},(_,index)=>60+index*10).map(minutes=>`<option value="${minutes}" ${minutes===duration?'selected':''}>${minutes} Minutes</option>`).join('')}</select></div></label></div>
- <div class="practice-attendance">${db.roster.map((player,index)=>{const accommodation=practiceAccommodation(player),summary=practiceAccommodationSummary(player,accommodation,startTime,duration),pitcher=isPitcherProfile(player),catcher=positionTokens(player).includes('C'),arrivalValue=accommodation.arrival||startTime,departureValue=accommodation.departure||endTime;return `<div class="practice-attendance-row"><div class="practice-player-line"><label class="practice-player"><input type="checkbox" data-practice-player="${index}" ${!selected||selected.has(player.name)?'checked':''}><span><b>${esc(player.name)}</b><small>${practiceRole(player)||'Hitter'}</small></span></label><button class="practice-adjust" type="button" data-practice-adjust="${index}">Adjust</button></div><small class="practice-accommodation-summary" data-accommodation-summary="${index}">${esc(summary)}</small><div class="practice-accommodation" data-accommodation-panel="${index}" hidden><div class="practice-accommodation-times"><label>Arrival<div class="practice-field-shell practice-time-shell practice-accommodation-time-shell"><input class="input" type="time" value="${esc(arrivalValue)}" aria-label="Arrival time for ${esc(player.name)}" data-accommodation-arrival="${index}" data-custom="${accommodation.arrival?'true':'false'}"><span class="practice-accommodation-time-display">${esc(practiceTimeLabel(arrivalValue))}</span></div></label><label>Departure<div class="practice-field-shell practice-time-shell practice-accommodation-time-shell"><input class="input" type="time" value="${esc(departureValue)}" aria-label="Departure time for ${esc(player.name)}" data-accommodation-departure="${index}" data-custom="${accommodation.departure?'true':'false'}"><span class="practice-accommodation-time-display">${esc(practiceTimeLabel(departureValue))}</span></div></label></div>${pitcher?`<label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-pitch="${index}" ${accommodation.canPitch?'checked':''}><span>Available to pitch live</span></label><label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-warmup="${index}" ${accommodation.requiresPitchWarmup?'checked':''} ${accommodation.canPitch?'':'disabled'}><span>Pitch warm-up required</span></label>`:''}${catcher?`<label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-catch="${index}" ${accommodation.canCatch?'checked':''}><span>Available to catch</span></label>`:''}<p>Arrival and departure use complete practice blocks. A late player begins with Warm-Up, then Tee Work.</p></div></div>`}).join('')}</div>
+ <div class="practice-attendance">${db.roster.map((player,index)=>practiceAttendanceRow(player,index,selected,startTime,duration,endTime)).join('')}</div>
+ <section class="practice-guests"><button type="button" class="practice-guests-toggle" id="togglePracticeGuests" aria-expanded="${!!practiceSetupState.guestsOpen}"><span>Guests (${guests.length+guestCoaches.length})</span><b>${practiceSetupState.guestsOpen?'−':'+'}</b></button>${practiceSetupState.guestsOpen?`<div class="practice-guests-body"><h3>Guest Players</h3>${guests.length?`<div class="practice-attendance">${guests.map((player,index)=>practiceAttendanceRow(player,db.roster.length+index,selected,startTime,duration,endTime)).join('')}</div>`:'<p class="practice-guest-empty">No guest players added.</p>'}<div class="practice-guest-form"><input class="input" id="guestPlayerFirstName" placeholder="First name" aria-label="Guest player first name"><select class="input" id="guestPlayerRole" aria-label="Guest player role"><option>Position Player</option><option>Pitcher</option><option>Catcher</option></select><button class="btn black" id="addGuestPlayer">Add Guest Player</button></div><h3>Guest Coaches</h3>${guestCoaches.map(coach=>`<div class="practice-guest-coach"><b>${esc(coach.name)}</b><button type="button" data-remove-guest-coach="${esc(coach.guestId)}">Remove</button></div>`).join('')||'<p class="practice-guest-empty">No guest coaches added.</p>'}<div class="practice-guest-form practice-guest-coach-form"><input class="input" id="guestCoachName" placeholder="Coach name" aria-label="Guest coach name"><button class="btn black" id="addGuestCoach">Add Guest Coach</button></div></div>`:''}</section>
  <button class="btn black block practice-generate" id="generatePractice">Build Practice Schedule</button></div>`;
 }
 function practiceCoachView(plan){
@@ -1769,7 +1800,7 @@ function practicePlayerCards(plan,hidden=false){
  const names=Object.keys(plan.schedule);
  const pages=Array.from({length:Math.ceil(names.length/6)},(_,index)=>names.slice(index*6,index*6+6));
  return `<section class="practice-player-cards ${hidden?'practice-cards-screen-hidden':''}"><div class="practice-cards-title no-print"><h2>Player Cards</h2><p>Each card gives one player her complete rotation.</p></div>${pages.map(page=>`<div class="practice-card-page">${page.map(name=>{
-  const player=db.roster.find(item=>item.name===name),role=practiceRole(player||{name,positions:''});
+  const player=practicePlayerByName(name),role=practiceRole(player||{name,positions:''});
   return `<article class="practice-player-card"><header><div><h2>${esc(practiceFirstName(name))}${role?` <small>(${role})</small>`:''}</h2></div></header><ol>${plan.schedule[name].map((entry,index)=>`<li><b>B${index+1}</b><span class="card-time">${esc(plan.times[index].start)}–${esc(plan.times[index].end)}</span><strong>${esc(practiceEntryText(entry,plan,index))}</strong></li>`).join('')}</ol></article>`;
  }).join('')}</div>`).join('')}</section>`;
 }
@@ -1804,16 +1835,18 @@ function practiceClockPortalPayload(){
 }
 function playerPracticePortalPayload(name){
  const schedule=practicePlan.schedule[name]||[];
- const player=db.roster.find(item=>item.name===name);
- return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:practiceClockPortalPayload(),schedule:schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:practiceEntryText(entry,practicePlan,index)})),drills:practiceAllSelectedDrills().map(drill=>drill.name)};
+ const player=practicePlayerByName(name),portalSchedule=schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:practiceEntryText(entry,practicePlan,index)}));
+ const assignedDrills=[...new Set(portalSchedule.map(entry=>portalAssignmentDrillName(entry.assignment)).filter(Boolean))];
+ return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:practiceClockPortalPayload(),schedule:portalSchedule,drills:assignedDrills};
 }
 function coachPracticePortalPayload(){
  const schedule=window.HotBCoachPractice?.build(practicePlan,practiceChosenDrills)||[];
- return{id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',coachName:db.coachPortal?.name||'Coach',startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:practiceClockPortalPayload(),schedule};
+ const players=practicePlan.players.map(player=>({name:practiceFirstName(player.name),role:practiceRole(practicePlayerByName(player.name)||player),schedule:playerPracticePortalPayload(player.name).schedule}));
+ return{id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',coachName:db.coachPortal?.name||'Coach',startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:practiceClockPortalPayload(),schedule,players,drills:practiceAllSelectedDrills().map(drill=>drill.name)};
 }
 function archiveCompletedPractice(completedAt=new Date()){
  if(!practicePlan||!window.HotBPracticeHistory)return;
- const record={id:practicePlan.portalDraftId,practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees:practicePlan.players.map(player=>player.name),drills:practiceAllSelectedDrills().map(drill=>drill.name)};
+ const permanentNames=new Set(db.roster.map(player=>player.name)),record={id:practicePlan.portalDraftId,practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees:practicePlan.players.map(player=>player.name).filter(name=>permanentNames.has(name)),drills:practiceAllSelectedDrills().map(drill=>drill.name)};
  db.practiceHistory=window.HotBPracticeHistory.saveCompleted(db.practiceHistory,record);save();
 }
 async function clearActivePlayerPlans(){
@@ -1821,6 +1854,7 @@ async function clearActivePlayerPlans(){
  const batch=cloudStore.batch();
  db.roster.filter(player=>player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+ [...practiceGuestPlayers(),...practiceGuestCoaches()].filter(guest=>guest.portalId).forEach(guest=>batch.set(portalDoc(guest.portalId),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  await batch.commit();db.activePortalPractice=null;save();
 }
 async function syncPlayerPracticeClock(){
@@ -1829,6 +1863,7 @@ async function syncPlayerPracticeClock(){
   const attending=new Set(db.activePortalPractice.players||[]),clock=practiceClockPortalPayload(),batch=cloudStore.batch();
   db.roster.filter(player=>attending.has(player.name)&&player.portalId).forEach(player=>batch.update(portalDoc(player.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
   if(db.coachPortal?.portalId)batch.update(portalDoc(db.coachPortal.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  [...practiceGuestPlayers(),...practiceGuestCoaches()].filter(guest=>guest.portalId).forEach(guest=>batch.update(portalDoc(guest.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
   await batch.commit();
  }catch(error){console.warn('Player portal clock sync failed',error)}
 }
@@ -1842,7 +1877,9 @@ async function activatePlayerPlans(){
   const batch=cloudStore.batch();
   db.roster.filter(player=>player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:attending.has(player.name)?playerPracticePortalPayload(player.name):null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
   if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:coachPracticePortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-  await batch.commit();db.activePortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:new Date().toISOString(),players:[...attending]};save();render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}.`);
+  for(const guest of practiceGuestPlayers().filter(player=>attending.has(player.name))){if(!guest.portalId)guest.portalId=newPortalId();if(!guest.portalSecret)guest.portalSecret=newGuestSecret();const pinHash=await portalHash(guest.portalId,guest.portalSecret);batch.set(portalDoc(guest.portalId),{portalType:'guestPlayer',playerName:guest.name,firstName:practiceFirstName(guest.name),pinHash,ownerUid:null,expired:false,activePractice:playerPracticePortalPayload(guest.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+  for(const guest of practiceGuestCoaches()){if(!guest.portalId)guest.portalId=newPortalId();if(!guest.portalSecret)guest.portalSecret=newGuestSecret();const pinHash=await portalHash(guest.portalId,guest.portalSecret),activePractice={...coachPracticePortalPayload(),coachName:guest.name};batch.set(portalDoc(guest.portalId),{portalType:'guestCoach',coachName:guest.name,firstName:practiceFirstName(guest.name),pinHash,ownerUid:null,expired:false,activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+  await batch.commit();db.activePortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:new Date().toISOString(),players:[...attending]};persistPracticeSession();save();render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
  }catch(error){if(button){button.disabled=false;button.textContent='Activate Player Plans'}alert('The player plans could not be activated. Confirm the portal security setup and internet connection.')}
 }
 async function deactivatePlayerPlans(){
@@ -1871,6 +1908,7 @@ function practicePage(){
   <section class="practice-delivery-focus no-print"><div><span>BUILT-IN HITTING</span><h2>Machine + Front Toss Focus</h2><p>Choose Standard or a library drill. This changes the existing rotation—it does not add another block.</p></div><div class="practice-delivery-focus-fields">${practiceFocusSelector('Machine')}${practiceFocusSelector('Front Toss')}</div></section>
   <section class="practice-selected-drills no-print"><div><span>DRILL STATIONS</span><h2>${chosenComplete?'Practice Drills Selected':`Choose ${practicePlan.drillStations} Practice Drills`}</h2>${chosenComplete?`<ol>${practiceChosenDrills.map((drill,index)=>`<li><b>${index+1}</b><span>${esc(drill.name)}</span></li>`).join('')}</ol>`:'<p>Select the actual drills before printing the coach schedule or player cards.</p>'}</div><button class="btn ${chosenComplete?'':'red'}" id="choosePracticeDrills">${chosenComplete?'Change Drills':'Choose Drills'}</button></section>
   <section class="practice-portal-publish no-print"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Replace Active Practice':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':portalsActive?'A previous practice is active. Replace it when this schedule is ready.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${chosenComplete?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Replace Plans':'Activate Player Plans'}</button></section>
+  ${currentPortalsActive&&(practiceGuestPlayers().length||practiceGuestCoaches().length)?`<section class="practice-guest-links no-print"><span>TEMPORARY GUEST LINKS</span><h2>Share Practice Access</h2>${practiceGuestPlayers().filter(guest=>practicePlan.schedule[guest.name]).map(guest=>`<article><div><b>${esc(guest.name)}</b><small>Guest Player · expires when practice ends</small></div><button class="btn" data-share-practice-guest="${esc(guest.guestId)}">Share</button></article>`).join('')}${practiceGuestCoaches().map(guest=>`<article><div><b>${esc(guest.name)}</b><small>Guest Coach · view only</small></div><button class="btn" data-share-practice-guest="${esc(guest.guestId)}">Share</button></article>`).join('')}</section>`:''}
   ${resourceWarnings.map(warning=>`<div class="practice-resource-warning no-print"><b>Resource Check</b><p>${esc(warning)}</p></div>`).join('')}
   <div class="practice-actions practice-actions-three no-print"><button class="btn ${practiceCoachOpen?'active':''}" id="togglePracticeCoach" aria-pressed="${practiceCoachOpen}">Coach</button><button class="btn ${practiceCardsOpen?'active':''}" id="togglePracticeCards" aria-pressed="${practiceCardsOpen}">Player</button><button class="btn black" id="printPracticeCards" ${chosenComplete?'':'disabled'}>Print</button></div>
   ${catcherText?`<p class="practice-catcher-load no-print"><b>Live Catching Blocks:</b> ${esc(catcherText)}</p>`:''}
@@ -2862,7 +2900,7 @@ async function finishPracticeClock(automatic=false){
  if(!automatic)closePracticeWorkspace();
 }
 function closePracticeWorkspace(){
- stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSection='hub';clearPracticeSession();render();window.scrollTo(0,0);
+ stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';clearPracticeSession();render();window.scrollTo(0,0);
 }
 async function endPracticeFromScreen(){
  if(practiceCompletionBusy)return;
@@ -2911,13 +2949,13 @@ function bindPlayerPortal(){
  $$('[data-portal-recommendation]').forEach(button=>button.addEventListener('click',()=>{portalSelectedDrill=button.dataset.portalRecommendation;portalView='library';render();window.scrollTo(0,0)}));
 }
 function storePracticeAccommodation(index){
- const player=db.roster[Number(index)];if(!player)return;
+ const player=practiceAttendanceRoster()[Number(index)];if(!player)return;
  const start=$('#practiceStartTime')?.value||practiceSetupState.startTime||'18:00',duration=Number($('#practiceDuration')?.value)||practiceSetupState.durationMinutes||120,end=practiceEndValue(start,duration);
- const arrival=$(`[data-accommodation-arrival="${index}"]`),departure=$(`[data-accommodation-departure="${index}"]`),pitch=$(`[data-accommodation-pitch="${index}"]`),warmup=$(`[data-accommodation-warmup="${index}"]`),catching=$(`[data-accommodation-catch="${index}"]`);
+ const arrival=$(`[data-accommodation-arrival="${index}"]`),departure=$(`[data-accommodation-departure="${index}"]`),pitch=$(`[data-accommodation-pitch="${index}"]`),warmup=$(`[data-accommodation-warmup="${index}"]`),catching=$(`[data-accommodation-catch="${index}"]`),limitations=$(`[data-accommodation-limitations="${index}"]`);
  if(pitch&&warmup&&!pitch.checked)warmup.checked=false;
  if(arrival)arrival.dataset.custom=arrival.value!==start?'true':'false';if(departure)departure.dataset.custom=departure.value!==end?'true':'false';
  [arrival,departure].forEach(input=>{const display=input?.parentElement?.querySelector('.practice-accommodation-time-display');if(display)display.textContent=practiceTimeLabel(input.value)});
- const accommodation={arrival:arrival?.value!==start?arrival.value:'',departure:departure?.value!==end?departure.value:'',canPitch:pitch?pitch.checked:false,requiresPitchWarmup:warmup?warmup.checked:false,canCatch:catching?catching.checked:false};
+ const accommodation={arrival:arrival?.value!==start?arrival.value:'',departure:departure?.value!==end?departure.value:'',limitations:limitations?.value.trim()||'',canPitch:pitch?pitch.checked:false,requiresPitchWarmup:warmup?warmup.checked:false,canCatch:catching?catching.checked:false};
  practiceSetupState.accommodations=practiceSetupState.accommodations||{};practiceSetupState.accommodations[player.name]=accommodation;
  const summary=$(`[data-accommodation-summary="${index}"]`);if(summary)summary.textContent=practiceAccommodationSummary(player,accommodation,start,duration);
  if(warmup)warmup.disabled=!!pitch&&!pitch.checked;
@@ -2926,7 +2964,7 @@ function refreshPracticeAccommodationDefaults(){
  const start=$('#practiceStartTime')?.value||'18:00',duration=Number($('#practiceDuration')?.value)||120,end=practiceEndValue(start,duration);
  $$('[data-accommodation-arrival]').forEach(input=>{if(input.dataset.custom!=='true')input.value=start});
  $$('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true')input.value=end});
- db.roster.forEach((player,index)=>storePracticeAccommodation(index));
+ practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));
 }
 function bindPractice(){
  $('#practiceMachineFocus')?.addEventListener('change',event=>{practicePlan.machineFocus=event.target.value||'Standard';persistPracticeSession();render()});
@@ -2964,23 +3002,28 @@ function bindPractice(){
  $('#changeFocusPlayer')?.addEventListener('click',()=>{practiceFocusPlayer='';render();window.scrollTo(0,0)});
  $('#practiceSelectAll')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=true));
  $('#practiceSelectNone')?.addEventListener('click',()=>$$('[data-practice-player]').forEach(input=>input.checked=false));
+ $('#togglePracticeGuests')?.addEventListener('click',()=>{practiceSetupState.guestsOpen=!practiceSetupState.guestsOpen;render()});
+ $('#addGuestPlayer')?.addEventListener('click',()=>{const first=$('#guestPlayerFirstName')?.value.trim(),role=$('#guestPlayerRole')?.value||'Position Player';if(!first){alert('Enter the guest player’s first name.');return}if(practiceAttendanceRoster().some(player=>player.name.toLowerCase()===first.toLowerCase())){alert('That player name is already listed.');return}practiceSetupState.guestPlayers=practiceGuestPlayers();practiceSetupState.guestPlayers.push({guestId:crypto.randomUUID(),name:first,role,positions:guestRolePosition(role),side:'R',isPracticeGuest:true});practiceSetupState.selectedNames=[...(practiceSetupState.selectedNames||db.roster.map(player=>player.name)),first];render()});
+ $('#addGuestCoach')?.addEventListener('click',()=>{const name=$('#guestCoachName')?.value.trim();if(!name){alert('Enter the guest coach’s name.');return}practiceSetupState.guestCoaches=practiceGuestCoaches();practiceSetupState.guestCoaches.push({guestId:crypto.randomUUID(),name,isPracticeGuestCoach:true});render()});
+ $$('[data-remove-guest-player]').forEach(button=>button.addEventListener('click',()=>{const guest=practiceGuestPlayers().find(item=>item.guestId===button.dataset.removeGuestPlayer);practiceSetupState.guestPlayers=practiceGuestPlayers().filter(item=>item.guestId!==button.dataset.removeGuestPlayer);if(guest){practiceSetupState.selectedNames=(practiceSetupState.selectedNames||[]).filter(name=>name!==guest.name);delete practiceSetupState.accommodations?.[guest.name]}render()}));
+ $$('[data-remove-guest-coach]').forEach(button=>button.addEventListener('click',()=>{practiceSetupState.guestCoaches=practiceGuestCoaches().filter(item=>item.guestId!==button.dataset.removeGuestCoach);render()}));
  $$('[data-practice-adjust]').forEach(button=>button.addEventListener('click',()=>{const panel=$(`[data-accommodation-panel="${button.dataset.practiceAdjust}"]`);if(!panel)return;panel.hidden=!panel.hidden;button.textContent=panel.hidden?'Adjust':'Done'}));
- $$('[data-accommodation-arrival],[data-accommodation-departure],[data-accommodation-pitch],[data-accommodation-warmup],[data-accommodation-catch]').forEach(input=>input.addEventListener('change',()=>storePracticeAccommodation(input.dataset.accommodationArrival??input.dataset.accommodationDeparture??input.dataset.accommodationPitch??input.dataset.accommodationWarmup??input.dataset.accommodationCatch)));
+ $$('[data-accommodation-arrival],[data-accommodation-departure],[data-accommodation-pitch],[data-accommodation-warmup],[data-accommodation-catch],[data-accommodation-limitations]').forEach(input=>input.addEventListener('change',()=>storePracticeAccommodation(input.dataset.accommodationArrival??input.dataset.accommodationDeparture??input.dataset.accommodationPitch??input.dataset.accommodationWarmup??input.dataset.accommodationCatch??input.dataset.accommodationLimitations)));
  $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults()});
  $('#practiceDuration')?.addEventListener('change',refreshPracticeAccommodationDefaults);
  $('#generatePractice')?.addEventListener('click',()=>{
-  const attendees=$$('[data-practice-player]:checked').map(input=>db.roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
+  const roster=practiceAttendanceRoster(),attendees=$$('[data-practice-player]:checked').map(input=>roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
   if(!attendees.length){alert('Select at least one player attending practice.');return}
   if(!window.HotBPracticeScheduler){alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
   const startTime=$('#practiceStartTime').value||'18:00',durationMinutes=Number($('#practiceDuration').value)||120;
-  db.roster.forEach((player,index)=>storePracticeAccommodation(index));
+  roster.forEach((player,index)=>storePracticeAccommodation(index));
   const accommodations=structuredClone(practiceSetupState.accommodations||{}),practicePlayers=attendees.map(player=>practicePlayerModel(player,accommodations[player.name]||practiceAccommodation(player),startTime,durationMinutes));
   let noPitchersMode=null;
   if(!practicePlayers.some(player=>player.canPitch)){
    if(!confirm('No pitchers are available to pitch.\n\nPress OK to use Coach Pitch for live at-bats.\nPress Cancel to return to attendance.'))return;
    noPitchersMode='coach';
   }
-  stopPracticeClock();practiceSetupState={selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;
+  stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;
   practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});
   if(practicePlan.feasibilityErrors?.length){
    const message=`HotB cannot build this practice without breaking a scheduling rule:\n\n${practicePlan.feasibilityErrors.join('\n\n')}\n\nAdjust attendance or player availability, then build again.`;
@@ -2998,13 +3041,14 @@ function bindPractice(){
   if(errors.length)practicePlan.warnings.push(...errors);
   persistPracticeSession();render();window.scrollTo(0,0);
  });
- $('#editPracticePlayers')?.addEventListener('click',()=>{stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;clearPracticeSession();practiceSection='setup';render();window.scrollTo(0,0)});
+ $('#editPracticePlayers')?.addEventListener('click',()=>{stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',limitations:practiceSetupState.accommodations?.[player.name]?.limitations||'',canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={...practiceSetupState,selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;clearPracticeSession();practiceSection='setup';render();window.scrollTo(0,0)});
  $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;if(practiceCoachOpen)practiceCardsOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#togglePracticeCards')?.addEventListener('click',()=>{practiceCardsOpen=!practiceCardsOpen;if(practiceCardsOpen)practiceCoachOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#startPracticeClock')?.addEventListener('click',beginPracticeClock);
  $('#endPracticeClock')?.addEventListener('click',endPracticeFromScreen);
  $('#activatePlayerPlans')?.addEventListener('click',activatePlayerPlans);
  $('#deactivatePlayerPlans')?.addEventListener('click',deactivatePlayerPlans);
+ $$('[data-share-practice-guest]').forEach(button=>button.addEventListener('click',async()=>{const guest=[...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.sharePracticeGuest);if(!guest?.portalId)return;const share={title:`${guest.name}’s HotB Practice`,text:guestPortalShareText(guest),url:guestPortalUrl(guest)};try{if(navigator.share)await navigator.share(share);else{await navigator.clipboard.writeText(share.text);alert('Guest practice link copied.')}}catch(error){if(error?.name!=='AbortError')alert('The guest link could not be shared from this device.')}}));
  $('#printPracticeCards')?.addEventListener('click',()=>window.print());
 }
 
