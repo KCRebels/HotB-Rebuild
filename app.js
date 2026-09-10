@@ -911,9 +911,12 @@ const recoveredPracticeSession=!portalToken&&window.HotBPracticeSession?.restore
 if(recoveredPracticeSession){
  practicePlan=recoveredPracticeSession.plan;
  practiceChosenDrills=recoveredPracticeSession.chosenDrills;
+ practiceDraftDrills=recoveredPracticeSession.draftDrills||[];
+ practiceDrillPickerOpen=!!recoveredPracticeSession.drillPickerOpen;
  practiceSetupState={...practiceSetupState,...recoveredPracticeSession.setupState};
  practiceClock=recoveredPracticeSession.clock;
- if(practicePlan){practiceSection='builder';route='practice';db.route='practice';localStorage.setItem(DBKEY,JSON.stringify(db))}
+ if(recoveredPracticeSession.portalState)db.activePortalPractice=recoveredPracticeSession.portalState;
+ if(practicePlan)practiceSection='builder';
 }
 
 function initCloud(){
@@ -1157,8 +1160,10 @@ function save(){
 }
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
 function go(r){
+ if(route==='practice'&&practicePlan)persistPracticeSession();
  if(r==='practice'&&route!=='practice')practiceSection='hub';
  route=r;modal=null;save();render();window.scrollTo(0,0);
+ if(r==='practice')resumeRecoveredPracticeClock();
 }
 function currentGame(){return db.currentGame}
 function planFor(name){
@@ -1592,14 +1597,14 @@ function portalLoginView(){
 }
 function coachPortalPracticeView(){
  const practice=portalData?.activePractice,name=portalData?.firstName||practiceFirstName(portalData?.coachName)||'Coach';
- return `${portalHeader('Coach Portal')}<main class="portal-page"><section class="portal-welcome ${practice?'active':''}"><span>${practice?'ACTIVE PRACTICE':'COACH PORTAL'}</span><h2>Hi, ${esc(name)}</h2><p>${practice?'Your current coaching assignments are below.':'No practice is active right now.'}</p></section><button class="btn red block coach-eval-button" data-portal-view="evaluation">Player Eval</button>${practice?`<section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card portal-coach-card"><header><h2>${esc(name)} <small>(Coach)</small></h2></header><ol>${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol></article>`:''}</main>`;
+ return `${portalHeader('Coach Portal')}<main class="portal-page"><section class="portal-welcome ${practice?'active':''}"><span>${practice?'ACTIVE PRACTICE':'COACH PORTAL'}</span><h2>Hi, ${esc(name)}</h2><p>${practice?'Your current coaching assignments are below.':'No practice is active right now.'}</p></section><button class="btn red block coach-eval-button" data-portal-view="evaluation">Player Eval</button>${practice?`<section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card portal-coach-card"><header><h2>${esc(name)} <small>(Coach)</small></h2></header><ol>${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol></article>`:''}</main>`;
 }
 function guestPortalEndedView(){return `${portalHeader('Hitting Practice')}<main class="portal-page"><section class="portal-empty"><span>GUEST ACCESS</span><h2>This Practice Has Ended</h2><p>This temporary link is no longer active.</p></section></main>`}
 function guestPortalWaitingView(){const first=portalData?.firstName||practiceFirstName(portalData?.playerName||portalData?.coachName);return `${portalHeader('Hitting Practice')}<main class="portal-page"><section class="portal-empty"><span>GUEST ACCESS CONFIRMED</span><h2>Hi, ${esc(first)}</h2><p>You’re connected to tonight’s HotB practice. Your practice plan is not ready yet.</p></section></main>`}
 function guestCoachPracticeView(){
  const practice=portalData?.activePractice,name=portalData?.firstName||practiceFirstName(portalData?.coachName)||'Coach';
  if(portalData?.expired||!practice)return guestPortalEndedView();
- return `${portalHeader('Guest Coach')}<main class="portal-page"><section class="portal-welcome active"><span>GUEST COACH · VIEW ONLY</span><h2>Hi, ${esc(name)}</h2><p>${esc(practice.title||'Current Hitting Practice')}</p></section><section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section>${(practice.players||[]).map(player=>`<article class="practice-player-card portal-player-card portal-guest-coach-card"><header><h2>${esc(player.name)}${player.role?` <small>(${esc(player.role)})</small>`:''}</h2></header><ol>${player.schedule.map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>`).join('')}</main>`;
+ return `${portalHeader('Guest Coach')}<main class="portal-page"><section class="portal-welcome active"><span>GUEST COACH · VIEW ONLY</span><h2>Hi, ${esc(name)}</h2><p>${esc(practice.title||'Current Hitting Practice')}</p></section><section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section>${(practice.players||[]).map(player=>`<article class="practice-player-card portal-player-card portal-guest-coach-card"><header><h2>${esc(player.name)}${player.role?` <small>(${esc(player.role)})</small>`:''}</h2></header><ol>${player.schedule.map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>`).join('')}</main>`;
 }
 function coachEvaluationPortalPayload(){
  const fields=['name','jersey','grad','positions','side','throws','gpa','school','interest','email','twitter','sportsRecruits','highlightVideo','ncaaId','recruitingStatement','accomplishments','photo','pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct'];
@@ -1613,7 +1618,7 @@ function portalPracticeAssignment(entry){const drill=portalAssignmentDrillName(e
 function portalPracticeView(){
  const practice=portalData?.activePractice;
  const first=portalData?.firstName||practiceFirstName(portalData?.playerName),role=practice?.role;
- return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${esc(practice.blockMinutes)}-minute blocks</p></section><section class="portal-live-clock"><div><span>TIME</span><b id="portalCurrentTime">--:--</b></div><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card"><header><h2>${esc(first)}${role?` <small>(${esc(role)})</small>`:''}</h2></header><ol>${(practice.schedule||[]).map(entry=>`<li data-portal-block="${entry.block}"><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>${practice.drills?.length?`<section class="portal-practice-drills"><h3>Assigned Drills</h3>${practice.drills.map((drill,index)=>`<p><b>${index+1}</b><button class="portal-practice-drill-link" data-portal-practice-drill="${esc(drill)}">${esc(drill)}</button></p>`).join('')}</section>`:''}`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
+ return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${esc(practice.blockMinutes)}-minute blocks</p></section><section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card"><header><h2>${esc(first)}${role?` <small>(${esc(role)})</small>`:''}</h2></header><ol>${(practice.schedule||[]).map(entry=>`<li data-portal-block="${entry.block}"><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>${practice.drills?.length?`<section class="portal-practice-drills"><h3>Assigned Drills</h3>${practice.drills.map((drill,index)=>`<p><b>${index+1}</b><button class="portal-practice-drill-link" data-portal-practice-drill="${esc(drill)}">${esc(drill)}</button></p>`).join('')}</section>`:''}`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
 }
 function portalFocusBody(focus){
  return focus?`<section class="portal-welcome"><span>MY PLAYER FOCUS</span><h2>${esc(focus.title||'Current Hitting Focus')}</h2><p>${esc(focus.summary||'')}</p></section><section class="portal-focus-content">${focus.needsWork?`<div><span>NEEDS WORK</span><b>${esc(focus.needsWork)}</b></div>`:''}${focus.coachNote?`<div><span>COACH NOTE</span><b>${esc(focus.coachNote)}</b></div>`:''}${focus.drills?.length?`<div><span>DRILL PLAN</span><b>${esc(focus.drills.join(' · '))}</b></div>`:''}</section>`:`<section class="portal-empty"><span>MY FOCUS</span><h2>No Focus Plan Yet</h2><p>Your private two-week hitting analysis has not been published. No other player’s information is available from this portal.</p></section>`;
@@ -1710,23 +1715,19 @@ function practiceCoachLabel(label,plan=null,blockIndex=-1){
  if(activity==='Catch Live')return `Catch Live — ${practiceFirstName(partner)} — 12 pitches minimum per hitter`;
  return activity.startsWith('Pitch ')?`${activity} (${practiceFirstName(partner)})`:`${activity} — ${practiceFirstName(partner)}`;
 }
-function practiceClockText(date=new Date()){
- const hour=date.getHours(),minute=String(date.getMinutes()).padStart(2,'0');
- return `${hour%12||12}:${minute}${hour<12?'a':'p'}`;
-}
 function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.now()){
- const clock=practice?.clock||{},currentTime=practiceClockText(new Date(now));
- if(clock.status==='finished')return {time:currentTime,block:'DONE!',left:'0:00'};
+ const clock=practice?.clock||{};
+ if(clock.status==='finished')return {block:'DONE!',left:'0:00'};
  const startedAt=Date.parse(clock.startedAt||'');
- if(clock.status!=='running'||!Number.isFinite(startedAt))return {time:currentTime,block:'Not Started',left:'—'};
+ if(clock.status!=='running'||!Number.isFinite(startedAt))return {block:'Not Started',left:'—'};
  const blockMs=(Number(practice.blockMinutes)||12)*60000,totalMs=blockMs*10,elapsed=Math.max(0,now-startedAt);
- if(elapsed>=totalMs)return {time:currentTime,block:'DONE!',left:'0:00'};
+ if(elapsed>=totalMs)return {block:'DONE!',left:'0:00'};
  const block=Math.floor(elapsed/blockMs)+1,remaining=Math.max(0,blockMs-(elapsed%blockMs)),seconds=Math.ceil(remaining/1000);
- return {time:currentTime,block:block<10&&remaining<=60000?'TRANSITION':`${block} of 10`,left:`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`};
+ return {block:block<10&&remaining<=60000?'TRANSITION':`${block} of 10`,left:`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`};
 }
 function updatePortalPracticeClock(){
- const values=portalPracticeClockValues(),time=$('#portalCurrentTime'),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
- if(time)time.textContent=values.time;if(block)block.textContent=values.block;if(left)left.textContent=values.left;
+ const values=portalPracticeClockValues(),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
+ if(block)block.textContent=values.block;if(left)left.textContent=values.left;
  if(portalData?.portalType==='guestPlayer'){const current=Number.parseInt(values.block,10);$$('[data-portal-block]').forEach(row=>row.hidden=Number.isFinite(current)&&Number(row.dataset.portalBlock)<current)}
 }
 function practiceActivityLabel(activity,plan=null){
@@ -1874,7 +1875,8 @@ async function clearActivePlayerPlans(){
  db.roster.filter(player=>player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
  [...practiceGuestPlayers(),...practiceGuestCoaches()].filter(guest=>guest.portalId).forEach(guest=>batch.set(portalDoc(guest.portalId),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
- await batch.commit();db.activePortalPractice=null;save();
+ await batch.commit();db.activePortalPractice=null;
+ if(db.activePracticeSession&&practicePlan)persistPracticeSession();else save();
 }
 async function syncPlayerPracticeClock(){
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return;
@@ -1923,7 +1925,7 @@ function practicePage(){
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
  <div class="practice-results">
   <section class="practice-summary no-print"><div><b>${practicePlan.attendance}</b><span>Player</span></div><div><b>10</b><span>${practicePlan.blockMinutes}M Blocks</span></div><div><b>${practicePlan.drillStations}</b><span>Drills</span></div></section>
-  <section class="practice-live-control no-print"><div class="practice-clock-actions"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart':'Start'}</button><button class="btn" id="editPracticePlayers">Edit</button><button class="btn black" id="endPracticeClock">DONE!</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Time</span><b id="practiceCurrentTime">${practiceClock.finished?practiceClockText():'--:--'}</b></div><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':'1 of 10'}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${practicePlan.blockMinutes}:00`}</b></div></div></section>
+  <section class="practice-live-control no-print"><div class="practice-clock-actions"><button class="btn red" id="startPracticeClock">${practiceClock.running||practiceClock.finished?'Restart':'Start'}</button><button class="btn" id="editPracticePlayers">Edit</button><button class="btn black" id="endPracticeClock">DONE!</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':'1 of 10'}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${practicePlan.blockMinutes}:00`}</b></div></div></section>
   <section class="practice-delivery-focus no-print"><div><span>BUILT-IN HITTING</span><h2>Machine + Front Toss Focus</h2><p>Choose Standard or a library drill. This changes the existing rotation—it does not add another block.</p></div><div class="practice-delivery-focus-fields">${practiceFocusSelector('Machine')}${practiceFocusSelector('Front Toss')}</div></section>
   <section class="practice-selected-drills no-print"><div><span>DRILL STATIONS</span><h2>${chosenComplete?'Practice Drills Selected':`Choose ${practicePlan.drillStations} Practice Drills`}</h2>${chosenComplete?`<ol>${practiceChosenDrills.map((drill,index)=>`<li><b>${index+1}</b><span>${esc(drill.name)}</span></li>`).join('')}</ol>`:'<p>Select the actual drills before printing the coach schedule or player cards.</p>'}</div><button class="btn ${chosenComplete?'':'red'}" id="choosePracticeDrills">${chosenComplete?'Change Drills':'Choose Drills'}</button></section>
   <section class="practice-portal-publish no-print"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Replace Active Practice':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':portalsActive?'A previous practice is active. Replace it when this schedule is ready.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${chosenComplete?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Replace Plans':'Activate Player Plans'}</button></section>
@@ -2864,7 +2866,7 @@ function stopPracticeClock(){
 }
 function persistPracticeSession(){
  if(!practicePlan||!window.HotBPracticeSession)return;
- db.activePracticeSession=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,setupState:practiceSetupState,clock:practiceClock});
+ db.activePracticeSession=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,draftDrills:practiceDraftDrills,drillPickerOpen:practiceDrillPickerOpen,setupState:practiceSetupState,clock:practiceClock,portalState:db.activePortalPractice});
  save();
 }
 function persistPracticeDraft(){
@@ -2902,10 +2904,12 @@ function speakPracticeClock(message,quiet=false){
 function updatePracticeClock(){
  if(!practicePlan||!practiceClock.running)return;
  const now=Date.now(),blockMs=practicePlan.blockMinutes*60000,totalMs=blockMs*10,elapsed=Math.max(0,now-practiceClock.startAt);
- const currentTime=$('#practiceCurrentTime'),currentBlock=$('#practiceCurrentBlock'),timeLeft=$('#practiceTimeLeft');
- if(currentTime)currentTime.textContent=practiceClockText(new Date(now));
+ const currentBlock=$('#practiceCurrentBlock'),timeLeft=$('#practiceTimeLeft');
  if(elapsed>=totalMs){
-  finishPracticeClock(true);return;
+  if(currentBlock)currentBlock.textContent='DONE!';
+  if(timeLeft)timeLeft.textContent='0:00';
+  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
+  persistPracticeSession();return;
  }
  const block=Math.floor(elapsed/blockMs)+1,remaining=Math.max(0,blockMs-(elapsed%blockMs)),seconds=Math.ceil(remaining/1000);
  if(block>practiceClock.lastBlock){practiceClock.lastBlock=block;speakPracticeClock(`Begin Block ${block}`)}
@@ -2921,6 +2925,11 @@ function beginPracticeClock(){
  practiceClock={running:true,finished:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0};
  persistPracticeSession();speakPracticeClock('.',true);render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);syncPlayerPracticeClock();
 }
+document.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState==='hidden'&&practicePlan)persistPracticeSession();
+ if(document.visibilityState==='visible'&&practicePlan&&practiceClock.running)resumeRecoveredPracticeClock();
+});
+window.addEventListener('pagehide',()=>{if(practicePlan)persistPracticeSession()});
 let practiceCompletionBusy=false;
 async function finishPracticeClock(automatic=false){
  if(practiceCompletionBusy||practiceClock.finished)return;
@@ -3006,11 +3015,11 @@ function refreshPracticeAccommodationDefaults(){
 function bindPractice(){
  $('#practiceMachineFocus')?.addEventListener('change',event=>{practicePlan.machineFocus=event.target.value||'Standard';persistPracticeSession();render()});
  $('#practiceFrontTossFocus')?.addEventListener('change',event=>{practicePlan.frontTossFocus=event.target.value||'Standard';persistPracticeSession();render()});
- $('#choosePracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice(0,practicePlan.drillStations);practiceDrillPickerOpen=true;practicePickerQuery='';practicePickerCategory='All Drills';render();window.scrollTo(0,0)});
- $('#cancelPracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=[];practiceDrillPickerOpen=false;render();window.scrollTo(0,0)});
+ $('#choosePracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice(0,practicePlan.drillStations);practiceDrillPickerOpen=true;practicePickerQuery='';practicePickerCategory='All Drills';persistPracticeSession();render();window.scrollTo(0,0)});
+ $('#cancelPracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=[];practiceDrillPickerOpen=false;persistPracticeSession();render();window.scrollTo(0,0)});
  $('#practicePickerSearch')?.addEventListener('input',event=>{practicePickerQuery=event.target.value;render();const search=$('#practicePickerSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
  $$('[data-picker-category]').forEach(button=>button.addEventListener('click',()=>{practicePickerCategory=button.dataset.pickerCategory;render();window.scrollTo(0,0)}));
- $$('[data-picker-drill]').forEach(button=>button.addEventListener('click',()=>{const drill=practiceSelectableDrills().find(item=>item.name===button.dataset.pickerDrill);if(!drill)return;const index=practiceDraftDrills.findIndex(item=>item.name===drill.name);if(index>=0)practiceDraftDrills.splice(index,1);else if(practiceDraftDrills.length<practicePlan.drillStations)practiceDraftDrills.push(drill);render()}));
+ $$('[data-picker-drill]').forEach(button=>button.addEventListener('click',()=>{const drill=practiceSelectableDrills().find(item=>item.name===button.dataset.pickerDrill);if(!drill)return;const index=practiceDraftDrills.findIndex(item=>item.name===drill.name);if(index>=0)practiceDraftDrills.splice(index,1);else if(practiceDraftDrills.length<practicePlan.drillStations)practiceDraftDrills.push(drill);persistPracticeSession();render()}));
  $('#savePracticeDrills')?.addEventListener('click',()=>{if(practiceDraftDrills.length!==practicePlan.drillStations)return;practiceChosenDrills=practiceDraftDrills.slice();practiceDraftDrills=[];practiceDrillPickerOpen=false;persistPracticeSession();render();window.scrollTo(0,0)});
  $('#practiceHubBack')?.addEventListener('click',()=>{if(practiceSection==='setup')persistPracticeDraft();practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)});
  $('#openPracticeBuilder')?.addEventListener('click',()=>{practiceSection='setup';render();window.scrollTo(0,0)});
