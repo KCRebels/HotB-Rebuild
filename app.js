@@ -2893,8 +2893,9 @@ async function endPracticeDraft(){
 }
 function resumeRecoveredPracticeClock(){
  if(!practicePlan||!practiceClock.running)return;
+ const activeTiming=window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now());
  updatePracticeClock();
- if(practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
+ if(activeTiming&&practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
 }
 function speakPracticeClock(message,quiet=false){
  if(!('speechSynthesis'in window))return;
