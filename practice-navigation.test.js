@@ -19,5 +19,10 @@ assert.ok(source.includes("input.addEventListener('change',persistPracticeDraft)
 assert.ok(source.includes("id=\"endPracticeDraft\""),'Build Practice must provide an End button');
 assert.ok(source.includes('every guest link will expire'),'ending a draft must confirm that temporary links expire');
 assert.ok(source.includes("db.activePracticeSession?.stage==='setup'"),'the practice hub must identify a saved setup draft');
+assert.ok(source.includes("if(route==='practice'&&practicePlan)persistPracticeSession();"),'leaving Hitting Practice must save the complete built practice');
+assert.ok(source.includes("window.addEventListener('pagehide',()=>{if(practicePlan)persistPracticeSession()})"),'closing or backgrounding the PWA must save the built practice');
+assert.ok(!source.includes('finishPracticeClock(true)'),'elapsed scheduled time must not automatically clear the active practice');
+assert.ok(!source.includes('id="practiceCurrentTime"'),'the live practice screen must not display clock time');
+assert.ok(!source.includes('id="portalCurrentTime"'),'player and guest portals must not display clock time');
 
 console.log('practice-navigation tests passed');
