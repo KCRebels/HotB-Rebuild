@@ -25,5 +25,8 @@ assert.ok(!source.includes('finishPracticeClock(true)'),'elapsed scheduled time 
 assert.ok(source.includes('if(activeTiming&&practiceClock.running&&!practiceClockTimer)'),'a completed clock must remain saved without restarting a background update loop');
 assert.ok(!source.includes('id="practiceCurrentTime"'),'the live practice screen must not display clock time');
 assert.ok(!source.includes('id="portalCurrentTime"'),'player and guest portals must not display clock time');
+assert.ok(source.includes("state.transition?'ROTATE'"),'player and guest portals must label the transition clock ROTATE');
+assert.ok(source.includes("transition?'ROTATE'"),'the live coach clock must label the transition clock ROTATE');
+assert.ok(source.includes('if(!automatic){await endingSpeech;closePracticeWorkspace()}'),'manual DONE must wait for the ending announcement before leaving the practice screen');
 
 console.log('practice-navigation tests passed');
