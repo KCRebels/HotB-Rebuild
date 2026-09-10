@@ -4,16 +4,19 @@
  else root.HotBPracticeSession=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
  function clone(value){return value==null?value:JSON.parse(JSON.stringify(value))}
- function create({plan,chosenDrills=[],setupState={},clock={}}={}){
+ function create({plan,chosenDrills=[],draftDrills=[],drillPickerOpen=false,setupState={},clock={},portalState=null}={}){
   if(!plan||!plan.portalDraftId)return null;
-  return{version:2,stage:'schedule',savedAt:new Date().toISOString(),plan:clone(plan),chosenDrills:clone(chosenDrills),setupState:clone(setupState),clock:{running:!!clock.running,finished:!!clock.finished,startAt:Number(clock.startAt)||0,lastBlock:Number(clock.lastBlock)||1,lastTwoMinuteBlock:Number(clock.lastTwoMinuteBlock)||0,lastTransitionBlock:Number(clock.lastTransitionBlock)||0}};
+  return{version:3,stage:'schedule',savedAt:new Date().toISOString(),plan:clone(plan),chosenDrills:clone(chosenDrills),draftDrills:clone(draftDrills),drillPickerOpen:!!drillPickerOpen,setupState:clone(setupState),portalState:clone(portalState),clock:{running:!!clock.running,finished:!!clock.finished,startAt:Number(clock.startAt)||0,lastBlock:Number(clock.lastBlock)||1,lastTwoMinuteBlock:Number(clock.lastTwoMinuteBlock)||0,lastTransitionBlock:Number(clock.lastTransitionBlock)||0}};
  }
- function createDraft({setupState={}}={}){return{version:2,stage:'setup',savedAt:new Date().toISOString(),plan:null,chosenDrills:[],setupState:clone(setupState),clock:{running:false,finished:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0}}}
+ function createDraft({setupState={}}={}){return{version:3,stage:'setup',savedAt:new Date().toISOString(),plan:null,chosenDrills:[],setupState:clone(setupState),portalState:null,clock:{running:false,finished:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0}}}
  function restore(saved,now=Date.now()){
   if(!saved||(!saved?.plan?.portalDraftId&&saved.stage!=='setup'))return null;
   const session=clone(saved),clock=session.clock||{};
   session.chosenDrills=Array.isArray(session.chosenDrills)?session.chosenDrills:[];
+  session.draftDrills=Array.isArray(session.draftDrills)?session.draftDrills:[];
+  session.drillPickerOpen=!!session.drillPickerOpen;
   session.setupState=session.setupState&&typeof session.setupState==='object'?session.setupState:{};
+  session.portalState=session.portalState&&typeof session.portalState==='object'?session.portalState:null;
   session.clock={running:!!clock.running,finished:!!clock.finished,startAt:Number(clock.startAt)||0,lastBlock:Number(clock.lastBlock)||1,lastTwoMinuteBlock:Number(clock.lastTwoMinuteBlock)||0,lastTransitionBlock:Number(clock.lastTransitionBlock)||0};
   if(session.plan&&session.clock.running&&session.clock.startAt){
    const blockMs=(Number(session.plan.blockMinutes)||12)*60000,elapsed=Math.max(0,Number(now)-session.clock.startAt);
