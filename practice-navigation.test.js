@@ -22,6 +22,7 @@ assert.ok(source.includes("db.activePracticeSession?.stage==='setup'"),'the prac
 assert.ok(source.includes("if(route==='practice'&&practicePlan)persistPracticeSession();"),'leaving Hitting Practice must save the complete built practice');
 assert.ok(source.includes("window.addEventListener('pagehide',()=>{if(practicePlan)persistPracticeSession()})"),'closing or backgrounding the PWA must save the built practice');
 assert.ok(!source.includes('finishPracticeClock(true)'),'elapsed scheduled time must not automatically clear the active practice');
+assert.ok(source.includes('if(activeTiming&&practiceClock.running&&!practiceClockTimer)'),'a completed clock must remain saved without restarting a background update loop');
 assert.ok(!source.includes('id="practiceCurrentTime"'),'the live practice screen must not display clock time');
 assert.ok(!source.includes('id="portalCurrentTime"'),'player and guest portals must not display clock time');
 
