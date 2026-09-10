@@ -1071,3 +1071,16 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .portal-practice-drill-link{appearance:none;border:0;background:transparent;color:inherit;font:inherit;font-weight:800;text-align:left;padding:8px 0;text-decoration:underline;text-decoration-color:#c52631;text-underline-offset:4px;cursor:pointer}
 .coach-eval-button{margin:18px 0 22px;min-height:58px;font-size:20px}
 .portal-app>.date-filter-controls{margin:14px 18px}
+
+/* Final live-status sizing override: two large boxes on every screen size. */
+.practice-live-clock,.portal-live-clock{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.practice-live-clock>div{min-height:102px}
+.practice-live-clock b{font-size:34px}
+.portal-live-clock>div{min-height:90px;padding:10px 6px}
+.portal-live-clock span{font-size:12px}
+.portal-live-clock b{font-size:25px}
+.portal-live-clock>div:first-child{background:#111;color:#fff}
+.portal-live-clock>div:first-child span{color:#d7dcda}
+.portal-live-clock>div:nth-child(2){background:#fff;color:inherit}
+.portal-live-clock>div:nth-child(2) span{color:#667085}
+@media(max-width:560px){.practice-live-clock b{font-size:30px}.portal-live-clock b{font-size:22px}.portal-live-clock>div{min-height:82px}}
