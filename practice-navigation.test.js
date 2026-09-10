@@ -28,5 +28,9 @@ assert.ok(!source.includes('id="portalCurrentTime"'),'player and guest portals m
 assert.ok(source.includes("state.transition?'ROTATE'"),'player and guest portals must label the transition clock ROTATE');
 assert.ok(source.includes("transition?'ROTATE'"),'the live coach clock must label the transition clock ROTATE');
 assert.ok(source.includes('if(!automatic){await endingSpeech;closePracticeWorkspace()}'),'manual DONE must wait for the ending announcement before leaving the practice screen');
+assert.ok(source.includes('if(practiceEquipmentSetupOpen)return practiceEquipmentSetup();'),'the equipment checklist must be confined to the coach practice builder');
+assert.ok(source.includes('practiceEquipmentSetupOpen=true;persistPracticeSession()'),'using the selected drills must open and persist the equipment checklist');
+assert.ok(source.includes('practiceDraftDrills=practiceChosenDrills.slice();practiceEquipmentSetupOpen=false;practiceDrillPickerOpen=true'),'equipment Back must preserve selections when returning to the drill picker');
+assert.ok(!source.match(/function portalPage[\s\S]*?practiceEquipmentSetup\(/),'player and guest portal rendering must never include the coach equipment checklist');
 
 console.log('practice-navigation tests passed');

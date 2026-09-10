@@ -10,7 +10,7 @@ assert.equal(draft.plan,null);
 assert.deepEqual(session.restore(draft).setupState.selectedNames,['Aniesa'],'an unfinished attendance draft must restore before a schedule exists');
 assert.equal(session.restore(draft).setupState.guestPlayers[0].phone,'9135551212','guest contact information must survive draft recovery');
 
-const source={plan:{portalDraftId:'practice-1',blockMinutes:12,machineFocus:'High Tee Machine',frontTossFocus:'Opposite Field Toss',players:[{name:'Aniesa'}],schedule:{Aniesa:[{block:1,activity:'Machine'}]},liveSessions:[{block:4,pitcher:'Aniesa',catcher:'Tayte'}]},chosenDrills:[{name:'Two Tee'}],draftDrills:[{name:'Connection Ball'}],drillPickerOpen:true,setupState:{selectedNames:['Aniesa'],guestPlayers:[{name:'Guest Ava',phone:'9135550000'}]},portalState:{active:true,id:'practice-1',players:['Aniesa','Guest Ava']},clock:{running:true,finished:false,startAt:1000,lastBlock:1,lastTwoMinuteBlock:1}};
+const source={plan:{portalDraftId:'practice-1',blockMinutes:12,machineFocus:'High Tee Machine',frontTossFocus:'Opposite Field Toss',players:[{name:'Aniesa'}],schedule:{Aniesa:[{block:1,activity:'Machine'}]},liveSessions:[{block:4,pitcher:'Aniesa',catcher:'Tayte'}]},chosenDrills:[{name:'Two Tee'}],draftDrills:[{name:'Connection Ball'}],drillPickerOpen:false,equipmentSetupOpen:true,setupState:{selectedNames:['Aniesa'],guestPlayers:[{name:'Guest Ava',phone:'9135550000'}]},portalState:{active:true,id:'practice-1',players:['Aniesa','Guest Ava']},clock:{running:true,finished:false,startAt:1000,lastBlock:1,lastTwoMinuteBlock:1}};
 const saved=session.create(source);
 source.plan.players[0].name='Changed';
 assert.equal(saved.plan.players[0].name,'Aniesa','saved practice must be independent of working memory');
@@ -20,9 +20,11 @@ assert.equal(saved.plan.liveSessions[0].catcher,'Tayte','pitcher and catcher ass
 assert.equal(saved.setupState.guestPlayers[0].phone,'9135550000','guest access information must be saved');
 assert.equal(saved.portalState.id,'practice-1','portal activation must be saved with the practice');
 assert.equal(saved.draftDrills[0].name,'Connection Ball','partially selected drill stations must survive leaving the app');
-assert.equal(saved.drillPickerOpen,true,'resume must return to an unfinished drill picker');
+assert.equal(saved.equipmentSetupOpen,true,'the unfinished equipment checklist must be saved');
+assert.equal(saved.stage,'equipment','the active session must identify the equipment checklist stage');
 
 const restored=session.restore(saved,1000+25*60000);
+assert.equal(restored.equipmentSetupOpen,true,'refreshing must restore the unfinished equipment checklist');
 assert.equal(restored.clock.running,true);
 assert.equal(restored.clock.lastBlock,3,'restored clock must calculate the current block from elapsed time');
 assert.equal(restored.clock.lastTwoMinuteBlock,1,'saved warning state must survive recovery');
