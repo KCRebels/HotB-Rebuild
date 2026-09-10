@@ -896,7 +896,7 @@ let lastRenderedUndoState=null;
 let practicePlan=null;
 let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false},practiceCoachOpen=false,practiceCardsOpen=false;
 let practiceSection='hub',practiceFocusPlayer='',practiceFocusRange='weekend',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
-let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
+let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practiceEquipmentSetupOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
 let focusDrillReplaceIndex=-1,focusDrillQuery='';
 let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0},practiceClockTimer=null,practiceEndSpeech=Promise.resolve(),portalClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
@@ -913,6 +913,7 @@ if(recoveredPracticeSession){
  practiceChosenDrills=recoveredPracticeSession.chosenDrills;
  practiceDraftDrills=recoveredPracticeSession.draftDrills||[];
  practiceDrillPickerOpen=!!recoveredPracticeSession.drillPickerOpen;
+ practiceEquipmentSetupOpen=!!recoveredPracticeSession.equipmentSetupOpen;
  practiceSetupState={...practiceSetupState,...recoveredPracticeSession.setupState};
  practiceClock=recoveredPracticeSession.clock;
  if(recoveredPracticeSession.portalState)db.activePortalPractice=recoveredPracticeSession.portalState;
@@ -1935,12 +1936,18 @@ function practiceDrillPicker(){
  const shown=drills.filter(drill=>(practicePickerCategory==='All Drills'||drill.category===practicePickerCategory)&&(!query||Object.values(drill).some(value=>String(value).toLowerCase().includes(query))));
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" id="cancelPracticeDrills">Back</button><h1>Choose Drills</h1><span class="page-head-spacer"></span></div><main class="practice-feature-page practice-drill-picker no-print"><section class="practice-feature-lead"><span>PRACTICE DRILLS</span><h2>Choose ${needed} Drills</h2><p>Select exactly ${needed}. The order you select them assigns Drill Station 1 through Drill Station ${needed}.</p></section><div class="practice-picker-progress"><b>${practiceDraftDrills.length} of ${needed} selected</b><div>${practiceDraftDrills.map((drill,index)=>`<span>Drill Station ${index+1} — ${esc(drill.name)}</span>`).join('')||'<span>No drills selected yet</span>'}</div></div><div class="practice-library-search"><input class="input" id="practicePickerSearch" type="search" placeholder="Search drills" value="${esc(practicePickerQuery)}" aria-label="Search practice drills"></div><div class="practice-filter-preview">${filters.map(filter=>`<button class="${filter===practicePickerCategory?'active':''}" data-picker-category="${esc(filter)}">${esc(filter)}</button>`).join('')}</div><section class="practice-picker-list">${shown.map(drill=>{const selectedIndex=practiceDraftDrills.findIndex(item=>item.name===drill.name),selected=selectedIndex>=0,full=practiceDraftDrills.length>=needed&&!selected;return `<button class="practice-picker-card ${selected?'selected':''}" data-picker-drill="${esc(drill.name)}" ${full?'disabled':''}><span class="practice-picker-number">${selected?selectedIndex+1:'+'}</span><span><b>${esc(drill.name)}</b><small>${esc(drill.category)} · ${esc(drill.hittingMethod)}</small></span></button>`}).join('')}</section><button class="btn black block practice-save-drills" id="savePracticeDrills" ${practiceDraftDrills.length===needed?'':'disabled'}>Use These ${needed} Drills</button><p class="practice-picker-note">Tee Work is already built in. Machine and Front Toss drills are selected from their own focus menus on the practice plan.</p></main>`;
 }
+function practiceEquipmentSetup(){
+ const library=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[],find=name=>library.find(drill=>drill.name===name),machine=find(practicePlan.machineFocus==='Standard'?'Machine Pitch':practicePlan.machineFocus),front=find(practicePlan.frontTossFocus==='Standard'?'Front Toss':practicePlan.frontTossFocus);
+ const stations=[window.HotBPracticeEquipment.station('Machine Tunnel',machine,{protectiveScreen:true}),window.HotBPracticeEquipment.station('Front Toss Tunnel',front,{protectiveScreen:true}),...practiceChosenDrills.map((drill,index)=>window.HotBPracticeEquipment.station(`Drill Station ${index+1}`,drill))];
+ return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" id="backToPracticeDrills">Back</button><h1>Practice Setup</h1><span class="page-head-spacer"></span></div><main class="practice-feature-page practice-equipment-setup no-print"><section class="practice-feature-lead"><span>COACH CHECKLIST</span><h2>Set Up Every Station</h2><p>Use the drill details below to prepare equipment and space before opening the completed practice plan.</p></section><section class="practice-equipment-list">${stations.map(station=>`<article class="practice-equipment-card"><header><span>${esc(station.label)}</span><h3>${esc(station.drill?.name||'Standard')}</h3></header><div><b>Required Equipment</b><ul>${station.equipment.map(item=>`<li>${esc(item)}</li>`).join('')||'<li>No equipment required</li>'}</ul></div><p><b>Hitting Method</b><span>${esc(station.hittingMethod)}</span></p><p><b>Space Setup</b><span>${esc(station.spaceSetup)}</span></p></article>`).join('')}</section><button class="btn black block practice-setup-complete" id="completePracticeSetup">Setup Complete</button></main>`;
+}
 function practicePage(){
  if(!practicePlan&&practiceSection==='hub')return practiceHub();
  if(!practicePlan&&practiceSection==='library')return practiceLibrary();
  if(!practicePlan&&practiceSection==='player')return practicePlayerFocus();
  if(!practicePlan)return practiceSetup();
  if(practiceDrillPickerOpen)return practiceDrillPicker();
+ if(practiceEquipmentSetupOpen)return practiceEquipmentSetup();
  const catcherText=practicePlan.catcherLoads.map(item=>`${item.name.split(' ')[0]} ${item.liveBlocks}`).join(' · ');
  const chosenComplete=practiceChosenDrills.length===practicePlan.drillStations,resourceWarnings=practiceDrillResourceWarnings(practiceChosenDrills),portalsActive=!!db.activePortalPractice?.active,currentPortalsActive=portalsActive&&db.activePortalPractice.id===practicePlan.portalDraftId;
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
@@ -2887,7 +2894,7 @@ function stopPracticeClock(){
 }
 function persistPracticeSession(){
  if(!practicePlan||!window.HotBPracticeSession)return;
- db.activePracticeSession=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,draftDrills:practiceDraftDrills,drillPickerOpen:practiceDrillPickerOpen,setupState:practiceSetupState,clock:practiceClock,portalState:db.activePortalPractice});
+ db.activePracticeSession=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,draftDrills:practiceDraftDrills,drillPickerOpen:practiceDrillPickerOpen,equipmentSetupOpen:practiceEquipmentSetupOpen,setupState:practiceSetupState,clock:practiceClock,portalState:db.activePortalPractice});
  save();
 }
 function persistPracticeDraft(){
@@ -2978,7 +2985,7 @@ async function finishPracticeClock(automatic=false){
  if(!automatic){await endingSpeech;closePracticeWorkspace()}
 }
 function closePracticeWorkspace(){
- stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';clearPracticeSession();render();window.scrollTo(0,0);
+ stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';clearPracticeSession();render();window.scrollTo(0,0);
 }
 async function endPracticeFromScreen(){
  if(practiceCompletionBusy)return;
@@ -3052,7 +3059,9 @@ function bindPractice(){
  $('#practicePickerSearch')?.addEventListener('input',event=>{practicePickerQuery=event.target.value;render();const search=$('#practicePickerSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
  $$('[data-picker-category]').forEach(button=>button.addEventListener('click',()=>{practicePickerCategory=button.dataset.pickerCategory;render();window.scrollTo(0,0)}));
  $$('[data-picker-drill]').forEach(button=>button.addEventListener('click',()=>{const drill=practiceSelectableDrills().find(item=>item.name===button.dataset.pickerDrill);if(!drill)return;const index=practiceDraftDrills.findIndex(item=>item.name===drill.name);if(index>=0)practiceDraftDrills.splice(index,1);else if(practiceDraftDrills.length<practicePlan.drillStations)practiceDraftDrills.push(drill);persistPracticeSession();render()}));
- $('#savePracticeDrills')?.addEventListener('click',()=>{if(practiceDraftDrills.length!==practicePlan.drillStations)return;practiceChosenDrills=practiceDraftDrills.slice();practiceDraftDrills=[];practiceDrillPickerOpen=false;persistPracticeSession();render();window.scrollTo(0,0)});
+ $('#savePracticeDrills')?.addEventListener('click',()=>{if(practiceDraftDrills.length!==practicePlan.drillStations)return;practiceChosenDrills=practiceDraftDrills.slice();practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=true;persistPracticeSession();render();window.scrollTo(0,0)});
+ $('#backToPracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice();practiceEquipmentSetupOpen=false;practiceDrillPickerOpen=true;persistPracticeSession();render();window.scrollTo(0,0)});
+ $('#completePracticeSetup')?.addEventListener('click',()=>{practiceEquipmentSetupOpen=false;practiceDraftDrills=[];persistPracticeSession();render();window.scrollTo(0,0)});
  $('#practiceHubBack')?.addEventListener('click',()=>{if(practiceSection==='setup')persistPracticeDraft();practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)});
  $('#openPracticeBuilder')?.addEventListener('click',()=>{practiceSection='setup';render();window.scrollTo(0,0)});
  $('#openDrillLibrary')?.addEventListener('click',()=>{practiceSection='library';render();window.scrollTo(0,0)});
@@ -3105,7 +3114,7 @@ function bindPractice(){
    if(!confirm('No pitchers are available to pitch.\n\nPress OK to use Coach Pitch for live at-bats.\nPress Cancel to return to attendance.'))return;
    noPitchersMode='coach';
   }
-  stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;
+  stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
   practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});
   if(practicePlan.feasibilityErrors?.length){
    const message=`HotB cannot build this practice without breaking a scheduling rule:\n\n${practicePlan.feasibilityErrors.join('\n\n')}\n\nAdjust attendance or player availability, then build again.`;
