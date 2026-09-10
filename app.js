@@ -898,7 +898,7 @@ let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120
 let practiceSection='hub',practiceFocusPlayer='',practiceFocusRange='weekend',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
 let focusDrillReplaceIndex=-1,focusDrillQuery='';
-let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0},practiceClockTimer=null,portalClockTimer=null;
+let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0},practiceClockTimer=null,practiceEndSpeech=Promise.resolve(),portalClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLibraryReturnView='library';
@@ -1723,7 +1723,7 @@ function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.
  const state=window.HotBPracticeSession?.timing(practice,{running:true,startAt:startedAt},now);
  if(!state)return {block:'DONE!',left:'0:00'};
  const seconds=Math.ceil(state.remaining/1000);
- return {block:state.transition?'TRANSITION':`${state.block} of 10`,left:`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`};
+ return {block:state.transition?'ROTATE':`${state.block} of 10`,left:`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`};
 }
 function updatePortalPracticeClock(){
  const values=portalPracticeClockValues(),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
@@ -2898,9 +2898,15 @@ function resumeRecoveredPracticeClock(){
  if(activeTiming&&practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
 }
 function speakPracticeClock(message,quiet=false){
- if(!('speechSynthesis'in window))return;
- const voice=new SpeechSynthesisUtterance(message);voice.rate=.92;voice.volume=quiet?0:1;
- window.speechSynthesis.cancel();window.speechSynthesis.speak(voice);
+ if(!('speechSynthesis'in window))return Promise.resolve();
+ return new Promise(resolve=>{
+  const voice=new SpeechSynthesisUtterance(message);voice.rate=.92;voice.volume=quiet?0:1;
+  let complete=false;
+  const finish=()=>{if(complete)return;complete=true;clearTimeout(fallback);resolve()};
+  const fallback=setTimeout(finish,Math.max(4000,Math.min(12000,message.length*160)));
+  voice.onend=finish;voice.onerror=finish;
+  window.speechSynthesis.cancel();window.speechSynthesis.speak(voice);
+ });
 }
 function updatePracticeClock(){
  if(!practicePlan||!practiceClock.running)return;
@@ -2909,7 +2915,7 @@ function updatePracticeClock(){
  if(!state){
   if(currentBlock)currentBlock.textContent='DONE!';
   if(timeLeft)timeLeft.textContent='0:00';
-  if(!practiceClock.endAnnounced){practiceClock.endAnnounced=true;speakPracticeClock('Times Up, Good Practice, Please start to clean up');persistPracticeSession()}
+  if(!practiceClock.endAnnounced){practiceClock.endAnnounced=true;practiceEndSpeech=speakPracticeClock('Times Up, Good Practice, Please start to clean up');persistPracticeSession()}
   if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
   return;
  }
@@ -2919,11 +2925,12 @@ function updatePracticeClock(){
  if(warningBlock){practiceClock.lastTwoMinuteBlock=warningBlock;speakPracticeClock('Two minutes left');persistPracticeSession()}
  const transitionBlock=window.HotBPracticeSession?.pendingTransitionWarning(practicePlan,practiceClock,now);
  if(transitionBlock){practiceClock.lastTransitionBlock=transitionBlock;speakPracticeClock('Ladies, Time to Rotate. One minute until the next block');persistPracticeSession()}
- if(currentBlock)currentBlock.textContent=transition?'TRANSITION':`${block} of 10`;
+ if(currentBlock)currentBlock.textContent=transition?'ROTATE':`${block} of 10`;
  if(timeLeft)timeLeft.textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
 }
 function beginPracticeClock(){
  if(practiceClockTimer)clearInterval(practiceClockTimer);
+ practiceEndSpeech=Promise.resolve();
  practiceClock={running:true,finished:false,endAnnounced:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0};
  persistPracticeSession();speakPracticeClock('Begin Block 1');render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);syncPlayerPracticeClock();
 }
@@ -2938,14 +2945,16 @@ async function finishPracticeClock(automatic=false){
  practiceCompletionBusy=true;
  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
  practiceClock.running=false;practiceClock.finished=true;
- const completedAt=new Date();archiveCompletedPractice(completedAt);clearPracticeSession();if(!practiceClock.endAnnounced)speakPracticeClock('Times Up, Good Practice, Please start to clean up');practiceClock.endAnnounced=true;render();
+ const completedAt=new Date();archiveCompletedPractice(completedAt);clearPracticeSession();
+ if(!practiceClock.endAnnounced){practiceClock.endAnnounced=true;practiceEndSpeech=speakPracticeClock('Times Up, Good Practice, Please start to clean up')}
+ const endingSpeech=practiceEndSpeech;render();
  const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
  if(shouldClearPortals){
   try{await clearActivePlayerPlans();render()}
   catch(error){alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap Deactivate.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in, then tap Deactivate.')}
  }
  practiceCompletionBusy=false;
- if(!automatic)closePracticeWorkspace();
+ if(!automatic){await endingSpeech;closePracticeWorkspace()}
 }
 function closePracticeWorkspace(){
  stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';clearPracticeSession();render();window.scrollTo(0,0);
