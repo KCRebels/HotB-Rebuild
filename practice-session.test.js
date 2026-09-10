@@ -31,12 +31,15 @@ restored.plan.players[0].name='Changed Again';
 assert.equal(saved.plan.players[0].name,'Aniesa','restoring must not mutate the saved session');
 
 const clock={running:true,startAt:1000,lastBlock:1,lastTwoMinuteBlock:0};
-assert.deepEqual(session.timing(saved.plan,clock,1000+54*60000),{block:5,remaining:6*60000,transition:false},'clock must derive block 5 and six minutes left from real time');
-assert.deepEqual(session.timing(saved.plan,clock,1000+60*60000),{block:6,remaining:12*60000,transition:false},'six minutes away must resume at block 6 with twelve minutes left');
-assert.equal(session.pendingTwoMinuteWarning(saved.plan,clock,1000+10*60000),1,'warning must become due at two minutes remaining');
+assert.deepEqual(session.timing(saved.plan,clock,1000+54*60000),{block:5,remaining:5*60000,transition:false},'clock must derive the work time remaining in block 5 from real time');
+assert.deepEqual(session.timing(saved.plan,clock,1000+60*60000),{block:6,remaining:11*60000,transition:false},'the next block must begin with eleven minutes of work');
+assert.equal(session.pendingTwoMinuteWarning(saved.plan,clock,1000+9*60000),1,'warning must become due at nine minutes elapsed with two work minutes remaining');
 clock.lastTwoMinuteBlock=1;
-assert.equal(session.pendingTwoMinuteWarning(saved.plan,clock,1000+10*60000),null,'warning must not repeat in the same block');
-assert.equal(session.pendingTwoMinuteWarning(saved.plan,{...clock,lastTwoMinuteBlock:1},1000+22*60000),2,'the next block receives its own warning');
-assert.equal(session.pendingTwoMinuteWarning(saved.plan,{...clock,lastTwoMinuteBlock:0},1000+10*60000+6000),null,'a late resume must not announce an inaccurate two-minute warning');
+assert.equal(session.pendingTwoMinuteWarning(saved.plan,clock,1000+9*60000),null,'warning must not repeat in the same block');
+assert.equal(session.pendingTwoMinuteWarning(saved.plan,{...clock,lastTwoMinuteBlock:1},1000+21*60000),2,'the next block receives its own warning');
+assert.equal(session.pendingTwoMinuteWarning(saved.plan,{...clock,lastTwoMinuteBlock:0},1000+9*60000+6000),null,'a late resume must not announce an inaccurate two-minute warning');
+assert.deepEqual(session.timing(saved.plan,clock,1000+11*60000),{block:1,remaining:60000,transition:true},'the work clock must switch to a separate sixty-second transition');
+assert.equal(session.pendingTransitionWarning(saved.plan,clock,1000+11*60000),1,'rotate must be announced when the transition begins');
+assert.equal(session.timing(saved.plan,clock,1000+119*60000),null,'the session must end after block ten without an extra transition');
 
 console.log('practice-session tests passed');
