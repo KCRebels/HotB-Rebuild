@@ -19,8 +19,8 @@ const displayedChartZone=zone=>legacyChartZone[zone]||zone;
 const defaultRoster = [
  {name:'Aniesa Rohleder',side:'R',jersey:'9',grad:'2029',positions:'RHP | 1B',gpa:'3.98',interest:'Sports Medicine',school:'Olathe South HS',photo:'Aniesa.jpg'},
  {name:'Brooklyn Gering',side:'R',jersey:'16',grad:'2029',positions:'RHP | OF',gpa:'4.0',interest:'Nursing',school:'Spring Hill HS',photo:'player-photos/brooklyn-2026.jpg'},
- {name:'Brynna Peter',side:'R',jersey:'11',grad:'2028',positions:'SS | UT',gpa:'3.78',interest:'Occupational Therapy',school:'Chanute HS',photo:'Brynna.jpg'},
- {name:'Claire Jack',side:'R',jersey:'25',grad:'2029',positions:'CIF | OF',gpa:'4.0',interest:'Biology',school:'Pratt HS',photo:'player-photos/claire-2026.jpg'},
+ {name:'Brynna Peter',side:'R',jersey:'11',grad:'2028',positions:'SS | UT',gpa:'3.78',interest:'Occupational Therapy',school:'Chanute HS',photo:'Brynna.jpg',hittingPracticeAttendanceEligible:false},
+ {name:'Claire Jack',side:'R',jersey:'25',grad:'2029',positions:'CIF | OF',gpa:'4.0',interest:'Biology',school:'Pratt HS',photo:'player-photos/claire-2026.jpg',hittingPracticeAttendanceEligible:false},
  {name:'Hailey Marsh',side:'SL',jersey:'23',grad:'2029',positions:'CF | OF',gpa:'4.0',interest:'Dentist',school:'Louisburg HS',photo:'Hailey.jpg'},
  {name:'Lakyn Farley',side:'R',jersey:'8',grad:'2028',positions:'RHP | OF',gpa:'4.0',interest:'Sports Medicine',school:'Fort Scott HS',photo:'player-photos/lakyn-2026.jpg'},
  {name:'Lydia Copeland',side:'R',jersey:'27',grad:'2028',positions:'C | CIF',gpa:'4.0',interest:'Child Psychology',school:'Louisburg HS',photo:'player-photos/lydia-2026.jpg'},
@@ -1608,8 +1608,8 @@ function guestCoachPracticeView(){
  return `${portalHeader('Guest Coach')}<main class="portal-page"><section class="portal-welcome active"><span>GUEST COACH · VIEW ONLY</span><h2>Hi, ${esc(name)}</h2><p>${esc(practice.title||'Current Hitting Practice')}</p></section><section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section>${(practice.players||[]).map(player=>`<article class="practice-player-card portal-player-card portal-guest-coach-card"><header><h2>${esc(player.name)}${player.role?` <small>(${esc(player.role)})</small>`:''}</h2></header><ol>${player.schedule.map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>`).join('')}</main>`;
 }
 function coachEvaluationPortalPayload(){
- const fields=['name','jersey','grad','positions','side','throws','gpa','school','interest','email','twitter','sportsRecruits','highlightVideo','ncaaId','recruitingStatement','accomplishments','photo','pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct'];
- const payload={roster:db.roster.filter(player=>!player.isGuest).map(player=>Object.fromEntries(fields.map(key=>[key,player[key]??'']))),savedGames:db.savedGames.map(game=>({id:game.id,date:game.date,opponent:game.opponent,plateAppearances:game.plateAppearances||[]})),measurements:(db.measurements||[]).map(({id,player,type,value,date})=>({id,player,type,value,date})),coaches:(db.coaches||[]).map(({coachName,coachEmail,collegeName,lastUpdated})=>({coachName,coachEmail,collegeName,lastUpdated})),practiceHistory:[],currentGame:null};
+ const fields=['name','jersey','grad','positions','side','throws','gpa','school','interest','email','twitter','sportsRecruits','highlightVideo','ncaaId','recruitingStatement','accomplishments','photo','pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct','hittingPracticeAttendanceEligible'];
+ const payload={roster:db.roster.filter(player=>!player.isGuest).map(player=>Object.fromEntries(fields.map(key=>[key,player[key]??'']))),savedGames:db.savedGames.map(game=>({id:game.id,date:game.date,opponent:game.opponent,plateAppearances:game.plateAppearances||[]})),measurements:(db.measurements||[]).map(({id,player,type,value,date})=>({id,player,type,value,date})),coaches:(db.coaches||[]).map(({coachName,coachEmail,collegeName,lastUpdated})=>({coachName,coachEmail,collegeName,lastUpdated})),practiceHistory:window.HotBPracticeHistory?.records(db.practiceHistory)||[],currentGame:null};
  return JSON.parse(JSON.stringify(payload));
 }
 function withCoachEvaluationData(callback){const original=db,readOnly=evaluationReadOnly;db=portalData?.evaluationData||{roster:[],savedGames:[],measurements:[],coaches:[],practiceHistory:[],currentGame:null};evaluationReadOnly=true;try{return callback()}finally{db=original;evaluationReadOnly=readOnly}}
@@ -1763,7 +1763,7 @@ function practiceHeader(title='Hitting Practice',backToHub=false,endDraft=false)
 }
 function practiceHistoryDateValue(date=new Date()){return`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`}
 function practiceDrillUsage(name){return window.HotBPracticeHistory?.drillUsage(db.practiceHistory,name)||{percentage:null,lastDate:null}}
-function practiceAttendanceRate(name){return window.HotBPracticeHistory?.attendance(db.practiceHistory,name)?.percentage??null}
+function practiceAttendance(player){return window.HotBPracticeHistory?.attendance(db.practiceHistory,player)||{percentage:null,eligible:player?.hittingPracticeAttendanceEligible!==false}}
 function practiceUsageBoxes(name){
  const usage=practiceDrillUsage(name),percent=usage.percentage===null?'—%':`${usage.percentage}%`,date=window.HotBPracticeHistory?.dateLabel(usage.lastDate)||'—';
  return`<div class="practice-usage-stats"><span>${esc(percent)}</span><span>${esc(date)}</span></div>`;
@@ -1888,7 +1888,7 @@ function coachPracticePortalPayload(){
 }
 function archiveCompletedPractice(completedAt=new Date()){
  if(!practicePlan||!window.HotBPracticeHistory)return;
- const permanentNames=new Set(db.roster.map(player=>player.name)),record={id:practicePlan.portalDraftId,practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees:practicePlan.players.map(player=>player.name).filter(name=>permanentNames.has(name)),drills:practiceAllSelectedDrills().map(drill=>drill.name)};
+ const permanentNames=new Set(db.roster.filter(player=>!player.isGuest).map(player=>player.name)),record={id:practicePlan.portalDraftId,status:'completed',practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees:practicePlan.players.map(player=>player.name).filter(name=>permanentNames.has(name)),drills:practiceAllSelectedDrills().map(drill=>drill.name)};
  db.practiceHistory=window.HotBPracticeHistory.saveCompleted(db.practiceHistory,record);save();
 }
 async function clearActivePlayerPlans(){
@@ -2333,7 +2333,7 @@ function grade(value,metric){
 }
 function evalView(){
  const player=evalPlayer==='Team'?null:hitterObj(evalPlayer);
- const practiceRate=player?practiceAttendanceRate(player.name):null;
+ const practiceAttendanceResult=player?practiceAttendance(player):null,practiceRate=practiceAttendanceResult?.percentage??null,practiceRateLabel=practiceAttendanceResult&&!practiceAttendanceResult.eligible?'N/A':practiceRate===null?'':`${practiceRate}%`;
  const teamPas=filteredPAs();
  const pas=teamPas.filter(p=>!player||p.hitter===player.name);
  const s=statsForPAs(pas);
@@ -2358,7 +2358,7 @@ function evalView(){
  return `<div class="eval-head"><button class="btn eval-nav" ${evaluationReadOnly?'id="portalBack"':`data-go="${currentGame()?'live':'home'}"`}>${evaluationReadOnly?'Portal':currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><button class="btn eval-email" id="openRecruitingEmail" ${player?'':'disabled'}>Email</button></div>
  <label class="eval-player-filter"><span>Player</span><select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label>
  ${dateFilterControls('eval')}
- ${player?`<div class="player-card player-profile ${practiceRate===null?'':'has-practice-rate'}"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div>${practiceRate===null?'':`<div class="player-practice-rate">${practiceRate}%</div>`}</div>`:
+ ${player?`<div class="player-card player-profile ${practiceRateLabel?'has-practice-rate':''}"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div>${practiceRateLabel?`<div class="player-practice-rate">${practiceRateLabel}</div>`:''}</div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
   <div class="eval-tile dark">${metricHead('HotB+')} ${hotb===null?emptyComparison():(player?comparison(hotb,hotb-100,0):`<div class="value">${hotb}</div>`)}<div class="note">Production vs Team</div></div>
