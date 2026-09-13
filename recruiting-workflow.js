@@ -19,8 +19,9 @@
   {name:'Top Gun Select Invite',detail:'Oct. 30–Nov. 1 · Kansas City Metro'},
   {name:'RecruitLook Showcase',detail:'Nov. 6–8 · Kansas City Metro'}
  ];
- const esc=value=>String(value??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+ const esc=value=>String(value??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[m]));
  const clean=value=>String(value??'').trim();
+ const normalize=value=>clean(value).toLowerCase().replace(/\s+/g,' ');
  function readDb(){try{return JSON.parse(localStorage.getItem(DB_KEY)||'{}')}catch{return{}}}
  function readRecruiting(){try{const value=JSON.parse(localStorage.getItem(RECRUITING_KEY)||'{}');return value&&typeof value==='object'?value:{}}catch{return{}}}
  function saveRecruiting(value){localStorage.setItem(RECRUITING_KEY,JSON.stringify(value))}
@@ -38,8 +39,7 @@
  function statsForPlayer(name){
   const db=readDb();
   const pas=(db.savedGames||[]).flatMap(game=>game.plateAppearances||[]).filter(pa=>pa.hitter===name);
-  const stats=root.HotBEvaluationStats?.statsForPAs?root.HotBEvaluationStats.statsForPAs(pas):{PA:pas.length,AVG:0,OBP:0,contactPct:0};
-  return stats;
+  return root.HotBEvaluationStats?.statsForPAs?root.HotBEvaluationStats.statsForPAs(pas):{PA:pas.length,AVG:0,OBP:0,contactPct:0};
  }
  function round3(value){return Number.isFinite(value)?Number(value).toFixed(3).replace(/^0/,''):'.000'}
  function pct0(value){return `${Math.round((Number(value)||0)*100)}%`}
@@ -51,47 +51,64 @@
   return {value:Number(best.value),date:best.date||''};
  }
  function dateLabel(value){if(!value)return'';const date=new Date(`${value}T12:00:00`);return Number.isNaN(date.getTime())?'':date.toLocaleDateString('en-US',{month:'short',year:'numeric'})}
+ function evaluationStatus(){
+  const entry=readRecruiting().players?.[ACTIVE_PLAYER]||{};
+  if(!entry.coachEvaluationUpdatedAt)return'Current';
+  const date=new Date(entry.coachEvaluationUpdatedAt);
+  return Number.isNaN(date.getTime())?'Current':`Current · Updated ${date.toLocaleDateString('en-US',{month:'short',year:'numeric'})}`;
+ }
  function payload(){
   const db=readDb(),player=(db.roster||[]).find(item=>item.name===ACTIVE_PLAYER);if(!player)return null;
   const stats=statsForPlayer(ACTIVE_PLAYER),recruiting=readRecruiting(),entry=recruiting.players?.[ACTIVE_PLAYER]||{};
   const measurements={};['Fastball','Changeup','Exit Velocity','Home to First'].forEach(type=>{const row=bestMeasurement(db,ACTIVE_PLAYER,type);if(row)measurements[type]={value:row.value,date:dateLabel(row.date)}});
   return {
-   slug:PROFILE_SLUG,
-   updatedAt:new Date().toISOString(),
+   slug:PROFILE_SLUG,updatedAt:new Date().toISOString(),
    player:{name:player.name,jersey:player.jersey||'',grad:player.grad||'',positions:player.positions||'',gpa:player.gpa||'',school:player.school||'',interest:player.interest||'',side:player.side||'',throws:player.throws||'R',email:player.email||'',twitter:player.twitter||'',sportsRecruits:player.sportsRecruits||'',photo:player.photo||''},
-   coachEvaluation:entry.coachEvaluation||DEFAULT_EVALUATION,
-   coachEvaluationUpdatedAt:entry.coachEvaluationUpdatedAt||'',
+   coachEvaluation:entry.coachEvaluation||DEFAULT_EVALUATION,coachEvaluationUpdatedAt:entry.coachEvaluationUpdatedAt||'',
    hitting:{PA:stats.PA,AVG:round3(stats.AVG),OBP:round3(stats.OBP),CONTACT:pct0(stats.contactPct)},
    pitching:{IP:player.pitcherIP||'—',ERA:player.pitcherERA||'—',WHIP:player.pitcherWHIP||'—','K/BB':player.pitcherKBB||'—',OBA:player.pitcherOBA||'—','STRIKE %':player.pitcherStrikePct||'—'},
-   measurements,
-   events:EVENTS,
-   gameChangerUrl:GAMECHANGER_URL,
-   sportsRecruitsUrl:player.sportsRecruits||'https://my.sportsrecruits.com/athlete/brooklyn_gering'
+   measurements,events:EVENTS,gameChangerUrl:GAMECHANGER_URL,sportsRecruitsUrl:player.sportsRecruits||'https://my.sportsrecruits.com/athlete/brooklyn_gering'
   };
  }
  function modalShell(inner){return `<div class="rw-backdrop" data-rw-close><section class="rw-modal" role="dialog" aria-modal="true">${inner}</section></div>`}
  function closeModal(){document.querySelector('.rw-backdrop')?.remove()}
  function openEvaluation(){
-  const recruiting=readRecruiting(),entry=recruiting.players?.[ACTIVE_PLAYER]||{};
-  document.body.insertAdjacentHTML('beforeend',modalShell(`<div class="rw-modal-head"><div><span>COACH EVALUATION</span><h2>Brooklyn Gering</h2></div><button class="rw-close" type="button" data-rw-close>Close</button></div><p class="rw-help">Edit this once here. The same evaluation is published to Brooklyn's Recruiting Profile.</p><textarea id="rwCoachEvaluation">${esc(entry.coachEvaluation||DEFAULT_EVALUATION)}</textarea><div class="rw-actions"><button class="rw-secondary" type="button" data-rw-close>Cancel</button><button class="rw-primary" id="rwSaveEvaluation" type="button">Save Evaluation</button></div>`));
+  const entry=readRecruiting().players?.[ACTIVE_PLAYER]||{};
+  document.body.insertAdjacentHTML('beforeend',modalShell(`<div class="rw-modal-head"><div><span>COACH EVALUATION</span><h2>Brooklyn Gering</h2></div><button class="rw-close" type="button" data-rw-close>Close</button></div><p class="rw-help">This is an occasional edit, not a normal game-day task. Changes here also update Brooklyn's Recruiting Profile.</p><textarea id="rwCoachEvaluation">${esc(entry.coachEvaluation||DEFAULT_EVALUATION)}</textarea><div class="rw-actions"><button class="rw-secondary" type="button" data-rw-close>Cancel</button><button class="rw-primary" id="rwSaveEvaluation" type="button">Save Evaluation</button></div>`));
   document.querySelector('#rwSaveEvaluation')?.addEventListener('click',async()=>{
    const value=clean(document.querySelector('#rwCoachEvaluation')?.value);if(!value)return;
    const store=readRecruiting();store.players=store.players||{};store.players[ACTIVE_PLAYER]={...(store.players[ACTIVE_PLAYER]||{}),coachEvaluation:value,coachEvaluationUpdatedAt:new Date().toISOString()};saveRecruiting(store);closeModal();await publishProfile(true);inject();
   });
  }
  function coachLastName(coach){const parts=clean(coach?.coachName).split(/\s+/);return parts[parts.length-1]||'Coach'}
+ function coachMatches(coaches,query,key){
+  const q=normalize(query);if(!q)return[];
+  return [...coaches].filter(coach=>normalize(coach[key]).includes(q)).sort((a,b)=>{
+   const aStart=normalize(a[key]).startsWith(q),bStart=normalize(b[key]).startsWith(q);
+   return Number(bStart)-Number(aStart)||(a[key]||'').localeCompare(b[key]||'');
+  }).slice(0,8);
+ }
  function openEmail(){
   const db=readDb(),player=(db.roster||[]).find(item=>item.name===ACTIVE_PLAYER);if(!player)return;
-  const coaches=db.coaches||[];const first=coaches[0]||{};
-  const body=buildBrooklynEmailBody(player,coachLastName(first));
-  document.body.insertAdjacentHTML('beforeend',modalShell(`<div class="rw-modal-head"><div><span>EMAIL COACH</span><h2>Brooklyn Gering</h2></div><button class="rw-close" type="button" data-rw-close>Close</button></div><label class="rw-label">College Coach<select id="rwCoachSelect">${coaches.map((coach,index)=>`<option value="${index}">${esc(coach.coachName)} — ${esc(coach.collegeName)}</option>`).join('')}</select></label><div class="rw-email-meta"><b>To:</b> <span id="rwTo">${esc(first.coachEmail||'')}</span><br><b>CC:</b> <span>${esc(player.email||'None')}</span><br><b>Subject:</b> <span>${esc(buildEmailSubject(player))}</span></div><label class="rw-label">Email Message — You Can Edit It Here<textarea id="rwEmailBody">${esc(body)}</textarea></label><p class="rw-help">Nothing sends until you confirm and Gmail completes authorization.</p><div class="rw-actions"><button class="rw-secondary" type="button" data-rw-close>Cancel</button><button class="rw-primary" id="rwSendEmail" type="button">Send with Gmail</button></div>`));
-  const select=document.querySelector('#rwCoachSelect'),textarea=document.querySelector('#rwEmailBody'),to=document.querySelector('#rwTo');
-  select?.addEventListener('change',()=>{const coach=coaches[Number(select.value)]||{};if(to)to.textContent=coach.coachEmail||'';if(textarea)textarea.value=buildBrooklynEmailBody(player,coachLastName(coach))});
-  document.querySelector('#rwSendEmail')?.addEventListener('click',async event=>{
-   const coach=coaches[Number(select?.value||0)]||{},email=clean(coach.coachEmail);if(!email){alert('This coach does not have a saved email address.');return}
+  const coaches=db.coaches||[];let selectedCoach=null;
+  document.body.insertAdjacentHTML('beforeend',modalShell(`<div class="rw-modal-head"><div><span>EMAIL COACH</span><h2>Brooklyn Gering</h2></div><button class="rw-close" type="button" data-rw-close>Close</button></div><p class="rw-help">Start typing a coach name or college. Tap a match to select that coach.</p><div class="rw-search-grid"><label class="rw-label">Coach's Name<input id="rwCoachName" autocomplete="off" placeholder="Start typing a coach name"><div class="rw-search-results" id="rwCoachNameMatches" hidden></div></label><label class="rw-label">College<input id="rwCollegeName" autocomplete="off" placeholder="Start typing a college"><div class="rw-search-results" id="rwCollegeMatches" hidden></div></label></div><div class="rw-email-meta"><b>To:</b> <span id="rwTo">Select a coach</span><br><b>CC:</b> <span>${esc(player.email||'None')}</span><br><b>Subject:</b> <span>${esc(buildEmailSubject(player))}</span></div><label class="rw-label">Email Message — You Can Edit It Here<textarea id="rwEmailBody">${esc(buildBrooklynEmailBody(player,'Coach'))}</textarea></label><p class="rw-help">Nothing sends until you confirm and Gmail completes authorization.</p><div class="rw-actions"><button class="rw-secondary" type="button" data-rw-close>Cancel</button><button class="rw-primary" id="rwSendEmail" type="button" disabled>Send with Gmail</button></div>`));
+  const coachInput=document.querySelector('#rwCoachName'),collegeInput=document.querySelector('#rwCollegeName'),coachResults=document.querySelector('#rwCoachNameMatches'),collegeResults=document.querySelector('#rwCollegeMatches'),to=document.querySelector('#rwTo'),textarea=document.querySelector('#rwEmailBody'),send=document.querySelector('#rwSendEmail');
+  const choose=coach=>{selectedCoach=coach;coachInput.value=coach.coachName||'';collegeInput.value=coach.collegeName||'';to.textContent=coach.coachEmail||'No saved email';textarea.value=buildBrooklynEmailBody(player,coachLastName(coach));send.disabled=!clean(coach.coachEmail);coachResults.hidden=true;collegeResults.hidden=true};
+  const showMatches=(input,container,key)=>{
+   const matches=coachMatches(coaches,input.value,key);container.replaceChildren();
+   matches.forEach(coach=>{const button=document.createElement('button');button.type='button';button.className='rw-search-result';const primary=document.createElement('b'),secondary=document.createElement('span');primary.textContent=coach.coachName||'Coach';secondary.textContent=`${coach.collegeName||''}${coach.coachEmail?` · ${coach.coachEmail}`:''}`;button.append(primary,secondary);button.addEventListener('click',()=>choose(coach));container.append(button)});
+   container.hidden=!matches.length;
+  };
+  coachInput.addEventListener('input',()=>showMatches(coachInput,coachResults,'coachName'));
+  collegeInput.addEventListener('input',()=>showMatches(collegeInput,collegeResults,'collegeName'));
+  coachInput.addEventListener('focus',()=>showMatches(coachInput,coachResults,'coachName'));
+  collegeInput.addEventListener('focus',()=>showMatches(collegeInput,collegeResults,'collegeName'));
+  [coachInput,collegeInput].forEach(input=>input.addEventListener('blur',()=>setTimeout(()=>{coachResults.hidden=true;collegeResults.hidden=true},120)));
+  send.addEventListener('click',async event=>{
+   const email=clean(selectedCoach?.coachEmail);if(!email){alert('Select a saved coach with an email address first.');return}
    if(!confirm(`Send this recruiting email now to ${email}${player.email?` and CC ${player.email}`:''}?`))return;
    const button=event.currentTarget;button.disabled=true;button.textContent='Connecting to Gmail…';
-   try{const token=await requestGmailAccessToken();button.textContent='Sending…';await sendEmail(token,email,player.email||'',buildEmailSubject(player),textarea?.value||'');closeModal();alert('Recruiting email sent through Gmail.')}catch(error){button.disabled=false;button.textContent='Send with Gmail';alert(error?.message||'Gmail could not send this email. Nothing was sent.')}
+   try{const token=await requestGmailAccessToken();button.textContent='Sending…';await sendEmail(token,email,player.email||'',buildEmailSubject(player),textarea.value||'');closeModal();alert('Recruiting email sent through Gmail.')}catch(error){button.disabled=false;button.textContent='Send with Gmail';alert(error?.message||'Gmail could not send this email. Nothing was sent.')}
   });
  }
  function requestGmailAccessToken(){return new Promise((resolve,reject)=>{if(!root.google?.accounts?.oauth2){reject(new Error('Google sign-in is still loading. Wait a few seconds and try again.'));return}const client=root.google.accounts.oauth2.initTokenClient({client_id:GMAIL_CLIENT_ID,scope:GMAIL_SEND_SCOPE,callback:response=>response.error?reject(new Error('Gmail authorization was not completed.')):resolve(response.access_token),error_callback:()=>reject(new Error('Gmail authorization was closed or blocked.'))});client.requestAccessToken({prompt:'select_account consent'})})}
@@ -108,11 +125,12 @@
  }
  function inject(){
   const evalApp=document.querySelector('.eval-app'),select=document.querySelector('#evalSelect');if(!evalApp||!select)return;
-  const name=select.value,player=name==='Team'?null:playerRecord(name),existing=document.querySelector('#rwRecruitingSection');if(existing)return;if(!player)return;
+  const name=select.value,player=name==='Team'?null:playerRecord(name),existing=document.querySelector('#rwRecruitingSection');if(existing)existing.remove();if(!player)return;
   const enabled=activePlayer(name),anchor=document.querySelector('.player-card.player-profile');if(!anchor)return;
-  const html=`<section class="rw-recruiting" id="rwRecruitingSection"><div class="rw-section-head"><div><span>RECRUITING</span><h2>Recruiting Workflow</h2></div>${enabled?'<small>Brooklyn pilot</small>':'<small>Coming Soon</small>'}</div><div class="rw-buttons"><button type="button" class="rw-profile" ${enabled?'':'disabled'}>Recruiting Profile</button><button type="button" class="rw-evaluation" ${enabled?'':'disabled'}>Coach Evaluation</button><button type="button" class="rw-email" ${enabled?'':'disabled'}>Email Coach</button></div>${enabled?'<p>Public scouting report · Coach evaluation · Coach-to-coach introduction</p>':'<p>Recruiting controls are visible for planning but inactive for this player.</p>'}</section>`;
+  const evalLine=enabled?`<div class="rw-eval-line"><span><b>Coach Evaluation:</b> ${esc(evaluationStatus())}</span><button type="button" class="rw-evaluation-link">Edit</button></div>`:`<div class="rw-eval-line disabled"><span><b>Coach Evaluation:</b> Coming Soon</span></div>`;
+  const html=`<section class="rw-recruiting" id="rwRecruitingSection"><div class="rw-section-head"><div><span>RECRUITING</span><h2>Recruiting Workflow</h2></div>${enabled?'<small>Brooklyn pilot</small>':'<small>Coming Soon</small>'}</div><div class="rw-buttons"><button type="button" class="rw-profile" ${enabled?'':'disabled'}>Recruiting Profile</button><button type="button" class="rw-email" ${enabled?'':'disabled'}>Email Coach</button></div>${evalLine}${enabled?'<p>Public scouting report · Coach-to-coach introduction</p>':'<p>Recruiting controls are visible for planning but inactive for this player.</p>'}</section>`;
   anchor.insertAdjacentHTML('afterend',html);
-  if(enabled){document.querySelector('.rw-profile')?.addEventListener('click',()=>root.open(PUBLIC_PROFILE_PATH,'_blank','noopener'));document.querySelector('.rw-evaluation')?.addEventListener('click',openEvaluation);document.querySelector('.rw-email')?.addEventListener('click',openEmail);publishProfile(false)}
+  if(enabled){document.querySelector('.rw-profile')?.addEventListener('click',()=>root.open(PUBLIC_PROFILE_PATH,'_blank','noopener'));document.querySelector('.rw-evaluation-link')?.addEventListener('click',openEvaluation);document.querySelector('.rw-email')?.addEventListener('click',openEmail);publishProfile(false)}
  }
  function init(){
   if(typeof document==='undefined')return;
@@ -123,5 +141,5 @@
   inject();
  }
  if(typeof document!=='undefined'&&document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
- return {ACTIVE_PLAYER,PUBLIC_PROFILE_URL,DEFAULT_EVALUATION,EVENTS,activePlayer,buildEmailSubject,buildBrooklynEmailBody,shortCoachIntro,payload};
+ return {ACTIVE_PLAYER,PUBLIC_PROFILE_URL,DEFAULT_EVALUATION,EVENTS,activePlayer,buildEmailSubject,buildBrooklynEmailBody,shortCoachIntro,coachMatches,payload};
 });
