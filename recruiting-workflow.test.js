@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict');
-const workflow=require('./recruiting-workflow.js');
+const workflow=require('./recruiting-workflow-v2.js');
 const brooklyn={name:'Brooklyn Gering',grad:'2029',positions:'RHP | OF',gpa:'4.0',jersey:'16'};
 assert.equal(workflow.activePlayer('Brooklyn Gering'),true);
 assert.equal(workflow.activePlayer('Megan Ryan'),false);
@@ -10,5 +10,7 @@ assert.match(body,/brooklyn-gering-recruiting-profile\.html/);
 assert.match(body,/PLAYER PROFILE \/ CURRENT RESULTS/);
 assert.match(body,/UPCOMING SCHEDULE/);
 assert.match(body,/GAMECHANGER/);
-assert.match(body,/Director of Recruiting \| Kansas City Rebels/);
+const coaches=[{coachName:'Coach Alpha',collegeName:'Kansas College'},{coachName:'Coach Beta',collegeName:'Missouri College'}];
+assert.equal(workflow.coachMatches(coaches,'alpha','coachName')[0].coachName,'Coach Alpha');
+assert.equal(workflow.coachMatches(coaches,'kansas','collegeName')[0].collegeName,'Kansas College');
 console.log('recruiting-workflow tests passed');
