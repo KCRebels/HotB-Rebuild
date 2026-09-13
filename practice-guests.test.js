@@ -11,6 +11,8 @@ assert.ok(source.includes("replace(/\\D/g,'').length<10"),'guest cell numbers ar
 assert.ok(source.includes('data-text-practice-guest'),'guest links can be texted from attendance');
 assert.ok(source.includes('data-share-setup-guest'),'guest links can be shared from attendance');
 assert.ok(source.includes('shareGuestPortal'),'text and share reuse the same guest portal link');
+assert.ok(source.includes('smsComposeUrl(phone,guestPortalShareText(guest))'),'guest texts use the shared SMS composer');
+assert.ok(source.includes("const share={title:`${guest.name}’s HotB Practice`,text:guestPortalShareText(guest)}"),'native sharing sends one exact message instead of a second URL field');
 assert.ok(source.includes('GUEST ACCESS CONFIRMED'),'unactivated links show a connection confirmation');
 assert.ok(source.includes("accessStatus:'active'")&&source.includes('{merge:true}'),'activation updates the existing guest link');
 assert.ok(source.includes("expired:true"),'guest links expire when active plans are cleared');
