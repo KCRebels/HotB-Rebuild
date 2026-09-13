@@ -21,6 +21,9 @@
     .hero h1{font-size:clamp(38px,7vw,66px);line-height:.95;margin:7px 0 12px;letter-spacing:-.04em}
     .meta{font-size:clamp(18px,2.5vw,25px);font-weight:850}
     .submeta{margin-top:8px;font-size:17px;color:#f8e9ec;font-weight:650;line-height:1.35}
+    .player-motto{margin-top:13px;max-width:720px;padding-top:11px;border-top:1px solid #ffffff55;color:#fff}
+    .player-motto span{display:block;margin-bottom:4px;font-size:10px;font-weight:950;letter-spacing:.14em;text-transform:uppercase;color:#ffd9df}
+    .player-motto q{font-size:15px;font-weight:750;font-style:italic;line-height:1.4}
     .links{display:flex;gap:9px;margin-top:15px;width:max-content;max-width:100%}
     .btn{padding:11px 16px;border-radius:11px;background:#fff;color:var(--deep);font-weight:900;border:2px solid #fff;text-align:center;white-space:nowrap}
     .btn.email{background:#090909;color:#fff;border-color:#090909}
@@ -61,7 +64,7 @@
     .contact-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.contact-actions .btn{border-color:var(--deep);background:var(--deep);color:#fff;padding:10px 7px;font-size:13px}
     .source-line{margin-top:9px;color:var(--muted);font-size:12px;line-height:1.45}
     @media(max-width:760px){
-      .hero{grid-template-columns:138px 1fr;gap:14px;padding:12px 0 18px}.portrait-wrap{height:166px}.hero h1{font-size:34px}.grad-year{font-size:34px}.report-label{font-size:10px}.meta{font-size:17px}.submeta{font-size:14px}.nowrap{white-space:nowrap}
+      .hero{grid-template-columns:138px 1fr;gap:14px;padding:12px 0 18px}.portrait-wrap{height:166px}.hero h1{font-size:34px}.grad-year{font-size:34px}.report-label{font-size:10px}.meta{font-size:17px}.submeta{font-size:14px}.nowrap{white-space:nowrap}.player-motto{margin-top:10px;padding-top:9px}.player-motto q{font-size:13px}
       .links{margin-top:12px;gap:7px}.links .btn{padding:9px 10px;font-size:12px}.page{display:block;padding-top:17px}.card{padding:18px;margin-bottom:14px}.evaluation p{font-size:16px;line-height:1.58}.profile-link-mobile{display:block}.profile-link-desktop{display:none}
       .performance-head{display:block}.asof{text-align:left;margin-top:5px}.stats{grid-template-columns:repeat(2,1fr)}.stats.pitching{grid-template-columns:repeat(3,1fr)}.stat strong{font-size:23px}.stat span{font-size:10px}
       .development-grid{grid-template-columns:1fr}.measurements{grid-template-columns:repeat(2,1fr)}
@@ -80,6 +83,7 @@
         <h1 id="playerName">Brooklyn Gering</h1>
         <div class="meta" id="playerMeta">#16 · RHP / OF</div>
         <div class="submeta" id="playerSubmeta"><span class="nowrap">Throw/Bat: R/R</span><br><span class="nowrap">Spring Hill HS · GPA 4.00</span><br><span class="nowrap">Intended Major: Nursing</span></div>
+        <div class="player-motto" id="playerMotto" hidden><span>Player Motto</span><q id="playerMottoText"></q></div>
         <nav class="links" aria-label="Brooklyn contact links">
           <a class="btn email" id="playerEmail" href="mailto:brooklyngering@icloud.com">Email Brooklyn</a>
           <a class="btn" id="playerTwitter" href="https://x.com/brooklyngering" target="_blank" rel="noopener">X / Twitter</a>
@@ -209,6 +213,7 @@
         if(!snap.exists)return;const data=snap.data(),p=data.player||{};
         text('gradYear',p.grad);text('playerName',p.name);text('playerMeta',`#${p.jersey||'16'} · ${p.positions||'RHP / OF'}`);
         const sub=document.getElementById('playerSubmeta');if(sub)sub.innerHTML=`<span class="nowrap">Throw/Bat: ${escapeHtml(p.throws||'R')}/${escapeHtml(p.side||'R')}</span><br><span class="nowrap">${escapeHtml(p.school||'Spring Hill HS')} · GPA ${escapeHtml(p.gpa||'4.0')}</span><br><span class="nowrap">Intended Major: ${escapeHtml(p.interest||'Nursing')}</span>`;
+        const motto=document.getElementById('playerMotto'),mottoText=document.getElementById('playerMottoText');if(motto&&mottoText){const value=String(data.motto||'').trim();mottoText.textContent=value;motto.hidden=!value}
         const email=document.getElementById('playerEmail');if(email&&p.email)email.href=`mailto:${p.email}`;const twitter=document.getElementById('playerTwitter');if(twitter&&p.twitter)twitter.href=p.twitter;
         ['sportsRecruitsMobile','sportsRecruitsDesktop'].forEach(id=>{const el=document.getElementById(id);if(el&&data.sportsRecruitsUrl)el.href=data.sportsRecruitsUrl});
         evaluation(data.coachEvaluation);
