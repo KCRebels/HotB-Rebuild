@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict');
+const workflow=require('./recruiting-workflow.js');
+const brooklyn={name:'Brooklyn Gering',grad:'2029',positions:'RHP | OF',gpa:'4.0',jersey:'16'};
+assert.equal(workflow.activePlayer('Brooklyn Gering'),true);
+assert.equal(workflow.activePlayer('Megan Ryan'),false);
+assert.equal(workflow.buildEmailSubject(brooklyn),'Brooklyn Gering | 2029 | RHP/OF | 4.0 GPA | #16');
+const body=workflow.buildBrooklynEmailBody(brooklyn,'Smith');
+assert.match(body,/Coach Smith,/);
+assert.match(body,/brooklyn-gering-recruiting-profile\.html/);
+assert.match(body,/PLAYER PROFILE \/ CURRENT RESULTS/);
+assert.match(body,/UPCOMING SCHEDULE/);
+assert.match(body,/GAMECHANGER/);
+assert.match(body,/Director of Recruiting \| Kansas City Rebels/);
+console.log('recruiting-workflow tests passed');
