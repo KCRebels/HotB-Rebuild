@@ -949,8 +949,6 @@ function newPortalId(){
 }
 function newPortalPin(){return String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0')}
 function newGuestSecret(){return newPortalId()+newPortalId()}
-const BROOKLYN_RECRUITING_PROFILE_URL='https://kcrebels.github.io/HotB-Rebuild/brooklyn-gering-recruiting-profile.html';
-function recruitingProfileUrl(player){return player?.name==='Brooklyn Gering'?BROOKLYN_RECRUITING_PROFILE_URL:''}
 function standaloneLinkMessage(before,url,after){return window.HotBSms?.buildStandaloneLinkMessage({before,url,after})||''}
 function smsComposeUrl(phone,message){return window.HotBSms?.composeSmsUrl({phone,message,userAgent:navigator.userAgent})||''}
 function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}`}
@@ -2357,8 +2355,7 @@ function evalView(){
  const resultRate=player&&['Maia Waddell','Hailey Marsh'].includes(player.name)
   ?['QAB%',pct1(s.qabPct),'qabPct']
   :['HHB%',pct1(s.hhbPct),'hhbPct'];
- const recruitingUrl=recruitingProfileUrl(player);
- return `<div class="eval-head"><button class="btn eval-nav" ${evaluationReadOnly?'id="portalBack"':`data-go="${currentGame()?'live':'home'}"`}>${evaluationReadOnly?'Portal':currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><div class="eval-contact-actions"><button class="btn eval-contact eval-email" id="openRecruitingEmail" ${player?'':'disabled'} aria-label="Email recruiting contact">EM</button><button class="btn eval-contact eval-text" id="openRecruitingText" ${recruitingUrl?'':'disabled'} aria-label="Text recruiting profile">TX</button></div></div>
+ return `<div class="eval-head"><button class="btn eval-nav" ${evaluationReadOnly?'id="portalBack"':`data-go="${currentGame()?'live':'home'}"`}>${evaluationReadOnly?'Portal':currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><div class="eval-contact-actions"><button class="btn eval-contact eval-email" id="openRecruitingEmail" ${player?'':'disabled'} aria-label="Email recruiting contact">EM</button></div></div>
  <label class="eval-player-filter"><span>Player</span><select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label>
  ${dateFilterControls('eval')}
  ${player?`<div class="player-card player-profile ${practiceRateLabel?'has-practice-rate':''}"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div>${practiceRateLabel?`<div class="player-practice-rate">${practiceRateLabel}</div>`:''}</div>`:
@@ -3513,15 +3510,6 @@ function bindEval(){
  $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};
  bindDateFilters('eval');
  $('#openRecruitingEmail').onclick=()=>{recruitingPlayerName=evalPlayer;recruitingEmail={coachName:'',coachEmail:'',collegeName:'',personalNote:'',subject:'',body:'',selectedCoachEmail:''};modal='recruitingEmail';render()};
- const recruitingText=$('#openRecruitingText');
- if(recruitingText)recruitingText.onclick=()=>{
-  const player=evalPlayer==='Team'?null:hitterObj(evalPlayer),url=recruitingProfileUrl(player);
-  if(!player||!url)return;
-  const positions=cleanCell(player.positions).replace(/\s*\|\s*/g,'/');
-  const message=window.HotBSms?.recruitingProfileMessage({name:player.name,grad:player.grad,positions,url})||'';
-  const destination=smsComposeUrl('',message);
-  if(destination)window.location.href=destination;
- };
  const recordMeasureButton=$('#recordMeasure2');
  if(recordMeasureButton)recordMeasureButton.onclick=()=>{recordType='';modal='record';render()};
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});

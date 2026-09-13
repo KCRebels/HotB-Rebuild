@@ -58,7 +58,32 @@
   input.addEventListener('blur',()=>setTimeout(()=>{results.hidden=true},180));
   send.addEventListener('click',async event=>{const email=clean(selected?.coachEmail);if(!email){alert('Select a saved coach with an email address first.');return}if(!confirm(`Send this recruiting email now to ${email}${player.email?` and CC ${player.email}`:''}?`))return;const button=event.currentTarget;button.disabled=true;button.textContent='Connecting to Gmail…';try{const token=await requestGmailAccessToken();button.textContent='Sending…';await sendEmail(token,email,player.email||'',buildEmailSubject(player),textarea.value||'');closeModal();alert('Recruiting email sent through Gmail.')}catch(error){button.disabled=false;button.textContent='Send with Gmail';alert(error?.message||'Gmail could not send this email. Nothing was sent.')}});
  }
- function inject(){const evalApp=document.querySelector('.eval-app'),select=document.querySelector('#evalSelect');if(!evalApp||!select)return;const name=select.value,existing=document.querySelector('#rwRecruitingSection');if(existing&&existing.dataset.player===name)return;if(existing)existing.remove();const player=name==='Team'?null:playerRecord(name);if(!player)return;const enabled=activePlayer(name),anchor=document.querySelector('.player-card.player-profile');if(!anchor)return;const evalLine=enabled?`<div class="rw-eval-line"><span><b>Coach Evaluation:</b> <span class="rw-eval-status">${esc(evaluationStatus())}</span></span><button type="button" class="rw-evaluation-link">Edit</button></div>`:`<div class="rw-eval-line disabled"><span><b>Coach Evaluation:</b> Coming Soon</span></div>`;anchor.insertAdjacentHTML('afterend',`<section class="rw-recruiting" id="rwRecruitingSection" data-player="${esc(name)}"><div class="rw-section-head"><div><span>RECRUITING</span><h2>Recruiting Workflow</h2></div>${enabled?'<small>Brooklyn pilot</small>':'<small>Coming Soon</small>'}</div><div class="rw-buttons"><button type="button" class="rw-profile" ${enabled?'':'disabled'}>Recruiting Profile</button><button type="button" class="rw-email" ${enabled?'':'disabled'}>Email Coach</button></div>${evalLine}${enabled?'<p>Public scouting report · Coach-to-coach introduction</p>':'<p>Recruiting controls are visible for planning but inactive for this player.</p>'}</section>`);if(enabled){document.querySelector('.rw-profile')?.addEventListener('click',()=>root.open(PUBLIC_PROFILE_PATH,'_blank','noopener'));document.querySelector('.rw-email')?.addEventListener('click',openEmail);document.querySelector('.rw-evaluation-link')?.addEventListener('click',openEvaluation);publishProfile(false)}}
+ function openText(player){
+  const positions=clean(player?.positions).replace(/\s*\|\s*/g,'/');
+  const message=root.HotBSms?.recruitingProfileMessage({name:player?.name,grad:player?.grad,positions,url:PUBLIC_PROFILE_URL})||'';
+  const destination=root.HotBSms?.composeSmsUrl({message,userAgent:root.navigator?.userAgent||''})||'';
+  if(destination)root.location.href=destination;
+ }
+ function inject(){
+  const evalApp=document.querySelector('.eval-app'),select=document.querySelector('#evalSelect');
+  if(!evalApp||!select)return;
+  const name=select.value,existing=document.querySelector('#rwRecruitingSection');
+  if(existing&&existing.dataset.player===name)return;
+  if(existing)existing.remove();
+  const player=name==='Team'?null:playerRecord(name);
+  if(!player)return;
+  const enabled=activePlayer(name),anchor=document.querySelector('.player-card.player-profile');
+  if(!anchor)return;
+  const evalLine=enabled?`<div class="rw-eval-line"><span><b>Coach Evaluation:</b> <span class="rw-eval-status">${esc(evaluationStatus())}</span></span><button type="button" class="rw-evaluation-link">Edit</button></div>`:`<div class="rw-eval-line disabled"><span><b>Coach Evaluation:</b> Coming Soon</span></div>`;
+  anchor.insertAdjacentHTML('afterend',`<section class="rw-recruiting" id="rwRecruitingSection" data-player="${esc(name)}"><div class="rw-section-head"><div><span>RECRUITING</span><h2>Recruiting Workflow</h2></div>${enabled?'<small>Brooklyn pilot</small>':'<small>Coming Soon</small>'}</div><div class="rw-buttons"><button type="button" class="rw-profile" ${enabled?'':'disabled'}>Recruiting Profile</button><button type="button" class="rw-email" ${enabled?'':'disabled'}>Email</button><button type="button" class="rw-text" ${enabled?'':'disabled'}>Text</button></div>${evalLine}${enabled?'<p>Public scouting report · Coach-to-coach introduction</p>':'<p>Recruiting controls are visible for planning but inactive for this player.</p>'}</section>`);
+  if(enabled){
+   document.querySelector('.rw-profile')?.addEventListener('click',()=>root.open(PUBLIC_PROFILE_PATH,'_blank','noopener'));
+   document.querySelector('.rw-email')?.addEventListener('click',openEmail);
+   document.querySelector('.rw-text')?.addEventListener('click',()=>openText(player));
+   document.querySelector('.rw-evaluation-link')?.addEventListener('click',openEvaluation);
+   publishProfile(false);
+  }
+ }
  function init(){if(typeof document==='undefined')return;document.addEventListener('click',event=>{if(event.target.matches('[data-rw-close]'))closeModal()});const observer=new MutationObserver(()=>requestAnimationFrame(inject));observer.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});document.addEventListener('change',event=>{if(event.target?.id==='evalSelect')setTimeout(inject,0)});if(root.firebase?.auth)root.firebase.auth().onAuthStateChanged(()=>setTimeout(()=>publishProfile(false),200));inject()}
  if(typeof document!=='undefined'&&document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
  return{ACTIVE_PLAYER,PUBLIC_PROFILE_URL,DEFAULT_EVALUATION,EVENTS,activePlayer,buildEmailSubject,buildBrooklynEmailBody,shortCoachIntro,coachMatches,payload};
