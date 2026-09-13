@@ -108,7 +108,7 @@
  }
  function inject(){
   const evalApp=document.querySelector('.eval-app'),select=document.querySelector('#evalSelect');if(!evalApp||!select)return;
-  const name=select.value,player=name==='Team'?null:playerRecord(name),existing=document.querySelector('#rwRecruitingSection');if(existing)existing.remove();if(!player)return;
+  const name=select.value,player=name==='Team'?null:playerRecord(name),existing=document.querySelector('#rwRecruitingSection');if(existing)return;if(!player)return;
   const enabled=activePlayer(name),anchor=document.querySelector('.player-card.player-profile');if(!anchor)return;
   const html=`<section class="rw-recruiting" id="rwRecruitingSection"><div class="rw-section-head"><div><span>RECRUITING</span><h2>Recruiting Workflow</h2></div>${enabled?'<small>Brooklyn pilot</small>':'<small>Coming Soon</small>'}</div><div class="rw-buttons"><button type="button" class="rw-profile" ${enabled?'':'disabled'}>Recruiting Profile</button><button type="button" class="rw-evaluation" ${enabled?'':'disabled'}>Coach Evaluation</button><button type="button" class="rw-email" ${enabled?'':'disabled'}>Email Coach</button></div>${enabled?'<p>Public scouting report · Coach evaluation · Coach-to-coach introduction</p>':'<p>Recruiting controls are visible for planning but inactive for this player.</p>'}</section>`;
   anchor.insertAdjacentHTML('afterend',html);
