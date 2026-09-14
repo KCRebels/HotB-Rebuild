@@ -9,13 +9,13 @@
   if(a.value===null)return 1;if(b.value===null)return-1;
   return (lower?a.value-b.value:b.value-a.value)||a.name.localeCompare(b.name);
  });
+ function closeRanking(){document.querySelector('#directPlayerEvalRankingBackdrop')?.remove()}
  function showRanking(label,rows,note){
-  document.querySelector('#directPlayerEvalRankingBackdrop')?.remove();
+  closeRanking();
   const selected=selectedPlayer(),backdrop=document.createElement('div');
   backdrop.id='directPlayerEvalRankingBackdrop';backdrop.className='modal-backdrop';
-  backdrop.innerHTML=`<div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">FULL ROSTER RANKINGS</div><h2>${label}</h2></div><button class="btn" data-direct-hitting-close>Close</button></div><div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.name===selected?'selected-player':''}"><span class="ranking-place">${row.value===null?'—':index+1}</span><span class="ranking-name">${row.name}${row.sub?`<small>${row.sub}</small>`:''}</span><strong>${row.display}</strong></div>`).join('')}</div><p class="small" style="color:#ddd;margin:14px 4px 0">${note}</p></div>`;
-  backdrop.querySelector('[data-direct-hitting-close]')?.addEventListener('click',()=>backdrop.remove());
-  backdrop.addEventListener('click',event=>{if(event.target===backdrop)backdrop.remove()});
+  backdrop.innerHTML=`<div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">FULL ROSTER RANKINGS</div><h2>${label}</h2></div><button type="button" class="btn" data-direct-hitting-close>Close</button></div><div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.name===selected?'selected-player':''}"><span class="ranking-place">${row.value===null?'—':index+1}</span><span class="ranking-name">${row.name}${row.sub?`<small>${row.sub}</small>`:''}</span><strong>${row.display}</strong></div>`).join('')}</div><p class="small" style="color:#ddd;margin:14px 4px 0">${note}</p></div>`;
+  backdrop.addEventListener('click',event=>{if(event.target===backdrop)closeRanking()});
   document.body.appendChild(backdrop);
  }
  const hitting={
@@ -69,9 +69,15 @@
   if(!opened)return;
   event.preventDefault();event.stopImmediatePropagation();lastOpen=Date.now();
  }
- // Window capture runs before the older document handler, so every player uses one direct path.
- window.addEventListener('pointerup',handle,true);
+ // Close is handled at window capture on both pointerup and click so iPhone cannot lose the event to older handlers.
+ function closeHandler(event){
+  const target=event.target instanceof Element?event.target:null;
+  if(!target?.closest('[data-direct-hitting-close]'))return false;
+  event.preventDefault();event.stopImmediatePropagation();closeRanking();return true;
+ }
+ window.addEventListener('pointerup',event=>{if(closeHandler(event))return;handle(event)},true);
  window.addEventListener('click',event=>{
+  if(closeHandler(event))return;
   const target=event.target instanceof Element?event.target:null;
   if(!target||!target.closest('.eval-app .perf,.eval-app .eval-tile')||target.closest('.metric-title,.perf-metric'))return;
   if(Date.now()-lastOpen<700){event.preventDefault();event.stopImmediatePropagation();return}
