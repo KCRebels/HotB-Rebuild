@@ -18,7 +18,16 @@
  function openPitching(key){const def=pitching[key];if(!def)return false;const data=readDb(),roster=Array.isArray(data.roster)?data.roster:[];const pitchers=roster.filter(player=>Object.keys(pitching).some(k=>String(player[k]??'').trim()!==''));const rows=sortRows(pitchers.map(player=>{const raw=String(player[key]??'').trim(),n=raw===''?null:Number(raw.replace('%','')),value=Number.isFinite(n)?n:null;return{name:player.name,value,display:value===null?'—':def.format(value)}}),def.lower);showRanking(def.label,rows,`${def.lower?'Lower':'Higher'} ${def.label} ranks first.`,'PITCHER RANKINGS');return true}
  function activate(target){if(!target?.closest('.eval-app'))return false;if(target.closest('.metric-title,.perf-metric'))return false;const pitch=target.closest('.pitcher-stat[data-pitch-ranking]');if(pitch)return openPitching(pitch.dataset.pitchRanking);const perf=target.closest('.perf');if(perf)return openHitting(String(perf.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase());const tile=target.closest('.eval-tile');if(tile)return openSummary(tile.querySelector('.metric-title')?.dataset.guide);return false}
  let lastAction=0;
- function capture(event){const target=event.target instanceof Element?event.target:null;if(!target)return;if(target.closest('[data-player-rank-close]')){event.preventDefault();event.stopImmediatePropagation();closeRanking();lastAction=Date.now();return}const backdrop=target.closest('#directPlayerEvalRankingBackdrop');if(backdrop){if(target===backdrop){event.preventDefault();event.stopImmediatePropagation();closeRanking();lastAction=Date.now()}return}if(activate(target)){event.preventDefault();event.stopImmediatePropagation();lastAction=Date.now()}}
+ function capture(event){const target=event.target instanceof Element?event.target:null;if(!target)return;
+  // Never intercept the player selector or its controls. Native select/change behavior must remain untouched.
+  if(target.closest('#evalSelect')||target.closest('select,option'))return;
+  if(target.closest('[data-player-rank-close]')){event.preventDefault();event.stopImmediatePropagation();closeRanking();lastAction=Date.now();return}
+  const backdrop=target.closest('#directPlayerEvalRankingBackdrop');if(backdrop){if(target===backdrop){event.preventDefault();event.stopImmediatePropagation();closeRanking();lastAction=Date.now()}return}
+  if(activate(target)){event.preventDefault();event.stopImmediatePropagation();lastAction=Date.now()}
+ }
  window.addEventListener('pointerup',capture,true);
- window.addEventListener('click',event=>{if(Date.now()-lastAction<700){const target=event.target instanceof Element?event.target:null;if(target?.closest('.eval-app,#directPlayerEvalRankingBackdrop')){event.preventDefault();event.stopImmediatePropagation()}return}capture(event)},true);
+ window.addEventListener('click',event=>{const target=event.target instanceof Element?event.target:null;if(!target)return;
+  // Do not swallow the click that opens/changes the Player Eval dropdown, even immediately after a stat ranking action.
+  if(target.closest('#evalSelect')||target.closest('select,option'))return;
+  if(Date.now()-lastAction<700){if(target.closest('.eval-app,#directPlayerEvalRankingBackdrop')){event.preventDefault();event.stopImmediatePropagation()}return}capture(event)},true);
 })();
