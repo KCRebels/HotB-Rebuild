@@ -12,6 +12,9 @@
   font-weight:950!important;
 }
 
+/* Make the selected player's name stand out without changing its size. */
+.eval-app .player-card.player-profile .player-info .name{font-weight:950!important}
+
 /* Unified card geometry */
 .eval-app .eval-tile,
 .eval-app .perf,
@@ -188,8 +191,10 @@
 .eval-app .perf>b,
 .eval-app .pitcher-stat>b{cursor:pointer}
 
-/* Recruiting: keep one title, shorten labels, and keep all three actions on one equal row. */
+/* Recruiting: three actions only. */
 .eval-app #rwRecruitingSection .rw-section-head>div>span{display:none!important}
+.eval-app #rwRecruitingSection .rw-eval-line,
+.eval-app #rwRecruitingSection>p{display:none!important}
 .eval-app #rwRecruitingSection .rw-buttons{
   display:grid!important;
   grid-template-columns:repeat(3,minmax(0,1fr))!important;
@@ -208,6 +213,15 @@
 .eval-app #rwRecruitingSection .rw-profile::after,
 .eval-app #rwRecruitingSection .rw-email::after,
 .eval-app #rwRecruitingSection .rw-text::after{font-size:16px!important;font-weight:900!important}
+
+/* Chart: make the End/Exit control clearly larger than the other header controls. */
+.chart-head #endGame{
+  min-width:96px!important;
+  min-height:52px!important;
+  padding:12px 18px!important;
+  font-size:21px!important;
+  font-weight:950!important;
+}
 
 /* Recruiting email: large, readable coach picker and full-size editable message. */
 #hybridRecruitingBackdrop .coach-list-toggle{
@@ -287,6 +301,9 @@
 
   .eval-app .eval-tile>.note,
   .eval-app .measure .note{font-size:10px!important}
+
+  /* GameChanger export import stays available on laptop, hidden on phone. */
+  .eval-app #uploadPitchingStats{display:none!important}
 
   #hybridRecruitingBackdrop .coach-list-toggle{min-height:78px!important}
   #hybridRecruitingBackdrop .coach-list-toggle b{font-size:23px!important}
