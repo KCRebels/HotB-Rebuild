@@ -1382,9 +1382,8 @@ function addManualOut(g){
  if(inningEnded){resetLiveCount(g);queueInningObservation(g,completedInning)}
  return inningEnded;
 }
-function endInningNow(g){
- const completedInning=g.inning;
- g.outs=0;g.inning+=1;g.runners=[];resetLiveCount(g);queueInningObservation(g,completedInning);
+function subtractManualOut(g){
+ g.outs=Math.max(0,g.outs-1);
 }
 function addPitch(result,extra={}){
  const g=currentGame(); if(!g)return;
@@ -2058,7 +2057,7 @@ function liveView(){
  </div>
  <div class="control-row">
   <div class="control-card"><div class="pill-row">${['IN','OUT','CH','NO'].map(x=>`<button class="pill red ${g.strikes<2&&currentPlan===x?'active':''}" data-plan="${x}">${x}</button>`).join('')}</div></div>
-  <button class="control-card outs-control" id="openOutsControl" aria-label="Outs: ${g.outs}. Open out controls"><span>OUTS</span><strong>${g.outs}</strong></button>
+  <div class="control-card outs-stepper" role="group" aria-label="${g.outs} outs"><button class="outs-stepper-circle" id="decreaseOuts" aria-label="Subtract one out" ${g.outs===0?'disabled':''}>−</button><output class="outs-stepper-circle outs-count" aria-live="polite" aria-label="${g.outs} outs">${g.outs}</output><button class="outs-stepper-circle" id="increaseOuts" aria-label="Add one out">+</button></div>
   <div class="control-card"><div class="pill-row">${[3,2,1].map(x=>`<button class="runner ${g.runners.includes(x)?'active':''}" data-runner="${x}"><span>${x}</span></button>`).join('')}</div></div>
  </div>
  <div class="live-workspace"><div class="live-left"><div class="zone-card">
@@ -2537,17 +2536,6 @@ function gameActionModal(kind){
   <div class="game-action-buttons end-game-buttons"><button class="btn" data-close>Cancel</button><button class="btn red" id="saveAndExit">Save &amp; Exit</button><button class="btn dark" id="discardGame">End &amp; Don’t Save</button></div>
  </div></div>`;
 }
-function outsControlModal(kind){
- const g=currentGame();if(!g)return'';
- if(kind==='endInningConfirm')return `<div class="modal-backdrop"><div class="modal outs-control-modal" role="alertdialog" aria-modal="true" aria-label="End Inning Now">
-  <div class="small info-kicker">INNING ${g.inning}</div><h2>End Inning Now?</h2><p>This will clear every occupied base, reset the count, and move to Inning ${g.inning+1}.</p>
-  <div class="outs-control-actions"><button class="btn" id="cancelEndInning">Cancel</button><button class="btn red" id="confirmEndInning">End Inning Now</button></div>
- </div></div>`;
- return `<div class="modal-backdrop"><div class="modal outs-control-modal"><div class="modal-header"><div><div class="small info-kicker">INNING ${g.inning}</div><h2>${g.outs} Out${g.outs===1?'':'s'}</h2></div><button class="btn" data-close>Close</button></div>
-  <p>Record an out without changing the hitter's result, or force the half-inning to end.</p>
-  <div class="outs-control-actions stacked"><button class="btn black" id="addOneOut">Add 1 Out${g.outs===2?' — Ends Inning':''}</button><button class="btn red" id="requestEndInning">End Inning Now</button></div>
- </div></div>`;
-}
 function lineupModal(){
  const g=currentGame();if(!g)return'';
  const rows=(g.battingOrder||[]).map((name,index)=>{const player=hitterObj(name),parts=String(name||'').trim().split(/\s+/),lastName=parts[parts.length-1]||name;return `<div class="lineup-row ${index===g.currentIdx?'current-hitter':''}"><span class="lineup-order">${index+1}</span><span class="lineup-number">#${esc(player.jersey||'—')}</span><strong>${esc(lastName)}</strong>${index===g.currentIdx?'<small>AT BAT</small>':''}</div>`}).join('');
@@ -2815,7 +2803,6 @@ function modalView(){
  if(modal==='manageFocusObservations')return manageFocusObservationsModal();
  if(modal==='manageFocusDrills')return manageFocusDrillsModal();
  if(modal==='focusPublishPreview')return focusPublishPreviewModal();
- if(modal==='outsControl'||modal==='endInningConfirm')return outsControlModal(modal);
  if(modal==='lineup')return lineupModal();
  if(modal?.startsWith('hittingRanking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>hittingRankingModal(modal.slice(15))):hittingRankingModal(modal.slice(15));
  if(modal?.startsWith('ranking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>evalRankingModal(modal.slice(8))):evalRankingModal(modal.slice(8));
@@ -2850,7 +2837,6 @@ function bind(){
  if(modal==='inningObservationPrompt')bindInningObservationPrompt();
  if(modal==='manageFocusDrills')bindManageFocusDrills();
  if(modal==='focusPublishPreview')bindFocusPublishPreview();
- if(modal==='outsControl'||modal==='endInningConfirm')bindOutsControl();
  if(modal==='cloudBackup')bindCloudBackup();
  $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
  $('#openRecoveryGuide')?.addEventListener('click',()=>{modal='recoveryGuide';render()});
@@ -3293,12 +3279,6 @@ function bindInningObservationPrompt(){
  $('#skipInningObservation')?.addEventListener('click',()=>{modal=null;render()});
  $('#addInningObservation')?.addEventListener('click',()=>openCoachObservation({scope:'previous',fromInningPrompt:true}));
 }
-function bindOutsControl(){
- $('#requestEndInning')?.addEventListener('click',()=>{modal='endInningConfirm';render()});
- $('#cancelEndInning')?.addEventListener('click',()=>{modal='outsControl';render()});
- $('#addOneOut')?.addEventListener('click',()=>{const g=currentGame();if(!g)return;modal=null;addManualOut(g);save();render()});
- $('#confirmEndInning')?.addEventListener('click',()=>{const g=currentGame();if(!g)return;modal=null;endInningNow(g);save();render()});
-}
 function bindLive(){
  const g=currentGame();
  $('.live-app')?.addEventListener('click',event=>{
@@ -3328,7 +3308,8 @@ function bindLive(){
  });
  $('#undo').onclick=undo;
  $('#coachObservation').onclick=openCoachObservation;
- $('#openOutsControl').onclick=()=>{modal='outsControl';render()};
+ $('#decreaseOuts').onclick=()=>{subtractManualOut(g);save();render()};
+ $('#increaseOuts').onclick=()=>{addManualOut(g);save();render()};
  $('#openLineup').onclick=()=>{modal='lineup';render()};
  $('#openProfile').onclick=()=>{evalPlayer=currentHitter(g).name;go('eval')};
  $('#openReports').onclick=()=>{modal='reports';reportMode='current';render()};
