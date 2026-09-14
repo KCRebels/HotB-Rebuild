@@ -18,15 +18,17 @@
    const rating=grade(value,metric);if(rating)card.classList.add(rating);
   });
  }
+ function nativeControlFor(result){
+  return result.closest('.eval-tile')?.querySelector('.metric-all')||result.closest('.perf')?.querySelector('.perf-all')||null;
+ }
  function openNativeRanking(result,event){
-  const control=result.closest('.eval-tile')?.querySelector('.metric-all')||result.closest('.perf')?.querySelector('.perf-all');
-  if(!control)return;
+  const control=nativeControlFor(result);if(!control)return;
   event.preventDefault();event.stopPropagation();
-  if(typeof control.onclick==='function')control.onclick.call(control);
-  else control.click();
+  if(typeof control.onclick==='function'){control.onclick.call(control,event);return}
+  control.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
  }
  function refresh(){requestAnimationFrame(restoreColors)}
- document.addEventListener('pointerup',event=>{
+ document.addEventListener('click',event=>{
   const result=event.target.closest('.eval-app .eval-tile>.value,.eval-app .perf>b');
   if(result)openNativeRanking(result,event);
  },true);
