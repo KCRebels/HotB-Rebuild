@@ -1,4 +1,4 @@
-/* Unified Player Eval metric styling. Preserve app-provided result colors. */
+/* Unified Player Eval metric styling. Preserve app-provided result colors and behaviors. */
 .eval-app .metric-all,
 .eval-app .perf-all{display:none!important}
 
@@ -12,7 +12,7 @@
   box-sizing:border-box;
 }
 
-/* All metric/card titles use the same size, weight and centered alignment. */
+/* Shared title treatment. */
 .eval-app .metric-title,
 .eval-app .perf-metric,
 .eval-app .pitcher-stat span,
@@ -38,8 +38,7 @@
 .eval-app .pitcher-stat span{color:#555!important;margin-top:0!important}
 .eval-app .measure h3{margin:0!important}
 
-/* All displayed results use the same larger size. Do not set color here;
-   the existing good/great/etc. color grading remains authoritative. */
+/* Shared result treatment. Do not set color here; native grading stays authoritative. */
 .eval-app .eval-tile>.value,
 .eval-app .perf>b,
 .eval-app .pitcher-stat>b,
@@ -49,15 +48,15 @@
   line-height:1!important;
   font-weight:950!important;
   text-align:center!important;
-  width:100%;
+  width:100%!important;
 }
 
-/* HotB row: centered title, centered result, centered subtitle anchored at bottom. */
+/* HotB row: true centered title/result/subtitle. */
 .eval-app .eval-tile{
   display:flex!important;
   flex-direction:column!important;
   align-items:center!important;
-  padding:11px 9px 10px!important;
+  padding:11px 8px 10px!important;
 }
 .eval-app .eval-tile-head{
   display:block!important;
@@ -66,16 +65,23 @@
   text-align:center!important;
 }
 .eval-app .eval-tile>.value{
-  margin:auto 0!important;
+  flex:1 1 auto!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0!important;
 }
 .eval-app .eval-tile>.note{
   width:100%!important;
   margin:8px 0 0!important;
+  padding:0!important;
   text-align:center!important;
   line-height:1.08!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere;
 }
 
-/* Hitting Results: centered title and centered result. */
+/* Hitting Results. */
 .eval-app .perf{
   display:flex!important;
   flex-direction:column!important;
@@ -90,9 +96,15 @@
   text-align:center!important;
 }
 .eval-app .perf-label-row span.perf-metric{display:block!important}
-.eval-app .perf>b{display:block;width:100%;margin:auto 0!important;text-align:center!important}
+.eval-app .perf>b{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:1 1 auto!important;
+  margin:0!important;
+}
 
-/* Pitching Results: same title/result placement as Hitting Results. */
+/* Pitching Results: same card geometry as Hitting Results. */
 .eval-app .pitcher-stat{
   display:flex!important;
   flex-direction:column!important;
@@ -101,9 +113,15 @@
   padding:11px 8px!important;
 }
 .eval-app .pitcher-stat span{order:-1;margin-bottom:8px!important}
-.eval-app .pitcher-stat>b{margin:auto 0!important;text-align:center!important}
+.eval-app .pitcher-stat>b{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:1 1 auto!important;
+  margin:0!important;
+}
 
-/* Athletic Bests: same title/result sizes; player/result note centered at bottom. */
+/* Athletic Bests: same title/result sizes; note centered at bottom. */
 .eval-app .measure{
   display:flex!important;
   flex-direction:column!important;
@@ -111,22 +129,27 @@
   justify-content:flex-start!important;
   padding:11px!important;
 }
-.eval-app .measure .best{margin:auto 0!important;text-align:center!important}
+.eval-app .measure .best{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:1 1 auto!important;
+  margin:0!important;
+}
 .eval-app .measure .note{
   width:100%!important;
   margin:8px 0 0!important;
   text-align:center!important;
   line-height:1.08!important;
+  white-space:normal!important;
 }
 
-/* Titles open definitions; result values keep the ALL/ranking action. */
+/* Only controls that already have app behavior appear interactive. */
 .eval-app .metric-title,
-.eval-app .perf-metric,
-.eval-app .pitcher-stat span,
-.eval-app .measure h3,
+.eval-app button.perf-metric,
 .eval-app .eval-tile>.value,
 .eval-app .perf>b,
-.eval-app .pitcher-stat>b{cursor:pointer}
+.eval-app .pitcher-stat{cursor:pointer}
 
 @media(max-width:560px){
   .eval-app .eval-tile,
@@ -145,5 +168,5 @@
   .eval-app .measure .best{font-size:32px!important}
 
   .eval-app .eval-tile>.note,
-  .eval-app .measure .note{font-size:13px!important}
+  .eval-app .measure .note{font-size:12px!important}
 }
