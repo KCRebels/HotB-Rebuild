@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict');
-const workflow=require('./recruiting-workflow-v2.js');
+const workflow=require('./recruiting-workflow.js');
 const brooklyn={name:'Brooklyn Gering',grad:'2029',positions:'RHP | OF',gpa:'4.0',jersey:'16'};
 assert.equal(workflow.activePlayer('Brooklyn Gering'),true);
 assert.equal(workflow.activePlayer('Megan Ryan'),false);
