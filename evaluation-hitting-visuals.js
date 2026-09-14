@@ -29,8 +29,8 @@
       .eval-heat-toggle button.active{background:#111;color:#fff}
       .eval-zone-layout{display:grid;grid-template-columns:.65fr 1fr 1fr .65fr;grid-template-rows:.65fr 1fr 1fr .65fr;gap:3px;aspect-ratio:1;width:min(100%,305px);margin:10px auto 4px;position:relative}
       .eval-zone-layout .zone{background:#edf2ef;border:2px solid #cdd5d1;border-radius:7px;display:grid;place-items:center;font-weight:950}
-      .eval-zone-layout .core{background:#fff;border:2px solid #111}
-      .eval-zone-layout .pct{font-size:21px;line-height:1}
+      .eval-zone-layout .core{background:#fff;border:1px solid #111;border-radius:4px;box-shadow:none}
+      .eval-zone-layout .pct{font-size:21px;line-height:1;color:inherit}
       .eval-zone-layout .core-grid{grid-column:2/4;grid-row:2/4;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:3px}
       .eval-zone-layout .zone-t1{grid-column:2;grid-row:1}.eval-zone-layout .zone-t2{grid-column:3;grid-row:1}
       .eval-zone-layout .zone-l1{grid-column:1;grid-row:2}.eval-zone-layout .zone-l2{grid-column:1;grid-row:3}
@@ -123,14 +123,16 @@
     return `rgb(${mixed.join(',')})`;
   }
 
-  function heatStyleMap(values,color,result){
+  function heatStyleMap(values,color){
     const distinct=[...new Set(Object.values(values).filter(v=>v>0))].sort((a,b)=>a-b);
+    const n=parseInt(color.slice(1),16);
+    const light=((n>>16)*299+((n>>8)&255)*587+(n&255)*114)/1000;
     const out={};
     Object.entries(values).forEach(([zone,value])=>{
       if(!value){out[zone]='background:#edf2ef;color:#667085';return}
       const rank=distinct.indexOf(value),strength=distinct.length===1?1:.15+.85*(rank/(distinct.length-1));
       const bg=strength===1?color:mixHexWithWhite(color,strength);
-      const textColor=result==='FOUL'?'#111':'#fff';
+      const textColor=strength>.62&&light<155?'#fff':'#111';
       out[zone]=`background:${bg};color:${textColor}`;
     });
     return out;
@@ -142,7 +144,7 @@
     const values=Object.fromEntries(ZONES.map(z=>[z,0]));
     let located=0;
     pitches.forEach(p=>{const zone=displayZone(p.zone);if(values[zone]!=null){values[zone]++;located++}});
-    const styles=heatStyleMap(values,COLORS[heatResult]||'#101011',heatResult);
+    const styles=heatStyleMap(values,COLORS[heatResult]||'#101011');
     const value=zone=>heatDisplay==='COUNT'?values[zone]:located?`${Math.round(values[zone]/located*100)}%`:'0%';
     const cell=(zone,core='')=>`<div class="zone ${core} zone-${zone.toLowerCase()}" style="${styles[zone]}"><span class="pct">${value(zone)}</span></div>`;
     return `<section class="eval-visual-panel eval-heat-panel" data-eval-visual="heat"><h2>Heat Chart</h2>
