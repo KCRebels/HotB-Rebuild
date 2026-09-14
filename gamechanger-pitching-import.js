@@ -4,6 +4,7 @@
  root.HotBGameChangerPitching=api;
 })(typeof window!=='undefined'?window:globalThis,function(){
  const fields=['pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct'];
+ const DESIGNATED_PITCHERS=['Aniesa Rohleder','Brooklyn Gering','Lakyn Farley','Megan Ryan','Makenna Whitaker'];
  const aliases={
   name:['player','playername','name','pitcher'],jersey:['jersey','jerseynumber','number','no'],
   pitcherIP:['ip','inningspitched'],pitcherERA:['era'],pitcherWHIP:['whip'],
@@ -16,6 +17,7 @@
  const text=value=>String(value??'').trim();
  function headerKey(value){return text(value).toLowerCase().replace(/%/g,'pct').replace(/[^a-z0-9]/g,'')}
  function nameKey(value){return text(value).toLowerCase().replace(/^#?\d+\s*[-–—:]?\s*/,'').replace(/[^a-z0-9]/g,'')}
+ const designatedKeys=new Set(DESIGNATED_PITCHERS.map(nameKey));
  function possibleNameKeys(value){
   const cleaned=text(value).replace(/^#?\d+\s*[-–—:]?\s*/,'');
   const keys=[nameKey(cleaned)];
@@ -74,14 +76,16 @@
   if(candidate.map.pitcherOBA===undefined)missingHeaders.push('OBA/BAA');
   if(candidate.map.pitcherKBB===undefined&&(candidate.map.strikeouts===undefined||candidate.map.walks===undefined))missingHeaders.push('K/BB (or K and BB)');
   if(candidate.map.pitcherStrikePct===undefined&&candidate.map.pitchStrike===undefined&&(candidate.map.pitches===undefined||candidate.map.strikes===undefined))missingHeaders.push('Strike % (or pitches and strikes)');
-  const rosterEntries=(roster||[]).map((player,index)=>({player,index,key:nameKey(player.name)}));
+  const rosterEntries=(roster||[]).map((player,index)=>({player,index,key:nameKey(player.name)})).filter(entry=>designatedKeys.has(entry.key));
   const ready=[],problems=[],seen=new Set();
   if(missingHeaders.length)problems.push({message:`The pitching table is missing ${missingHeaders.join(', ')}. No pitcher from this file can be updated.`});
   candidate.sheet.rows.slice(candidate.index+1).forEach(row=>{
    const sourceName=text(row[candidate.map.name]);
    if(!sourceName||/^(team|totals?|team totals?)$/i.test(sourceName))return;
-   const matches=rosterEntries.filter(entry=>possibleNameKeys(sourceName).includes(entry.key));
-   if(matches.length!==1){problems.push({sourceName,message:matches.length?'More than one HotB player matches this row.':'No HotB pitcher confidently matches this GameChanger row.'});return}
+   const sourceKeys=possibleNameKeys(sourceName);
+   if(!sourceKeys.some(key=>designatedKeys.has(key)))return;
+   const matches=rosterEntries.filter(entry=>sourceKeys.includes(entry.key));
+   if(matches.length!==1){problems.push({sourceName,message:matches.length?'More than one designated HotB pitcher matches this row.':'No designated HotB pitcher confidently matches this GameChanger row.'});return}
    const match=matches[0];
    if(seen.has(match.index)){problems.push({sourceName,message:`${match.player.name} appears more than once in the pitching table.`});return}
    seen.add(match.index);
@@ -89,9 +93,9 @@
    if(missingHeaders.length||missing.length){problems.push({sourceName,playerName:match.player.name,message:missingHeaders.length?'Required pitching columns are missing.':`Missing ${missing.map(field=>({pitcherIP:'IP',pitcherERA:'ERA',pitcherWHIP:'WHIP',pitcherKBB:'K/BB',pitcherOBA:'OBA',pitcherStrikePct:'Strike %'}[field])).join(', ')}.`});return}
    ready.push({sourceName,playerName:match.player.name,playerIndex:match.index,values});
   });
-  rosterEntries.filter(entry=>!seen.has(entry.index)).forEach(entry=>problems.push({playerName:entry.player.name,message:'This HotB pitcher was not found in the GameChanger pitching table. Existing statistics will stay unchanged.'}));
-  if(!ready.length&&!problems.length)throw new Error('No pitcher rows were found in the GameChanger pitching table. No statistics were changed.');
+  rosterEntries.filter(entry=>!seen.has(entry.index)).forEach(entry=>problems.push({playerName:entry.player.name,message:'This designated HotB pitcher was not found in the GameChanger pitching table. Existing statistics will stay unchanged.'}));
+  if(!ready.length&&!problems.length)throw new Error('No designated HotB pitcher rows were found in the GameChanger pitching table. No statistics were changed.');
   return {sheetName:candidate.sheet.name||'',ready,problems};
  }
- return {fields,parseSheets,headerKey,nameKey,percent};
+ return {fields,DESIGNATED_PITCHERS,parseSheets,headerKey,nameKey,percent};
 });
