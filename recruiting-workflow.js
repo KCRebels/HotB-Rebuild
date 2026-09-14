@@ -64,7 +64,7 @@
   return {
    slug:PROFILE_SLUG,updatedAt:new Date().toISOString(),
    player:{name:player.name,jersey:player.jersey||'',grad:player.grad||'',positions:player.positions||'',gpa:player.gpa||'',school:player.school||'',interest:player.interest||'',side:player.side||'',throws:player.throws||'R',email:player.email||'',twitter:player.twitter||'',sportsRecruits:player.sportsRecruits||'',photo:player.photo||''},
-   coachEvaluation:entry.coachEvaluation||DEFAULT_EVALUATION,coachEvaluationUpdatedAt:entry.coachEvaluationUpdatedAt||'',
+   coachEvaluation:entry.coachEvaluation||DEFAULT_EVALUATION,coachEvaluationUpdatedAt:entry.coachEvaluationUpdatedAt||'',motto:clean(entry.motto),mottoUpdatedAt:entry.mottoUpdatedAt||'',
    hitting:{PA:stats.PA,AVG:round3(stats.AVG),OBP:round3(stats.OBP),CONTACT:pct0(stats.contactPct)},
    pitching:{IP:player.pitcherIP||'—',ERA:player.pitcherERA||'—',WHIP:player.pitcherWHIP||'—','K/BB':player.pitcherKBB||'—',OBA:player.pitcherOBA||'—','STRIKE %':player.pitcherStrikePct||'—'},
    measurements,events:EVENTS,gameChangerUrl:GAMECHANGER_URL,sportsRecruitsUrl:player.sportsRecruits||'https://my.sportsrecruits.com/athlete/brooklyn_gering'
@@ -79,6 +79,11 @@
    const value=clean(document.querySelector('#rwCoachEvaluation')?.value);if(!value)return;
    const store=readRecruiting();store.players=store.players||{};store.players[ACTIVE_PLAYER]={...(store.players[ACTIVE_PLAYER]||{}),coachEvaluation:value,coachEvaluationUpdatedAt:new Date().toISOString()};saveRecruiting(store);closeModal();await publishProfile(true);inject();
   });
+ }
+ function openMotto(){
+  const entry=readRecruiting().players?.[ACTIVE_PLAYER]||{};
+  document.body.insertAdjacentHTML('beforeend',modalShell(`<div class="rw-modal-head"><div><span>PLAYER MOTTO</span><h2>Brooklyn Gering</h2></div><button class="rw-close" type="button" data-rw-close>Close</button></div><p class="rw-help">Keep it short—one sentence or brief phrase in Brooklyn's own voice. Leave it blank when Brooklyn has not entered one.</p><label class="rw-label">Player Motto<input id="rwMottoInput" maxlength="160" value="${esc(entry.motto||'')}" placeholder="Enter Brooklyn's motto"></label><div class="rw-actions"><button class="rw-secondary" type="button" data-rw-close>Cancel</button><button class="rw-primary" id="rwSaveMotto" type="button">Save Motto</button></div>`));
+  document.querySelector('#rwSaveMotto')?.addEventListener('click',async()=>{const store=readRecruiting(),motto=clean(document.querySelector('#rwMottoInput')?.value);store.players=store.players||{};store.players[ACTIVE_PLAYER]={...(store.players[ACTIVE_PLAYER]||{}),motto,mottoUpdatedAt:new Date().toISOString()};saveRecruiting(store);closeModal();await publishProfile(true);inject(true)});
  }
  function coachLastName(coach){const parts=clean(coach?.coachName).split(/\s+/);return parts[parts.length-1]||'Coach'}
  function coachMatches(coaches,query,key){
@@ -96,7 +101,7 @@
   const choose=coach=>{selectedCoach=coach;coachInput.value=coach.coachName||'';collegeInput.value=coach.collegeName||'';to.textContent=coach.coachEmail||'No saved email';textarea.value=buildBrooklynEmailBody(player,coachLastName(coach));send.disabled=!clean(coach.coachEmail);coachResults.hidden=true;collegeResults.hidden=true};
   const showMatches=(input,container,key)=>{
    const matches=coachMatches(coaches,input.value,key);container.replaceChildren();
-   matches.forEach(coach=>{const button=document.createElement('button');button.type='button';button.className='rw-search-result';const primary=document.createElement('b'),secondary=document.createElement('span');primary.textContent=coach.coachName||'Coach';secondary.textContent=`${coach.collegeName||''}${coach.coachEmail?` · ${coach.coachEmail}`:''}`;button.append(primary,secondary);button.addEventListener('click',()=>choose(coach));container.append(button)});
+   matches.forEach(coach=>{const button=document.createElement('button');button.type='button';button.className='rw-search-result';const primary=document.createElement('b'),secondary=document.createElement('span');primary.textContent=coach.coachName||'Coach';secondary.textContent=`${coach.collegeName||''}${coach.coachEmail?` · ${coach.coachEmail}`:''}`;button.append(primary,secondary);button.addEventListener('pointerdown',event=>{event.preventDefault();choose(coach)});container.append(button)});
    container.hidden=!matches.length;
   };
   coachInput.addEventListener('input',()=>showMatches(coachInput,coachResults,'coachName'));
@@ -111,6 +116,12 @@
    try{const token=await requestGmailAccessToken();button.textContent='Sending…';await sendEmail(token,email,player.email||'',buildEmailSubject(player),textarea.value||'');closeModal();alert('Recruiting email sent through Gmail.')}catch(error){button.disabled=false;button.textContent='Send with Gmail';alert(error?.message||'Gmail could not send this email. Nothing was sent.')}
   });
  }
+ function openText(player){
+  const positions=clean(player?.positions).replace(/\s*\|\s*/g,'/');
+  const message=root.HotBSms?.recruitingProfileMessage({name:player?.name,grad:player?.grad,positions,url:PUBLIC_PROFILE_URL})||'';
+  const destination=root.HotBSms?.composeSmsUrl({message,userAgent:root.navigator?.userAgent||''})||'';
+  if(destination)root.location.href=destination;
+ }
  function requestGmailAccessToken(){return new Promise((resolve,reject)=>{if(!root.google?.accounts?.oauth2){reject(new Error('Google sign-in is still loading. Wait a few seconds and try again.'));return}const client=root.google.accounts.oauth2.initTokenClient({client_id:GMAIL_CLIENT_ID,scope:GMAIL_SEND_SCOPE,callback:response=>response.error?reject(new Error('Gmail authorization was not completed.')):resolve(response.access_token),error_callback:()=>reject(new Error('Gmail authorization was closed or blocked.'))});client.requestAccessToken({prompt:'select_account consent'})})}
  function htmlText(value){return esc(value).replace(/(https?:\/\/[^\s<]+)/g,url=>`<a href="${url}" style="color:#b3262d">${url}</a>`)}
  function bodyHtml(body){let html='';String(body||'').split(/\r?\n/).forEach(line=>{const value=line.trim();if(!value){html+='<div style="height:10px"></div>';return}if(['PLAYER PROFILE / CURRENT RESULTS','UPCOMING SCHEDULE','GAMECHANGER'].includes(value)){html+=`<h3 style="margin:20px 0 8px;font-size:16px">${esc(value)}</h3>`;return}html+=`<div style="margin:3px 0">${htmlText(value)}</div>`});return `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#111">${html}</div>`}
@@ -123,14 +134,17 @@
   const serialized=JSON.stringify(data);if(!force&&sessionStorage.getItem('hotbRecruitingPublishedV1')===serialized)return true;
   try{await root.firebase.firestore().collection('recruitingProfiles').doc(PROFILE_SLUG).set(data,{merge:true});sessionStorage.setItem('hotbRecruitingPublishedV1',serialized);return true}catch(error){console.warn('Recruiting Profile publish is waiting for Firestore rules deployment.',error);return false}
  }
- function inject(){
+ function inject(force=false){
   const evalApp=document.querySelector('.eval-app'),select=document.querySelector('#evalSelect');if(!evalApp||!select)return;
-  const name=select.value,player=name==='Team'?null:playerRecord(name),existing=document.querySelector('#rwRecruitingSection');if(existing)existing.remove();if(!player)return;
+  const name=select.value,player=name==='Team'?null:playerRecord(name),existing=document.querySelector('#rwRecruitingSection');
+  if(!force&&existing?.dataset.player===name)return;if(existing)existing.remove();if(!player)return;
   const enabled=activePlayer(name),anchor=document.querySelector('.player-card.player-profile');if(!anchor)return;
+  const entry=readRecruiting().players?.[ACTIVE_PLAYER]||{};
   const evalLine=enabled?`<div class="rw-eval-line"><span><b>Coach Evaluation:</b> ${esc(evaluationStatus())}</span><button type="button" class="rw-evaluation-link">Edit</button></div>`:`<div class="rw-eval-line disabled"><span><b>Coach Evaluation:</b> Coming Soon</span></div>`;
-  const html=`<section class="rw-recruiting" id="rwRecruitingSection"><div class="rw-section-head"><div><span>RECRUITING</span><h2>Recruiting Workflow</h2></div>${enabled?'<small>Brooklyn pilot</small>':'<small>Coming Soon</small>'}</div><div class="rw-buttons"><button type="button" class="rw-profile" ${enabled?'':'disabled'}>Recruiting Profile</button><button type="button" class="rw-email" ${enabled?'':'disabled'}>Email Coach</button></div>${evalLine}${enabled?'<p>Public scouting report · Coach-to-coach introduction</p>':'<p>Recruiting controls are visible for planning but inactive for this player.</p>'}</section>`;
+  const mottoLine=enabled?`<div class="rw-eval-line rw-motto-line"><span><b>Player Motto:</b> ${esc(clean(entry.motto)||'Not set')}</span><button type="button" class="rw-evaluation-link rw-motto-edit">Edit</button></div>`:'';
+  const html=`<section class="rw-recruiting" id="rwRecruitingSection" data-player="${esc(name)}"><div class="rw-section-head"><div><span>RECRUITING</span><h2>Recruiting</h2></div>${enabled?'<small>Brooklyn pilot</small>':'<small>Coming Soon</small>'}</div><div class="rw-buttons"><button type="button" class="rw-profile" ${enabled?'':'disabled'}>Recruiting Profile</button><button type="button" class="rw-email" ${enabled?'':'disabled'}>Email Coach</button><button type="button" class="rw-text" ${enabled?'':'disabled'}>Text Profile</button></div>${evalLine}${mottoLine}${enabled?'<p>Public scouting report · Coach-to-coach introduction</p>':'<p>Recruiting controls are visible for planning but inactive for this player.</p>'}</section>`;
   anchor.insertAdjacentHTML('afterend',html);
-  if(enabled){document.querySelector('.rw-profile')?.addEventListener('click',()=>root.open(PUBLIC_PROFILE_PATH,'_blank','noopener'));document.querySelector('.rw-evaluation-link')?.addEventListener('click',openEvaluation);document.querySelector('.rw-email')?.addEventListener('click',openEmail);publishProfile(false)}
+  if(enabled){document.querySelector('.rw-profile')?.addEventListener('click',()=>root.open(PUBLIC_PROFILE_PATH,'_blank','noopener'));document.querySelector('.rw-evaluation-link')?.addEventListener('click',openEvaluation);document.querySelector('.rw-motto-edit')?.addEventListener('click',openMotto);document.querySelector('.rw-email')?.addEventListener('click',openEmail);document.querySelector('.rw-text')?.addEventListener('click',()=>openText(player));publishProfile(false)}
  }
  function init(){
   if(typeof document==='undefined')return;
