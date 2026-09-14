@@ -885,6 +885,7 @@ let reportGameId=null;
 let reportSelectedPaId=null;
 let selectedSeason=currentSeasonLabel(), dateFilterMode='full', customDateStart='', customDateEnd='';
 let evalPlayer='Team',evaluationReadOnly=false;
+let pendingPitchingImport=null;
 let recordType='';
 let infoPlayerIndex=0;
 let pendingRosterImport=null;
@@ -2360,10 +2361,10 @@ function evalView(){
   <div class="eval-tile">${metricHead('Runs Produced','RP')} ${s.PA?(player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`):emptyComparison()}<div class="note">Runs Produced</div></div>
   <div class="eval-tile">${slapHitter?metricHead('Reach%'):metricHead('Execution','HP%')}<div class="value">${slapHitter?(reach===null?'—%':pct0(reach)):(execution===null?'—%':pct0(execution))}</div><div class="note">${slapHitter?'Reached Base':'Hitting Plan'}</div></div>
  </div>
- <div class="performance"><h2>Hitting Results <span class="small" style="float:right">${esc(activeDateFilterLabel())}</span></h2><div class="perf-grid">
+ <div class="performance"><div class="performance-head"><h2>Hitting Results</h2><div class="performance-sample"><b>${s.PA} PA</b><span>${esc(activeDateFilterLabel())}</span></div></div><div class="perf-grid">
  ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],resultRate].map(([label,val,key])=>`<div class="perf ${s.PA>=25&&!['hhbPct','qabPct'].includes(key)?grade(s[key==='contact'?'contactPct':key==='K'?'kPct':key],key):''}" data-guide="${label}"><b>${val}</b><span>${label}</span></div>`).join('')}
  </div></div>
- ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2><div class="pitcher-stat-grid">
+ ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><div class="pitcher-performance-head"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2>${evaluationReadOnly?'':`<button class="btn black" id="uploadPitchingStats">UPLOAD</button><input id="pitchingStatsFile" type="file" accept=".xlsx,.xls,.csv" hidden>`}</div><div class="pitcher-stat-grid">
   ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<button class="pitcher-stat" data-pitch-ranking="${key}"><b>${esc(player[key]||'—')}</b><span>${label}</span></button>`).join('')}
  </div></section>`:''}
  <div class="athletic"><div class="athletic-head"><h2>Athletic Bests</h2>${player&&!evaluationReadOnly?'<button class="btn black" id="recordMeasure2">+ Record</button>':''}</div>
@@ -2550,6 +2551,27 @@ function importRosterModal(){
   <button class="btn black block" id="confirmRosterImport" ${updates.length||additions.length?'':'disabled'}>Import These Changes</button>
  </div></div>`;
 }
+function pitchingImportModal(){
+ const ready=pendingPitchingImport?.ready||[],problems=pendingPitchingImport?.problems||[];
+ const labels=[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']];
+ return `<div class="modal-backdrop"><div class="modal pitching-import-modal"><div class="modal-header"><div><div class="small info-kicker">GAMECHANGER PREVIEW</div><h2>Pitching Statistics</h2></div><button class="btn" data-close>Cancel</button></div><p class="pitching-import-note">Confirm these cumulative season statistics before HotB replaces the six pitching values shown on Player Eval.</p>
+  <section class="pitching-preview-list">${ready.map(item=>`<article class="pitching-preview-player"><h3>${esc(item.playerName)}</h3><div>${labels.map(([label,key])=>`<span><small>${label}</small><b>${esc(item.values[key])}</b></span>`).join('')}</div></article>`).join('')||'<p class="pitching-import-empty">No pitchers are safe to update.</p>'}</section>
+  ${problems.length?`<section class="pitching-import-problems"><h3>Will Not Be Updated</h3>${problems.map(problem=>`<p><b>${esc(problem.playerName||problem.sourceName||'Spreadsheet')}</b><span>${esc(problem.message)}</span></p>`).join('')}</section>`:''}
+  <button class="btn red block" id="confirmPitchingImport" ${ready.length?'':'disabled'}>CONFIRM UPDATE</button></div></div>`;
+}
+async function parsePitchingImport(file){
+ if(!window.XLSX)throw new Error('Excel import is not available right now. No statistics were changed.');
+ const workbook=XLSX.read(await file.arrayBuffer(),{type:'array'}),sheets=workbook.SheetNames.map(name=>({name,rows:XLSX.utils.sheet_to_json(workbook.Sheets[name],{header:1,defval:'',raw:false})}));
+ const pitchers=db.roster.map((player,index)=>({player,index})).filter(({player})=>isPitcherProfile(player));
+ const parsed=window.HotBGameChangerPitching.parseSheets(sheets,pitchers.map(({player})=>player));
+ parsed.ready.forEach(item=>item.playerIndex=pitchers[item.playerIndex].index);
+ return parsed;
+}
+function applyPitchingImport(){
+ const ready=pendingPitchingImport?.ready||[];
+ ready.forEach(item=>{const player=db.roster[item.playerIndex];if(player&&player.name===item.playerName)window.HotBGameChangerPitching.fields.forEach(field=>{player[field]=item.values[field]})});
+ save();pendingPitchingImport=null;modal=null;render();alert(`${ready.length} pitcher${ready.length===1?'':'s'} updated from GameChanger.`);
+}
 async function unzipWorkbook(buffer){
  const bytes=new Uint8Array(buffer),view=new DataView(buffer);let end=-1;
  for(let i=bytes.length-22;i>=Math.max(0,bytes.length-65557);i--){if(view.getUint32(i,true)===0x06054b50){end=i;break}}
@@ -2724,6 +2746,7 @@ function modalView(){
  if(modal==='changeHitter')return hitterChangeModal();
  if(modal==='playerInfo')return playerInfoModal();
  if(modal==='importRoster')return importRosterModal();
+ if(modal==='pitchingImport')return pitchingImportModal();
  if(modal==='coachObservation')return coachObservationModal();
  if(modal==='inningObservationPrompt')return inningObservationPromptModal();
  if(modal==='focusGameAudit')return focusGameAuditModal();
@@ -2757,6 +2780,7 @@ function bind(){
  if(modal==='changeHitter')bindHitterChange();
  if(modal==='playerInfo')bindPlayerInfo();
  if(modal==='importRoster')$('#confirmRosterImport')?.addEventListener('click',applyRosterImport);
+ if(modal==='pitchingImport')$('#confirmPitchingImport')?.addEventListener('click',applyPitchingImport);
  if(modal==='coachObservation')bindCoachObservation();
  if(modal==='inningObservationPrompt')bindInningObservationPrompt();
  if(modal==='manageFocusDrills')bindManageFocusDrills();
@@ -3332,6 +3356,13 @@ function bindEval(){
  $$('[data-guide]').forEach(x=>x.onclick=()=>{modal='guide:'+x.dataset.guide;render()});
  $$('[data-ranking]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.ranking;render()});
  $$('[data-pitch-ranking]').forEach(x=>x.onclick=()=>{modal='pitchRanking:'+x.dataset.pitchRanking;render()});
+ $('#uploadPitchingStats')?.addEventListener('click',()=>$('#pitchingStatsFile')?.click());
+ $('#pitchingStatsFile')?.addEventListener('change',async event=>{
+  const file=event.target.files?.[0];event.target.value='';if(!file)return;
+  const button=$('#uploadPitchingStats');if(button){button.disabled=true;button.textContent='READING…'}
+  try{pendingPitchingImport=await parsePitchingImport(file);modal='pitchingImport';render()}
+  catch(error){if(button){button.disabled=false;button.textContent='UPLOAD'}alert(error?.message||'HotB could not read that GameChanger file. No statistics were changed.')}
+ });
 }
 function bindRecord(){
  const resetTimer=()=>{
