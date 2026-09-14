@@ -171,11 +171,20 @@
 .eval-app .perf>b,
 .eval-app .pitcher-stat>b{cursor:pointer}
 
-/* Recruiting: keep one title and shorten the three action labels without JS mutation helpers. */
+/* Recruiting: keep one title, shorten labels, and keep all three actions on one equal row. */
 .eval-app #rwRecruitingSection .rw-section-head>div>span{display:none!important}
+.eval-app #rwRecruitingSection .rw-buttons{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:10px!important;
+}
 .eval-app #rwRecruitingSection .rw-profile,
 .eval-app #rwRecruitingSection .rw-email,
-.eval-app #rwRecruitingSection .rw-text{font-size:0!important}
+.eval-app #rwRecruitingSection .rw-text{
+  width:100%!important;
+  min-width:0!important;
+  font-size:0!important;
+}
 .eval-app #rwRecruitingSection .rw-profile::after{content:"Profile"}
 .eval-app #rwRecruitingSection .rw-email::after{content:"Email"}
 .eval-app #rwRecruitingSection .rw-text::after{content:"Text"}
