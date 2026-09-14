@@ -1,6 +1,6 @@
 (()=>{
  // Keep title behavior inside app.js exactly as originally designed.
- // This helper restores hitting colors, rounds selected displayed percentages,
+ // This helper restores hitting colors, formats displayed pitching stats,
  // keeps the pitching labels current, and lets visible stat values use the native ranking controls.
  const spreadsheetPitchingV2={
   'Aniesa Rohleder':{pitcherIP:'5.0',pitcherERA:'7.000',pitcherWHIP:'2.000',pitcherKBB:'1.333',pitcherOBA:'.292',pitcherStrikePct:'57.58%'},
@@ -48,11 +48,12 @@
    const label=card.querySelector('span');
    const labelText=String(label?.textContent||'').trim().toUpperCase();
    if(labelText==='OBA'&&label)label.textContent='BAA';
-   if(labelText!=='STRIKE %')return;
    const value=card.querySelector(':scope>b');
    if(!value)return;
    const number=Number(String(value.textContent||'').replace('%','').trim());
-   if(Number.isFinite(number))value.textContent=`${Math.round(number)}%`;
+   if(!Number.isFinite(number))return;
+   if(labelText==='STRIKE %')value.textContent=`${Math.round(number)}%`;
+   else if(labelText==='ERA'||labelText==='WHIP')value.textContent=number.toFixed(2);
   });
   const modal=document.querySelector('.ranking-modal');
   const modalHeading=modal?.querySelector('h2');
@@ -62,6 +63,11 @@
    modal.querySelectorAll('.ranking-row strong').forEach(value=>{
     const number=Number(String(value.textContent||'').replace('%','').trim());
     if(Number.isFinite(number))value.textContent=`${Math.round(number)}%`;
+   });
+  }else if(['ERA','WHIP'].includes(modalTitle)){
+   modal.querySelectorAll('.ranking-row strong').forEach(value=>{
+    const number=Number(String(value.textContent||'').trim());
+    if(Number.isFinite(number))value.textContent=number.toFixed(2);
    });
   }
   document.querySelectorAll('.pitching-import-modal small').forEach(label=>{if(String(label.textContent||'').trim().toUpperCase()==='OBA')label.textContent='BAA'});
@@ -87,7 +93,10 @@
     setTimeout(refresh,0);return;
    }
   }
-  if(event.target.closest('.eval-app [data-guide],.eval-app [data-ranking],.eval-app [data-hitting-ranking],.eval-app [data-pitch-ranking],[data-close],#uploadPitchingStats,#pitchingStatsFile,[data-info]'))setTimeout(refresh,0);
+  // Opening guide/title popups needs no full Evaluation formatting pass.
+  // Skip that extra work so those popups open faster on iPhone.
+  if(event.target.closest('.eval-app [data-ranking],.eval-app [data-hitting-ranking],.eval-app [data-pitch-ranking]'))setTimeout(refresh,0);
+  else if(event.target.closest('[data-close],#uploadPitchingStats,#pitchingStatsFile,[data-info]'))setTimeout(refresh,0);
  },true);
  document.addEventListener('change',event=>{if(event.target.closest('.eval-app')||event.target.matches('#pitchingStatsFile'))setTimeout(refresh,0)},true);
  window.addEventListener('pageshow',refresh);
