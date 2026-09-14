@@ -73,6 +73,29 @@
   document.querySelectorAll('.pitching-import-modal small').forEach(label=>{if(String(label.textContent||'').trim().toUpperCase()==='OBA')label.textContent='BAA'});
   document.querySelectorAll('.player-info-modal .info-field>span').forEach(label=>{if(String(label.textContent||'').includes('Opponent Batting Average (OBA)'))label.textContent='Batting Average Against (BAA)'});
  }
+ function openBrooklynEraRanking(){
+  try{
+   const data=JSON.parse(localStorage.getItem('hotbRebuildDbV1')||'{}');
+   const roster=Array.isArray(data.roster)?data.roster:[];
+   const rows=roster.map(player=>{
+    const raw=String(player.pitcherERA??'').trim();
+    const number=raw===''?null:Number(raw);
+    return {player,value:Number.isFinite(number)?number:null};
+   }).sort((a,b)=>{
+    if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
+    if(a.value===null)return 1;if(b.value===null)return-1;
+    return a.value-b.value||a.player.name.localeCompare(b.player.name);
+   });
+   document.querySelector('#brooklynEraPilotBackdrop')?.remove();
+   const backdrop=document.createElement('div');
+   backdrop.id='brooklynEraPilotBackdrop';
+   backdrop.className='modal-backdrop';
+   backdrop.innerHTML=`<div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">FULL ROSTER RANKINGS</div><h2>ERA</h2></div><button class="btn" data-era-close>Close</button></div><div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.player.name==='Brooklyn Gering'?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-name">${row.player.name}</span><strong>${row.value===null?'—':row.value.toFixed(2)}</strong></div>`).join('')}</div><p class="small" style="color:#ddd;margin:14px 4px 0">Lower ERA ranks first.</p></div>`;
+   backdrop.querySelector('[data-era-close]')?.addEventListener('click',()=>backdrop.remove());
+   backdrop.addEventListener('click',event=>{if(event.target===backdrop)backdrop.remove()});
+   document.body.appendChild(backdrop);
+  }catch(error){}
+ }
  function rankingControlFor(result){
   const tile=result.closest('.eval-tile');
   if(tile)return tile.querySelector('.metric-all');
@@ -84,6 +107,10 @@
  }
  function refresh(){requestAnimationFrame(()=>{restoreColorsAndRoundHitting();refreshPitchingDisplay()});}
  document.addEventListener('click',event=>{
+  const eraCard=event.target.closest('.eval-app .pitcher-stat[data-pitch-ranking="pitcherERA"]');
+  if(eraCard&&document.querySelector('#evalSelect')?.value==='Brooklyn Gering'){
+   event.preventDefault();event.stopImmediatePropagation();openBrooklynEraRanking();return;
+  }
   const result=event.target.closest('.eval-app .eval-tile>.value,.eval-app .perf>b,.eval-app .pitcher-stat>b');
   if(result){
    const control=rankingControlFor(result);
