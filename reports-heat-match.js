@@ -26,12 +26,12 @@
       .report-heat .heat-result-filters button[data-heat-result="H4O"]{background:#cd3a32!important;color:#fff!important}
       .report-heat .heat-result-filters button[data-heat-result="HIT"]{background:#3862db!important;color:#fff!important}
       .report-heat .heat-result-filters button.active{outline:3px solid #efc52f!important;outline-offset:1px!important;box-shadow:inset 0 0 0 2px #fff!important}
-      .report-heat .report-zone-layout{width:min(100%,254px)!important;max-width:254px!important;margin:8px auto 0!important}
+      .report-heat .report-zone-layout{width:min(100%,305px)!important;max-width:305px!important;margin:8px auto 0!important}
       .report-detail .report-zone-layout .zone .pct{font-size:24px!important}
       @media(max-width:560px){
         .report-heat .heat-result-filters button{min-height:40px!important;padding:4px 1px!important;border-width:3px!important;border-radius:8px!important;font-size:16px!important}
-        .report-heat .report-zone-layout{width:min(100%,254px)!important;max-width:254px!important}
-        .report-detail .report-zone-layout .zone .pct{font-size:15px!important}
+        .report-heat .report-zone-layout{width:min(100%,305px)!important;max-width:305px!important}
+        .report-detail .report-zone-layout .zone .pct{font-size:18px!important}
       }
     `;
     document.head.appendChild(style);
@@ -80,6 +80,25 @@
     queued=true;
     requestAnimationFrame(()=>{queued=false;sync()});
   }
+
+  document.addEventListener('click',event=>{
+    const button=event.target.closest('[data-heat-result],[data-heat-display]');
+    if(!button) return;
+    const modal=button.closest('.modal');
+    const scrollTop=modal?.scrollTop ?? window.scrollY;
+    const heat=button.closest('.report-heat');
+    const heatTop=heat?.getBoundingClientRect().top ?? 0;
+    setTimeout(()=>{
+      const nextModal=document.querySelector('.modal');
+      const nextHeat=document.querySelector('.report-heat');
+      if(nextModal){
+        if(nextHeat){
+          const nextHeatTop=nextHeat.getBoundingClientRect().top;
+          nextModal.scrollTop += nextHeatTop-heatTop;
+        }else nextModal.scrollTop=scrollTop;
+      }else window.scrollTo(0,scrollTop);
+    },0);
+  },true);
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',sync,{once:true});
   else sync();
