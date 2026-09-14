@@ -2265,9 +2265,18 @@ function reportGames(){
 function reportContext(games){
  if(reportMode==='current')return 'Current Game';
  if(reportMode==='game')return games[0]?`${new Date(games[0].date).toLocaleDateString()} · ${esc(games[0].opponent||'Opponent')}`:'Saved Game';
- if(reportMode==='group')return `${esc(db.gameGroups.find(item=>item.id===reportGroupId)?.name||'Game Group')} · ${games.length} Games`;
- if(reportMode==='selection')return `${games.length} Selected Games`;
- return `${games.length} Games · ${esc(activeDateFilterLabel())}`;
+ if(reportMode==='group')return esc(db.gameGroups.find(item=>item.id===reportGroupId)?.name||'Game Group');
+ if(reportMode==='selection')return `${games.length} Selected Game${games.length===1?'':'s'}`;
+ return 'All Games';
+}
+function reportGamesButton(games){
+ const single=games.length===1&&(reportMode==='game'||reportMode==='selection');
+ const label=single?`${new Date(games[0].date).toLocaleDateString()} · ${esc(games[0].opponent||'Opponent')}`:reportContext(games);
+ return `<button type="button" class="report-context-title" id="showReportGames"><span>Games:</span> ${label}<b aria-hidden="true">›</b></button>`;
+}
+function reportGamesListModal(){
+ const games=reportGames();
+ return `<div class="modal-backdrop"><div class="modal report-games-modal"><div class="modal-header"><h2>Included Games</h2><button class="btn" data-close>Close</button></div><div class="included-games-list">${games.length?games.map(game=>`<div><b>${esc(game.opponent||'Opponent')}</b><span>${new Date(game.date).toLocaleDateString()}</span></div>`).join(''):'<p>No games match the current filters.</p>'}</div></div></div>`;
 }
 function reportModal(){
  const games=reportGames(),source=games.flatMap(game=>game.plateAppearances||[]);
@@ -2278,7 +2287,7 @@ function reportModal(){
  <div class="panel report-detail" style="margin:14px 0 0">
  ${reportMode!=='current'?dateFilterControls('report'):''}
  <div class="report-filter-grid"><label>Player<select class="input" id="reportHitter"><option>All Hitters</option>${db.roster.map(r=>`<option ${reportFilterHitter===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label><label>Opponent<select class="input" id="reportOpponent"><option>All Opponents</option>${opponents.map(name=>`<option ${reportOpponent===name?'selected':''}>${esc(name)}</option>`).join('')}</select></label></div>
- <div class="report-context-title">${reportContext(games)}</div>
+ ${reportGamesButton(games)}
  <div class="report-stat-grid">${[['PA',s.PA],['AVG',round3(s.AVG)],['OBP',round3(s.OBP)],['SLG',round3(s.SLG)],['OPS',round3(s.OPS)],['RBI',s.RBI],['HHB',s.HHB],['WEAK',s.WEAK]].map(([k,v])=>`<div class="report-stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
  <h3 class="count-performance-title"><b>COUNT PERFORMANCE</b><span class="count-key hit">H</span><span class="count-separator">|</span><span class="count-key out">H4O</span><span class="count-separator">|</span><span class="count-key strikeout">K</span><span class="count-separator">|</span><span class="count-key average">AVE</span></h3>
  <div class="count-grid">${['0-0','0-2','1-2','2-2','3-2','6+'].map(c=>countCard(filtered,c)).join('')}</div>
@@ -2321,22 +2330,30 @@ function zoneReport(){
  const pitches=reportPitchSource().filter(p=>(reportFilterHitter==='All Hitters'||p.hitter===reportFilterHitter)&&pitchMatchesHeatResult(p,reportHeatResult));
  const z=Object.fromEntries(chartZoneIds.map(zone=>[zone,0]));let located=0;
  pitches.forEach(p=>{const zone=displayedChartZone(p.zone);if(z[zone]!=null){z[zone]++;located++}});
- const heat=heatStyles(z,heatColors[reportHeatResult]||heatColors.REPORT),value=zone=>reportHeatDisplay==='COUNT'?z[zone]:`${located?Math.round(z[zone]/located*100):0}%`;
+ const filters=`<div class="heat-result-filters">${['ALL','BALL','FOUL','KS','KL','HIT','H4O','GB','LD','FB'].map(result=>`<button class="${reportHeatResult===result?'active':''}" data-heat-result="${result}">${result}</button>`).join('')}</div>`;
+ if(!located)return `<section class="report-heat"><h3>PITCH LOCATION HEAT CHART</h3>${filters}<p class="report-heat-empty">No pitch-location data for this selection.</p></section>`;
+ const heat=heatStyles(z,heatColors[reportHeatResult]||heatColors.REPORT),value=zone=>reportHeatDisplay==='COUNT'?z[zone]:`${Math.round(z[zone]/located*100)}%`;
  const cell=(zone,core='')=>`<div class="zone ${core} zone-${zone.toLowerCase()} heat-zone" style="${heat[zone]}"><span class="pct">${value(zone)}</span></div>`;
- return `<section class="report-heat"><div class="report-heat-heading"><div><h3>PITCH LOCATION HEAT CHART</h3><p>${located} located ${reportHeatResult==='ALL'?'pitches':reportHeatResult+' events'}${pitches.length!==located?` · ${pitches.length-located} missing location excluded`:''}</p></div><div class="segmented"><button class="${reportHeatDisplay==='COUNT'?'active':''}" data-heat-display="COUNT">COUNT</button><button class="${reportHeatDisplay==='%'?'active':''}" data-heat-display="%">%</button></div></div><div class="heat-result-filters">${['ALL','BALL','FOUL','KS','KL','HIT','H4O','GB','LD','FB'].map(result=>`<button class="${reportHeatResult===result?'active':''}" data-heat-result="${result}">${result}</button>`).join('')}</div><div class="zone-layout report-zone-layout">${['T1','T2','L1','L2'].map(z=>cell(z)).join('')}<div class="core-grid">${['C1','C2','C3','C4'].map(z=>cell(z,'core')).join('')}</div>${['R1','R2','B1','B2'].map(z=>cell(z)).join('')}</div><div class="heat-key"><span><b>KS</b> Strike Swinging</span><span><b>KL</b> Strike Looking</span><span><b>H4O</b> Hard Hit Ball for an Out</span></div></section>`;
+ const summaryLabel=reportHeatResult==='ALL'?'ALL':reportHeatResult;
+ return `<section class="report-heat"><h3>PITCH LOCATION HEAT CHART</h3>${filters}<div class="report-heat-toggle segmented" aria-label="Heat chart value"><button class="${reportHeatDisplay==='COUNT'?'active':''}" data-heat-display="COUNT">COUNT</button><button class="${reportHeatDisplay==='%'?'active':''}" data-heat-display="%">%</button></div><div class="zone-layout report-zone-layout">${['T1','T2','L1','L2'].map(z=>cell(z)).join('')}<div class="core-grid">${['C1','C2','C3','C4'].map(z=>cell(z,'core')).join('')}</div>${['R1','R2','B1','B2'].map(z=>cell(z)).join('')}</div><p class="report-heat-summary"><b>${summaryLabel}</b> — ${located}${reportHeatDisplay==='%'?' total':''} pitch${located===1?'':'es'}</p><div class="heat-key"><span><b>KS</b> Strike Swinging</span><span><b>KL</b> Strike Looking</span><span><b>H4O</b> Hard Hit Ball for an Out</span></div></section>`;
 }
+
 function gameChoiceList(selectedIds){return db.savedGames.map(game=>`<label class="game-choice"><input type="checkbox" value="${game.id}" ${selectedIds.includes(game.id)?'checked':''}><span><b>${new Date(game.date).toLocaleDateString()} · ${esc(game.opponent||'Opponent')}</b><small>${(game.plateAppearances||[]).length} PA</small></span></label>`).join('')}
 function gameGroupCard(group){
  const existing=(group.gameIds||[]).filter(id=>db.savedGames.some(game=>game.id===id));
- return `<article class="game-group-card"><div><b>${esc(group.name)}</b><span>${existing.length} game${existing.length===1?'':'s'}</span></div><div class="saved-game-actions"><button class="btn black" data-open-group="${group.id}">Report</button><button class="btn" data-edit-group="${group.id}">Edit</button><button class="btn red" data-delete-group="${group.id}">Delete</button></div></article>`;
+ return `<article class="game-group-card"><div><b>${esc(group.name)}</b><span>${existing.length} game${existing.length===1?'':'s'}</span></div><div class="saved-game-actions"><button class="btn black" data-open-group="${group.id}">Report</button><button class="btn" data-edit-group="${group.id}">Edit</button><button class="btn" data-rename-group="${group.id}">Rename</button><button class="btn red" data-delete-group="${group.id}">Delete Group</button></div></article>`;
 }
 function reportsPage(){
  const games=filteredGames(false);
- return `<div class="page-match-head page-head-centered"><button class="page-head-nav" data-go="home">Home</button><h1>Reports</h1><span class="page-head-spacer"></span></div><div class="panel reports-builder"><h2>Build a Report</h2><div class="report-build-actions"><button class="btn black" id="openSavedReports">All Games</button><button class="btn" id="openSelectedReports" disabled>Selected Games (0)</button></div><div class="game-select-list" id="reportGameChoices">${gameChoiceList([])||'<p>No saved games yet.</p>'}</div><div class="group-heading"><h2>Saved Game Groups</h2><button class="btn gold" id="newGameGroup">Create Group</button></div><div class="game-group-list">${db.gameGroups.length?db.gameGroups.map(gameGroupCard).join(''):'<p class="report-empty">No saved groups yet. Select stored games and create one.</p>'}</div><div class="roster-data-tools backup-tools"><button class="btn black" id="exportFullBackup">Export Full Backup</button><button class="btn" id="restoreFullBackup">Restore Backup</button><input id="fullBackupFile" type="file" accept=".json,application/json" hidden><p>A full backup preserves games, pitches, game groups, roster information, measurements, pitchers and app preferences.</p></div>${dateFilterControls('saved')}<div class="saved-game-list">${games.length?games.map(g=>{const meta=seasonMeta(g.date);return `<div class="saved-game-card"><div><b>${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}</b><span>${esc(meta.season)} · ${esc(meta.segment)} · ${(g.plateAppearances||[]).length} PA</span></div><div class="saved-game-actions"><button class="btn black" data-view-game="${g.id}">View</button><button class="btn red" data-delete-game="${g.id}">Delete</button></div></div>`}).join(''):'No saved games match this date range.'}</div></div>`;
+ return `<div class="page-match-head page-head-centered"><button class="page-head-nav" data-go="home">Home</button><h1>Reports</h1><span class="page-head-spacer"></span></div><div class="panel reports-builder"><h2>Build a Report</h2><button class="games-selector" id="openGamesSelector"><span>GAMES</span><b>Choose games or a saved group</b><i aria-hidden="true">›</i></button><div class="roster-data-tools backup-tools"><button class="btn black" id="exportFullBackup">Export Full Backup</button><button class="btn" id="restoreFullBackup">Restore Backup</button><input id="fullBackupFile" type="file" accept=".json,application/json" hidden><p>A full backup preserves games, pitches, game groups, roster information, measurements, pitchers and app preferences.</p></div>${dateFilterControls('saved')}<div class="saved-game-list">${games.length?games.map(g=>{const meta=seasonMeta(g.date);return `<div class="saved-game-card"><div><b>${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}</b><span>${esc(meta.season)} · ${esc(meta.segment)} · ${(g.plateAppearances||[]).length} PA</span></div><div class="saved-game-actions"><button class="btn black" data-view-game="${g.id}">View</button><button class="btn red" data-delete-game="${g.id}">Delete</button></div></div>`}).join(''):'No saved games match this date range.'}</div></div>`;
 }
+function gamesSelectionModal(){
+ return `<div class="modal-backdrop"><div class="modal games-selection-modal"><div class="modal-header"><div><div class="small info-kicker">REPORT FILTER</div><h2>Games</h2></div><button class="btn" data-close>Close</button></div><button class="games-all-option" id="selectAllGames"><b>ALL GAMES</b><span>Use every saved game</span></button><h3>INDIVIDUAL GAMES</h3><div class="game-select-list" id="reportGameChoices">${gameChoiceList(reportSelectedGameIds)||'<p>No saved games yet.</p>'}</div><h3>SAVED GROUPS</h3><div class="game-group-list">${db.gameGroups.length?db.gameGroups.map(gameGroupCard).join(''):'<p class="report-empty">No saved groups yet.</p>'}</div><div class="game-selection-footer"><button class="btn" id="newGameGroup">Create Group</button><button class="btn gold" id="saveSelectionGroup" hidden>Save as Group</button><button class="btn black" id="openSelectedReports" disabled>View Report</button></div></div></div>`;
+}
+
 function gameGroupModal(group=null){
  const selected=(group?.gameIds||reportSelectedGameIds).filter(id=>db.savedGames.some(game=>game.id===id));
- return `<div class="modal-backdrop"><div class="modal game-group-modal"><div class="modal-header"><h2>${group?'Edit':'Create'} Game Group</h2><button class="btn" data-close>Close</button></div><label>Group name<input class="input" id="gameGroupName" value="${esc(group?.name||'')}" placeholder="St. Louis Showcase"></label><div class="game-select-list" id="groupGameChoices">${gameChoiceList(selected)||'<p>No saved games are available.</p>'}</div><button class="btn black block" id="saveGameGroup" data-group-id="${group?.id||''}">Save Group</button></div></div>`;
+ return `<div class="modal-backdrop"><div class="modal game-group-modal"><div class="modal-header"><h2>${group?'Edit':'Create'} Game Group</h2><button class="btn" data-close>Cancel</button></div><label>Group name<input class="input" id="gameGroupName" value="${esc(group?.name||'')}" placeholder="St. Louis Showcase"></label><div class="game-select-list" id="groupGameChoices">${gameChoiceList(selected)||'<p>No saved games are available.</p>'}</div><div class="game-group-footer"><button class="btn" data-close>Cancel</button><button class="btn black" id="saveGameGroup" data-group-id="${group?.id||''}">Save Group</button></div></div></div>`;
 }
 function exportFullBackup(){
  const payload={format:'HotB Full Backup',version:1,exportedAt:new Date().toISOString(),db};
@@ -2831,6 +2848,8 @@ function modalView(){
  if(modal?.startsWith('pitchRanking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>pitcherRankingModal(modal.slice(13))):pitcherRankingModal(modal.slice(13));
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
  if(modal==='reports')return reportModal();
+ if(modal==='gamesSelection')return gamesSelectionModal();
+ if(modal==='reportGamesList')return reportGamesListModal();
  if(modal?.startsWith('gameGroup:'))return gameGroupModal(db.gameGroups.find(group=>group.id===modal.slice(10)));
  if(modal==='record')return recordModal();
  if(modal==='endGame'||modal==='discardConfirm')return gameActionModal(modal);
@@ -2839,7 +2858,7 @@ function modalView(){
 }
 function bind(){
  $$('[data-go]').forEach(el=>el.onclick=()=>go(el.dataset.go));
- $$('[data-close]').forEach(el=>el.onclick=()=>{if(modal==='record'){if(timerInt)clearInterval(timerInt);timerInt=null;timerElapsed=0;recordType=''}modal=null;render()});
+ $$('[data-close]').forEach(el=>el.onclick=()=>{if(modal==='record'){if(timerInt)clearInterval(timerInt);timerInt=null;timerElapsed=0;recordType=''}modal=modal==='reportGamesList'?'reports':null;render()});
  if(route==='new')bindNew();
  if(route==='roster')bindRoster();
  if(route==='live')bindLive();
@@ -2849,6 +2868,7 @@ function bind(){
  if(route==='portal')bindPlayerPortal();
  if(modal==='HIT'||modal==='H4O')bindContact();
  if(modal==='reports')bindReports();
+ if(modal==='gamesSelection')bindGamesSelection();
  if(modal?.startsWith('gameGroup:'))bindGameGroup();
  if(modal==='record')bindRecord();
  if(modal==='endGame'||modal==='discardConfirm')bindGameAction();
@@ -3199,14 +3219,7 @@ function bindNew(){
  };
 }
 function bindReportsPage(){
- const checked=()=>$$('#reportGameChoices input:checked').map(input=>input.value),updateSelection=()=>{const ids=checked(),button=$('#openSelectedReports');reportSelectedGameIds=ids;if(button){button.disabled=!ids.length;button.textContent=`Selected Games (${ids.length})`}};
- $$('#reportGameChoices input').forEach(input=>input.onchange=updateSelection);
- $('#openSavedReports')?.addEventListener('click',()=>{reportMode='saved';reportOpponent='All Opponents';modal='reports';render()});
- $('#openSelectedReports')?.addEventListener('click',()=>{reportSelectedGameIds=checked();if(!reportSelectedGameIds.length)return;reportMode='selection';reportOpponent='All Opponents';modal='reports';render()});
- $('#newGameGroup')?.addEventListener('click',()=>{reportSelectedGameIds=checked();modal='gameGroup:new';render()});
- $$('[data-open-group]').forEach(button=>button.onclick=()=>{reportGroupId=button.dataset.openGroup;reportMode='group';reportOpponent='All Opponents';modal='reports';render()});
- $$('[data-edit-group]').forEach(button=>button.onclick=()=>{modal=`gameGroup:${button.dataset.editGroup}`;render()});
- $$('[data-delete-group]').forEach(button=>button.onclick=()=>{const group=db.gameGroups.find(item=>item.id===button.dataset.deleteGroup);if(!group||!confirm(`Delete the game group “${group.name}”? Saved games will not be deleted.`))return;db.gameGroups=db.gameGroups.filter(item=>item.id!==group.id);save();render()});
+ $('#openGamesSelector')?.addEventListener('click',()=>{modal='gamesSelection';render()});
  bindDateFilters('saved');
  $$('[data-view-game]').forEach(button=>button.onclick=()=>{reportGameId=button.dataset.viewGame;reportMode='game';reportFilterHitter='All Hitters';reportOpponent='All Opponents';modal='reports';render()});
  $$('[data-delete-game]').forEach(button=>button.onclick=()=>{const game=db.savedGames.find(item=>item.id===button.dataset.deleteGame);if(!game)return;if(!confirm(`Delete the saved game against ${game.opponent||'Opponent'} from ${new Date(game.date).toLocaleDateString()}? This cannot be undone.`))return;db.savedGames=db.savedGames.filter(item=>item.id!==game.id);save();render()});
@@ -3214,6 +3227,20 @@ function bindReportsPage(){
  $('#restoreFullBackup')?.addEventListener('click',()=>$('#fullBackupFile').click());
  $('#fullBackupFile')?.addEventListener('change',async event=>{const file=event.target.files?.[0];if(!file)return;try{await restoreFullBackup(file)}catch(error){alert(error.message||'HotB could not restore that backup.')}});
 }
+function bindGamesSelection(){
+ const checked=()=>$$('#reportGameChoices input:checked').map(input=>input.value);
+ const update=()=>{reportSelectedGameIds=checked();const view=$('#openSelectedReports'),saveGroup=$('#saveSelectionGroup');if(view){view.disabled=!reportSelectedGameIds.length;view.textContent=reportSelectedGameIds.length===1?'View 1 Game':`View ${reportSelectedGameIds.length} Games`}if(saveGroup)saveGroup.hidden=reportSelectedGameIds.length<2};
+ $$('#reportGameChoices input').forEach(input=>input.onchange=update);update();
+ $('#selectAllGames')?.addEventListener('click',()=>{reportMode='saved';reportOpponent='All Opponents';modal='reports';render()});
+ $('#openSelectedReports')?.addEventListener('click',()=>{if(!reportSelectedGameIds.length)return;reportMode='selection';reportOpponent='All Opponents';modal='reports';render()});
+ $('#newGameGroup')?.addEventListener('click',()=>{reportSelectedGameIds=[];modal='gameGroup:new';render()});
+ $('#saveSelectionGroup')?.addEventListener('click',()=>{reportSelectedGameIds=checked();modal='gameGroup:new';render()});
+ $$('[data-open-group]').forEach(button=>button.onclick=()=>{reportGroupId=button.dataset.openGroup;reportMode='group';reportOpponent='All Opponents';modal='reports';render()});
+ $$('[data-edit-group]').forEach(button=>button.onclick=()=>{modal=`gameGroup:${button.dataset.editGroup}`;render()});
+ $$('[data-rename-group]').forEach(button=>button.onclick=()=>{const group=db.gameGroups.find(item=>item.id===button.dataset.renameGroup),name=prompt('Group name',group?.name||'')?.trim();if(!group||!name)return;group.name=name;save();render()});
+ $$('[data-delete-group]').forEach(button=>button.onclick=()=>{const group=db.gameGroups.find(item=>item.id===button.dataset.deleteGroup);if(!group||!confirm(`Delete the game group “${group.name}”? Saved games will not be deleted.`))return;db.gameGroups=db.gameGroups.filter(item=>item.id!==group.id);save();render()});
+}
+
 function bindGameGroup(){
  $('#saveGameGroup')?.addEventListener('click',()=>{
   const name=$('#gameGroupName').value.trim(),gameIds=$$('#groupGameChoices input:checked').map(input=>input.value),id=$('#saveGameGroup').dataset.groupId;
@@ -3418,6 +3445,7 @@ function bindContact(){
  $('#saveContact').onclick=()=>{const kind=st.quals.has('E')?'E':st.quals.has('FC')?'FC':st.quals.has('SAC')?'SAC':modal;modal=null;addPitch(kind,{fielder:st.fielder,contactType:st.batted||st.outType,hitType:st.hitType||'',bunt:st.contact==='BUNT',slap:st.contact==='SLAP',rbiCount:st.rbiCount,rba:st.quals.has('RBA'),sac:st.quals.has('SAC'),error:st.quals.has('E'),fc:st.quals.has('FC'),hhb:st.strength==='HHB',weak:st.strength==='WEAK'})};
 }
 function bindReports(){
+ $('#showReportGames')?.addEventListener('click',()=>{modal='reportGamesList';render()});
  $$('[data-rmode]').forEach(b=>b.onclick=()=>{reportMode=b.dataset.rmode;reportGameId=null;reportSelectedPaId=null;reportOpponent='All Opponents';render()});
  bindDateFilters('report');
  $('#reportHitter')?.addEventListener('change',e=>{reportFilterHitter=e.target.value;reportSelectedPaId=null;render()});
