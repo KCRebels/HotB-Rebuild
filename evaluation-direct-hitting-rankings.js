@@ -9,8 +9,6 @@
  function showRanking(label,rows,note,kicker='FULL ROSTER RANKINGS'){
   closeRanking();const selected=selectedPlayer(),backdrop=document.createElement('div');backdrop.id='directPlayerEvalRankingBackdrop';backdrop.className='modal-backdrop';
   backdrop.innerHTML=`<div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">${kicker}</div><h2>${label}</h2></div><button type="button" class="btn" data-player-rank-close>Close</button></div><div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.name===selected?'selected-player':''}"><span class="ranking-place">${row.value===null?'—':index+1}</span><span class="ranking-name">${row.name}${row.sub?`<small>${row.sub}</small>`:''}</span><strong>${row.display}</strong></div>`).join('')}</div><p class="small" style="color:#ddd;margin:14px 4px 0">${note}</p></div>`;
-  backdrop.querySelector('[data-player-rank-close]').onclick=closeRanking;
-  backdrop.onclick=event=>{if(event.target===backdrop)closeRanking()};
   document.body.appendChild(backdrop);
  }
  const hitting={AVG:{key:'AVG',lower:false,format:decimal3},OBP:{key:'OBP',lower:false,format:decimal3},SLG:{key:'SLG',lower:false,format:decimal3},CONTACT:{key:'contactPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`},'K%':{key:'kPct',lower:true,format:v=>`${Math.round(Number(v)*100)}%`},'HHB%':{key:'hhbPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`},'QAB%':{key:'qabPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`}};
@@ -24,8 +22,13 @@
   const tile=target.closest('.eval-app .eval-tile');if(tile&&!target.closest('.metric-title'))return openSummary(tile.querySelector('.metric-title')?.dataset.guide);
   return false;
  }
+ // Ranking opens are scoped to the Eval stat cards only.
  const app=document.querySelector('#app');if(!app)return;
  let lastPointer=0;
  app.addEventListener('pointerup',event=>{const target=event.target instanceof Element?event.target:null;if(!target)return;if(activate(target)){event.preventDefault();event.stopPropagation();lastPointer=Date.now()}},true);
  app.addEventListener('click',event=>{const target=event.target instanceof Element?event.target:null;if(!target)return;const statTarget=target.closest('.eval-app .pitcher-stat[data-pitch-ranking],.eval-app .perf,.eval-app .eval-tile');if(!statTarget||target.closest('.perf-metric,.metric-title'))return;if(Date.now()-lastPointer<700){event.preventDefault();event.stopImmediatePropagation();return}if(activate(target)){event.preventDefault();event.stopImmediatePropagation()}},true);
+ // Ranking closes are handled separately from the Eval page so they remain reliable after switching players.
+ const handleClose=event=>{const target=event.target instanceof Element?event.target:null;if(!target)return;const backdrop=target.closest('#directPlayerEvalRankingBackdrop');if(!backdrop)return;if(target.closest('[data-player-rank-close]')||target===backdrop){event.preventDefault();event.stopPropagation();closeRanking()}};
+ document.addEventListener('pointerup',handleClose,true);
+ document.addEventListener('click',handleClose,true);
 })();
