@@ -1369,6 +1369,23 @@ function recordOut(g){
  if(g.outs>=3){g.outs=0;g.inning+=1;g.runners=[];return true}
  return false;
 }
+function queueInningObservation(g,completedInning){
+ g.observationPromptedInnings=[...new Set([...(g.observationPromptedInnings||[]),completedInning])];
+ observationPromptInning=completedInning;
+ modal='inningObservationPrompt';
+}
+function resetLiveCount(g){
+ g.balls=0;g.strikes=0;g.pendingZone=null;g.pitchType='FB';g.showAi=false;
+}
+function addManualOut(g){
+ const completedInning=g.inning,inningEnded=recordOut(g);
+ if(inningEnded){resetLiveCount(g);queueInningObservation(g,completedInning)}
+ return inningEnded;
+}
+function endInningNow(g){
+ const completedInning=g.inning;
+ g.outs=0;g.inning+=1;g.runners=[];resetLiveCount(g);queueInningObservation(g,completedInning);
+}
 function addPitch(result,extra={}){
  const g=currentGame(); if(!g)return;
  const h=currentHitter(g);
@@ -1417,7 +1434,7 @@ function closePA(outcome,extra={}){
  g.currentIdx=(g.currentIdx+1)%g.battingOrder.length;
  g.plan=planFor(g.battingOrder[g.currentIdx]);
  g.pitchType='FB';
- if(inningEnded){g.observationPromptedInnings=[...new Set([...(g.observationPromptedInnings||[]),completedInning])];observationPromptInning=completedInning;modal='inningObservationPrompt'}
+ if(inningEnded)queueInningObservation(g,completedInning);
 }
 function undo(){
  const g=currentGame();if(!g)return;
@@ -2032,7 +2049,7 @@ function liveView(){
  };
  const suggestions=g.showAi?aiSuggestions(g,chartName):[];
  const nextInitials=nextName?nextName.split(' ').map(x=>x[0]).join(''):'';
- return `<div class="topbar chart-head"><div class="brand">Hit Chart</div><button id="openProfile">Profile</button><button id="openReports">Reports</button><button class="end" id="endGame">End</button></div>
+ return `<div class="topbar chart-head"><div class="brand">Chart</div><button id="openLineup">Lineup</button><button id="openProfile">Profile</button><button id="openReports">Reports</button><button class="end" id="endGame">End</button></div>
  <div class="live-top">
   <button class="statbox hitter-box live-stat-button" id="changeHitter" aria-label="Substitute for ${esc(h.name)}"><div class="cap">HITTER</div><div class="big">${esc(h.name)}</div></button>
   <div class="statbox"><div class="cap">INN</div><div class="big">${g.inning}</div></div>
@@ -2041,7 +2058,7 @@ function liveView(){
  </div>
  <div class="control-row">
   <div class="control-card"><div class="pill-row">${['IN','OUT','CH','NO'].map(x=>`<button class="pill red ${g.strikes<2&&currentPlan===x?'active':''}" data-plan="${x}">${x}</button>`).join('')}</div></div>
-  <div class="control-card"><div class="pill-row">${[0,1,2].map(x=>`<button class="pill ${g.outs===x?'active':''}" data-outs="${x}">${x}</button>`).join('')}</div></div>
+  <button class="control-card outs-control" id="openOutsControl" aria-label="Outs: ${g.outs}. Open out controls"><span>OUTS</span><strong>${g.outs}</strong></button>
   <div class="control-card"><div class="pill-row">${[3,2,1].map(x=>`<button class="runner ${g.runners.includes(x)?'active':''}" data-runner="${x}"><span>${x}</span></button>`).join('')}</div></div>
  </div>
  <div class="live-workspace"><div class="live-left"><div class="zone-card">
@@ -2351,6 +2368,11 @@ function evalView(){
  const resultRate=player&&['Maia Waddell','Hailey Marsh'].includes(player.name)
   ?['QAB%',pct1(s.qabPct),'qabPct']
   :['HHB%',pct1(s.hhbPct),'hhbPct'];
+ const performanceTile=([label,value,key])=>{
+  const statKey=key==='contact'?'contactPct':key==='K'?'kPct':key,guide=['AVG','OBP','SLG','CONTACT','K%'].includes(label);
+  const rating=s.PA>=25&&!['hhbPct','qabPct'].includes(statKey)?grade(s[statKey],key):'';
+  return `<div class="perf ${rating}"><b>${value}</b><div class="perf-label-row">${guide?`<button class="perf-metric" data-guide="${label}">${label}</button>`:`<span class="perf-metric">${label}</span>`}<button class="perf-all" data-hitting-ranking="${statKey}">ALL</button></div></div>`;
+ };
  return `<div class="eval-head"><button class="btn eval-nav" ${evaluationReadOnly?'id="portalBack"':`data-go="${currentGame()?'live':'home'}"`}>${evaluationReadOnly?'Portal':currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><div class="eval-contact-actions" aria-hidden="true"></div></div>
  <label class="eval-player-filter"><span>Player</span><select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label>
  ${dateFilterControls('eval')}
@@ -2361,8 +2383,8 @@ function evalView(){
   <div class="eval-tile">${metricHead('Runs Produced','RP')} ${s.PA?(player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`):emptyComparison()}<div class="note">Runs Produced</div></div>
   <div class="eval-tile">${slapHitter?metricHead('Reach%'):metricHead('Execution','HP%')}<div class="value">${slapHitter?(reach===null?'—%':pct0(reach)):(execution===null?'—%':pct0(execution))}</div><div class="note">${slapHitter?'Reached Base':'Hitting Plan'}</div></div>
  </div>
- <div class="performance"><div class="performance-head"><h2>Hitting Results</h2><div class="performance-sample"><b>${s.PA} PA</b><span>${esc(activeDateFilterLabel())}</span></div></div><div class="perf-grid">
- ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],resultRate].map(([label,val,key])=>`<div class="perf ${s.PA>=25&&!['hhbPct','qabPct'].includes(key)?grade(s[key==='contact'?'contactPct':key==='K'?'kPct':key],key):''}" data-guide="${label}"><b>${val}</b><span>${label}</span></div>`).join('')}
+ <div class="performance"><div class="performance-head"><h2>Hitting Results</h2><div class="performance-sample"><span>${esc(activeDateFilterLabel())}</span><b>${s.PA} PA</b></div></div><div class="perf-grid">
+ ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],resultRate].map(performanceTile).join('')}
  </div></div>
  ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><div class="pitcher-performance-head"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2>${evaluationReadOnly?'':`<button class="btn black" id="uploadPitchingStats">UPLOAD</button><input id="pitchingStatsFile" type="file" accept=".xlsx,.xls,.csv" hidden>`}</div><div class="pitcher-stat-grid">
   ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<button class="pitcher-stat" data-pitch-ranking="${key}"><b>${esc(player[key]||'—')}</b><span>${label}</span></button>`).join('')}
@@ -2452,6 +2474,22 @@ function evalRankingModal(metric){
   <div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.player.name===evalPlayer?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-name">${esc(row.player.name)}</span><strong>${formatted(row.value)}</strong></div>`).join('')}</div>
  </div></div>`;
 }
+function hittingRankingModal(metric){
+ const definitions={
+  AVG:{label:'AVG',key:'AVG',format:round3},OBP:{label:'OBP',key:'OBP',format:round3},SLG:{label:'SLG',key:'SLG',format:round3},
+  contactPct:{label:'CONTACT',key:'contactPct',format:pct0},kPct:{label:'K%',key:'kPct',format:pct1,lowerIsBetter:true},
+  hhbPct:{label:'HHB%',key:'hhbPct',format:pct1},qabPct:{label:'QAB%',key:'qabPct',format:pct1}
+ };
+ const definition=definitions[metric]||definitions.AVG,teamPas=filteredPAs();
+ const rows=db.roster.map(player=>{const stats=statsForPAs(teamPas.filter(pa=>pa.hitter===player.name));return {player,stats,value:stats.PA?stats[definition.key]:null}}).sort((a,b)=>{
+  if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
+  if(a.value===null)return 1;if(b.value===null)return-1;
+  return (definition.lowerIsBetter?a.value-b.value:b.value-a.value)||a.player.name.localeCompare(b.player.name);
+ });
+ return `<div class="modal-backdrop"><div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">ALL PLAYERS · ${esc(activeDateFilterLabel())}</div><h2>${esc(definition.label)}</h2></div><button class="btn" data-close>Close</button></div>
+  <div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row hitting-ranking-row ${row.player.name===evalPlayer?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-name">${esc(row.player.name)}<small>${row.stats.PA} PA</small></span><strong>${row.value===null?'—':definition.format(row.value)}</strong></div>`).join('')}</div>
+ </div></div>`;
+}
 function pitcherRankingModal(key){
  const labels={pitcherIP:'IP',pitcherERA:'ERA',pitcherWHIP:'WHIP',pitcherKBB:'K/BB',pitcherOBA:'OBA',pitcherStrikePct:'Strike %'};
  const lowerIsBetter=['pitcherERA','pitcherWHIP','pitcherOBA'].includes(key);
@@ -2498,6 +2536,22 @@ function gameActionModal(kind){
   <p>Save and end the game against ${esc(opponent)}?</p>
   <div class="game-action-buttons end-game-buttons"><button class="btn" data-close>Cancel</button><button class="btn red" id="saveAndExit">Save &amp; Exit</button><button class="btn dark" id="discardGame">End &amp; Don’t Save</button></div>
  </div></div>`;
+}
+function outsControlModal(kind){
+ const g=currentGame();if(!g)return'';
+ if(kind==='endInningConfirm')return `<div class="modal-backdrop"><div class="modal outs-control-modal" role="alertdialog" aria-modal="true" aria-label="End Inning Now">
+  <div class="small info-kicker">INNING ${g.inning}</div><h2>End Inning Now?</h2><p>This will clear every occupied base, reset the count, and move to Inning ${g.inning+1}.</p>
+  <div class="outs-control-actions"><button class="btn" id="cancelEndInning">Cancel</button><button class="btn red" id="confirmEndInning">End Inning Now</button></div>
+ </div></div>`;
+ return `<div class="modal-backdrop"><div class="modal outs-control-modal"><div class="modal-header"><div><div class="small info-kicker">INNING ${g.inning}</div><h2>${g.outs} Out${g.outs===1?'':'s'}</h2></div><button class="btn" data-close>Close</button></div>
+  <p>Record an out without changing the hitter's result, or force the half-inning to end.</p>
+  <div class="outs-control-actions stacked"><button class="btn black" id="addOneOut">Add 1 Out${g.outs===2?' — Ends Inning':''}</button><button class="btn red" id="requestEndInning">End Inning Now</button></div>
+ </div></div>`;
+}
+function lineupModal(){
+ const g=currentGame();if(!g)return'';
+ const rows=(g.battingOrder||[]).map((name,index)=>{const player=hitterObj(name),parts=String(name||'').trim().split(/\s+/),lastName=parts[parts.length-1]||name;return `<div class="lineup-row ${index===g.currentIdx?'current-hitter':''}"><span class="lineup-order">${index+1}</span><span class="lineup-number">#${esc(player.jersey||'—')}</span><strong>${esc(lastName)}</strong>${index===g.currentIdx?'<small>AT BAT</small>':''}</div>`}).join('');
+ return `<div class="modal-backdrop"><div class="modal lineup-modal"><div class="modal-header"><div><div class="small info-kicker">READ ONLY</div><h2>Lineup</h2></div><button class="btn" data-close>Close</button></div><div class="lineup-list">${rows}</div></div></div>`;
 }
 function pitcherChangeModal(){
  const g=currentGame();
@@ -2680,6 +2734,12 @@ function openManagedObservation(id,gameId=''){
  const source=gameId?(db.savedGames||[]).find(game=>game.id===gameId):null,record=(source?.observations||db.coachObservations||[]).find(item=>item.id===id);if(!record)return;
  observationMode='manage';observationEditId=id;observationEditGameId=gameId;observationTargetPlayer=record.playerName;observationTargetPaId=record.paId||'';modal='coachObservation';render();
 }
+function observationCountSummary(playerName,g=currentGame()){
+ const currentRows=(g?.observations||[]).filter(item=>item.playerName===playerName);
+ const rows=[...(db.savedGames||[]).flatMap(game=>(game.observations||[]).filter(item=>item.playerName===playerName)),...(db.coachObservations||[]).filter(item=>item.playerName===playerName),...currentRows];
+ const unique=new Map();rows.forEach((item,index)=>unique.set(item.id||`${item.playerName}:${item.createdAt||item.observedAt||index}`,item));
+ return {total:unique.size,currentGame:currentRows.length};
+}
 function coachObservationModal(){
  const g=currentGame(),api=window.HotBCoachObservations,focusMode=observationMode==='focus',manageMode=observationMode==='manage';if(!api||(!focusMode&&!manageMode&&!g))return'';
  if(!observationTargetPlayer&&!focusMode)setObservationTarget(currentHitter(g).name,'');
@@ -2688,11 +2748,13 @@ function coachObservationModal(){
  const usage=api.tagUsage([...(db.savedGames||[]),...(g?[g]:[])],db.coachObservations);
  const categoryOptions=category=>category.options.map((option,index)=>({option,index})).sort((a,b)=>Number(selected.has(b.option))-Number(selected.has(a.option))||(usage[b.option]||0)-(usage[a.option]||0)||a.index-b.index).map(item=>item.option);
  const context=focusMode?'General observation · not linked to a game':manageMode?'Saved coach observation':targetPa?`Inning ${targetPa.inning} · completed at-bat ${targetPa.pa}`:'Player observation · no completed at-bat linked';
+ const observationCounts=manageMode?null:observationCountSummary(observationTargetPlayer,g);
  return `<div class="modal-backdrop observation-backdrop"><div class="modal observation-modal"><div class="modal-header"><div><div class="small info-kicker">${focusMode||manageMode?'PLAYER FOCUS':'LIVE OR DUGOUT REVIEW'}</div><h2>${manageMode?'Edit Observation':'Coach Observation'}</h2></div><button class="btn" data-close>Close</button></div>
   <p class="observation-help">${focusMode?'Choose up to 3 items or enter a short note.':'Choose a hitter below. They are listed from the current or most recent at-bat backward.'}</p>
   ${!focusMode&&!manageMode?`<div class="observation-scopes">${!observationFromInningPrompt?`<button class="${observationScope==='current'?'active':''}" data-observation-scope="current">Current</button>`:''}${g.inning>1?`<button class="${observationScope==='previous'?'active':''}" data-observation-scope="previous">Previous</button>`:''}<button class="${observationScope==='lineup'?'active':''}" data-observation-scope="lineup">Full</button></div>`:''}
   ${manageMode?'':recent.length?`<div class="observation-recent"><span>${observationScope==='lineup'?'ACTIVE LINEUP':observationScope==='previous'?`INNING ${g.inning-1}`:`INNING ${g.inning}`}</span><div>${recent.map(item=>`<button class="${item.playerName===observationTargetPlayer&&item.paId===observationTargetPaId?'active':''}" data-observation-target="${esc(item.paId)}" data-observation-player="${esc(item.playerName)}"><b>${esc(practiceFirstName(item.playerName))}</b>${item.current?'<small>At Bat</small>':item.observed?`<small>✓ ${item.tagCount||'Note'}</small>`:''}</button>`).join('')}</div></div>`:'<p class="observation-empty">No completed at-bats in that inning.</p>'}
   ${focusMode||manageMode?`<label class="observation-player observation-player-locked"><span>PLAYER</span><strong>${esc(observationTargetPlayer)}</strong><small>${esc(context)}${existing?' · Existing observation loaded':''}</small></label>`:''}
+  ${observationCounts?`<div class="observation-saved-summary"><span><b>${observationCounts.total}</b> saved</span>${!focusMode?`<span><b>${observationCounts.currentGame}</b> this game</span>`:''}<strong>${existing?'Updates an existing observation':`New entry will be #${observationCounts.total+1}`}</strong></div>`:''}
   <div class="observation-dictation observation-dictation-primary"><button type="button" class="btn" id="observationMic">🎙 Dictate Note</button><small id="observationMicStatus">Review the words before saving.</small></div>
   <div class="observation-count"><b id="observationSelectionCount">${selected.size}</b><span>of 3 selected</span></div>
   <div class="observation-categories">${api.CATEGORIES.map(category=>{const selectedCount=category.options.filter(option=>selected.has(option)).length;return `<details class="observation-category"><summary><span>${esc(category.name)}</span><small>${selectedCount?`${selectedCount} selected`:'Choose'}</small></summary><div>${categoryOptions(category).map(option=>`<button type="button" class="observation-option ${selected.has(option)?'active':''}" data-observation-option="${esc(option)}" aria-pressed="${selected.has(option)}">${esc(option)}</button>`).join('')}</div></details>`}).join('')}</div>
@@ -2753,6 +2815,9 @@ function modalView(){
  if(modal==='manageFocusObservations')return manageFocusObservationsModal();
  if(modal==='manageFocusDrills')return manageFocusDrillsModal();
  if(modal==='focusPublishPreview')return focusPublishPreviewModal();
+ if(modal==='outsControl'||modal==='endInningConfirm')return outsControlModal(modal);
+ if(modal==='lineup')return lineupModal();
+ if(modal?.startsWith('hittingRanking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>hittingRankingModal(modal.slice(15))):hittingRankingModal(modal.slice(15));
  if(modal?.startsWith('ranking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>evalRankingModal(modal.slice(8))):evalRankingModal(modal.slice(8));
  if(modal?.startsWith('pitchRanking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>pitcherRankingModal(modal.slice(13))):pitcherRankingModal(modal.slice(13));
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
@@ -2785,6 +2850,7 @@ function bind(){
  if(modal==='inningObservationPrompt')bindInningObservationPrompt();
  if(modal==='manageFocusDrills')bindManageFocusDrills();
  if(modal==='focusPublishPreview')bindFocusPublishPreview();
+ if(modal==='outsControl'||modal==='endInningConfirm')bindOutsControl();
  if(modal==='cloudBackup')bindCloudBackup();
  $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
  $('#openRecoveryGuide')?.addEventListener('click',()=>{modal='recoveryGuide';render()});
@@ -3227,6 +3293,12 @@ function bindInningObservationPrompt(){
  $('#skipInningObservation')?.addEventListener('click',()=>{modal=null;render()});
  $('#addInningObservation')?.addEventListener('click',()=>openCoachObservation({scope:'previous',fromInningPrompt:true}));
 }
+function bindOutsControl(){
+ $('#requestEndInning')?.addEventListener('click',()=>{modal='endInningConfirm';render()});
+ $('#cancelEndInning')?.addEventListener('click',()=>{modal='outsControl';render()});
+ $('#addOneOut')?.addEventListener('click',()=>{const g=currentGame();if(!g)return;modal=null;addManualOut(g);save();render()});
+ $('#confirmEndInning')?.addEventListener('click',()=>{const g=currentGame();if(!g)return;modal=null;endInningNow(g);save();render()});
+}
 function bindLive(){
  const g=currentGame();
  $('.live-app')?.addEventListener('click',event=>{
@@ -3240,7 +3312,6 @@ function bindLive(){
    db.planPreferences[currentHitter(g).name]=b.dataset.plan;
    save();render();
  });
- $$('[data-outs]').forEach(b=>b.onclick=()=>{g.outs=+b.dataset.outs;save();render()});
  $$('[data-runner]').forEach(b=>b.onclick=()=>{const n=+b.dataset.runner;g.runners=g.runners.includes(n)?g.runners.filter(x=>x!==n):[...g.runners,n];save();render()});
  $$('[data-ptype]').forEach(b=>b.onclick=()=>{g.pitchType=b.dataset.ptype;save();render()});
  $$('[data-zone]').forEach(z=>z.onclick=()=>{g.historyTab='LIVE';g.zoneScope='HITTER';g.previewNext=false;g.firstPitchView=false;g.allView='DOTS';g.showAi=false;g.pendingZone=z.dataset.zone;save();render()});
@@ -3257,6 +3328,8 @@ function bindLive(){
  });
  $('#undo').onclick=undo;
  $('#coachObservation').onclick=openCoachObservation;
+ $('#openOutsControl').onclick=()=>{modal='outsControl';render()};
+ $('#openLineup').onclick=()=>{modal='lineup';render()};
  $('#openProfile').onclick=()=>{evalPlayer=currentHitter(g).name;go('eval')};
  $('#openReports').onclick=()=>{modal='reports';reportMode='current';render()};
  $('#endGame').onclick=()=>{modal='endGame';render()};
@@ -3355,6 +3428,7 @@ function bindEval(){
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
  $$('[data-guide]').forEach(x=>x.onclick=()=>{modal='guide:'+x.dataset.guide;render()});
  $$('[data-ranking]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.ranking;render()});
+ $$('[data-hitting-ranking]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRanking;render()});
  $$('[data-pitch-ranking]').forEach(x=>x.onclick=()=>{modal='pitchRanking:'+x.dataset.pitchRanking;render()});
  $('#uploadPitchingStats')?.addEventListener('click',()=>$('#pitchingStatsFile')?.click());
  $('#pitchingStatsFile')?.addEventListener('change',async event=>{
