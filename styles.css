@@ -853,7 +853,7 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .outs-control-actions{grid-template-columns:1fr}.lineup-row{grid-template-columns:32px 49px minmax(0,1fr) auto;padding:7px 8px}.lineup-row strong{font-size:18px}
   .observation-saved-summary{grid-template-columns:1fr 1fr;gap:5px;padding:7px 8px}.observation-saved-summary>strong{grid-column:1/3;justify-self:start;text-align:left;font-size:12px}
   .performance-sample{gap:6px}.performance-sample span{font-size:11px}.performance-sample b{font-size:14px}
-  .perf-label-row{gap:3px}.perf-metric,.perf-all{min-height:25px;padding:3px 4px}.perf-metric{font-size:10px}.perf-all{font-size:8px}
+  .perf-label-row{gap:2px}.perf-metric,.perf-all{border-width:2px;border-radius:7px;font-weight:950}.perf-metric{min-height:35px;padding:4px;font-size:14px}.perf-all{min-height:31px;padding:3px 4px;font-size:10px}
 }
 
 /* Matching Hit Chart, Edit Roster, and Player Eval headers */
