@@ -162,11 +162,32 @@
   .eval-app .metric-title,
   .eval-app .perf-metric,
   .eval-app .pitcher-stat span,
-  .eval-app .measure h3{font-size:14px!important}
+  .eval-app .measure h3{font-size:16px!important}
   .eval-app .eval-tile>.value,
   .eval-app .perf>b,
   .eval-app .measure .best{font-size:29px!important}
   .eval-app .pitcher-stat>b{font-size:27px!important}
   .eval-app .eval-tile>.note,
   .eval-app .measure .note{font-size:10px!important}
+}
+
+/* Keep Player Eval guide/ranking overlays fixed to the iPhone viewport.
+   The modal itself scrolls; the page behind it is never JS-locked. */
+.eval-app .modal-backdrop{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  min-height:100dvh!important;
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+  touch-action:none!important;
+  z-index:1000!important;
+}
+.eval-app .modal-backdrop>.modal{
+  max-height:calc(100dvh - 14px)!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y!important;
 }
