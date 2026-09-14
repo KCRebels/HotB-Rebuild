@@ -18,17 +18,23 @@
    const rating=grade(value,metric);if(rating)card.classList.add(rating);
   });
  }
- function refresh(){requestAnimationFrame(restoreColors)}
- document.addEventListener('click',event=>{
-  // HotB and hitting VALUES replace the hidden ALL controls.
-  const result=event.target.closest('.eval-app .eval-tile>.value,.eval-app .perf>b');
-  if(!result)return;
+ function openNativeRanking(result,event){
   const control=result.closest('.eval-tile')?.querySelector('.metric-all')||result.closest('.perf')?.querySelector('.perf-all');
-  if(!control)return;
-  event.preventDefault();event.stopPropagation();
-  // Native app.js already bound this control to the correct ranking modal.
-  control.click();
- });
+  if(!control)return false;
+  event?.preventDefault?.();event?.stopPropagation?.();
+  if(typeof control.onclick==='function')control.onclick.call(control);
+  else control.click();
+  return true;
+ }
+ function refresh(){requestAnimationFrame(restoreColors)}
+ document.addEventListener('pointerup',event=>{
+  const result=event.target.closest('.eval-app .eval-tile>.value,.eval-app .perf>b');
+  if(result)openNativeRanking(result,event);
+ },true);
+ document.addEventListener('click',event=>{
+  const result=event.target.closest('.eval-app .eval-tile>.value,.eval-app .perf>b');
+  if(result)openNativeRanking(result,event);
+ },true);
  const observer=new MutationObserver(refresh);
  observer.observe(document.documentElement,{childList:true,subtree:true});
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refresh);else refresh();
