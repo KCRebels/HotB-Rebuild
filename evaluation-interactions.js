@@ -8,6 +8,29 @@
   if(metric==='K%')return value<10?'excellent':value<=15?'good':value<=20?'acceptable':value<=25?'concern':'serious';
   return'';
  };
+ let guideScrollY=0;
+ function lockGuideScroll(){
+  if(document.body.dataset.evalGuideLocked==='1')return;
+  guideScrollY=window.scrollY||window.pageYOffset||0;
+  document.body.dataset.evalGuideLocked='1';
+  document.body.style.position='fixed';
+  document.body.style.top=`-${guideScrollY}px`;
+  document.body.style.left='0';
+  document.body.style.right='0';
+  document.body.style.width='100%';
+  document.body.style.overflow='hidden';
+ }
+ function unlockGuideScroll(){
+  if(document.body.dataset.evalGuideLocked!=='1')return;
+  delete document.body.dataset.evalGuideLocked;
+  document.body.style.position='';
+  document.body.style.top='';
+  document.body.style.left='';
+  document.body.style.right='';
+  document.body.style.width='';
+  document.body.style.overflow='';
+  window.scrollTo(0,guideScrollY);
+ }
  function restoreColors(){
   document.querySelectorAll('.eval-app .perf').forEach(card=>{
    const metric=String(card.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase();
@@ -29,10 +52,17 @@
  }
  function refresh(){requestAnimationFrame(restoreColors)}
  document.addEventListener('click',event=>{
+  const guide=event.target.closest('.eval-app [data-guide]');
+  if(guide)lockGuideScroll();
+  if(event.target.closest('.eval-app [data-close]')&&document.body.dataset.evalGuideLocked==='1')setTimeout(unlockGuideScroll,0);
   const result=event.target.closest('.eval-app .eval-tile>.value,.eval-app .perf>b');
   if(result)openNativeRanking(result,event);
  },true);
- const observer=new MutationObserver(refresh);
+ const observer=new MutationObserver(()=>{
+  refresh();
+  if(document.body.dataset.evalGuideLocked==='1'&&!document.querySelector('.eval-app .modal-backdrop'))unlockGuideScroll();
+ });
  observer.observe(document.documentElement,{childList:true,subtree:true});
+ window.addEventListener('pagehide',unlockGuideScroll);
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refresh);else refresh();
 })();
