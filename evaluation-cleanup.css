@@ -5,6 +5,17 @@
 /* Only one Recruiting title is needed. */
 .eval-app .rw-section-head>div>span{display:none!important}
 
+/* Keep the recruiting workflow compact: Profile | Email | Text. */
+.eval-app .rw-profile,
+.eval-app .rw-email,
+.eval-app .rw-text{font-size:0!important}
+.eval-app .rw-profile::after{content:"Profile"}
+.eval-app .rw-email::after{content:"Email"}
+.eval-app .rw-text::after{content:"Text"}
+.eval-app .rw-profile::after,
+.eval-app .rw-email::after,
+.eval-app .rw-text::after{font-size:16px!important;font-weight:900!important}
+
 /* Section hierarchy */
 .eval-app .performance h2,
 .eval-app .pitcher-performance h2,
@@ -89,14 +100,14 @@
 .eval-app .compare-value{gap:4px!important;justify-content:center!important}
 .eval-app .compare-value span{white-space:nowrap!important}
 
-/* Hitting: title / centered stat. */
+/* Hitting: title on top / stat centered below. */
 .eval-app .perf{
   display:grid!important;
   grid-template-rows:auto minmax(0,1fr)!important;
   align-items:stretch!important;
   padding:10px 6px!important;
 }
-.eval-app .perf-label-row{order:initial!important;width:100%!important;margin:0!important;display:block!important;text-align:center!important}
+.eval-app .perf-label-row{order:-1!important;width:100%!important;margin:0!important;display:block!important;text-align:center!important}
 .eval-app .perf>b{
   display:flex!important;
   align-items:center!important;
@@ -111,14 +122,14 @@
 .eval-app .perf.concern>b{color:#ff9995!important}
 .eval-app .perf.serious>b{color:#ff6262!important}
 
-/* Pitching now matches Hitting visually; native button/ranking behavior stays untouched. */
+/* Pitching matches Hitting: title on top / stat centered below. */
 .eval-app .pitcher-stat{
   display:grid!important;
   grid-template-rows:auto minmax(0,1fr)!important;
   align-items:stretch!important;
   padding:10px 6px!important;
 }
-.eval-app .pitcher-stat span{order:initial!important;margin:0!important}
+.eval-app .pitcher-stat span{order:-1!important;margin:0!important}
 .eval-app .pitcher-stat>b{
   display:flex!important;
   align-items:center!important;
