@@ -25,12 +25,12 @@
     }).filter(item=>item.pct);
 
     const positive=[...new Set(cells.map(item=>item.numeric).filter(value=>value>0))].sort((a,b)=>a-b);
-    const lowestPositive=positive.length?positive[0]:null;
+    const firstTwo=new Set(positive.slice(0,2));
 
     cells.forEach(({pct,numeric})=>{
       let color='#667085';
       if(numeric>0){
-        if(foul || numeric===lowestPositive) color='#111';
+        if(foul || firstTwo.has(numeric)) color='#111';
         else color='#fff';
       }
       pct.style.setProperty('color',color,'important');
