@@ -28,10 +28,27 @@
       .report-heat .heat-result-filters button.active{outline:3px solid #efc52f!important;outline-offset:1px!important;box-shadow:inset 0 0 0 2px #fff!important}
       .report-heat .report-zone-layout{width:min(100%,305px)!important;max-width:305px!important;margin:8px auto 0!important}
       .report-detail .report-zone-layout .zone .pct{font-size:24px!important}
+
+      .report-detail .report-stat{padding:16px 8px!important}
+      .report-detail .report-stat b{font-size:28px!important;line-height:1!important}
+      .report-detail .report-stat span{font-size:14px!important;line-height:1.1!important;margin-top:8px!important}
+      .report-detail .count-performance-title .count-key,
+      .report-detail .count-performance-title .count-separator{font-size:24px!important;line-height:1!important}
+      .report-section-label,
+      .report-heat>h3{display:block;width:max-content;max-width:100%;margin:26px 0 12px!important;padding:13px 16px;border-radius:11px;background:#111;color:#fff;font-size:20px!important;line-height:1.1;font-weight:900;letter-spacing:.2px}
+      .report-spray-box{margin-top:0!important}
+
       @media(max-width:560px){
         .report-heat .heat-result-filters button{min-height:40px!important;padding:4px 1px!important;border-width:3px!important;border-radius:8px!important;font-size:16px!important}
         .report-heat .report-zone-layout{width:min(100%,305px)!important;max-width:305px!important}
         .report-detail .report-zone-layout .zone .pct{font-size:18px!important}
+        .report-detail .report-stat{padding:11px 2px!important}
+        .report-detail .report-stat b{font-size:20px!important}
+        .report-detail .report-stat span{font-size:12px!important;margin-top:6px!important}
+        .report-detail .count-performance-title .count-key,
+        .report-detail .count-performance-title .count-separator{font-size:17px!important}
+        .report-section-label,
+        .report-heat>h3{margin:24px 0 10px!important;padding:10px 8px;font-size:16px!important}
       }
     `;
     document.head.appendChild(style);
@@ -68,8 +85,29 @@
     });
   }
 
+  function simplifyReport(){
+    document.querySelectorAll('.report-outcome-section').forEach(section=>{
+      const title=section.querySelector('.report-outcome-heading b')?.textContent?.trim();
+      if(title==='BASE HITS'||title==='HITS 4 OUTS') section.remove();
+    });
+
+    document.querySelectorAll('.report-spray-box').forEach(box=>{
+      const previous=box.previousElementSibling;
+      if(previous?.classList.contains('report-section-label')&&previous.textContent==='Spray Chart') return;
+      const title=document.createElement('h3');
+      title.className='report-section-label';
+      title.textContent='Spray Chart';
+      box.before(title);
+    });
+
+    document.querySelectorAll('.report-heat>h3').forEach(title=>{
+      title.textContent='Heat Chart';
+    });
+  }
+
   function sync(){
     ensureStyles();
+    simplifyReport();
     document.querySelectorAll('.report-heat .heat-key').forEach(key=>key.remove());
     document.querySelectorAll('.report-heat').forEach(applyGameHeatColors);
   }
