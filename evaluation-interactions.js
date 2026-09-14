@@ -1,7 +1,6 @@
 (()=>{
- // Keep all title behavior inside app.js exactly as originally designed.
- // This file only restores the existing hitting color grades for individual players
- // and makes the visible stat VALUE act as the old hidden ALL control.
+ // Keep title behavior inside app.js exactly as originally designed.
+ // This helper only restores hitting colors, rounds displayed Strike %, and lets visible stat values use the native ranking controls.
  const grade=(value,metric)=>{
   if(!Number.isFinite(value))return'';
   if(metric==='AVG')return value>=.4?'excellent':value>=.35?'good':value>=.3?'acceptable':value>=.25?'concern':'serious';
@@ -21,6 +20,23 @@
    const rating=grade(value,metric);if(rating)card.classList.add(rating);
   });
  }
+ function roundStrikePct(){
+  document.querySelectorAll('.eval-app .pitcher-stat').forEach(card=>{
+   const label=String(card.querySelector('span')?.textContent||'').trim().toUpperCase();
+   if(label!=='STRIKE %')return;
+   const value=card.querySelector(':scope>b');
+   if(!value)return;
+   const number=Number(String(value.textContent||'').replace('%','').trim());
+   if(Number.isFinite(number))value.textContent=`${Math.round(number)}%`;
+  });
+  const modal=document.querySelector('.ranking-modal');
+  if(String(modal?.querySelector('h2')?.textContent||'').trim().toUpperCase()==='STRIKE %'){
+   modal.querySelectorAll('.ranking-row strong').forEach(value=>{
+    const number=Number(String(value.textContent||'').replace('%','').trim());
+    if(Number.isFinite(number))value.textContent=`${Math.round(number)}%`;
+   });
+  }
+ }
  function rankingControlFor(result){
   const tile=result.closest('.eval-tile');
   if(tile)return tile.querySelector('.metric-all');
@@ -30,23 +46,26 @@
   if(pitch)return pitch;
   return null;
  }
- function refresh(){requestAnimationFrame(restoreColors)}
+ function refresh(){
+  requestAnimationFrame(()=>{restoreColors();roundStrikePct()});
+ }
  document.addEventListener('click',event=>{
   const result=event.target.closest('.eval-app .eval-tile>.value,.eval-app .perf>b,.eval-app .pitcher-stat>b');
-  if(!result)return;
-  const control=rankingControlFor(result);
-  if(!control)return;
-  event.preventDefault();
-  event.stopPropagation();
-  // Call the app's already-bound native ranking handler directly when available.
-  // This avoids relying on a hidden button receiving a synthetic click on iOS.
-  if(typeof control.onclick==='function'){
-   control.onclick.call(control,event);
-   return;
+  if(result){
+   const control=rankingControlFor(result);
+   if(control){
+    event.preventDefault();
+    event.stopPropagation();
+    if(typeof control.onclick==='function')control.onclick.call(control,event);
+    else control.click();
+    setTimeout(refresh,0);
+    return;
+   }
   }
-  control.click();
+  // Modal/title clicks can replace Eval markup; refresh once after the native app finishes.
+  if(event.target.closest('.eval-app [data-guide],.eval-app [data-ranking],.eval-app [data-hitting-ranking],.eval-app [data-pitch-ranking],[data-close]'))setTimeout(refresh,0);
  },true);
- const observer=new MutationObserver(refresh);
- observer.observe(document.documentElement,{childList:true,subtree:true});
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refresh);else refresh();
+ document.addEventListener('change',event=>{if(event.target.closest('.eval-app'))setTimeout(refresh,0)},true);
+ window.addEventListener('pageshow',refresh);
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refresh,{once:true});else refresh();
 })();
