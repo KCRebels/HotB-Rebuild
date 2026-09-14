@@ -1,0 +1,28 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+
+const worker=fs.readFileSync('./service-worker.js','utf8');
+const client=fs.readFileSync('./pwa-update.js','utf8');
+const app=fs.readFileSync('./app.js','utf8');
+const index=fs.readFileSync('./index.html','utf8');
+const fresh=fs.readFileSync('./hotb-fresh.html','utf8');
+const manifest=JSON.parse(fs.readFileSync('./manifest.webmanifest','utf8'));
+
+assert.match(worker,/CACHE_PREFIX = 'hotb-app-'/,'HotB caches must have an app-only prefix');
+assert.match(worker,/name\.startsWith\(CACHE_PREFIX\).*name !== CACHE_NAME/,'activation must remove only obsolete HotB caches');
+assert.match(worker,/request\.mode === 'navigate'/,'navigations must have an explicit strategy');
+assert.match(worker,/fetch\(request, \{cache: 'no-store'\}\)/,'online navigations and code must prefer the network');
+assert.match(worker,/cache\.match\(OFFLINE_SHELL\)/,'navigation must retain an offline app-shell fallback');
+assert.match(worker,/self\.skipWaiting\(\)/,'new workers must activate without remaining stuck waiting');
+assert.match(worker,/self\.clients\.claim\(\)/,'new workers must take control of open clients');
+assert.doesNotMatch(worker,/localStorage|indexedDB|deleteDatabase/,'service-worker updates must not touch user data stores');
+assert.match(client,/updateViaCache: 'none'/,'the service-worker script must bypass the HTTP cache during update checks');
+assert.match(client,/registration\.update\(\)/,'the app must explicitly check for updates');
+assert.match(client,/visibilitychange/,'resumed Home Screen apps must check for updates');
+assert.match(client,/New HotB version available/,'an in-app update notice must be available');
+assert.match(client,/UPDATE NOW/,'the update notice must provide a reload action');
+assert.ok(index.includes('pwa-update.js')&&fresh.includes('pwa-update.js'),'every app entry point must register update handling');
+assert.equal(manifest.start_url,'./?source=pwa','the installed app must open the canonical network-first entry point');
+assert.match(app,/Version:.*HOTB_BUILD_VERSION/,'the Home page must display the running build');
+
+console.log('pwa-update tests passed');

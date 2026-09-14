@@ -1567,7 +1567,7 @@ function homeView(){
     <button class="home-card" data-go="practice"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting Practice':'Hitting Practice'}</h3></button>
     <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><h3>Cloud Backup</h3></button>
    </div>
- </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD</span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
+ </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD <small class="app-version">Version: ${esc(window.HOTB_BUILD_VERSION||'2026.09.14.1')}</small></span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
 }
 function portalHeader(title='Player Portal',showBack=false){
  return `<div class="page-match-head page-head-centered portal-head"><button class="page-head-nav" ${showBack?'id="portalBack"':portalToken?'id="portalDashboard"':'data-go="home"'}>${showBack?'Back':portalToken?'Portal':'Home'}</button><h1>${esc(title)}</h1><span class="page-head-spacer"></span></div>`;
