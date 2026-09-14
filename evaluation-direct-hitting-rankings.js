@@ -1,8 +1,9 @@
 (()=>{
  const readDb=()=>{try{return JSON.parse(localStorage.getItem('hotbRebuildDbV1')||'{}')}catch(error){return{}}};
- const selectedPlayer=()=>String(document.querySelector('#evalSelect')?.value||'').trim();
+ const selectedPlayer=()=>String(document.querySelector('.eval-app .player-profile .name')?.textContent||document.querySelector('#evalSelect')?.value||'').trim();
  const allPAs=data=>(Array.isArray(data.savedGames)?data.savedGames:[]).flatMap(game=>Array.isArray(game.plateAppearances)?game.plateAppearances:[]);
  const statsFor=pas=>window.HotBEvaluationStats?.statsForPAs?window.HotBEvaluationStats.statsForPAs(pas):null;
+ const decimal3=v=>Number(v).toFixed(3).replace(/^0(?=\.)/,'');
  const sortRows=(rows,lower=false)=>rows.sort((a,b)=>{
   if(a.value===null&&b.value===null)return a.name.localeCompare(b.name);
   if(a.value===null)return 1;if(b.value===null)return-1;
@@ -18,9 +19,9 @@
   document.body.appendChild(backdrop);
  }
  const hitting={
-  AVG:{key:'AVG',lower:false,format:v=>Number(v).toFixed(3).replace(/^0/,'.')},
-  OBP:{key:'OBP',lower:false,format:v=>Number(v).toFixed(3).replace(/^0/,'.')},
-  SLG:{key:'SLG',lower:false,format:v=>Number(v).toFixed(3).replace(/^0/,'.')},
+  AVG:{key:'AVG',lower:false,format:decimal3},
+  OBP:{key:'OBP',lower:false,format:decimal3},
+  SLG:{key:'SLG',lower:false,format:decimal3},
   CONTACT:{key:'contactPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`},
   'K%':{key:'kPct',lower:true,format:v=>`${Math.round(Number(v)*100)}%`},
   'HHB%':{key:'hhbPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`},
@@ -56,21 +57,23 @@
  }
  let lastOpen=0;
  function handle(event){
-  if(!event.target.closest('.eval-app'))return;
-  if(event.target.closest('.metric-title,.perf-metric'))return;
+  const target=event.target instanceof Element?event.target:null;if(!target||!target.closest('.eval-app'))return;
+  if(target.closest('.metric-title,.perf-metric'))return;
   let opened=false;
-  const perf=event.target.closest('.perf');
+  const perf=target.closest('.eval-app .perf');
   if(perf){const label=String(perf.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase();opened=openHitting(label)}
   else{
-   const tile=event.target.closest('.eval-tile');
+   const tile=target.closest('.eval-app .eval-tile');
    if(tile){const metric=tile.querySelector('.metric-title')?.dataset.guide;opened=openSummary(metric)}
   }
   if(!opened)return;
   event.preventDefault();event.stopImmediatePropagation();lastOpen=Date.now();
  }
- document.addEventListener('pointerup',handle,true);
- document.addEventListener('click',event=>{
-  if(!event.target.closest('.eval-app .perf,.eval-app .eval-tile')||event.target.closest('.metric-title,.perf-metric'))return;
+ // Window capture runs before the older document handler, so every player uses one direct path.
+ window.addEventListener('pointerup',handle,true);
+ window.addEventListener('click',event=>{
+  const target=event.target instanceof Element?event.target:null;
+  if(!target||!target.closest('.eval-app .perf,.eval-app .eval-tile')||target.closest('.metric-title,.perf-metric'))return;
   if(Date.now()-lastOpen<700){event.preventDefault();event.stopImmediatePropagation();return}
   handle(event);
  },true);
