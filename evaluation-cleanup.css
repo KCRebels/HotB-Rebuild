@@ -1,6 +1,7 @@
 /* Unified Player Eval metric styling. Preserve app-provided result colors and behaviors. */
 .eval-app .metric-all,
 .eval-app .perf-all{display:none!important}
+.eval-app .pitcher-performance{display:block!important}
 
 /* One card system across HotB, hitting, pitching and Athletic Bests. */
 .eval-app .eval-tile,
