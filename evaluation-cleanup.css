@@ -22,18 +22,19 @@
   box-sizing:border-box;
 }
 
-/* Metric titles: secondary to the number. */
+/* Metric titles: one larger, consistent size across HotB, hitting, pitching, and Athletic Bests. */
 .eval-app .metric-title,
 .eval-app .perf-metric,
 .eval-app .pitcher-stat span,
 .eval-app .measure h3{
   font-family:inherit;
-  font-size:15px!important;
+  font-size:17px!important;
   line-height:1.08!important;
   font-weight:950!important;
   letter-spacing:0!important;
   text-align:center!important;
   width:100%!important;
+  white-space:nowrap!important;
 }
 .eval-app .metric-title,
 .eval-app .perf-metric{
@@ -221,7 +222,7 @@
   .eval-app .metric-title,
   .eval-app .perf-metric,
   .eval-app .pitcher-stat span,
-  .eval-app .measure h3{font-size:14px!important}
+  .eval-app .measure h3{font-size:16px!important}
 
   .eval-app .eval-tile>.value,
   .eval-app .perf>b,
