@@ -1,7 +1,7 @@
 (()=>{
  // Keep title behavior inside app.js exactly as originally designed.
  // This helper restores hitting colors, formats displayed pitching stats,
- // and opens full-roster rankings directly from visible stat values.
+ // and opens direct ranking modals from Player Eval stat cards.
  const spreadsheetPitchingV2={
   'Aniesa Rohleder':{pitcherIP:'5.0',pitcherERA:'7.000',pitcherWHIP:'2.000',pitcherKBB:'1.333',pitcherOBA:'.292',pitcherStrikePct:'57.58%'},
   'Brooklyn Gering':{pitcherIP:'3.0',pitcherERA:'9.333',pitcherWHIP:'2.667',pitcherKBB:'.167',pitcherOBA:'.200',pitcherStrikePct:'49.23%'},
@@ -62,11 +62,11 @@
  const selectedPlayer=()=>String(document.querySelector('#evalSelect')?.value||'').trim();
  function allPlateAppearances(data){return (Array.isArray(data.savedGames)?data.savedGames:[]).flatMap(game=>Array.isArray(game.plateAppearances)?game.plateAppearances:[])}
  function statForPas(pas){return window.HotBEvaluationStats?.statsForPAs?window.HotBEvaluationStats.statsForPAs(pas):null}
- function showRanking({label,rows,lowerIsBetter=false,note=''}){
+ function showRanking({label,rows,note=''}){
   document.querySelector('#directPlayerEvalRankingBackdrop')?.remove();
   const selected=selectedPlayer(),backdrop=document.createElement('div');
   backdrop.id='directPlayerEvalRankingBackdrop';backdrop.className='modal-backdrop';
-  backdrop.innerHTML=`<div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">FULL ROSTER RANKINGS</div><h2>${label}</h2></div><button class="btn" data-direct-rank-close>Close</button></div><div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.name===selected?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-name">${row.name}${row.sub?`<small>${row.sub}</small>`:''}</span><strong>${row.display}</strong></div>`).join('')}</div>${note?`<p class="small" style="color:#ddd;margin:14px 4px 0">${note}</p>`:''}</div>`;
+  backdrop.innerHTML=`<div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">FULL ROSTER RANKINGS</div><h2>${label}</h2></div><button class="btn" data-direct-rank-close>Close</button></div><div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.name===selected?'selected-player':''}"><span class="ranking-place">${row.value===null?'—':index+1}</span><span class="ranking-name">${row.name}${row.sub?`<small>${row.sub}</small>`:''}</span><strong>${row.display}</strong></div>`).join('')}</div>${note?`<p class="small" style="color:#ddd;margin:14px 4px 0">${note}</p>`:''}</div>`;
   backdrop.querySelector('[data-direct-rank-close]')?.addEventListener('click',()=>backdrop.remove());
   backdrop.addEventListener('click',event=>{if(event.target===backdrop)backdrop.remove()});
   document.body.appendChild(backdrop);
@@ -83,19 +83,20 @@
   pitcherERA:{label:'ERA',lowerIsBetter:true,format:value=>Number(value).toFixed(2)},
   pitcherWHIP:{label:'WHIP',lowerIsBetter:true,format:value=>Number(value).toFixed(2)},
   pitcherKBB:{label:'K/BB',lowerIsBetter:false,format:value=>Number(value).toFixed(3)},
-  pitcherOBA:{label:'BAA',lowerIsBetter:true,format:value=>Number(value).toFixed(3).replace(/^0/,'')},
+  pitcherOBA:{label:'BAA',lowerIsBetter:true,format:value=>Number(value).toFixed(3).replace(/^0/,'.')},
   pitcherStrikePct:{label:'Strike %',lowerIsBetter:false,format:value=>`${Math.round(Number(value))}%`}
  };
  function openPitchingRanking(key){
   const definition=pitchingDefinitions[key];if(!definition)return;
   const data=readDb(),roster=Array.isArray(data.roster)?data.roster:[];
-  const rows=sortRows(roster.map(player=>{const raw=String(player[key]??'').trim(),number=raw===''?null:Number(raw.replace('%',''));return{name:player.name,value:Number.isFinite(number)?number:null,display:Number.isFinite(number)?definition.format(number):'—'}}),definition.lowerIsBetter);
+  const pitchers=roster.filter(player=>Object.keys(pitchingDefinitions).some(statKey=>String(player[statKey]??'').trim()!==''));
+  const rows=sortRows(pitchers.map(player=>{const raw=String(player[key]??'').trim(),number=raw===''?null:Number(raw.replace('%',''));return{name:player.name,value:Number.isFinite(number)?number:null,display:Number.isFinite(number)?definition.format(number):'—'}}),definition.lowerIsBetter);
   showRanking({label:definition.label,rows,note:`${definition.lowerIsBetter?'Lower':'Higher'} ${definition.label} ranks first.`});
  }
  const hittingDefinitions={
-  AVG:{label:'AVG',key:'AVG',lowerIsBetter:false,format:value=>Number(value).toFixed(3).replace(/^0/,'')},
-  OBP:{label:'OBP',key:'OBP',lowerIsBetter:false,format:value=>Number(value).toFixed(3).replace(/^0/,'')},
-  SLG:{label:'SLG',key:'SLG',lowerIsBetter:false,format:value=>Number(value).toFixed(3).replace(/^0/,'')},
+  AVG:{label:'AVG',key:'AVG',lowerIsBetter:false,format:value=>Number(value).toFixed(3).replace(/^0/,'.')},
+  OBP:{label:'OBP',key:'OBP',lowerIsBetter:false,format:value=>Number(value).toFixed(3).replace(/^0/,'.')},
+  SLG:{label:'SLG',key:'SLG',lowerIsBetter:false,format:value=>Number(value).toFixed(3).replace(/^0/,'.')},
   CONTACT:{label:'CONTACT',key:'contactPct',lowerIsBetter:false,format:value=>`${Math.round(Number(value)*100)}%`},
   'K%':{label:'K%',key:'kPct',lowerIsBetter:true,format:value=>`${Math.round(Number(value)*100)}%`},
   'HHB%':{label:'HHB%',key:'hhbPct',lowerIsBetter:false,format:value=>`${Math.round(Number(value)*100)}%`},
@@ -129,10 +130,10 @@
  document.addEventListener('click',event=>{
   const pitchCard=event.target.closest('.eval-app .pitcher-stat[data-pitch-ranking]');
   if(pitchCard){event.preventDefault();event.stopImmediatePropagation();openPitchingRanking(pitchCard.dataset.pitchRanking);return}
-  const perfValue=event.target.closest('.eval-app .perf>b');
-  if(perfValue){
-   const card=perfValue.closest('.perf'),label=String(card?.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase();
-   if(label){event.preventDefault();event.stopImmediatePropagation();openHittingRanking(label);return}
+  const perfCard=event.target.closest('.eval-app .perf');
+  if(perfCard&&!event.target.closest('.perf-metric')){
+   const label=String(perfCard.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase();
+   if(hittingDefinitions[label]){event.preventDefault();event.stopImmediatePropagation();openHittingRanking(label);return}
   }
   const summaryValue=event.target.closest('.eval-app .eval-tile>.value');
   if(summaryValue){
