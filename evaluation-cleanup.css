@@ -2,6 +2,9 @@
 .eval-app .metric-all,
 .eval-app .perf-all{display:none!important}
 
+/* Only one Recruiting title is needed. */
+.eval-app .rw-section-head>div>span{display:none!important}
+
 /* Section hierarchy */
 .eval-app .performance h2,
 .eval-app .pitcher-performance h2,
@@ -48,7 +51,6 @@
 .eval-app .eval-tile>.value,
 .eval-app .perf>b,
 .eval-app .pitcher-stat>b{
-  display:block!important;
   width:100%!important;
   margin:0!important;
   font-size:30px!important;
@@ -60,19 +62,23 @@
   text-overflow:clip!important;
 }
 
-/* HotB row */
+/* HotB row: title / centered stat / note. */
 .eval-app .eval-tile{
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:center!important;
-  justify-content:flex-start!important;
+  display:grid!important;
+  grid-template-rows:auto minmax(0,1fr) auto!important;
+  align-items:stretch!important;
   padding:10px 7px 9px!important;
 }
-.eval-app .eval-tile-head{width:100%!important;margin:0 0 8px!important;text-align:center!important}
-.eval-app .eval-tile>.value{margin:auto 0!important}
+.eval-app .eval-tile-head{width:100%!important;margin:0!important;text-align:center!important}
+.eval-app .eval-tile>.value{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:stretch!important;
+}
 .eval-app .eval-tile>.note{
   width:100%!important;
-  margin:7px 0 0!important;
+  margin:0!important;
   padding:0!important;
   color:#fff!important;
   font-size:10px!important;
@@ -83,10 +89,20 @@
 .eval-app .compare-value{gap:4px!important;justify-content:center!important}
 .eval-app .compare-value span{white-space:nowrap!important}
 
-/* Hitting */
-.eval-app .perf{display:flex!important;flex-direction:column!important;align-items:center!important;padding:10px 6px!important}
-.eval-app .perf-label-row{order:-1!important;width:100%!important;margin:0 0 8px!important;display:block!important;text-align:center!important}
-.eval-app .perf>b{margin:auto 0!important}
+/* Hitting: title / centered stat. */
+.eval-app .perf{
+  display:grid!important;
+  grid-template-rows:auto minmax(0,1fr)!important;
+  align-items:stretch!important;
+  padding:10px 6px!important;
+}
+.eval-app .perf-label-row{order:initial!important;width:100%!important;margin:0!important;display:block!important;text-align:center!important}
+.eval-app .perf>b{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:stretch!important;
+}
 
 /* Preserve performance grading colors. */
 .eval-app .perf.excellent>b{color:#71d6a1!important}
@@ -97,14 +113,20 @@
 
 /* Pitching now matches Hitting visually; native button/ranking behavior stays untouched. */
 .eval-app .pitcher-stat{
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:center!important;
-  justify-content:flex-start!important;
+  display:grid!important;
+  grid-template-rows:auto minmax(0,1fr)!important;
+  align-items:stretch!important;
   padding:10px 6px!important;
 }
-.eval-app .pitcher-stat span{order:-1!important;margin-bottom:8px!important}
-.eval-app .pitcher-stat>b{margin:auto 0!important;color:#fff!important;font-size:28px!important}
+.eval-app .pitcher-stat span{order:initial!important;margin:0!important}
+.eval-app .pitcher-stat>b{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:stretch!important;
+  color:#fff!important;
+  font-size:28px!important;
+}
 
 /* Athletic Bests stays white, but follows the same hierarchy. */
 .eval-app .measure{min-height:104px!important;border-radius:11px!important;padding:10px!important;text-align:center!important}
