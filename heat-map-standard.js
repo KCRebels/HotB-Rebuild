@@ -31,7 +31,7 @@
     const style=document.createElement('style');
     style.id=STYLE_ID;
     style.textContent=`
-      /* Reports/Eval use the in-game strike-zone styling, just larger. */
+      /* Reports/Eval use the in-game heat behavior, with more room and cleaner borders. */
       .eval-zone-layout,.report-heat .report-zone-layout{
         width:min(100%,305px)!important;
         max-width:305px!important;
@@ -43,7 +43,9 @@
       }
       .eval-zone-layout .zone.core,.eval-zone-layout .core-grid>.zone,
       .report-heat .report-zone-layout .zone.core,.report-heat .report-zone-layout .core-grid>.zone{
-        border:4px solid #111!important;
+        border:1px solid #111!important;
+        border-radius:4px!important;
+        box-shadow:none!important;
       }
       .eval-zone-layout .core-grid,.report-heat .report-zone-layout .core-grid{gap:3px!important}
       .eval-zone-layout .zone .pct,.report-heat .report-zone-layout .zone .pct{
