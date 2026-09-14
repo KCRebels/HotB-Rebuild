@@ -1,7 +1,7 @@
 (()=>{
  // Keep title behavior inside app.js exactly as originally designed.
  // This helper restores hitting colors, formats displayed pitching stats,
- // keeps the pitching labels current, and lets visible stat values use the native ranking controls.
+ // keeps the pitching labels current, and lets visible stat values use rankings.
  const spreadsheetPitchingV2={
   'Aniesa Rohleder':{pitcherIP:'5.0',pitcherERA:'7.000',pitcherWHIP:'2.000',pitcherKBB:'1.333',pitcherOBA:'.292',pitcherStrikePct:'57.58%'},
   'Brooklyn Gering':{pitcherIP:'3.0',pitcherERA:'9.333',pitcherWHIP:'2.667',pitcherKBB:'.167',pitcherOBA:'.200',pitcherStrikePct:'49.23%'},
@@ -73,25 +73,35 @@
   document.querySelectorAll('.pitching-import-modal small').forEach(label=>{if(String(label.textContent||'').trim().toUpperCase()==='OBA')label.textContent='BAA'});
   document.querySelectorAll('.player-info-modal .info-field>span').forEach(label=>{if(String(label.textContent||'').includes('Opponent Batting Average (OBA)'))label.textContent='Batting Average Against (BAA)'});
  }
- function openBrooklynEraRanking(){
+ const pitchingDefinitions={
+  pitcherIP:{label:'IP',lowerIsBetter:false,format:value=>value},
+  pitcherERA:{label:'ERA',lowerIsBetter:true,format:value=>Number(value).toFixed(2)},
+  pitcherWHIP:{label:'WHIP',lowerIsBetter:true,format:value=>Number(value).toFixed(2)},
+  pitcherKBB:{label:'K/BB',lowerIsBetter:false,format:value=>Number(value).toFixed(3)},
+  pitcherOBA:{label:'BAA',lowerIsBetter:true,format:value=>Number(value).toFixed(3).replace(/^0/,'')},
+  pitcherStrikePct:{label:'Strike %',lowerIsBetter:false,format:value=>`${Math.round(Number(value))}%`}
+ };
+ function openFullRosterPitchingRanking(key){
   try{
+   const definition=pitchingDefinitions[key];if(!definition)return;
    const data=JSON.parse(localStorage.getItem('hotbRebuildDbV1')||'{}');
    const roster=Array.isArray(data.roster)?data.roster:[];
+   const selected=String(document.querySelector('#evalSelect')?.value||'').trim();
    const rows=roster.map(player=>{
-    const raw=String(player.pitcherERA??'').trim();
-    const number=raw===''?null:Number(raw);
-    return {player,value:Number.isFinite(number)?number:null};
+    const raw=String(player[key]??'').trim();
+    const numeric=raw===''?null:Number(raw.replace('%',''));
+    return {player,raw,value:Number.isFinite(numeric)?numeric:null};
    }).sort((a,b)=>{
     if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
     if(a.value===null)return 1;if(b.value===null)return-1;
-    return a.value-b.value||a.player.name.localeCompare(b.player.name);
+    return (definition.lowerIsBetter?a.value-b.value:b.value-a.value)||a.player.name.localeCompare(b.player.name);
    });
-   document.querySelector('#brooklynEraPilotBackdrop')?.remove();
+   document.querySelector('#fullRosterPitchRankingBackdrop')?.remove();
    const backdrop=document.createElement('div');
-   backdrop.id='brooklynEraPilotBackdrop';
+   backdrop.id='fullRosterPitchRankingBackdrop';
    backdrop.className='modal-backdrop';
-   backdrop.innerHTML=`<div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">FULL ROSTER RANKINGS</div><h2>ERA</h2></div><button class="btn" data-era-close>Close</button></div><div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.player.name==='Brooklyn Gering'?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-name">${row.player.name}</span><strong>${row.value===null?'—':row.value.toFixed(2)}</strong></div>`).join('')}</div><p class="small" style="color:#ddd;margin:14px 4px 0">Lower ERA ranks first.</p></div>`;
-   backdrop.querySelector('[data-era-close]')?.addEventListener('click',()=>backdrop.remove());
+   backdrop.innerHTML=`<div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">FULL ROSTER RANKINGS</div><h2>${definition.label}</h2></div><button class="btn" data-pitch-close>Close</button></div><div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.player.name===selected?'selected-player':''}"><span class="ranking-place">${index+1}</span><span class="ranking-name">${row.player.name}</span><strong>${row.value===null?'—':definition.format(row.value)}</strong></div>`).join('')}</div><p class="small" style="color:#ddd;margin:14px 4px 0">${definition.lowerIsBetter?`Lower ${definition.label} ranks first.`:`Higher ${definition.label} ranks first.`}</p></div>`;
+   backdrop.querySelector('[data-pitch-close]')?.addEventListener('click',()=>backdrop.remove());
    backdrop.addEventListener('click',event=>{if(event.target===backdrop)backdrop.remove()});
    document.body.appendChild(backdrop);
   }catch(error){}
@@ -101,17 +111,15 @@
   if(tile)return tile.querySelector('.metric-all');
   const perf=result.closest('.perf');
   if(perf)return perf.querySelector('.perf-all');
-  const pitch=result.closest('.pitcher-stat');
-  if(pitch)return pitch;
   return null;
  }
  function refresh(){requestAnimationFrame(()=>{restoreColorsAndRoundHitting();refreshPitchingDisplay()});}
  document.addEventListener('click',event=>{
-  const eraCard=event.target.closest('.eval-app .pitcher-stat[data-pitch-ranking="pitcherERA"]');
-  if(eraCard&&document.querySelector('#evalSelect')?.value==='Brooklyn Gering'){
-   event.preventDefault();event.stopImmediatePropagation();openBrooklynEraRanking();return;
+  const pitchCard=event.target.closest('.eval-app .pitcher-stat[data-pitch-ranking]');
+  if(pitchCard){
+   event.preventDefault();event.stopImmediatePropagation();openFullRosterPitchingRanking(pitchCard.dataset.pitchRanking);return;
   }
-  const result=event.target.closest('.eval-app .eval-tile>.value,.eval-app .perf>b,.eval-app .pitcher-stat>b');
+  const result=event.target.closest('.eval-app .eval-tile>.value,.eval-app .perf>b');
   if(result){
    const control=rankingControlFor(result);
    if(control){
@@ -122,7 +130,7 @@
   }
   // Opening guide/title popups needs no full Evaluation formatting pass.
   // Skip that extra work so those popups open faster on iPhone.
-  if(event.target.closest('.eval-app [data-ranking],.eval-app [data-hitting-ranking],.eval-app [data-pitch-ranking]'))setTimeout(refresh,0);
+  if(event.target.closest('.eval-app [data-ranking],.eval-app [data-hitting-ranking]'))setTimeout(refresh,0);
   else if(event.target.closest('[data-close],#uploadPitchingStats,#pitchingStatsFile,[data-info]'))setTimeout(refresh,0);
  },true);
  document.addEventListener('change',event=>{if(event.target.closest('.eval-app')||event.target.matches('#pitchingStatsFile'))setTimeout(refresh,0)},true);
