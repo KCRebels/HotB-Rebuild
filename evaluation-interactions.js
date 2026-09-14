@@ -1,6 +1,6 @@
 (()=>{
  // Keep title behavior inside app.js exactly as originally designed.
- // This helper only restores hitting colors, rounds displayed Strike %, and lets visible stat values use the native ranking controls.
+ // This helper restores hitting colors, rounds selected displayed percentages, and lets visible stat values use the native ranking controls.
  const grade=(value,metric)=>{
   if(!Number.isFinite(value))return'';
   if(metric==='AVG')return value>=.4?'excellent':value>=.35?'good':value>=.3?'acceptable':value>=.25?'concern':'serious';
@@ -10,14 +10,16 @@
   if(metric==='K%')return value<10?'excellent':value<=15?'good':value<=20?'acceptable':value<=25?'concern':'serious';
   return'';
  };
- function restoreColors(){
+ function restoreColorsAndRoundHitting(){
   document.querySelectorAll('.eval-app .perf').forEach(card=>{
    const metric=String(card.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase();
-   const text=String(card.querySelector(':scope>b')?.textContent||'').trim();
+   const stat=card.querySelector(':scope>b');
+   const text=String(stat?.textContent||'').trim();
    let value=Number(text.replace('%',''));
    if(['AVG','OBP','SLG'].includes(metric))value=Number(text);
    ['excellent','good','acceptable','concern','serious'].forEach(name=>card.classList.remove(name));
    const rating=grade(value,metric);if(rating)card.classList.add(rating);
+   if(stat&&['K%','HHB%'].includes(metric)&&Number.isFinite(value))stat.textContent=`${Math.round(value)}%`;
   });
  }
  function roundStrikePct(){
@@ -30,7 +32,8 @@
    if(Number.isFinite(number))value.textContent=`${Math.round(number)}%`;
   });
   const modal=document.querySelector('.ranking-modal');
-  if(String(modal?.querySelector('h2')?.textContent||'').trim().toUpperCase()==='STRIKE %'){
+  const modalTitle=String(modal?.querySelector('h2')?.textContent||'').trim().toUpperCase();
+  if(['STRIKE %','K%','HHB%'].includes(modalTitle)){
    modal.querySelectorAll('.ranking-row strong').forEach(value=>{
     const number=Number(String(value.textContent||'').replace('%','').trim());
     if(Number.isFinite(number))value.textContent=`${Math.round(number)}%`;
@@ -46,23 +49,17 @@
   if(pitch)return pitch;
   return null;
  }
- function refresh(){
-  requestAnimationFrame(()=>{restoreColors();roundStrikePct()});
- }
+ function refresh(){requestAnimationFrame(()=>{restoreColorsAndRoundHitting();roundStrikePct()});}
  document.addEventListener('click',event=>{
   const result=event.target.closest('.eval-app .eval-tile>.value,.eval-app .perf>b,.eval-app .pitcher-stat>b');
   if(result){
    const control=rankingControlFor(result);
    if(control){
-    event.preventDefault();
-    event.stopPropagation();
-    if(typeof control.onclick==='function')control.onclick.call(control,event);
-    else control.click();
-    setTimeout(refresh,0);
-    return;
+    event.preventDefault();event.stopPropagation();
+    if(typeof control.onclick==='function')control.onclick.call(control,event);else control.click();
+    setTimeout(refresh,0);return;
    }
   }
-  // Modal/title clicks can replace Eval markup; refresh once after the native app finishes.
   if(event.target.closest('.eval-app [data-guide],.eval-app [data-ranking],.eval-app [data-hitting-ranking],.eval-app [data-pitch-ranking],[data-close]'))setTimeout(refresh,0);
  },true);
  document.addEventListener('change',event=>{if(event.target.closest('.eval-app'))setTimeout(refresh,0)},true);
