@@ -4,83 +4,21 @@
  const allPAs=data=>(Array.isArray(data.savedGames)?data.savedGames:[]).flatMap(game=>Array.isArray(game.plateAppearances)?game.plateAppearances:[]);
  const statsFor=pas=>window.HotBEvaluationStats?.statsForPAs?window.HotBEvaluationStats.statsForPAs(pas):null;
  const decimal3=v=>Number(v).toFixed(3).replace(/^0(?=\.)/,'');
- const sortRows=(rows,lower=false)=>rows.sort((a,b)=>{
-  if(a.value===null&&b.value===null)return a.name.localeCompare(b.name);
-  if(a.value===null)return 1;if(b.value===null)return-1;
-  return (lower?a.value-b.value:b.value-a.value)||a.name.localeCompare(b.name);
- });
- function closeRanking(){document.querySelector('#directPlayerEvalRankingBackdrop')?.remove()}
- function showRanking(label,rows,note){
-  closeRanking();
-  const selected=selectedPlayer(),backdrop=document.createElement('div');
-  backdrop.id='directPlayerEvalRankingBackdrop';backdrop.className='modal-backdrop';
-  backdrop.innerHTML=`<div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">FULL ROSTER RANKINGS</div><h2>${label}</h2></div><button type="button" class="btn" data-direct-hitting-close>Close</button></div><div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.name===selected?'selected-player':''}"><span class="ranking-place">${row.value===null?'—':index+1}</span><span class="ranking-name">${row.name}${row.sub?`<small>${row.sub}</small>`:''}</span><strong>${row.display}</strong></div>`).join('')}</div><p class="small" style="color:#ddd;margin:14px 4px 0">${note}</p></div>`;
-  backdrop.addEventListener('click',event=>{if(event.target===backdrop)closeRanking()});
+ const sortRows=(rows,lower=false)=>rows.sort((a,b)=>{if(a.value===null&&b.value===null)return a.name.localeCompare(b.name);if(a.value===null)return 1;if(b.value===null)return-1;return(lower?a.value-b.value:b.value-a.value)||a.name.localeCompare(b.name)});
+ const closeRanking=()=>document.querySelector('#directPlayerEvalRankingBackdrop')?.remove();
+ function showRanking(label,rows,note,kicker='FULL ROSTER RANKINGS'){
+  closeRanking();const selected=selectedPlayer(),backdrop=document.createElement('div');backdrop.id='directPlayerEvalRankingBackdrop';backdrop.className='modal-backdrop';
+  backdrop.innerHTML=`<div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">${kicker}</div><h2>${label}</h2></div><button type="button" class="btn" data-player-rank-close>Close</button></div><div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.name===selected?'selected-player':''}"><span class="ranking-place">${row.value===null?'—':index+1}</span><span class="ranking-name">${row.name}${row.sub?`<small>${row.sub}</small>`:''}</span><strong>${row.display}</strong></div>`).join('')}</div><p class="small" style="color:#ddd;margin:14px 4px 0">${note}</p></div>`;
   document.body.appendChild(backdrop);
  }
- const hitting={
-  AVG:{key:'AVG',lower:false,format:decimal3},
-  OBP:{key:'OBP',lower:false,format:decimal3},
-  SLG:{key:'SLG',lower:false,format:decimal3},
-  CONTACT:{key:'contactPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`},
-  'K%':{key:'kPct',lower:true,format:v=>`${Math.round(Number(v)*100)}%`},
-  'HHB%':{key:'hhbPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`},
-  'QAB%':{key:'qabPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`}
- };
- function openHitting(label){
-  const def=hitting[label];if(!def)return false;
-  const data=readDb(),roster=Array.isArray(data.roster)?data.roster:[],pas=allPAs(data);
-  const rows=sortRows(roster.map(player=>{
-   const stats=statsFor(pas.filter(pa=>pa.hitter===player.name));
-   const number=stats&&stats.PA?Number(stats[def.key]):null,value=Number.isFinite(number)?number:null;
-   return{name:player.name,value,display:value===null?'—':def.format(value),sub:`${stats?.PA||0} PA`};
-  }),def.lower);
-  showRanking(label,rows,`${def.lower?'Lower':'Higher'} ${label} ranks first.`);return true;
- }
- function openSummary(metric){
-  if(!['HotB+','Runs Produced','Execution','Reach%'].includes(metric))return false;
-  const data=readDb(),roster=Array.isArray(data.roster)?data.roster:[],pas=allPAs(data),team=statsFor(pas),teamRate=team?.PA?team.rp/team.PA:0;
-  const rows=roster.map(player=>{
-   const playerPas=pas.filter(pa=>pa.hitter===player.name),stats=statsFor(playerPas);let value=null,display='—';
-   if(metric==='HotB+')value=stats?.PA&&teamRate?(stats.rp/stats.PA)/teamRate*100:null;
-   else if(metric==='Runs Produced')value=stats?.PA?stats.rp:null;
-   else if(metric==='Reach%')value=stats?.PA?stats.reachPct:null;
-   else{
-    const totals=playerPas.reduce((sum,pa)=>({success:sum.success+Number(pa.executionSuccesses||0),attempts:sum.attempts+Number(pa.executionAttempts||0)}),{success:0,attempts:0});
-    value=totals.attempts?totals.success/totals.attempts:null;
-   }
-   if(Number.isFinite(value))display=metric==='HotB+'?String(Math.round(value)):metric==='Runs Produced'?Number(value).toFixed(1):`${Math.round(value*100)}%`;
-   return{name:player.name,value:Number.isFinite(value)?value:null,display,sub:`${stats?.PA||0} PA`};
-  });
-  sortRows(rows,false);const label=metric==='Execution'?'HP%':metric;
-  showRanking(label,rows,`Higher ${label} ranks first.`);return true;
- }
- let lastOpen=0;
- function handle(event){
-  const target=event.target instanceof Element?event.target:null;if(!target||!target.closest('.eval-app'))return;
-  if(target.closest('.metric-title,.perf-metric'))return;
-  let opened=false;
-  const perf=target.closest('.eval-app .perf');
-  if(perf){const label=String(perf.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase();opened=openHitting(label)}
-  else{
-   const tile=target.closest('.eval-app .eval-tile');
-   if(tile){const metric=tile.querySelector('.metric-title')?.dataset.guide;opened=openSummary(metric)}
-  }
-  if(!opened)return;
-  event.preventDefault();event.stopImmediatePropagation();lastOpen=Date.now();
- }
- // Close is handled at window capture on both pointerup and click so iPhone cannot lose the event to older handlers.
- function closeHandler(event){
-  const target=event.target instanceof Element?event.target:null;
-  if(!target?.closest('[data-direct-hitting-close]'))return false;
-  event.preventDefault();event.stopImmediatePropagation();closeRanking();return true;
- }
- window.addEventListener('pointerup',event=>{if(closeHandler(event))return;handle(event)},true);
- window.addEventListener('click',event=>{
-  if(closeHandler(event))return;
-  const target=event.target instanceof Element?event.target:null;
-  if(!target||!target.closest('.eval-app .perf,.eval-app .eval-tile')||target.closest('.metric-title,.perf-metric'))return;
-  if(Date.now()-lastOpen<700){event.preventDefault();event.stopImmediatePropagation();return}
-  handle(event);
- },true);
+ const hitting={AVG:{key:'AVG',lower:false,format:decimal3},OBP:{key:'OBP',lower:false,format:decimal3},SLG:{key:'SLG',lower:false,format:decimal3},CONTACT:{key:'contactPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`},'K%':{key:'kPct',lower:true,format:v=>`${Math.round(Number(v)*100)}%`},'HHB%':{key:'hhbPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`},'QAB%':{key:'qabPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`}};
+ const pitching={pitcherIP:{label:'IP',lower:false,format:v=>String(v)},pitcherERA:{label:'ERA',lower:true,format:v=>Number(v).toFixed(2)},pitcherWHIP:{label:'WHIP',lower:true,format:v=>Number(v).toFixed(2)},pitcherKBB:{label:'K/BB',lower:false,format:v=>Number(v).toFixed(3)},pitcherOBA:{label:'BAA',lower:true,format:decimal3},pitcherStrikePct:{label:'Strike %',lower:false,format:v=>`${Math.round(Number(v))}%`}};
+ function openHitting(label){const def=hitting[label];if(!def)return false;const data=readDb(),roster=Array.isArray(data.roster)?data.roster:[],pas=allPAs(data);const rows=sortRows(roster.map(player=>{const stats=statsFor(pas.filter(pa=>pa.hitter===player.name)),n=stats&&stats.PA?Number(stats[def.key]):null,value=Number.isFinite(n)?n:null;return{name:player.name,value,display:value===null?'—':def.format(value),sub:`${stats?.PA||0} PA`}}),def.lower);showRanking(label,rows,`${def.lower?'Lower':'Higher'} ${label} ranks first.`);return true}
+ function openSummary(metric){if(!['HotB+','Runs Produced','Execution','Reach%'].includes(metric))return false;const data=readDb(),roster=Array.isArray(data.roster)?data.roster:[],pas=allPAs(data),team=statsFor(pas),teamRate=team?.PA?team.rp/team.PA:0;const rows=roster.map(player=>{const playerPas=pas.filter(pa=>pa.hitter===player.name),stats=statsFor(playerPas);let value=null,display='—';if(metric==='HotB+')value=stats?.PA&&teamRate?(stats.rp/stats.PA)/teamRate*100:null;else if(metric==='Runs Produced')value=stats?.PA?stats.rp:null;else if(metric==='Reach%')value=stats?.PA?stats.reachPct:null;else{const totals=playerPas.reduce((s,pa)=>({success:s.success+Number(pa.executionSuccesses||0),attempts:s.attempts+Number(pa.executionAttempts||0)}),{success:0,attempts:0});value=totals.attempts?totals.success/totals.attempts:null}if(Number.isFinite(value))display=metric==='HotB+'?String(Math.round(value)):metric==='Runs Produced'?Number(value).toFixed(1):`${Math.round(value*100)}%`;return{name:player.name,value:Number.isFinite(value)?value:null,display,sub:`${stats?.PA||0} PA`}});sortRows(rows);const label=metric==='Execution'?'HP%':metric;showRanking(label,rows,`Higher ${label} ranks first.`);return true}
+ function openPitching(key){const def=pitching[key];if(!def)return false;const data=readDb(),roster=Array.isArray(data.roster)?data.roster:[];const pitchers=roster.filter(player=>Object.keys(pitching).some(k=>String(player[k]??'').trim()!==''));const rows=sortRows(pitchers.map(player=>{const raw=String(player[key]??'').trim(),n=raw===''?null:Number(raw.replace('%','')),value=Number.isFinite(n)?n:null;return{name:player.name,value,display:value===null?'—':def.format(value)}}),def.lower);showRanking(def.label,rows,`${def.lower?'Lower':'Higher'} ${def.label} ranks first.`,'PITCHER RANKINGS');return true}
+ function activate(target){if(!target?.closest('.eval-app'))return false;if(target.closest('.metric-title,.perf-metric'))return false;const pitch=target.closest('.pitcher-stat[data-pitch-ranking]');if(pitch)return openPitching(pitch.dataset.pitchRanking);const perf=target.closest('.perf');if(perf)return openHitting(String(perf.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase());const tile=target.closest('.eval-tile');if(tile)return openSummary(tile.querySelector('.metric-title')?.dataset.guide);return false}
+ let lastAction=0;
+ function capture(event){const target=event.target instanceof Element?event.target:null;if(!target)return;if(target.closest('[data-player-rank-close]')){event.preventDefault();event.stopImmediatePropagation();closeRanking();lastAction=Date.now();return}const backdrop=target.closest('#directPlayerEvalRankingBackdrop');if(backdrop){if(target===backdrop){event.preventDefault();event.stopImmediatePropagation();closeRanking();lastAction=Date.now()}return}if(activate(target)){event.preventDefault();event.stopImmediatePropagation();lastAction=Date.now()}}
+ window.addEventListener('pointerup',capture,true);
+ window.addEventListener('click',event=>{if(Date.now()-lastAction<700){const target=event.target instanceof Element?event.target:null;if(target?.closest('.eval-app,#directPlayerEvalRankingBackdrop')){event.preventDefault();event.stopImmediatePropagation()}return}capture(event)},true);
 })();
