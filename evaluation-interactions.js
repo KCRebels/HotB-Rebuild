@@ -1,28 +1,18 @@
 (()=>{
- // Keep all title behavior inside app.js exactly as originally designed.
- // This file only makes the visible stat VALUE act as the old hidden ALL control.
- function rankingControlFor(result){
-  const tile=result.closest('.eval-tile');
-  if(tile)return tile.querySelector('.metric-all');
-  const perf=result.closest('.perf');
-  if(perf)return perf.querySelector('.perf-all');
-  const pitch=result.closest('.pitcher-stat');
-  if(pitch)return pitch;
-  return null;
- }
+ // Titles keep their native app.js guide behavior.
+ // The visible HotB and hitting VALUES replace the hidden ALL buttons.
+ // Pitching cards already have their own native data-pitch-ranking click handler.
  document.addEventListener('click',event=>{
-  const result=event.target.closest('.eval-app .eval-tile>.value,.eval-app .perf>b,.eval-app .pitcher-stat>b');
+  const result=event.target.closest('.eval-app .eval-tile>.value,.eval-app .perf>b');
   if(!result)return;
-  const control=rankingControlFor(result);
+  const tile=result.closest('.eval-tile');
+  const perf=result.closest('.perf');
+  const control=tile?.querySelector('.metric-all')||perf?.querySelector('.perf-all');
   if(!control)return;
   event.preventDefault();
   event.stopPropagation();
-  // Call the app's already-bound native ranking handler directly when available.
-  // This avoids relying on a hidden button receiving a synthetic click on iOS.
-  if(typeof control.onclick==='function'){
-   control.onclick.call(control,event);
-   return;
-  }
+  // Use the app's existing bound ranking control. This keeps sorting,
+  // selected-player highlighting, date filters and modal rendering native.
   control.click();
- },true);
+ });
 })();
