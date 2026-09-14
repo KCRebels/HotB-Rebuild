@@ -29,7 +29,7 @@
       .eval-heat-toggle button.active{background:#111;color:#fff}
       .eval-zone-layout{display:grid;grid-template-columns:.65fr 1fr 1fr .65fr;grid-template-rows:.65fr 1fr 1fr .65fr;gap:3px;aspect-ratio:1;width:min(100%,305px);margin:10px auto 4px;position:relative}
       .eval-zone-layout .zone{background:#edf2ef;border:2px solid #cdd5d1;border-radius:7px;display:grid;place-items:center;font-weight:950}
-      .eval-zone-layout .core{background:#fff;border:4px solid #111}
+      .eval-zone-layout .core{background:#fff;border:2px solid #111}
       .eval-zone-layout .pct{font-size:21px;line-height:1}
       .eval-zone-layout .core-grid{grid-column:2/4;grid-row:2/4;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:3px}
       .eval-zone-layout .zone-t1{grid-column:2;grid-row:1}.eval-zone-layout .zone-t2{grid-column:3;grid-row:1}
@@ -38,11 +38,12 @@
       .eval-zone-layout .zone-b1{grid-column:2;grid-row:4}.eval-zone-layout .zone-b2{grid-column:3;grid-row:4}
       .eval-heat-summary{text-align:center;margin:7px 0 0;color:#667085;font-size:12px;font-weight:800}
       .eval-count-key{display:flex;align-items:center;gap:5px;margin:-2px 0 10px;font-size:17px;font-weight:950;flex-wrap:wrap}
-      .eval-count-key .hit{color:#3862db}.eval-count-key .out{color:#cd3a32}.eval-count-key .strikeout{color:#111}.eval-count-key .average{color:#667085}
+      .eval-count-key .hit{color:#3862db}.eval-count-key .out{color:#cd3a32}.eval-count-key .strikeout{color:#cd3a32}.eval-count-key .average{color:#3d8c52}
       .eval-count-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
       .eval-count-card{display:grid;grid-template-columns:minmax(42px,.8fr) repeat(7,auto);align-items:center;gap:5px;padding:10px;border-radius:10px;background:#f2f3f4;font-size:14px;font-weight:900}
-      .eval-count-card>b{font-size:18px}.eval-count-card .hit{color:#3862db}.eval-count-card .out{color:#cd3a32}.eval-count-card .strikeout{color:#111}.eval-count-card .average{color:#667085}
-      .eval-count-card .zero{opacity:.35}
+      .eval-count-card>b{font-size:18px}.eval-count-card .hit,.eval-count-card .out,.eval-count-card .strikeout,.eval-count-card .average{color:#111}
+      .eval-count-card .hit.positive{color:#3862db}.eval-count-card .out.positive{color:#cd3a32}.eval-count-card .strikeout.positive{color:#cd3a32}.eval-count-card .average.positive{color:#3d8c52}
+      .eval-count-card .zero{color:#111;opacity:1}
       @media(max-width:560px){
         .eval-visual-panel{margin:8px;padding:10px;border-radius:12px}
         .eval-visual-panel h2{font-size:20px;margin-bottom:10px}
@@ -122,15 +123,15 @@
     return `rgb(${mixed.join(',')})`;
   }
 
-  function heatStyleMap(values,color){
+  function heatStyleMap(values,color,result){
     const distinct=[...new Set(Object.values(values).filter(v=>v>0))].sort((a,b)=>a-b);
     const out={};
-    const n=parseInt(color.slice(1),16),light=((n>>16)*299+((n>>8)&255)*587+(n&255)*114)/1000;
     Object.entries(values).forEach(([zone,value])=>{
       if(!value){out[zone]='background:#edf2ef;color:#667085';return}
       const rank=distinct.indexOf(value),strength=distinct.length===1?1:.15+.85*(rank/(distinct.length-1));
       const bg=strength===1?color:mixHexWithWhite(color,strength);
-      out[zone]=`background:${bg};color:${strength>.62&&light<155?'#fff':'#111'}`;
+      const textColor=result==='FOUL'?'#111':'#fff';
+      out[zone]=`background:${bg};color:${textColor}`;
     });
     return out;
   }
@@ -141,7 +142,7 @@
     const values=Object.fromEntries(ZONES.map(z=>[z,0]));
     let located=0;
     pitches.forEach(p=>{const zone=displayZone(p.zone);if(values[zone]!=null){values[zone]++;located++}});
-    const styles=heatStyleMap(values,COLORS[heatResult]||'#101011');
+    const styles=heatStyleMap(values,COLORS[heatResult]||'#101011',heatResult);
     const value=zone=>heatDisplay==='COUNT'?values[zone]:located?`${Math.round(values[zone]/located*100)}%`:'0%';
     const cell=(zone,core='')=>`<div class="zone ${core} zone-${zone.toLowerCase()}" style="${styles[zone]}"><span class="pct">${value(zone)}</span></div>`;
     return `<section class="eval-visual-panel eval-heat-panel" data-eval-visual="heat"><h2>Heat Chart</h2>
@@ -162,7 +163,7 @@
       const k=matches.filter(p=>p.outcome==='K').length;
       const ave=(h+o+k)?h/(h+o+k):0;
       const fmt=Number.isFinite(ave)?ave.toFixed(3).replace(/^0/,''):'.000';
-      return `<div class="eval-count-card"><b>${bucket}</b><span class="hit ${h===0?'zero':''}">${h}</span><span>|</span><span class="out ${o===0?'zero':''}">${o}</span><span>|</span><span class="strikeout ${k===0?'zero':''}">${k}</span><span>|</span><span class="average ${ave===0?'zero':''}">${fmt}</span></div>`;
+      return `<div class="eval-count-card"><b>${bucket}</b><span class="hit ${h>0?'positive':'zero'}">${h}</span><span>|</span><span class="out ${o>0?'positive':'zero'}">${o}</span><span>|</span><span class="strikeout ${k>0?'positive':'zero'}">${k}</span><span>|</span><span class="average ${ave>0?'positive':'zero'}">${fmt}</span></div>`;
     };
     return `<section class="eval-visual-panel eval-count-panel" data-eval-visual="count"><h2>Count Performance</h2><div class="eval-count-key"><span class="hit">H</span><span>|</span><span class="out">H4O</span><span>|</span><span class="strikeout">K</span><span>|</span><span class="average">AVE</span></div><div class="eval-count-grid">${['0-0','0-2','1-2','2-2','3-2','6+'].map(card).join('')}</div></section>`;
   }
