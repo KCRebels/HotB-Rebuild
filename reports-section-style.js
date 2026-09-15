@@ -11,7 +11,7 @@
       .report-filter-box{margin:0 8px 12px!important;padding:14px 12px!important;background:#fff!important;border:1px solid #ccc!important;border-radius:14px!important;box-sizing:border-box!important;width:calc(100% - 16px)!important;max-width:calc(100% - 16px)!important}
       .report-filter-box .report-filter-grid{margin-top:0!important}
 
-      .modal .report-detail>.report-stat-grid{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:6px!important;margin:12px 8px 14px!important;width:calc(100% - 16px)!important;max-width:calc(100% - 16px)!important;box-sizing:border-box!important;overflow:hidden!important}
+      .modal .report-detail>.report-stat-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important;margin:12px 8px 14px!important;width:calc(100% - 16px)!important;max-width:calc(100% - 16px)!important;box-sizing:border-box!important;overflow:hidden!important}
       .modal .report-detail>.report-stat-grid>.report-stat{width:auto!important;min-width:0!important;max-width:100%!important;min-height:92px!important;padding:10px 2px!important;box-sizing:border-box!important}
       .modal .report-detail>.report-stat-grid>.report-stat b{font-size:23px!important;line-height:1!important;white-space:nowrap!important}
       .modal .report-detail>.report-stat-grid>.report-stat span{font-size:13px!important;line-height:1.05!important;white-space:nowrap!important}
