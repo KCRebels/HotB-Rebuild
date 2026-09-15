@@ -1,13 +1,7 @@
 (() => {
   const STYLE_ID = 'reports-heat-match-style';
   const COLORS = {
-    ALL: '#101011',
-    BALL: '#3d8c52',
-    FOUL: '#f0c94d',
-    KS: '#cd3a32',
-    KL: '#cd3a32',
-    HIT: '#3862db',
-    H4O: '#cd3a32'
+    ALL: '#101011', BALL: '#3d8c52', FOUL: '#f0c94d', KS: '#cd3a32', KL: '#cd3a32', HIT: '#3862db', H4O: '#cd3a32'
   };
 
   function ensureStyles(){
@@ -21,124 +15,62 @@
       .report-heat .heat-result-filters button[data-heat-result="ALL"]{background:#101011!important;color:#fff!important}
       .report-heat .heat-result-filters button[data-heat-result="BALL"]{background:#3d8c52!important;color:#fff!important}
       .report-heat .heat-result-filters button[data-heat-result="FOUL"]{background:#f0c94d!important;color:#111!important}
-      .report-heat .heat-result-filters button[data-heat-result="KS"],
-      .report-heat .heat-result-filters button[data-heat-result="KL"],
-      .report-heat .heat-result-filters button[data-heat-result="H4O"]{background:#cd3a32!important;color:#fff!important}
+      .report-heat .heat-result-filters button[data-heat-result="KS"],.report-heat .heat-result-filters button[data-heat-result="KL"],.report-heat .heat-result-filters button[data-heat-result="H4O"]{background:#cd3a32!important;color:#fff!important}
       .report-heat .heat-result-filters button[data-heat-result="HIT"]{background:#3862db!important;color:#fff!important}
       .report-heat .heat-result-filters button.active{outline:3px solid #efc52f!important;outline-offset:1px!important;box-shadow:inset 0 0 0 2px #fff!important}
       .report-heat .report-zone-layout{width:min(100%,305px)!important;max-width:305px!important;margin:8px auto 0!important}
       .report-detail .report-zone-layout .zone .pct{font-size:24px!important}
-
-      .report-detail .report-stat{padding:16px 8px!important}
-      .report-detail .report-stat b{font-size:28px!important;line-height:1!important}
-      .report-detail .report-stat span{font-size:14px!important;line-height:1.1!important;margin-top:8px!important}
-      .report-detail .count-performance-title .count-key,
-      .report-detail .count-performance-title .count-separator{font-size:24px!important;line-height:1!important}
-      .report-section-label,
-      .report-heat>h3{display:block;width:max-content;max-width:100%;margin:26px 0 12px!important;padding:13px 16px;border-radius:11px;background:#111;color:#fff;font-size:20px!important;line-height:1.1;font-weight:900;letter-spacing:.2px}
+      .report-zero-zone-layout{display:grid!important;grid-template-columns:.65fr 1fr 1fr .65fr!important;grid-template-rows:.65fr 1fr 1fr .65fr!important;gap:3px!important;aspect-ratio:1!important}
+      .report-zero-zone-layout .zone{display:grid;place-items:center;background:#edf2ef;border:2px solid #cdd5d1;border-radius:7px;font-weight:950;color:#667085}
+      .report-zero-zone-layout .core{background:#edf2ef;border:1px solid #111;border-radius:4px}
+      .report-zero-zone-layout .zone-t1{grid-column:2;grid-row:1}.report-zero-zone-layout .zone-t2{grid-column:3;grid-row:1}
+      .report-zero-zone-layout .zone-l1{grid-column:1;grid-row:2}.report-zero-zone-layout .zone-l2{grid-column:1;grid-row:3}
+      .report-zero-zone-layout .zone-r1{grid-column:4;grid-row:2}.report-zero-zone-layout .zone-r2{grid-column:4;grid-row:3}
+      .report-zero-zone-layout .zone-b1{grid-column:2;grid-row:4}.report-zero-zone-layout .zone-b2{grid-column:3;grid-row:4}
+      .report-zero-zone-layout .core-grid{grid-column:2/4;grid-row:2/4;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:3px}
+      .report-detail .report-stat{padding:16px 8px!important}.report-detail .report-stat b{font-size:28px!important;line-height:1!important}.report-detail .report-stat span{font-size:14px!important;line-height:1.1!important;margin-top:8px!important}
+      .report-detail .count-performance-title .count-key,.report-detail .count-performance-title .count-separator{font-size:24px!important;line-height:1!important}
+      .report-section-label,.report-heat>h3{display:block;width:max-content;max-width:100%;margin:26px 0 12px!important;padding:13px 16px;border-radius:11px;background:#111;color:#fff;font-size:20px!important;line-height:1.1;font-weight:900;letter-spacing:.2px}
       .report-spray-box{margin-top:0!important}
-
       @media(max-width:560px){
         .report-heat .heat-result-filters button{min-height:40px!important;padding:4px 1px!important;border-width:3px!important;border-radius:8px!important;font-size:16px!important}
-        .report-heat .report-zone-layout{width:min(100%,305px)!important;max-width:305px!important}
-        .report-detail .report-zone-layout .zone .pct{font-size:18px!important}
-        .report-detail .report-stat{padding:11px 2px!important}
-        .report-detail .report-stat b{font-size:20px!important}
-        .report-detail .report-stat span{font-size:12px!important;margin-top:6px!important}
-        .report-detail .count-performance-title .count-key,
-        .report-detail .count-performance-title .count-separator{font-size:17px!important}
-        .report-section-label,
-        .report-heat>h3{margin:24px 0 10px!important;padding:10px 8px;font-size:16px!important}
+        .report-heat .report-zone-layout{width:min(100%,305px)!important;max-width:305px!important}.report-detail .report-zone-layout .zone .pct{font-size:18px!important}
+        .report-detail .report-stat{padding:11px 2px!important}.report-detail .report-stat b{font-size:20px!important}.report-detail .report-stat span{font-size:12px!important;margin-top:6px!important}
+        .report-detail .count-performance-title .count-key,.report-detail .count-performance-title .count-separator{font-size:17px!important}
+        .report-section-label,.report-heat>h3{margin:24px 0 10px!important;padding:10px 8px;font-size:16px!important}
       }
     `;
     document.head.appendChild(style);
   }
 
-  function mixHexWithWhite(hex,amount){
-    const n=parseInt(hex.slice(1),16);
-    const rgb=[n>>16,(n>>8)&255,n&255];
-    const mixed=rgb.map(v=>Math.round(255+(v-255)*amount));
-    return `rgb(${mixed.join(',')})`;
-  }
-
+  function mixHexWithWhite(hex,amount){const n=parseInt(hex.slice(1),16),rgb=[n>>16,(n>>8)&255,n&255],mixed=rgb.map(v=>Math.round(255+(v-255)*amount));return `rgb(${mixed.join(',')})`}
   function applyGameHeatColors(root){
-    const active=root.querySelector('[data-heat-result].active');
-    const result=active?.dataset.heatResult||'ALL';
-    const color=COLORS[result]||'#101011';
-    const zones=[...root.querySelectorAll('.report-zone-layout .heat-zone')];
-    if(!zones.length) return;
-    const values=zones.map(zone=>Number.parseFloat(zone.querySelector('.pct')?.textContent)||0);
-    const distinct=[...new Set(values.filter(v=>v>0))].sort((a,b)=>a-b);
-    const n=parseInt(color.slice(1),16);
-    const light=((n>>16)*299+((n>>8)&255)*587+(n&255)*114)/1000;
-    zones.forEach((zone,index)=>{
-      const value=values[index];
-      if(!value){
-        zone.style.background='#edf2ef';
-        zone.style.color='#667085';
-        return;
-      }
-      const rank=distinct.indexOf(value);
-      const strength=distinct.length===1?1:.15+.85*(rank/(distinct.length-1));
-      zone.style.background=strength===1?color:mixHexWithWhite(color,strength);
-      zone.style.color=strength>.62&&light<155?'#fff':'#111';
-    });
+    const active=root.querySelector('[data-heat-result].active'),result=active?.dataset.heatResult||'ALL',color=COLORS[result]||'#101011',zones=[...root.querySelectorAll('.report-zone-layout .heat-zone')];
+    if(!zones.length)return;
+    const values=zones.map(zone=>Number.parseFloat(zone.querySelector('.pct')?.textContent)||0),distinct=[...new Set(values.filter(v=>v>0))].sort((a,b)=>a-b),n=parseInt(color.slice(1),16),light=((n>>16)*299+((n>>8)&255)*587+(n&255)*114)/1000;
+    zones.forEach((zone,index)=>{const value=values[index];if(!value){zone.style.background='#edf2ef';zone.style.color='#667085';return}const rank=distinct.indexOf(value),strength=distinct.length===1?1:.15+.85*(rank/(distinct.length-1));zone.style.background=strength===1?color:mixHexWithWhite(color,strength);zone.style.color=strength>.62&&light<155?'#fff':'#111'});
   }
 
+  function zeroHeatChart(){
+    const cell=(z,core='')=>`<div class="zone heat-zone ${core} zone-${z.toLowerCase()}"><span class="pct">0</span></div>`;
+    const div=document.createElement('div');div.className='report-zone-layout report-zero-zone-layout';
+    div.innerHTML=['T1','T2','L1','L2'].map(z=>cell(z)).join('')+`<div class="core-grid">${['C1','C2','C3','C4'].map(z=>cell(z,'core')).join('')}</div>`+['R1','R2','B1','B2'].map(z=>cell(z)).join('');return div;
+  }
+  function keepEmptyHeatCharts(){
+    document.querySelectorAll('.report-heat').forEach(heat=>{
+      if(heat.querySelector('.report-zone-layout'))return;
+      const empty=[...heat.querySelectorAll('p,div')].find(el=>/^No pitch-location data/i.test((el.textContent||'').trim())&&!el.querySelector('*'));
+      if(empty)empty.replaceWith(zeroHeatChart());
+    });
+  }
   function simplifyReport(){
-    document.querySelectorAll('.report-outcome-section').forEach(section=>{
-      const title=section.querySelector('.report-outcome-heading b')?.textContent?.trim();
-      if(title==='BASE HITS'||title==='HITS 4 OUTS') section.remove();
-    });
-
-    document.querySelectorAll('.report-spray-box').forEach(box=>{
-      const previous=box.previousElementSibling;
-      if(previous?.classList.contains('report-section-label')&&previous.textContent==='Spray Chart') return;
-      const title=document.createElement('h3');
-      title.className='report-section-label';
-      title.textContent='Spray Chart';
-      box.before(title);
-    });
-
-    document.querySelectorAll('.report-heat>h3').forEach(title=>{
-      title.textContent='Heat Chart';
-    });
+    document.querySelectorAll('.report-outcome-section').forEach(section=>{const title=section.querySelector('.report-outcome-heading b')?.textContent?.trim();if(title==='BASE HITS'||title==='HITS 4 OUTS')section.remove()});
+    document.querySelectorAll('.report-spray-box').forEach(box=>{const previous=box.previousElementSibling;if(previous?.classList.contains('report-section-label')&&previous.textContent==='Spray Chart')return;const title=document.createElement('h3');title.className='report-section-label';title.textContent='Spray Chart';box.before(title)});
+    document.querySelectorAll('.report-heat>h3').forEach(title=>{title.textContent='Heat Chart'});
   }
-
-  function sync(){
-    ensureStyles();
-    simplifyReport();
-    document.querySelectorAll('.report-heat .heat-key').forEach(key=>key.remove());
-    document.querySelectorAll('.report-heat').forEach(applyGameHeatColors);
-  }
-
-  let queued=false;
-  function queueSync(){
-    if(queued) return;
-    queued=true;
-    requestAnimationFrame(()=>{queued=false;sync()});
-  }
-
-  document.addEventListener('click',event=>{
-    const button=event.target.closest('[data-heat-result],[data-heat-display]');
-    if(!button) return;
-    const modal=button.closest('.modal');
-    const scrollTop=modal?.scrollTop ?? window.scrollY;
-    const heat=button.closest('.report-heat');
-    const heatTop=heat?.getBoundingClientRect().top ?? 0;
-    setTimeout(()=>{
-      const nextModal=document.querySelector('.modal');
-      const nextHeat=document.querySelector('.report-heat');
-      if(nextModal){
-        if(nextHeat){
-          const nextHeatTop=nextHeat.getBoundingClientRect().top;
-          nextModal.scrollTop += nextHeatTop-heatTop;
-        }else nextModal.scrollTop=scrollTop;
-      }else window.scrollTo(0,scrollTop);
-    },0);
-  },true);
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',sync,{once:true});
-  else sync();
+  function sync(){ensureStyles();simplifyReport();keepEmptyHeatCharts();document.querySelectorAll('.report-heat .heat-key').forEach(key=>key.remove());document.querySelectorAll('.report-heat').forEach(applyGameHeatColors)}
+  let queued=false;function queueSync(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;sync()})}
+  document.addEventListener('click',event=>{const button=event.target.closest('[data-heat-result],[data-heat-display]');if(!button)return;const modal=button.closest('.modal'),scrollTop=modal?.scrollTop??window.scrollY,heat=button.closest('.report-heat'),heatTop=heat?.getBoundingClientRect().top??0;setTimeout(()=>{const nextModal=document.querySelector('.modal'),nextHeat=document.querySelector('.report-heat');if(nextModal){if(nextHeat){const nextHeatTop=nextHeat.getBoundingClientRect().top;nextModal.scrollTop+=nextHeatTop-heatTop}else nextModal.scrollTop=scrollTop}else window.scrollTo(0,scrollTop)},0)},true);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync,{once:true});else sync();
   new MutationObserver(queueSync).observe(document.documentElement,{childList:true,subtree:true});
 })();
