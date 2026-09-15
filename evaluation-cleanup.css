@@ -6,310 +6,87 @@
 /* Section headings */
 .eval-app .performance h2,
 .eval-app .pitcher-performance h2,
-.eval-app .athletic-head h2{
-  font-size:24px!important;
-  line-height:1.05!important;
-  font-weight:950!important;
-}
-
-/* Make the selected player's name stand out without changing its size. */
+.eval-app .athletic-head h2{font-size:24px!important;line-height:1.05!important;font-weight:950!important}
 .eval-app .player-card.player-profile .player-info .name{font-weight:950!important}
 
 /* Unified card geometry */
-.eval-app .eval-tile,
-.eval-app .perf,
-.eval-app .pitcher-stat,
-.eval-app .measure{
-  min-height:106px!important;
-  border-radius:11px!important;
-  box-sizing:border-box;
-}
+.eval-app .eval-tile,.eval-app .perf,.eval-app .pitcher-stat,.eval-app .measure{min-height:106px!important;border-radius:11px!important;box-sizing:border-box}
 
-/* Metric titles: one larger, consistent size across HotB, hitting, pitching, and Athletic Bests. */
-.eval-app .metric-title,
-.eval-app .perf-metric,
-.eval-app .pitcher-stat span,
-.eval-app .measure h3{
-  font-family:inherit;
-  font-size:17px!important;
-  line-height:1.08!important;
-  font-weight:950!important;
-  letter-spacing:0!important;
-  text-align:center!important;
-  width:100%!important;
-  white-space:nowrap!important;
-}
-.eval-app .metric-title,
-.eval-app .perf-metric{
-  min-height:0!important;
-  border:0!important;
-  border-radius:0!important;
-  background:transparent!important;
-  color:#fff!important;
-  padding:0!important;
-}
+/* Metric titles */
+.eval-app .metric-title,.eval-app .perf-metric,.eval-app .pitcher-stat span,.eval-app .measure h3{font-family:inherit;font-size:17px!important;line-height:1.08!important;font-weight:950!important;letter-spacing:0!important;text-align:center!important;width:100%!important;white-space:nowrap!important}
+.eval-app .metric-title,.eval-app .perf-metric{min-height:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#fff!important;padding:0!important}
 .eval-app .eval-tile.dark .metric-title{border:0!important;background:transparent!important;color:#fff!important}
 .eval-app .pitcher-stat span{color:#555!important;margin-top:0!important}
 .eval-app .measure h3{margin:0!important}
 
-/* Stat values: largest element inside each card. */
-.eval-app .eval-tile>.value,
-.eval-app .perf>b,
-.eval-app .pitcher-stat>b,
-.eval-app .measure .best{
-  font-family:inherit;
-  font-size:31px!important;
-  line-height:1!important;
-  font-weight:950!important;
-  text-align:center!important;
-  width:100%!important;
-}
+/* Stat values */
+.eval-app .eval-tile>.value,.eval-app .perf>b,.eval-app .pitcher-stat>b,.eval-app .measure .best{font-family:inherit;font-size:31px!important;line-height:1!important;font-weight:950!important;text-align:center!important;width:100%!important}
 
-/* Explicitly preserve the good/great/etc hitting result colors. */
-.eval-app .perf.excellent>b{color:#71d6a1!important}
-.eval-app .perf.good>b{color:#a7e0bc!important}
-.eval-app .perf.acceptable>b{color:#f0cf66!important}
-.eval-app .perf.concern>b{color:#ff9995!important}
-.eval-app .perf.serious>b{color:#ff6262!important}
+/* Hitting Results are intentionally neutral: no excellent/good/etc color grading. */
+.eval-app .perf>b{color:#fff!important}
+.eval-app .perf.excellent>b,.eval-app .perf.good>b,.eval-app .perf.acceptable>b,.eval-app .perf.concern>b,.eval-app .perf.serious>b{color:#fff!important}
 
 /* HotB row */
-.eval-app .eval-tile{
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:center!important;
-  padding:10px 8px 9px!important;
-}
-.eval-app .eval-tile-head{
-  display:block!important;
-  width:100%!important;
-  margin:0 0 6px!important;
-  text-align:center!important;
-}
-.eval-app .eval-tile>.value{
-  flex:1 1 auto!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  margin:0!important;
-}
-.eval-app .eval-tile>.note{
-  width:100%!important;
-  margin:7px 0 0!important;
-  padding:0!important;
-  text-align:center!important;
-  font-size:11px!important;
-  line-height:1.1!important;
-  white-space:normal!important;
-  overflow-wrap:normal!important;
-  word-break:normal!important;
-}
+.eval-app .eval-tile{display:flex!important;flex-direction:column!important;align-items:center!important;padding:10px 8px 9px!important}
+.eval-app .eval-tile-head{display:block!important;width:100%!important;margin:0 0 6px!important;text-align:center!important}
+.eval-app .eval-tile>.value{flex:1 1 auto!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:0!important}
+.eval-app .eval-tile>.note{width:100%!important;margin:7px 0 0!important;padding:0!important;text-align:center!important;font-size:11px!important;line-height:1.1!important;white-space:normal!important;overflow-wrap:normal!important;word-break:normal!important}
 
 /* Hitting Results */
-.eval-app .perf{
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:center!important;
-  padding:10px 7px!important;
-}
-.eval-app .perf-label-row{
-  order:-1;
-  display:block!important;
-  width:100%!important;
-  margin:0 0 6px!important;
-  text-align:center!important;
-}
+.eval-app .perf{display:flex!important;flex-direction:column!important;align-items:center!important;padding:10px 7px!important}
+.eval-app .perf-label-row{order:-1;display:block!important;width:100%!important;margin:0 0 6px!important;text-align:center!important}
 .eval-app .perf-label-row span.perf-metric{display:block!important}
-.eval-app .perf>b{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  flex:1 1 auto!important;
-  margin:0!important;
-}
+.eval-app .perf>b{display:flex!important;align-items:center!important;justify-content:center!important;flex:1 1 auto!important;margin:0!important}
 
 /* Pitching Results */
 .eval-app .pitcher-performance-head{align-items:flex-start!important}
-.eval-app .pitcher-performance-head h2{
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:flex-start!important;
-  gap:3px!important;
-  white-space:nowrap!important;
-}
-.eval-app .pitcher-performance-head h2 .small{
-  display:block!important;
-  margin:0!important;
-  font-size:10px!important;
-  line-height:1!important;
-  letter-spacing:1px!important;
-  white-space:nowrap!important;
-}
-.eval-app .pitcher-stat{
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:center!important;
-  justify-content:flex-start!important;
-  padding:10px 7px!important;
-}
+.eval-app .pitcher-performance-head h2{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:3px!important;white-space:nowrap!important}
+.eval-app .pitcher-performance-head h2 .small{display:block!important;margin:0!important;font-size:10px!important;line-height:1!important;letter-spacing:1px!important;white-space:nowrap!important}
+.eval-app .pitcher-stat{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;padding:10px 7px!important}
 .eval-app .pitcher-stat span{order:-1;margin-bottom:6px!important}
-.eval-app .pitcher-stat>b{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  flex:1 1 auto!important;
-  margin:0!important;
-}
+.eval-app .pitcher-stat>b{display:flex!important;align-items:center!important;justify-content:center!important;flex:1 1 auto!important;margin:0!important}
 
 /* Athletic Bests */
-.eval-app .measure{
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:center!important;
-  justify-content:flex-start!important;
-  padding:10px!important;
-}
-.eval-app .measure .best{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  flex:1 1 auto!important;
-  margin:0!important;
-}
-.eval-app .measure .note{
-  width:100%!important;
-  margin:7px 0 0!important;
-  text-align:center!important;
-  font-size:11px!important;
-  line-height:1.1!important;
-  white-space:normal!important;
-}
+.eval-app .measure{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;padding:10px!important}
+.eval-app .measure .best{display:flex!important;align-items:center!important;justify-content:center!important;flex:1 1 auto!important;margin:0!important}
+.eval-app .measure .note{width:100%!important;margin:7px 0 0!important;text-align:center!important;font-size:11px!important;line-height:1.1!important;white-space:normal!important}
 
-/* Titles keep the app's original guide behavior. Visible values are ranking controls. */
-.eval-app .metric-title,
-.eval-app button.perf-metric,
-.eval-app .eval-tile>.value,
-.eval-app .perf>b,
-.eval-app .pitcher-stat>b{cursor:pointer}
+/* Visible values remain ranking controls. */
+.eval-app .eval-tile>.value,.eval-app .perf>b,.eval-app .pitcher-stat>b{cursor:pointer}
 
 /* Recruiting: three actions only. */
 .eval-app #rwRecruitingSection .rw-section-head>div>span{display:none!important}
-.eval-app #rwRecruitingSection .rw-eval-line,
-.eval-app #rwRecruitingSection>p{display:none!important}
-.eval-app #rwRecruitingSection .rw-buttons{
-  display:grid!important;
-  grid-template-columns:repeat(3,minmax(0,1fr))!important;
-  gap:10px!important;
-}
-.eval-app #rwRecruitingSection .rw-profile,
-.eval-app #rwRecruitingSection .rw-email,
-.eval-app #rwRecruitingSection .rw-text{
-  width:100%!important;
-  min-width:0!important;
-  font-size:0!important;
-}
-.eval-app #rwRecruitingSection .rw-profile::after{content:"Profile"}
-.eval-app #rwRecruitingSection .rw-email::after{content:"Email"}
-.eval-app #rwRecruitingSection .rw-text::after{content:"Text"}
-.eval-app #rwRecruitingSection .rw-profile::after,
-.eval-app #rwRecruitingSection .rw-email::after,
-.eval-app #rwRecruitingSection .rw-text::after{font-size:16px!important;font-weight:900!important}
+.eval-app #rwRecruitingSection .rw-eval-line,.eval-app #rwRecruitingSection>p{display:none!important}
+.eval-app #rwRecruitingSection .rw-buttons{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}
+.eval-app #rwRecruitingSection .rw-profile,.eval-app #rwRecruitingSection .rw-email,.eval-app #rwRecruitingSection .rw-text{width:100%!important;min-width:0!important;font-size:0!important}
+.eval-app #rwRecruitingSection .rw-profile::after{content:"Profile"}.eval-app #rwRecruitingSection .rw-email::after{content:"Email"}.eval-app #rwRecruitingSection .rw-text::after{content:"Text"}
+.eval-app #rwRecruitingSection .rw-profile::after,.eval-app #rwRecruitingSection .rw-email::after,.eval-app #rwRecruitingSection .rw-text::after{font-size:16px!important;font-weight:900!important}
 
-/* Chart: make the End/Exit control clearly larger than the other header controls. */
-.chart-head #endGame{
-  min-width:96px!important;
-  min-height:52px!important;
-  padding:12px 18px!important;
-  font-size:21px!important;
-  font-weight:950!important;
-}
+.chart-head #endGame{min-width:96px!important;min-height:52px!important;padding:12px 18px!important;font-size:21px!important;font-weight:950!important}
 
-/* Recruiting email: large, readable coach picker and full-size editable message. */
-#hybridRecruitingBackdrop .coach-list-toggle{
-  width:100%!important;
-  min-height:72px!important;
-  padding:12px 16px!important;
-  display:flex!important;
-  align-items:flex-start!important;
-  justify-content:center!important;
-  flex-direction:column!important;
-  gap:4px!important;
-  text-align:left!important;
-}
-#hybridRecruitingBackdrop .coach-list-toggle b{
-  font-size:22px!important;
-  line-height:1.15!important;
-  font-weight:900!important;
-}
-#hybridRecruitingBackdrop .coach-list-toggle small{
-  display:block!important;
-  font-size:17px!important;
-  line-height:1.2!important;
-}
-#hybridRecruitingBackdrop .coach-list-menu{
-  width:100%!important;
-  max-height:55vh!important;
-  overflow-y:auto!important;
-}
-#hybridRecruitingBackdrop .coach-list-option{
-  width:100%!important;
-  min-height:66px!important;
-  padding:11px 14px!important;
-  text-align:left!important;
-}
-#hybridRecruitingBackdrop .coach-list-option b{
-  display:block!important;
-  font-size:20px!important;
-  line-height:1.15!important;
-  font-weight:900!important;
-}
-#hybridRecruitingBackdrop .coach-list-option span{
-  display:block!important;
-  margin-top:3px!important;
-  font-size:16px!important;
-  line-height:1.2!important;
-}
+#hybridRecruitingBackdrop .coach-list-toggle{width:100%!important;min-height:72px!important;padding:12px 16px!important;display:flex!important;align-items:flex-start!important;justify-content:center!important;flex-direction:column!important;gap:4px!important;text-align:left!important}
+#hybridRecruitingBackdrop .coach-list-toggle b{font-size:22px!important;line-height:1.15!important;font-weight:900!important}
+#hybridRecruitingBackdrop .coach-list-toggle small{display:block!important;font-size:17px!important;line-height:1.2!important}
+#hybridRecruitingBackdrop .coach-list-menu{width:100%!important;max-height:55vh!important;overflow-y:auto!important}
+#hybridRecruitingBackdrop .coach-list-option{width:100%!important;min-height:66px!important;padding:11px 14px!important;text-align:left!important}
+#hybridRecruitingBackdrop .coach-list-option b{display:block!important;font-size:20px!important;line-height:1.15!important;font-weight:900!important}
+#hybridRecruitingBackdrop .coach-list-option span{display:block!important;margin-top:3px!important;font-size:16px!important;line-height:1.2!important}
 #hybridRecruitingBackdrop #coachLastUpdated{display:none!important}
 #hybridRecruitingBackdrop .coach-save-row #saveCoachChanges{width:100%!important}
-#hybridRecruitingBackdrop #rwHybridBody{
-  min-height:500px!important;
-  height:500px!important;
-  font-size:17px!important;
-  line-height:1.35!important;
-  padding:14px!important;
-  resize:vertical!important;
-}
+#hybridRecruitingBackdrop #rwHybridBody{min-height:500px!important;height:500px!important;font-size:17px!important;line-height:1.35!important;padding:14px!important;resize:vertical!important}
 
 @media(max-width:560px){
-  .eval-app .performance h2,
-  .eval-app .pitcher-performance h2,
-  .eval-app .athletic-head h2{font-size:22px!important}
-
-  .eval-app .eval-tile,
-  .eval-app .perf,
-  .eval-app .pitcher-stat,
-  .eval-app .measure{min-height:102px!important}
-
-  .eval-app .metric-title,
-  .eval-app .perf-metric,
-  .eval-app .pitcher-stat span,
-  .eval-app .measure h3{font-size:16px!important}
-
-  .eval-app .eval-tile>.value,
-  .eval-app .perf>b,
-  .eval-app .pitcher-stat>b,
-  .eval-app .measure .best{font-size:30px!important}
-
-  .eval-app .eval-tile>.note,
-  .eval-app .measure .note{font-size:10px!important}
-
-  /* GameChanger export import stays available on laptop, hidden on phone. */
-  .eval-app #uploadPitchingStats{display:none!important}
-
-  #hybridRecruitingBackdrop .coach-list-toggle{min-height:78px!important}
-  #hybridRecruitingBackdrop .coach-list-toggle b{font-size:23px!important}
-  #hybridRecruitingBackdrop .coach-list-toggle small{font-size:18px!important}
-  #hybridRecruitingBackdrop .coach-list-option{min-height:72px!important}
-  #hybridRecruitingBackdrop .coach-list-option b{font-size:21px!important}
-  #hybridRecruitingBackdrop .coach-list-option span{font-size:17px!important}
-  #hybridRecruitingBackdrop #rwHybridBody{min-height:560px!important;height:560px!important;font-size:18px!important}
+ .eval-app .performance h2,.eval-app .pitcher-performance h2,.eval-app .athletic-head h2{font-size:22px!important}
+ .eval-app .eval-tile,.eval-app .perf,.eval-app .pitcher-stat,.eval-app .measure{min-height:102px!important}
+ .eval-app .metric-title,.eval-app .perf-metric,.eval-app .pitcher-stat span,.eval-app .measure h3{font-size:16px!important}
+ .eval-app .eval-tile>.value,.eval-app .perf>b,.eval-app .pitcher-stat>b,.eval-app .measure .best{font-size:30px!important}
+ .eval-app .eval-tile>.note,.eval-app .measure .note{font-size:10px!important}
+ .eval-app #uploadPitchingStats{display:none!important}
+ #hybridRecruitingBackdrop .coach-list-toggle{min-height:78px!important}
+ #hybridRecruitingBackdrop .coach-list-toggle b{font-size:23px!important}
+ #hybridRecruitingBackdrop .coach-list-toggle small{font-size:18px!important}
+ #hybridRecruitingBackdrop .coach-list-option{min-height:72px!important}
+ #hybridRecruitingBackdrop .coach-list-option b{font-size:21px!important}
+ #hybridRecruitingBackdrop .coach-list-option span{font-size:17px!important}
+ #hybridRecruitingBackdrop #rwHybridBody{min-height:560px!important;height:560px!important;font-size:18px!important}
 }
