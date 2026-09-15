@@ -78,7 +78,7 @@
   function fixCount(box){
     if(!box)return;
     const title=leafTitle(box,'COUNT PERFORMANCE')||[...box.querySelectorAll('h2,h3')].find(e=>e.textContent.trim().toUpperCase()==='COUNT PERFORMANCE');
-    if(!title)return;normalizeTitle(title);
+    if(!title)return;title.textContent='Count Performance';normalizeTitle(title);
     const key=box.querySelector('.eval-count-key,.count-key');
     if(!key)return;
     let header=title.closest('.hotb-count-header');
@@ -89,7 +89,7 @@
 
   function fixStrike(box){
     if(!box)return;
-    const title=leafTitle(box,'STRIKEOUTS');if(!title)return;normalizeTitle(title);
+    const title=leafTitle(box,'STRIKEOUTS');if(!title)return;title.textContent='Strikeouts';normalizeTitle(title);
     const subtitle=[...box.querySelectorAll('div,span,strong,b,p')].find(el=>el!==title&&!el.contains(title)&&/^\(\d+\)\s*\(COUNT\)\s*\(TOTAL PITCHES\)$/i.test(el.textContent.trim()));
     if(!subtitle)return;
     let row=title.parentElement?.classList.contains('report-strike-heading')?title.parentElement:null;
