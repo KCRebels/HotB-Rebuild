@@ -5,24 +5,15 @@
     let s=document.getElementById(STYLE_ID);
     if(!s){s=document.createElement('style');s.id=STYLE_ID;document.head.appendChild(s)}
     s.textContent=`
-      .reports-master-unboxed{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding-left:0!important;padding-right:0!important;width:100%!important;max-width:none!important;overflow:visible!important}
       .report-standard-section{margin:12px 0!important;padding:14px 12px 16px!important;background:#fff!important;border:1px solid #ccc!important;border-radius:14px!important;box-sizing:border-box!important;width:100%!important;max-width:none!important}
       .report-standard-section-title{display:block!important;width:auto!important;margin:0 0 12px!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#111!important;font-size:22px!important;line-height:1.08!important;font-weight:950!important;text-align:left!important;box-shadow:none!important;white-space:nowrap!important}
-      .report-standard-section .hotb-count-header{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;column-gap:12px!important;width:100%!important;margin:0 0 12px!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
-      .report-standard-section .hotb-count-header .report-standard-section-title{margin:0!important;min-width:0!important;font-size:20px!important}
-      .report-standard-section .hotb-count-header .count-key,.report-standard-section .hotb-count-header .eval-count-key{position:static!important;transform:none!important;margin:0!important;justify-self:end!important;font-size:14px!important;white-space:nowrap!important}
-      .report-standard-section-title-row{display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;align-items:start!important;column-gap:12px!important;width:100%!important;margin:0 0 12px!important}
-      .report-standard-section-title-row .report-standard-section-title{margin:0!important}
-      .report-standard-section-subtitle{position:static!important;transform:none!important;margin:1px 0 0!important;text-align:left!important;font-size:13px!important;line-height:1.15!important;font-weight:900!important;color:#111!important;white-space:normal!important;min-width:0!important}
-      @media(max-width:560px){
-        .report-standard-section{padding:12px 10px 14px!important;border-radius:12px!important}
-        .report-standard-section-title{font-size:20px!important}
-        .report-standard-section .hotb-count-header{grid-template-columns:1fr!important;row-gap:6px!important}
-        .report-standard-section .hotb-count-header .report-standard-section-title{font-size:20px!important}
-        .report-standard-section .hotb-count-header .count-key,.report-standard-section .hotb-count-header .eval-count-key{justify-self:start!important;font-size:14px!important}
-        .report-standard-section-title-row{grid-template-columns:1fr!important;row-gap:5px!important}
-        .report-standard-section-subtitle{font-size:13px!important}
-      }
+      .report-standard-section .hotb-count-header{display:block!important;width:100%!important;margin:0 0 12px!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+      .report-standard-section .hotb-count-header .report-standard-section-title{margin:0 0 7px!important;font-size:20px!important;white-space:normal!important}
+      .report-standard-section .hotb-count-header .count-key,.report-standard-section .hotb-count-header .eval-count-key{display:block!important;position:static!important;transform:none!important;margin:0!important;font-size:14px!important;line-height:1.15!important;white-space:nowrap!important;text-align:left!important}
+      .report-standard-section-title-row{display:block!important;width:100%!important;margin:0 0 12px!important}
+      .report-standard-section-title-row .report-standard-section-title{margin:0 0 5px!important}
+      .report-standard-section-subtitle{display:block!important;position:static!important;transform:none!important;margin:0!important;text-align:left!important;font-size:13px!important;line-height:1.15!important;font-weight:900!important;color:#111!important;white-space:normal!important}
+      @media(max-width:560px){.report-standard-section{padding:12px 10px 14px!important;border-radius:12px!important}.report-standard-section-title{font-size:20px!important}}
     `;
   }
 
@@ -34,8 +25,7 @@
     if(!startTitle)return;
     const root=endTitle?commonParent(startTitle,endTitle):startTitle.closest('.modal');if(!root)return;
     const start=directChild(startTitle.closest('.hotb-count-header')||startTitle,root),stop=endTitle?directChild(endTitle.closest('.hotb-count-header')||endTitle,root):null;if(!start)return;
-    const nodes=[];for(let n=start;n&&n!==stop;n=n.nextSibling)nodes.push(n);if(!nodes.length)return;
-    if(start.closest('.report-standard-section'))return;
+    const nodes=[];for(let n=start;n&&n!==stop;n=n.nextSibling)nodes.push(n);if(!nodes.length||start.closest('.report-standard-section'))return;
     const box=document.createElement('section');box.className='report-standard-section';root.insertBefore(box,start);nodes.forEach(n=>box.appendChild(n));startTitle.classList.add('report-standard-section-title');
   }
 
@@ -44,7 +34,7 @@
   function fixCount(){
     const c=title('COUNT PERFORMANCE');if(!c)return;plainTitle(c);
     const header=c.closest('.hotb-count-header');if(!header)return;
-    const key=[...header.children].find(el=>el!==c&&/H4O|AVE/.test(el.textContent||''));
+    const key=[...header.querySelectorAll('div,span,strong,b')].find(el=>el!==c&&!el.contains(c)&&/H4O/.test(el.textContent||'')&&/AVE/.test(el.textContent||''));
     if(key)key.classList.add('count-key');
   }
 
@@ -57,20 +47,34 @@
     const row=document.createElement('div');row.className='report-standard-section-title-row';k.parentNode.insertBefore(row,k);row.appendChild(k);row.appendChild(subtitle);subtitle.classList.add('report-standard-section-subtitle');
   }
 
-  function removeMasterBox(){
+  function removeActualMasterBox(){
     const c=title('COUNT PERFORMANCE');if(!c)return;
-    const section=c.closest('.report-standard-section');if(!section)return;
-    let n=section.parentElement;
-    while(n&&n.classList.contains('report-standard-section'))n=n.parentElement;
-    if(!n)return;
-    const modal=n.closest('.modal');
-    let candidate=n;
-    while(candidate&&candidate.parentElement&&candidate.parentElement!==modal){
-      const p=candidate.parentElement;
-      if(p.querySelector('select')&&p.contains(section)){candidate=p;break}
-      candidate=p;
+    const countBox=c.closest('.report-standard-section');if(!countBox)return;
+    const modal=countBox.closest('.modal');if(!modal)return;
+    let target=null;
+    for(let n=countBox.parentElement;n&&n!==modal;n=n.parentElement){
+      const hasFilters=!!n.querySelector('select');
+      const containsCount=n.contains(countBox);
+      const hasSeparateFilterChild=hasFilters&&[...n.children].some(ch=>ch!==countBox&&ch.querySelector?.('select'));
+      if(containsCount&&hasSeparateFilterChild){target=n;break}
     }
-    if(candidate&&candidate!==modal)candidate.classList.add('reports-master-unboxed');
+    if(!target)return;
+    target.style.setProperty('border','0','important');
+    target.style.setProperty('outline','0','important');
+    target.style.setProperty('box-shadow','none','important');
+    target.style.setProperty('background','transparent','important');
+    target.style.setProperty('border-radius','0','important');
+    target.style.setProperty('padding-left','0','important');
+    target.style.setProperty('padding-right','0','important');
+    target.style.setProperty('width','100%','important');
+    target.style.setProperty('max-width','none','important');
+    [...target.children].forEach(ch=>{
+      if(ch.classList?.contains('report-standard-section')||ch.querySelector?.('select')){
+        ch.style.setProperty('width','100%','important');
+        ch.style.setProperty('max-width','none','important');
+        ch.style.setProperty('box-sizing','border-box','important');
+      }
+    });
   }
 
   function apply(){
@@ -80,7 +84,7 @@
     if(k&&!k.closest('.report-standard-section'))boxBetween(k,s||h);
     if(s&&!s.closest('.report-standard-section'))boxBetween(s,h);
     if(h&&!h.closest('.report-standard-section'))boxBetween(h,null);
-    fixCount();fixStrike();plainTitle(s);plainTitle(h);removeMasterBox();
+    fixCount();fixStrike();plainTitle(s);plainTitle(h);removeActualMasterBox();
   }
 
   function run(){apply();setTimeout(apply,60);setTimeout(apply,180)}
