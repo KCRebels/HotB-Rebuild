@@ -14,7 +14,7 @@
       section.querySelectorAll('*').forEach(label => {
         if (label.children.length) return;
         const name = label.textContent.trim().toUpperCase();
-        if (!['ERA', 'WHIP', 'STRIKE %'].includes(name)) return;
+        if (!['ERA', 'WHIP', 'K/BB', 'STRIKE %'].includes(name)) return;
 
         const row = label.closest('.stat-row, .pitcher-stat, .pitching-stat, div');
         if (!row) return;
@@ -22,7 +22,7 @@
         const value = leaves.find(el => /-?\d/.test(el.textContent));
         if (!value) return;
 
-        if (name === 'ERA' || name === 'WHIP') value.textContent = decimal(value.textContent, 2);
+        if (name === 'ERA' || name === 'WHIP' || name === 'K/BB') value.textContent = decimal(value.textContent, 2);
         else value.textContent = wholePercent(value.textContent);
       });
     });
