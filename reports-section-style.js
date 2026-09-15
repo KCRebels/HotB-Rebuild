@@ -19,9 +19,9 @@
       .modal .report-detail>.report-stat-grid>.report-stat span{font-size:13px!important;line-height:1.05!important;white-space:nowrap!important}
 
       .report-standard-section{margin:12px 8px!important;padding:14px 12px 16px!important;background:#fff!important;border:1px solid #ccc!important;border-radius:14px!important;box-sizing:border-box!important;width:calc(100% - 16px)!important;max-width:calc(100% - 16px)!important;overflow-x:hidden!important}
-      .report-standard-section.report-heading-tight{padding-top:0!important;padding-bottom:26px!important}
-      .report-standard-section.report-strike-tight{padding-top:0!important}
-      .report-standard-section.report-heat-tight{padding-top:0!important;padding-bottom:30px!important}
+      .report-standard-section.report-heading-tight{padding-top:14px!important;padding-bottom:26px!important}
+      .report-standard-section.report-strike-tight{padding-top:14px!important}
+      .report-standard-section.report-heat-tight{padding-top:14px!important;padding-bottom:30px!important}
       .report-standard-section.report-heat-tight .report-heat{border-top:0!important;margin-top:0!important;padding-top:0!important}
       .report-standard-section.report-heat-tight .report-heat>.report-standard-section-title{margin-top:0!important}
       .report-standard-section *{max-width:100%;box-sizing:border-box}
@@ -41,10 +41,11 @@
       @media(max-width:560px){
         .report-filter-box{padding-top:4px!important;padding-bottom:4px!important}
         .report-standard-section{margin:12px 8px!important;padding:12px 10px 14px!important;border-radius:12px!important}
-        .report-standard-section.report-heading-tight{padding-top:0!important;padding-bottom:22px!important}
-        .report-standard-section.report-strike-tight{padding-top:0!important}
-        .report-standard-section.report-heat-tight{padding-top:0!important;padding-bottom:26px!important}
+        .report-standard-section.report-heading-tight{padding-top:12px!important;padding-bottom:22px!important}
+        .report-standard-section.report-strike-tight{padding-top:12px!important}
+        .report-standard-section.report-heat-tight{padding-top:12px!important;padding-bottom:26px!important}
         .report-standard-section-title{font-size:20px!important}
+        .report-standard-section .hotb-count-header .report-standard-section-title{font-size:20px!important}
         .report-standard-section .hotb-count-header .count-key,.report-standard-section .hotb-count-header .eval-count-key{font-size:13px!important}
         .report-strike-subtitle{font-size:14px!important}
       }
@@ -52,7 +53,7 @@
         .modal .report-detail>.report-stat-grid{gap:4px!important}
         .modal .report-detail>.report-stat-grid>.report-stat b{font-size:21px!important}
         .modal .report-detail>.report-stat-grid>.report-stat span{font-size:12px!important}
-        .report-standard-section .hotb-count-header .report-standard-section-title{font-size:18px!important}
+        .report-standard-section .hotb-count-header .report-standard-section-title{font-size:20px!important}
         .report-standard-section .hotb-count-header .count-key,.report-standard-section .hotb-count-header .eval-count-key{font-size:12px!important}
       }
     `;
