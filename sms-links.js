@@ -29,11 +29,10 @@
   return `sms:${recipient}${separator}body=${encodeURIComponent(body)}`;
  }
  function guestPracticeMessage({firstName,url}={}){
-  return buildStandaloneLinkMessage({
-   before:`Welcome to HotB, ${cleanLine(firstName)||'Guest'}.`,
-   url,
-   after:'This link expires when practice ends.'
-  });
+  // Guest links contain their access secret in the URL, so send only the URL.
+  // This guarantees the recipient can tap it directly or copy/paste it without
+  // any welcome text, PIN text, or instructions becoming part of the address.
+  return cleanWebUrl(url);
  }
  function recruitingProfileMessage({name,grad,positions,url}={}){
   return buildStandaloneLinkMessage({
