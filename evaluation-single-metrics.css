@@ -1,0 +1,3 @@
+.eval-app .eval-tile .compare-value{justify-content:center;text-align:center}
+.eval-app .eval-tile .compare-value .metric-pipe,
+.eval-app .eval-tile .compare-value .metric-delta{display:none}
