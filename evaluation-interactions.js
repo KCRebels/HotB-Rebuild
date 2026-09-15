@@ -17,21 +17,11 @@
    return true;
   }catch(error){return false}
  }
- const grade=(value,metric)=>{
-  if(!Number.isFinite(value))return'';
-  if(metric==='AVG')return value>=.4?'excellent':value>=.35?'good':value>=.3?'acceptable':value>=.25?'concern':'serious';
-  if(metric==='OBP')return value>=.475?'excellent':value>=.425?'good':value>=.375?'acceptable':value>=.325?'concern':'serious';
-  if(metric==='SLG')return value>=.6?'excellent':value>=.5?'good':value>=.4?'acceptable':value>=.325?'concern':'serious';
-  if(metric==='CONTACT')return value>=90?'excellent':value>=85?'good':value>=80?'acceptable':value>=75?'concern':'serious';
-  if(metric==='K%')return value<10?'excellent':value<=15?'good':value<=20?'acceptable':value<=25?'concern':'serious';
-  return'';
- };
- function restoreColorsAndRoundHitting(){
+ function neutralizeAndRoundHitting(){
   document.querySelectorAll('.eval-app .perf').forEach(card=>{
    const metric=String(card.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase(),stat=card.querySelector(':scope>b'),text=String(stat?.textContent||'').trim();
-   let value=Number(text.replace('%',''));if(['AVG','OBP','SLG'].includes(metric))value=Number(text);
+   const value=Number(text.replace('%',''));
    ['excellent','good','acceptable','concern','serious'].forEach(name=>card.classList.remove(name));
-   const rating=grade(value,metric);if(rating)card.classList.add(rating);
    if(stat&&['K%','HHB%'].includes(metric)&&Number.isFinite(value))stat.textContent=`${Math.round(value)}%`;
   });
  }
@@ -44,7 +34,7 @@
   document.querySelectorAll('.pitching-import-modal small').forEach(label=>{if(String(label.textContent||'').trim().toUpperCase()==='OBA')label.textContent='BAA'});
   document.querySelectorAll('.player-info-modal .info-field>span').forEach(label=>{if(String(label.textContent||'').includes('Opponent Batting Average (OBA)'))label.textContent='Batting Average Against (BAA)'});
  }
- function refresh(){requestAnimationFrame(()=>{restoreColorsAndRoundHitting();refreshPitchingDisplay()})}
+ function refresh(){requestAnimationFrame(()=>{neutralizeAndRoundHitting();refreshPitchingDisplay()})}
  document.addEventListener('click',event=>{if(event.target.closest('[data-close],#uploadPitchingStats,#pitchingStatsFile,[data-info]'))setTimeout(refresh,0)},true);
  document.addEventListener('change',event=>{if(event.target.closest('.eval-app')||event.target.matches('#pitchingStatsFile'))setTimeout(refresh,0)},true);
  window.addEventListener('pageshow',refresh);
