@@ -7,18 +7,17 @@
     if(!BUCKETS.includes(bucket))return;
     const type=getComputedStyle(count);
 
-    // Reports use a compact two-column grid. Keep the count itself intact and
-    // keep every statistic on the same physical line, matching Eval behavior.
+    // One line, but with deliberate breathing room between the count and stats.
+    // The count label governs the typography; the row width distributes the stats.
     row.style.setProperty('display','grid','important');
-    row.style.setProperty('grid-template-columns','max-content repeat(7,max-content)','important');
+    row.style.setProperty('grid-template-columns','68px repeat(7,max-content)','important');
     row.style.setProperty('align-items','center','important');
-    row.style.setProperty('column-gap','5px','important');
+    row.style.setProperty('column-gap','7px','important');
     row.style.setProperty('white-space','nowrap','important');
     row.style.setProperty('min-width','0','important');
     count.style.setProperty('white-space','nowrap','important');
     count.style.setProperty('word-break','keep-all','important');
     count.style.setProperty('overflow-wrap','normal','important');
-    count.style.setProperty('min-width','max-content','important');
 
     [...row.children].forEach(el=>{
       if(el===count)return;
