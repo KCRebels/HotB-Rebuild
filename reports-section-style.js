@@ -18,6 +18,7 @@
 
       .report-standard-section{margin:12px 8px!important;padding:14px 12px 16px!important;background:#fff!important;border:1px solid #ccc!important;border-radius:14px!important;box-sizing:border-box!important;width:calc(100% - 16px)!important;max-width:calc(100% - 16px)!important;overflow-x:hidden!important}
       .report-standard-section.report-heading-tight{padding-top:4px!important;padding-bottom:26px!important}
+      .report-standard-section.report-strike-tight{padding-top:0!important}
       .report-standard-section *{max-width:100%;box-sizing:border-box}
       .report-standard-section-title{display:block!important;width:auto!important;margin:0 0 12px!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#111!important;font-size:22px!important;line-height:1.08!important;font-weight:950!important;text-align:left!important;box-shadow:none!important}
 
@@ -35,6 +36,7 @@
       @media(max-width:560px){
         .report-standard-section{margin:12px 8px!important;padding:12px 10px 14px!important;border-radius:12px!important}
         .report-standard-section.report-heading-tight{padding-top:4px!important;padding-bottom:22px!important}
+        .report-standard-section.report-strike-tight{padding-top:0!important}
         .report-standard-section-title{font-size:20px!important}
         .report-standard-section .hotb-count-header .count-key,.report-standard-section .hotb-count-header .eval-count-key{font-size:13px!important}
         .report-strike-subtitle{font-size:14px!important}
@@ -92,7 +94,7 @@
 
   function fixStrike(box){
     if(!box)return;
-    box.classList.add('report-heading-tight');
+    box.classList.add('report-heading-tight','report-strike-tight');
     const title=leafTitle(box,'STRIKEOUTS');if(!title)return;title.textContent='Strikeouts';normalizeTitle(title);
     const subtitle=[...box.querySelectorAll('div,span,strong,b,p')].find(el=>el!==title&&!el.contains(title)&&/^\(\d+\)\s*\(COUNT\)\s*\(TOTAL PITCHES\)$/i.test(el.textContent.trim()));
     if(!subtitle)return;
