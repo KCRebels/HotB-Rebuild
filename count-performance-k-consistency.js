@@ -17,7 +17,7 @@
   function matchValueFontToCount(card){
     const bucketEl=bucketElement(card);if(!bucketEl)return;
     const size=getComputedStyle(bucketEl).fontSize;
-    [...card.children].forEach(el=>{if(el!==bucketEl)el.style.setProperty('font-size',size,'important')});
+    [...card.children].forEach(el=>{if(el!==bucketEl&&el.style.fontSize!==size)el.style.setProperty('font-size',size,'important')});
   }
 
   function sync(){
@@ -25,8 +25,15 @@
     document.querySelectorAll(selectors).forEach(card=>{removeKFromNonTwoStrikeCard(card);matchValueFontToCount(card)});
   }
 
-  let queued=false;
-  function queue(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;sync()})}
+  // Run only when the relevant screen is rendered or its selection changes.
+  // Do not observe the whole document: changing inline styles can feed a MutationObserver
+  // and make iPhone taps/navigation unresponsive.
+  function queue(){requestAnimationFrame(sync)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',queue,{once:true});else queue();
-  new MutationObserver(queue).observe(document.documentElement,{childList:true,subtree:true});
+  document.addEventListener('change',event=>{
+    if(event.target.closest('#evalSelect,#evalSeasonFilter,#evalDateRange,#evalDateStart,#evalDateEnd,.report-detail select'))queue();
+  });
+  document.addEventListener('click',event=>{
+    if(event.target.closest('[data-heat-result],[data-heat-display],.report-detail button,.eval-app button'))setTimeout(queue,0);
+  });
 })();
