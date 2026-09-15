@@ -13,19 +13,26 @@
       if (!oldBackdrop || !oldModal || !oldHeat) return original.call(this, event);
 
       const oldScrollTop = oldModal.scrollTop;
+      const oldTitle = oldHeat.querySelector(':scope > h3');
 
       // Let HotB update its real reportHeatResult/reportHeatDisplay state and build
       // the new chart, but do not keep the newly-created Reports modal.
       original.call(this, event);
 
-      const renderedBackdrop = document.querySelector('.modal-backdrop');
+      const renderedBackdrop = [...document.querySelectorAll('.modal-backdrop')]
+        .find(backdrop => backdrop !== oldBackdrop && backdrop.querySelector('.report-heat'));
       const renderedHeat = renderedBackdrop?.querySelector('.report-heat');
-      if (!renderedBackdrop || !renderedHeat || renderedBackdrop === oldBackdrop) return;
+      if (!renderedBackdrop || !renderedHeat) return;
+
+      // Preserve the existing Heat Chart heading node so filter clicks never
+      // remove/recreate the title. Only the changing chart content is swapped.
+      const renderedTitle = renderedHeat.querySelector(':scope > h3');
+      if (oldTitle && renderedTitle) renderedTitle.replaceWith(oldTitle);
 
       // Move only the newly-rendered Heat Chart into the existing modal. Keeping
       // the original modal node prevents iOS from resetting/repositioning scroll.
       oldHeat.replaceWith(renderedHeat);
-      renderedBackdrop.replaceWith(oldBackdrop);
+      renderedBackdrop.remove();
       oldModal.scrollTop = oldScrollTop;
 
       // reports-heat-match.js will restyle the inserted chart on the next frame.
