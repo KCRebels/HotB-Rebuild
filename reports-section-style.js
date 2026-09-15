@@ -20,7 +20,7 @@
       .report-standard-section.report-heading-tight{padding-top:4px!important;padding-bottom:26px!important}
       .report-standard-section.report-strike-tight{padding-top:0!important}
       .report-standard-section.report-heat-tight{padding-top:0!important;padding-bottom:30px!important}
-      .report-standard-section.report-heat-tight .report-heat{border-top:0!important;margin-top:0!important;padding-top:0!important}
+      .report-standard-section.report-heat-tight .report-heat{border-top:0!important;margin-top:-12px!important;padding-top:0!important}
       .report-standard-section.report-heat-tight .report-heat>.report-standard-section-title{margin-top:0!important}
       .report-standard-section *{max-width:100%;box-sizing:border-box}
       .report-standard-section-title{display:block!important;width:auto!important;margin:0 0 12px!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#111!important;font-size:22px!important;line-height:1.08!important;font-weight:950!important;text-align:left!important;box-shadow:none!important}
