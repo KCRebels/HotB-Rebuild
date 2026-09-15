@@ -5,34 +5,37 @@
     let s=document.getElementById(STYLE_ID);
     if(!s){s=document.createElement('style');s.id=STYLE_ID;document.head.appendChild(s)}
     s.textContent=`
-      /* Reports: the filter box ends after Games. Stats and sections sit outside it. */
-      .modal .panel.report-detail{background:transparent!important;border:0!important;outline:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important}
-      .report-filter-box{margin:14px 8px 12px!important;padding:14px 12px!important;background:#fff!important;border:1px solid #ccc!important;border-radius:14px!important;box-sizing:border-box!important;width:calc(100% - 16px)!important}
+      .modal .panel.report-detail{background:transparent!important;border:0!important;outline:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important;margin:0!important;width:100%!important;max-width:none!important;overflow:visible!important}
+      .report-filter-box{margin:14px 8px 12px!important;padding:14px 12px!important;background:#fff!important;border:1px solid #ccc!important;border-radius:14px!important;box-sizing:border-box!important;width:calc(100% - 16px)!important;max-width:none!important}
       .report-filter-box .report-filter-grid{margin-top:0!important}
       .report-filter-box .games-selector,.report-filter-box #showReportGames{margin-bottom:0!important}
-      .modal .report-stat-grid{margin:12px 8px 14px!important;width:calc(100% - 16px)!important;box-sizing:border-box!important}
-      .modal .report-stat{min-height:104px!important;padding:14px 8px!important}
-      .modal .report-stat b{font-size:30px!important}
-      .modal .report-stat span{font-size:17px!important}
+
+      .modal .report-detail>.report-stat-grid{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px!important;margin:12px 8px 14px!important;width:calc(100% - 16px)!important;max-width:none!important;box-sizing:border-box!important;overflow:visible!important}
+      .modal .report-detail>.report-stat-grid .report-stat{box-sizing:border-box!important;width:auto!important;min-width:0!important;max-width:none!important;min-height:96px!important;padding:12px 4px!important}
+      .modal .report-detail>.report-stat-grid .report-stat b{font-size:26px!important;line-height:1!important;white-space:nowrap!important}
+      .modal .report-detail>.report-stat-grid .report-stat span{font-size:15px!important;line-height:1.05!important;white-space:nowrap!important}
+
       .report-standard-section{margin:12px 8px!important;padding:16px 12px 18px!important;background:#fff!important;border:1px solid #ccc!important;border-radius:14px!important;box-sizing:border-box!important;width:calc(100% - 16px)!important;max-width:none!important}
-      .report-standard-section-title{display:block!important;width:auto!important;margin:0 0 14px!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#111!important;font-size:22px!important;line-height:1.08!important;font-weight:950!important;text-align:left!important;box-shadow:none!important}
-      .report-standard-section .hotb-count-header{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;width:100%!important;margin:0 0 14px!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
-      .report-standard-section .hotb-count-header .report-standard-section-title{margin:0!important;white-space:nowrap!important;flex:0 0 auto!important}
-      .report-standard-section .hotb-count-header .count-key,.report-standard-section .hotb-count-header .eval-count-key{display:inline-flex!important;align-items:center!important;position:static!important;transform:none!important;margin-left:auto!important;width:auto!important;white-space:nowrap!important;flex:0 0 auto!important;font-size:16px!important}
+      .report-standard-section-title{display:block!important;width:auto!important;margin:0 0 14px!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#111!important;font-size:20px!important;line-height:1.08!important;font-weight:950!important;text-align:left!important;box-shadow:none!important;white-space:nowrap!important}
+      .report-standard-section .hotb-count-header{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;column-gap:8px!important;width:100%!important;margin:0 0 14px!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+      .report-standard-section .hotb-count-header .report-standard-section-title{margin:0!important;min-width:0!important;white-space:nowrap!important;font-size:18px!important}
+      .report-standard-section .hotb-count-header .count-key,.report-standard-section .hotb-count-header .eval-count-key{display:inline-flex!important;align-items:center!important;position:static!important;transform:none!important;margin:0!important;justify-self:end!important;width:auto!important;white-space:nowrap!important;min-width:0!important;font-size:13px!important;line-height:1!important}
       .report-standard-section .hotb-count-row{min-height:58px!important;padding:10px 12px!important}
       .report-standard-section-title-row{display:block!important;width:100%!important;margin:0 0 12px!important}
       .report-standard-section-title-row .report-standard-section-title{margin:0 0 5px!important}
       .report-standard-section-subtitle{display:block!important;position:static!important;transform:none!important;margin:0!important;text-align:left!important;font-size:13px!important;line-height:1.15!important;font-weight:900!important;color:#111!important;white-space:normal!important}
+
       @media(max-width:560px){
         .report-filter-box{margin:12px 8px!important;padding:12px 10px!important;border-radius:12px!important}
-        .modal .report-stat-grid{margin:12px 8px 14px!important}
-        .modal .report-stat{min-height:96px!important;padding:12px 6px!important}
-        .modal .report-stat b{font-size:28px!important}
-        .modal .report-stat span{font-size:16px!important}
+        .modal .report-detail>.report-stat-grid{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:5px!important;margin:12px 8px 14px!important;width:calc(100% - 16px)!important}
+        .modal .report-detail>.report-stat-grid .report-stat{min-height:92px!important;padding:10px 2px!important}
+        .modal .report-detail>.report-stat-grid .report-stat b{font-size:23px!important}
+        .modal .report-detail>.report-stat-grid .report-stat span{font-size:13px!important}
         .report-standard-section{margin:12px 8px!important;padding:14px 10px 16px!important;border-radius:12px!important;width:calc(100% - 16px)!important}
         .report-standard-section-title{font-size:20px!important}
-        .report-standard-section .hotb-count-header{gap:8px!important}
-        .report-standard-section .hotb-count-header .count-key,.report-standard-section .hotb-count-header .eval-count-key{font-size:14px!important}
+        .report-standard-section .hotb-count-header{column-gap:6px!important}
+        .report-standard-section .hotb-count-header .report-standard-section-title{font-size:17px!important}
+        .report-standard-section .hotb-count-header .count-key,.report-standard-section .hotb-count-header .eval-count-key{font-size:12px!important}
       }
     `;
   }
@@ -42,12 +45,17 @@
   function directChild(node,parent){let n=node;while(n&&n.parentElement!==parent)n=n.parentElement;return n}
 
   function buildFilterBox(){
-    const detail=document.querySelector('.modal .report-detail');if(!detail||detail.querySelector(':scope > .report-filter-box'))return;
+    const detail=document.querySelector('.modal .report-detail');if(!detail)return;
     const statGrid=detail.querySelector(':scope > .report-stat-grid');if(!statGrid)return;
-    const first=detail.firstElementChild;if(!first||first===statGrid)return;
-    const box=document.createElement('section');box.className='report-filter-box';detail.insertBefore(box,first);
-    let n=first;
-    while(n&&n!==statGrid){const next=n.nextElementSibling;box.appendChild(n);n=next}
+    let box=detail.querySelector(':scope > .report-filter-box');
+    if(!box){
+      const first=detail.firstElementChild;if(!first||first===statGrid)return;
+      box=document.createElement('section');box.className='report-filter-box';detail.insertBefore(box,first);
+      let n=first;while(n&&n!==statGrid){const next=n.nextElementSibling;box.appendChild(n);n=next}
+    }
+    /* Never allow the stat grid or report sections inside the filter box. */
+    const trapped=[...box.querySelectorAll(':scope > .report-stat-grid,:scope > .report-standard-section')];
+    trapped.forEach(n=>detail.insertBefore(n,box.nextSibling));
   }
 
   function boxBetween(startTitle,endTitle){
