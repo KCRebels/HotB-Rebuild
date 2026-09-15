@@ -27,7 +27,9 @@ function seed(){
    if(JSON.stringify(next)!==JSON.stringify(p)){Object.assign(p,next);changed=true}
   }
  });
- db.teamJenkins=db.teamJenkins||{name:TEAM,coach:{name:'Mark Jenkins',portalId:'',portalPin:'',portalPinHash:''}};
+ db.teamJenkins=db.teamJenkins||{name:TEAM,coach:{name:'Mark Jenkins',phone:'913-484-5626',portalId:'',portalPin:'',portalPinHash:''}};
+ if(!db.teamJenkins.coach)db.teamJenkins.coach={name:'Mark Jenkins',phone:'913-484-5626',portalId:'',portalPin:'',portalPinHash:''};
+ if(db.teamJenkins.coach.phone!=='913-484-5626'){db.teamJenkins.coach.phone='913-484-5626';changed=true}
  if(changed)write(db);
 }
 seed();
@@ -44,9 +46,10 @@ async function ensurePortals(){
   if(!p.portalId){p.portalId=bytesId();p.portalPin=pin();p.portalPinHash=await hash(p.portalId,p.portalPin);changed=true}
   await firestore().collection('playerPortals').doc(p.portalId).set({portalType:'teamJenkinsPlayer',teamName:TEAM,playerName:p.name,firstName:p.name.split(' ')[0],phone:p.phone,pinHash:p.portalPinHash,accessScope:['practice','library'],persistentAccess:true,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
  }
- const coach=db.teamJenkins?.coach||(db.teamJenkins={name:TEAM,coach:{name:'Mark Jenkins'}}).coach;
+ const coach=db.teamJenkins?.coach||(db.teamJenkins={name:TEAM,coach:{name:'Mark Jenkins',phone:'913-484-5626'}}).coach;
+ coach.phone='913-484-5626';
  if(!coach.portalId){coach.portalId=bytesId();coach.portalPin=pin();coach.portalPinHash=await hash(coach.portalId,coach.portalPin);changed=true}
- await firestore().collection('playerPortals').doc(coach.portalId).set({portalType:'coach',coachName:'Mark Jenkins',firstName:'Mark',pinHash:coach.portalPinHash,teamName:TEAM,accessScope:['practice','library'],noPitcherWarmups:true,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+ await firestore().collection('playerPortals').doc(coach.portalId).set({portalType:'coach',coachName:'Mark Jenkins',firstName:'Mark',phone:coach.phone,pinHash:coach.portalPinHash,teamName:TEAM,accessScope:['practice','library'],noPitcherWarmups:true,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
  if(changed)write(db);return true;
 }
 function groupAttendance(){
@@ -61,7 +64,7 @@ function addPortalManager(){
  const setup=document.querySelector('.portal-coach-setup');if(!setup)return;
  const db=read(),teamPlayers=(db?.roster||[]).filter(p=>names.has(p.name)),coach=db?.teamJenkins?.coach||{};
  const section=document.createElement('section');section.className='portal-coach-setup';section.id='teamJenkinsPortalManager';
- section.innerHTML=`<span>OTHER TEAM</span><h2>Team Jenkins Portals</h2><p>These links stay active for future hitting practices. Players receive Practice Plan + Drill Library only.</p><button class="btn black block" id="setupTeamJenkinsPortals">${teamPlayers.every(p=>p.portalId)&&coach.portalId?'Refresh Team Jenkins Portals':'Create Team Jenkins Portals'}</button><div class="team-jenkins-portal-list">${teamPlayers.map(p=>`<article><b>${esc(p.name)}</b><small>${esc(p.phone)}${p.portalPin?` · PIN ${esc(p.portalPin)}`:''}</small>${p.portalId?`<button class="btn tj-share" data-id="${esc(p.portalId)}" data-pin="${esc(p.portalPin)}" data-name="${esc(p.name)}">Share</button>`:''}</article>`).join('')}${coach.portalId?`<article><b>Mark Jenkins (Coach)</b><small>PIN ${esc(coach.portalPin)}</small><button class="btn tj-share" data-id="${esc(coach.portalId)}" data-pin="${esc(coach.portalPin)}" data-name="Mark Jenkins">Share</button></article>`:''}</div>`;
+ section.innerHTML=`<span>OTHER TEAM</span><h2>Team Jenkins Portals</h2><p>These links stay active for future hitting practices. Players receive Practice Plan + Drill Library only.</p><button class="btn black block" id="setupTeamJenkinsPortals">${teamPlayers.every(p=>p.portalId)&&coach.portalId?'Refresh Team Jenkins Portals':'Create Team Jenkins Portals'}</button><div class="team-jenkins-portal-list">${teamPlayers.map(p=>`<article><b>${esc(p.name)}</b><small>${esc(p.phone)}${p.portalPin?` · PIN ${esc(p.portalPin)}`:''}</small>${p.portalId?`<button class="btn tj-share" data-id="${esc(p.portalId)}" data-pin="${esc(p.portalPin)}" data-name="${esc(p.name)}">Share</button>`:''}</article>`).join('')}${coach.portalId?`<article><b>Mark Jenkins (Coach)</b><small>${esc(coach.phone||'913-484-5626')} · PIN ${esc(coach.portalPin)}</small><button class="btn tj-share" data-id="${esc(coach.portalId)}" data-pin="${esc(coach.portalPin)}" data-name="Mark Jenkins">Share</button></article>`:''}</div>`;
  setup.after(section);
  section.querySelector('#setupTeamJenkinsPortals')?.addEventListener('click',async e=>{e.currentTarget.disabled=true;e.currentTarget.textContent='Creating…';try{await ensurePortals();location.reload()}catch(err){alert('Team Jenkins portals could not be created. Confirm Cloud Backup is signed in and try again.');e.currentTarget.disabled=false}});
  section.querySelectorAll('.tj-share').forEach(b=>b.addEventListener('click',async()=>{const url=`${location.origin}${location.pathname}?portal=${encodeURIComponent(b.dataset.id)}&team=jenkins`;const text=`${b.dataset.name}’s HotB Portal\nPIN: ${b.dataset.pin}\n${url}`;try{if(navigator.share)await navigator.share({title:'HotB Portal',text});else{await navigator.clipboard.writeText(text);alert('Portal link and PIN copied.')}}catch(e){}}));
