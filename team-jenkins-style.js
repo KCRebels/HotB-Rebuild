@@ -4,10 +4,12 @@ const JENKINS_NAMES=new Set(['Neveah Schlappi','Lilliana Schlappi','Taylor Woods
 function applyJenkinsAttendanceStyle(){
  const attendance=document.querySelector('.practice-setup .practice-attendance');
  if(!attendance)return;
- const rows=[...attendance.querySelectorAll(':scope > .practice-player')];
+ const rows=[...attendance.querySelectorAll(':scope > .practice-attendance-row')];
  rows.forEach(row=>{
-  const name=row.querySelector('b')?.textContent?.trim()||'';
-  row.classList.toggle('team-jenkins-player',JENKINS_NAMES.has(name));
+  const name=row.querySelector('.practice-player b')?.textContent?.trim()||'';
+  const isJenkins=JENKINS_NAMES.has(name);
+  row.classList.toggle('team-jenkins-attendance-row',isJenkins);
+  row.querySelector('.practice-player')?.classList.toggle('team-jenkins-player',isJenkins);
  });
 }
 const observer=new MutationObserver(applyJenkinsAttendanceStyle);
