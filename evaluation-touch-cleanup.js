@@ -2,6 +2,11 @@
  const MOVE_LIMIT=10;
  let start=null,moved=false;
  const inEval=target=>target instanceof Element&&!!target.closest('.eval-app');
+ // Do not cancel pointer events. Native controls and several Eval controls use
+ // pointerup directly, so suppressing pointerup breaks deliberate taps.
+ // Instead remember a real swipe and suppress only the synthetic click that
+ // follows it. This preserves selects, heat filters, and other controls.
+ let suppressClickUntil=0;
  document.addEventListener('pointerdown',event=>{
   if(!inEval(event.target))return;
   start={id:event.pointerId,x:event.clientX,y:event.clientY};moved=false;
@@ -12,8 +17,8 @@
  },true);
  document.addEventListener('pointerup',event=>{
   if(!start||event.pointerId!==start.id)return;
-  const wasMoved=moved;start=null;moved=false;
-  if(wasMoved){event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();}
+  if(moved)suppressClickUntil=performance.now()+500;
+  start=null;moved=false;
  },true);
  document.addEventListener('pointercancel',()=>{start=null;moved=false},true);
 
@@ -26,9 +31,14 @@
   });
  }
  document.addEventListener('click',event=>{
-  const title=event.target instanceof Element?event.target.closest('.eval-app .perf .perf-metric'):null;
-  if(!title)return;
-  event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+  const target=event.target instanceof Element?event.target:null;
+  if(!target)return;
+  const title=target.closest('.eval-app .perf .perf-metric');
+  if(title){event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();return;}
+  if(performance.now()<suppressClickUntil&&target.closest('.eval-app')){
+   event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+   suppressClickUntil=0;
+  }
  },true);
  let queued=false;
  function refresh(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;cleanHittingResults()})}
