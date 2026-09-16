@@ -2,42 +2,54 @@
   const PATCHED = 'hotbHeatNoJump';
 
   function patchButton(button) {
-    if (!button || button.dataset[PATCHED] === '1' || typeof button.onclick !== 'function') return;
-    const original = button.onclick;
+    if (!button || button.dataset[PATCHED] === '1') return;
     button.dataset[PATCHED] = '1';
 
-    button.onclick = function (event) {
+    // Capture before HotB's normal click handler. In selected/group reports the
+    // normal full render can close the report modal and reveal Reports main.
+    // Stop that handler and update only the heat chart inside the open report.
+    button.addEventListener('click', event => {
       const oldBackdrop = button.closest('.modal-backdrop');
       const oldModal = button.closest('.modal');
       const oldHeat = button.closest('.report-heat');
-      if (!oldBackdrop || !oldModal || !oldHeat) return original.call(this, event);
+      if (!oldBackdrop || !oldModal || !oldHeat) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
 
       const oldScrollTop = oldModal.scrollTop;
       const oldTitle = oldHeat.querySelector(':scope > h3');
+      const result = button.dataset.heatResult;
+      const display = button.dataset.heatDisplay;
 
-      // Let HotB update its real reportHeatResult/reportHeatDisplay state and build
-      // the new chart, but do not keep the newly-created Reports modal.
-      original.call(this, event);
+      // Use HotB's existing report state/render handler without allowing the
+      // newly-rendered modal to replace/close the report the coach is viewing.
+      const original = button.onclick;
+      if (typeof original !== 'function') return;
+      original.call(button, event);
 
-      const renderedBackdrop = [...document.querySelectorAll('.modal-backdrop')]
-        .find(backdrop => backdrop !== oldBackdrop && backdrop.querySelector('.report-heat'));
+      const renderedBackdrops = [...document.querySelectorAll('.modal-backdrop')]
+        .filter(backdrop => backdrop !== oldBackdrop && backdrop.querySelector('.report-heat'));
+      const renderedBackdrop = renderedBackdrops.at(-1);
       const renderedHeat = renderedBackdrop?.querySelector('.report-heat');
-      if (!renderedBackdrop || !renderedHeat) return;
 
-      // Preserve the existing Heat Chart heading node so filter clicks never
-      // remove/recreate the title. Only the changing chart content is swapped.
-      const renderedTitle = renderedHeat.querySelector(':scope > h3');
-      if (oldTitle && renderedTitle) renderedTitle.replaceWith(oldTitle);
+      if (renderedHeat) {
+        const renderedTitle = renderedHeat.querySelector(':scope > h3');
+        if (oldTitle && renderedTitle) renderedTitle.replaceWith(oldTitle);
+        oldHeat.replaceWith(renderedHeat);
+        renderedBackdrop.remove();
+        oldBackdrop.style.display = '';
+        oldModal.scrollTop = oldScrollTop;
+        patchAll();
+        return;
+      }
 
-      // Move only the newly-rendered Heat Chart into the existing modal. Keeping
-      // the original modal node prevents iOS from resetting/repositioning scroll.
-      oldHeat.replaceWith(renderedHeat);
-      renderedBackdrop.remove();
+      // If the main render reused the same backdrop, keep it visible and restore
+      // the user's scroll position rather than dropping back to Reports main.
+      oldBackdrop.style.display = '';
       oldModal.scrollTop = oldScrollTop;
-
-      // reports-heat-match.js will restyle the inserted chart on the next frame.
-      patchAll();
-    };
+      if (result || display) patchAll();
+    }, true);
   }
 
   function patchAll() {
