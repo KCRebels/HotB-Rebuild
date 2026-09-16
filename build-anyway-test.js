@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const api=window.HotBPracticeScheduler;if(!api?.buildSchedule)return;
-const original=api.buildSchedule,originalAlert=window.alert.bind(window),originalValidate=api.validate?.bind(api);let force=false,lastErrors=[];
+const original=api.buildSchedule,originalValidate=api.validate?.bind(api);
 function repair(plan){
  const players=plan.players||[],schedule=plan.schedule||{},live=new Set((plan.liveSessions||[]).map(s=>s.block)),old=structuredClone(schedule),byName=Object.fromEntries(players.map(p=>[p.name,p]));
  players.forEach(p=>(schedule[p.name]||[]).forEach((e,b)=>{if(e?.activity?.startsWith('Front Toss')||e?.activity==='Machine')schedule[p.name][b]={activity:'Drill'}}));
@@ -18,7 +18,16 @@ function repair(plan){
  plan.frontTossAssignments=fa;plan.frontTossBlocks=[...new Set(fa.map(a=>a.block))];plan.feasibilityErrors=(plan.feasibilityErrors||[]).filter(e=>!/Front toss|Machine cannot be scheduled/i.test(e));plan.buildAnywayFrontToss=true;const four=front.find(g=>g.size===4);plan.fallbackWarnings=[...(plan.fallbackWarnings||[]),`BUILD ANYWAY: Block ${four.slot.block+1}, Front Toss Lane ${four.slot.lane} has 4 players.`];
  plan.blocks=(plan.times||[]).map((time,index)=>{const assignments={};players.forEach(p=>{const e=schedule[p.name][index],label=e?.partner?`${e.activity} — ${e.partner}`:(e?.activity||'Drill');(assignments[label]||(assignments[label]=[])).push(p.name)});return {...time,assignments}});return {ok:true,plan}
 }
-api.buildSchedule=function(players,start,duration,options){const plan=original(players,start,duration,options);lastErrors=plan.feasibilityErrors||[];if(!lastErrors.length)return plan;if(!force)return plan;force=false;const result=repair(plan);if(!result.ok){lastErrors=[result.reason];originalAlert(`BUILD ANYWAY TEST FAILED\n\n${result.reason}`);return plan}lastErrors=[];originalAlert('BUILD ANYWAY TEST SUCCEEDED\n\nThe relaxed schedule was created. Press OK to continue to the practice plan.');return result.plan};
-window.alert=function(message){const text=String(message||'');if(/HotB cannot build this practice without breaking a scheduling rule/i.test(text)){const details=lastErrors.length?lastErrors.map((e,i)=>`${i+1}. ${e}`).join('\n\n'):text;const ok=window.confirm(`HOTB TEST — FAILED RULES\n\n${details}\n\nPress OK to BUILD ANYWAY.\nThis permits exactly one Front Toss group of 4 and retries the schedule.\n\nCancel keeps the normal rules.`);if(ok){force=true;setTimeout(()=>{const button=document.querySelector('#generatePractice');if(button)button.click();else originalAlert('BUILD ANYWAY TEST ERROR\n\nThe Build Practice button could not be found after the screen refreshed.')},150)}return}return originalAlert(message)};
+api.buildSchedule=function(players,start,duration,options){
+ const plan=original(players,start,duration,options),errors=plan.feasibilityErrors||[];
+ if(!errors.length)return plan;
+ const frontOnly=errors.length===1&&/Front toss/i.test(errors[0]);
+ if(!frontOnly)return plan;
+ const ok=window.confirm(`ALL FAILED RULES:\n\n1. ${errors[0]}\n\nBuild anyway by allowing ONE Front Toss group of up to 4 players and, if needed, using Tunnel 1 for Front Toss during a Live block?\n\nOK = Build Anyway\nCancel = Keep the rule`);
+ if(!ok)return plan;
+ const result=repair(plan);
+ if(!result.ok){window.alert(`BUILD ANYWAY TEST FAILED\n\n${result.reason}`);return plan}
+ return result.plan;
+};
 if(originalValidate)api.validate=function(plan){const errors=originalValidate(plan)||[];if(!plan?.buildAnywayFrontToss)return errors;let allowedFour=false;return errors.filter(e=>{if(/Front Toss lane must have 2–3 players/i.test(e)&&!allowedFour){allowedFour=true;return false}if(/has Front Toss while live pitching is active/i.test(e))return false;return true})};
 })();
