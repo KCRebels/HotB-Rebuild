@@ -7,7 +7,7 @@ const players=[
  {name:'Lilliana Schlappi',phone:'816-656-6698',positions:'C'},
  {name:'Taylor Woods',phone:'816-509-9701',positions:'P'},
  {name:'Perri Wagner',phone:'913-961-8168',positions:'P'},
- {name:'Pacie Dougherty',phone:'785-760-3228',positions:'C'},
+ {name:'Pacie Dougherty',phone:'785-760-3964',positions:'C'},
  {name:'Amelia Steffen',phone:'913-413-5995',positions:'UT'},
  {name:'Emmie Wible',phone:'913-905-9251',positions:'UT'},
  {name:'Leslie Cundiff',phone:'785-917-2893',positions:'UT'}
