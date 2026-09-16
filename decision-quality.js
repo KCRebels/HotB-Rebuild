@@ -8,75 +8,24 @@
 
   function readDb(){try{return JSON.parse(localStorage.getItem(DBKEY)||'{}')}catch{return {}}}
   function isLeft(player,pitch){return ['L','SL'].includes(String(pitch?.hitterStyle||player?.side||'R').toUpperCase())}
-  function inPlan(pitch,player){
-    const plan=String(pitch?.plan||'').toUpperCase();
-    if(plan==='CH')return String(pitch?.pitchType||'').toUpperCase()==='CH';
-    if(plan==='NO')return true;
-    const left=isLeft(player,pitch);
-    const inside=new Set(left?['L','L1','L2','C1','C3']:['R','R1','R2','C2','C4']);
-    const outside=new Set(left?['R','R1','R2','C2','C4']:['L','L1','L2','C1','C3']);
-    return plan==='IN'?inside.has(pitch.zone):plan==='OUT'?outside.has(pitch.zone):false;
-  }
-  function autoGrade(pitch,player){
-    if(!pitch||pitch.result==='HBP'||pitch.intentionalBall||pitch.pitchout)return 'NOT_SCORED';
-    const override=String(pitch.decisionOverride||'').toUpperCase();
-    if(['GOOD','MINOR','POOR','NOT_SCORED'].includes(override))return override;
-    const result=String(pitch.result||'').toUpperCase(),swing=SWINGS.has(result),take=TAKES.has(result),two=Number(pitch.strikesBefore)>=2;
-    if(!swing&&!take)return 'NOT_SCORED';
-    if(two){if(take)return result==='B'?'GOOD':'POOR';return 'GOOD'}
-    const plan=String(pitch.plan||'').toUpperCase();
-    if(plan==='NO')return swing?'GOOD':'NOT_SCORED';
-    if(plan==='CH'){
-      if(String(pitch.pitchType||'').toUpperCase()==='CH')return swing?'GOOD':take?'POOR':'NOT_SCORED';
-      if(take)return 'GOOD';
-      return pitch.hhb?'GOOD':'MINOR';
-    }
-    if(!['IN','OUT'].includes(plan))return 'NOT_SCORED';
-    const planned=inPlan(pitch,player);
-    if(swing){if(planned)return 'GOOD';return pitch.hhb?'MINOR':'POOR'}
-    if(take)return planned?'POOR':'GOOD';
-    return 'NOT_SCORED';
-  }
-  function gradeValue(grade){return Object.prototype.hasOwnProperty.call(VALUES,grade)?VALUES[grade]:null}
-  function records(games,playerName,roster){
-    return (games||[]).flatMap(game=>(game.pitches||[]).filter(p=>!playerName||p.hitter===playerName).map(pitch=>{const player=(roster||[]).find(p=>p.name===pitch.hitter)||{};return {game,pitch,grade:autoGrade(pitch,player)}}));
-  }
-  function summary(games,playerName,roster){
-    const rows=records(games,playerName,roster),scored=rows.filter(r=>gradeValue(r.grade)!==null),points=scored.reduce((n,r)=>n+gradeValue(r.grade),0);
-    const counts={GOOD:0,MINOR:0,POOR:0,NOT_SCORED:0};rows.forEach(r=>counts[r.grade]=(counts[r.grade]||0)+1);
-    return {rate:scored.length?points/scored.length:null,points,attempts:scored.length,counts,rows};
-  }
+  function inPlan(pitch,player){const plan=String(pitch?.plan||'').toUpperCase();if(plan==='CH')return String(pitch?.pitchType||'').toUpperCase()==='CH';if(plan==='NO')return true;const left=isLeft(player,pitch),inside=new Set(left?['L','L1','L2','C1','C3']:['R','R1','R2','C2','C4']),outside=new Set(left?['R','R1','R2','C2','C4']:['L','L1','L2','C1','C3']);return plan==='IN'?inside.has(pitch.zone):plan==='OUT'?outside.has(pitch.zone):false}
+  function autoGrade(pitch,player){if(!pitch||pitch.result==='HBP'||pitch.intentionalBall||pitch.pitchout)return'NOT_SCORED';const override=String(pitch.decisionOverride||'').toUpperCase();if(['GOOD','MINOR','POOR','NOT_SCORED'].includes(override))return override;const result=String(pitch.result||'').toUpperCase(),swing=SWINGS.has(result),take=TAKES.has(result),two=Number(pitch.strikesBefore)>=2;if(!swing&&!take)return'NOT_SCORED';if(two){if(take)return result==='B'?'GOOD':'POOR';return'GOOD'}const plan=String(pitch.plan||'').toUpperCase();if(plan==='NO')return swing?'GOOD':'NOT_SCORED';if(plan==='CH'){if(String(pitch.pitchType||'').toUpperCase()==='CH')return swing?'GOOD':take?'POOR':'NOT_SCORED';if(take)return'GOOD';return pitch.hhb?'GOOD':'MINOR'}if(!['IN','OUT'].includes(plan))return'NOT_SCORED';const planned=inPlan(pitch,player);if(swing){if(planned)return'GOOD';return pitch.hhb?'MINOR':'POOR'}if(take)return planned?'POOR':'GOOD';return'NOT_SCORED'}
+  function gradeValue(g){return Object.prototype.hasOwnProperty.call(VALUES,g)?VALUES[g]:null}
+  function records(games,playerName,roster){return(games||[]).flatMap(game=>(game.pitches||[]).filter(p=>!playerName||p.hitter===playerName).map(pitch=>{const player=(roster||[]).find(p=>p.name===pitch.hitter)||{};return{game,pitch,grade:autoGrade(pitch,player)}}))}
+  function summary(games,playerName,roster){const rows=records(games,playerName,roster),scored=rows.filter(r=>gradeValue(r.grade)!==null),points=scored.reduce((n,r)=>n+gradeValue(r.grade),0),counts={GOOD:0,MINOR:0,POOR:0,NOT_SCORED:0};rows.forEach(r=>counts[r.grade]=(counts[r.grade]||0)+1);return{rate:scored.length?points/scored.length:null,points,attempts:scored.length,counts,rows}}
   function pct(rate){return rate===null?'—%':`${Math.round(rate*100)}%`}
-  function currentGames(db){return [...(db.savedGames||[]),...(db.currentGame?[db.currentGame]:[])];}
-  function filteredByEval(games){
-    const season=document.querySelector('#evalSeasonFilter')?.value||'',mode=document.querySelector('#evalDateRange')?.value||'full',start=document.querySelector('#evalDateStart')?.value||'',end=document.querySelector('#evalDateEnd')?.value||'';
-    return games.filter(game=>{const d=new Date(game.date),time=d.getTime();if(Number.isNaN(time))return false;if(mode==='custom')return time>=(start?new Date(`${start}T00:00:00`).getTime():-Infinity)&&time<=(end?new Date(`${end}T23:59:59.999`).getTime():Infinity);const y=d.getFullYear(),m=d.getMonth()+1,day=d.getDate(),sy=m>=9?y:y-1,s=`${sy}–${String(sy+1).slice(-2)}`;if(season&&s!==season)return false;if(mode==='full')return !((m===7&&day>=31)||m===8);if(mode==='fall')return m>=9&&m<=11;if(mode==='summer')return (m===5&&day>=20)||m===6||(m===7&&day<=30);return true});
-  }
-  function replaceEvalTile(){
-    const root=document.querySelector('.eval-app');if(!root)return;
-    const select=root.querySelector('#evalSelect'),selection=select?.value||'Team';
-    const tiles=[...root.querySelectorAll('.eval-tiles .eval-tile')],target=tiles[2];if(!target)return;
-    const db=readDb(),playerName=selection==='Team'?'':selection,sum=summary(filteredByEval(currentGames(db)),playerName,db.roster);
-    target.innerHTML=`<div class="eval-tile-head"><button class="metric-title" type="button" data-decision-detail>Decision %</button><button class="metric-all" type="button" data-decision-detail>${selection==='Team'?'TEAM':'DETAIL'}</button></div><div class="value">${pct(sum.rate)}</div><div class="note">Decision Quality · ${sum.attempts} scored</div>`;
-  }
-  function detailModal(){
-    const db=readDb(),selection=document.querySelector('#evalSelect')?.value||'Team',playerName=selection==='Team'?'':selection;
-    const sum=summary(filteredByEval(currentGames(db)),playerName,db.roster),old=document.getElementById('decisionQualityModal');old?.remove();
-    const el=document.createElement('div');el.id='decisionQualityModal';el.className='modal-backdrop';el.innerHTML=`<div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">${selection==='Team'?'TEAM':'PLAYER'} EVALUATION</div><h2>Decision Quality</h2></div><button class="btn" data-decision-close>Close</button></div><hr style="border-color:#555"><div class="decision-summary"><b>${pct(sum.rate)}</b><span>${sum.attempts} scored decisions</span></div><div class="decision-breakdown"><div><b>${sum.counts.GOOD}</b><span>Good</span></div><div><b>${sum.counts.MINOR}</b><span>Minor Poor</span></div><div><b>${sum.counts.POOR}</b><span>Poor</span></div><div><b>${sum.counts.NOT_SCORED}</b><span>Not Scored</span></div></div><p class="small" style="color:#ddd">Good = full credit · Minor Poor = half credit · Poor = zero credit · Not Scored is excluded.</p></div>`;document.body.appendChild(el);
-  }
+  function currentGames(db){return[...(db.savedGames||[]),...(db.currentGame?[db.currentGame]:[])]}
+  function filteredByEval(games){const season=document.querySelector('#evalSeasonFilter')?.value||'',mode=document.querySelector('#evalDateRange')?.value||'full',start=document.querySelector('#evalDateStart')?.value||'',end=document.querySelector('#evalDateEnd')?.value||'';return games.filter(game=>{const d=new Date(game.date),time=d.getTime();if(Number.isNaN(time))return false;if(mode==='custom')return time>=(start?new Date(`${start}T00:00:00`).getTime():-Infinity)&&time<=(end?new Date(`${end}T23:59:59.999`).getTime():Infinity);const y=d.getFullYear(),m=d.getMonth()+1,day=d.getDate(),sy=m>=9?y:y-1,s=`${sy}–${String(sy+1).slice(-2)}`;if(season&&s!==season)return false;if(mode==='full')return!((m===7&&day>=31)||m===8);if(mode==='fall')return m>=9&&m<=11;if(mode==='summer')return(m===5&&day>=20)||m===6||(m===7&&day<=30);return true})}
+  function replaceEvalTile(){const root=document.querySelector('.eval-app');if(!root)return;const selection=root.querySelector('#evalSelect')?.value||'Team',target=[...root.querySelectorAll('.eval-tiles .eval-tile')][2];if(!target)return;const db=readDb(),sum=summary(filteredByEval(currentGames(db)),selection==='Team'?'':selection,db.roster);target.innerHTML=`<div class="eval-tile-head"><button class="metric-title" type="button" data-decision-detail>Decision %</button><button class="metric-all" type="button" data-decision-detail>${selection==='Team'?'TEAM':'DETAIL'}</button></div><div class="value">${pct(sum.rate)}</div><div class="note">Decision Quality · ${sum.attempts} scored</div>`}
+  function detailModal(){const db=readDb(),selection=document.querySelector('#evalSelect')?.value||'Team',sum=summary(filteredByEval(currentGames(db)),selection==='Team'?'':selection,db.roster);document.getElementById('decisionQualityModal')?.remove();const el=document.createElement('div');el.id='decisionQualityModal';el.className='modal-backdrop';el.innerHTML=`<div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">${selection==='Team'?'TEAM':'PLAYER'} EVALUATION</div><h2>Decision Quality</h2></div><button class="btn" data-decision-close>Close</button></div><hr style="border-color:#555"><div class="decision-summary"><b>${pct(sum.rate)}</b><span>${sum.attempts} scored decisions</span></div><div class="decision-breakdown"><div><b>${sum.counts.GOOD}</b><span>Good</span></div><div><b>${sum.counts.MINOR}</b><span>Minor Poor</span></div><div><b>${sum.counts.POOR}</b><span>Poor</span></div><div><b>${sum.counts.NOT_SCORED}</b><span>Not Scored</span></div></div><p class="small" style="color:#ddd">Good = full credit · Minor Poor = half credit · Poor = zero credit · Not Scored is excluded.</p></div>`;document.body.appendChild(el)}
   function latestPoor(){const db=readDb(),g=db.currentGame;if(!g)return null;const pitch=[...(g.pitches||[])].reverse().find(p=>!p.decisionOverride);if(!pitch)return null;const player=(db.roster||[]).find(p=>p.name===pitch.hitter)||{};return autoGrade(pitch,player)==='POOR'?pitch:null}
-  function liveOverride(){
-    const app=document.querySelector('.live-app'),results=app?.querySelector('.results');if(!app||!results)return;
-    app.querySelector('.decision-override-strip')?.remove();const pitch=latestPoor();if(!pitch)return;
-    const strip=document.createElement('div');strip.className='decision-override-strip';strip.innerHTML=overridePitchId===pitch.id?`<button class="dq-good" data-dq="GOOD">Good</button><button class="dq-minor" data-dq="MINOR">Minor</button><button class="dq-ns" data-dq="NOT_SCORED">N/S</button><button class="dq-cancel" data-dq-cancel>×</button>`:`<button class="decision-review" data-dq-review>Decision: Poor · Change</button>`;results.after(strip);
-  }
-  function setOverride(value){const db=readDb(),g=db.currentGame,p=(g?.pitches||[]).find(x=>x.id===overridePitchId);if(!p)return;p.decisionOverride=value;localStorage.setItem(DBKEY,JSON.stringify(db));overridePitchId='';window.dispatchEvent(new Event('hotb-decision-updated'));}
+  function liveOverride(){const app=document.querySelector('.live-app'),results=app?.querySelector('.results');if(!app||!results)return;app.querySelector('.decision-override-strip')?.remove();const pitch=latestPoor();if(!pitch)return;const strip=document.createElement('div');strip.className='decision-override-strip';strip.innerHTML=overridePitchId===pitch.id?`<button class="dq-good" data-dq="GOOD">Good</button><button class="dq-minor" data-dq="MINOR">Minor</button><button class="dq-ns" data-dq="NOT_SCORED">N/S</button><button class="dq-cancel" data-dq-cancel>×</button>`:`<button class="decision-review" data-dq-review>Poor · Change</button>`;results.after(strip)}
+  function setOverride(value){const db=readDb(),p=(db.currentGame?.pitches||[]).find(x=>x.id===overridePitchId);if(!p)return;p.decisionOverride=value;localStorage.setItem(DBKEY,JSON.stringify(db));overridePitchId='';window.dispatchEvent(new Event('hotb-decision-updated'))}
   function enhance(){replaceEvalTile();liveOverride()}
   function queueEnhance(){if(evalEnhanceQueued)return;evalEnhanceQueued=true;requestAnimationFrame(()=>{evalEnhanceQueued=false;enhance()})}
-  document.addEventListener('click',e=>{const t=e.target instanceof Element?e.target:null;if(!t)return;if(t.closest('[data-decision-detail]')){e.preventDefault();detailModal();return}if(t.closest('[data-decision-close]')){document.getElementById('decisionQualityModal')?.remove();return}const review=t.closest('[data-dq-review]');if(review){const p=latestPoor();overridePitchId=p?.id||'';queueEnhance();return}const grade=t.closest('[data-dq]');if(grade){setOverride(grade.dataset.dq);queueEnhance();return}if(t.closest('[data-dq-cancel]')){overridePitchId='';queueEnhance()}});
+  document.addEventListener('click',e=>{const t=e.target instanceof Element?e.target:null;if(!t)return;if(t.closest('[data-decision-detail]')){e.preventDefault();detailModal();return}if(t.closest('[data-decision-close]')){document.getElementById('decisionQualityModal')?.remove();return}if(t.closest('[data-dq-review]')){overridePitchId=latestPoor()?.id||'';queueEnhance();return}const grade=t.closest('[data-dq]');if(grade){setOverride(grade.dataset.dq);queueEnhance();return}if(t.closest('[data-dq-cancel]')){overridePitchId='';queueEnhance()}});
   window.addEventListener('hotb-decision-updated',queueEnhance);
-  const observer=new MutationObserver(mutations=>{if(mutations.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&((n.matches?.('.eval-app,.live-app'))||n.querySelector?.('.eval-app,.live-app')))))queueEnhance()});observer.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
-  const style=document.createElement('style');style.textContent=`.decision-override-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-items:stretch;margin:6px 0;padding:0}.decision-override-strip button{height:56px;min-height:56px;border:2px solid rgba(0,0,0,.18);border-radius:10px;padding:4px 6px;font-size:17px;font-weight:900}.decision-review{grid-column:1/-1;width:100%;background:#b5121b;color:#fff}.decision-override-strip .dq-good{background:#27924a;color:#fff}.decision-override-strip .dq-minor{background:#f2c33b;color:#000}.decision-override-strip .dq-ns{background:#5d6674;color:#fff}.decision-override-strip .dq-cancel{background:#cf332f;color:#fff;font-size:26px}.decision-summary{text-align:center;padding:14px}.decision-summary>b{display:block;font-size:42px}.decision-summary span{color:#ddd}.decision-breakdown{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}.decision-breakdown div{text-align:center;background:#222;border-radius:8px;padding:10px 3px}.decision-breakdown b{display:block;font-size:24px}.decision-breakdown span{font-size:11px}`;document.head.appendChild(style);
-  window.HotBDecisionQuality={autoGrade,summary};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',queueEnhance,{once:true});else queueEnhance();
+  const observer=new MutationObserver(ms=>{if(ms.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('.eval-app,.live-app')||n.querySelector?.('.eval-app,.live-app')))))queueEnhance()});observer.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
+  const style=document.createElement('style');style.textContent=`.live-app{overflow-x:hidden}.live-app .decision-override-strip{box-sizing:border-box;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;align-items:stretch;width:calc(75% - 6px);max-width:calc(75% - 6px);margin:6px 0 0 0;padding:0;overflow:hidden}.live-app .decision-override-strip button{box-sizing:border-box;width:100%;min-width:0;height:56px;min-height:56px;margin:0;border:2px solid rgba(0,0,0,.18);border-radius:10px;padding:3px 2px;font-size:16px;line-height:1;font-weight:900;white-space:nowrap;overflow:hidden}.live-app .decision-review{grid-column:1/-1;background:#b5121b;color:#fff}.live-app .decision-override-strip .dq-good{background:#27924a;color:#fff}.live-app .decision-override-strip .dq-minor{background:#f2c33b;color:#000}.live-app .decision-override-strip .dq-ns{background:#5d6674;color:#fff}.live-app .decision-override-strip .dq-cancel{background:#cf332f;color:#fff;font-size:25px}.decision-summary{text-align:center;padding:14px}.decision-summary>b{display:block;font-size:42px}.decision-summary span{color:#ddd}.decision-breakdown{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}.decision-breakdown div{text-align:center;background:#222;border-radius:8px;padding:10px 3px}.decision-breakdown b{display:block;font-size:24px}.decision-breakdown span{font-size:11px}`;document.head.appendChild(style);
+  window.HotBDecisionQuality={autoGrade,summary};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',queueEnhance,{once:true});else queueEnhance();
 })();
