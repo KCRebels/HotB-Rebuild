@@ -1,0 +1,42 @@
+(()=>{
+ 'use strict';
+ const DB_KEY='hotbRebuildDbV1';
+ const PLAYER='Brooklyn Gering';
+ const PROFILE_PATH='brooklyn-gering-recruiting-profile.html';
+ const PROFILE_URL='https://kcrebels.github.io/HotB-Rebuild/'+PROFILE_PATH;
+ let lastSelect=null;
+
+ function readDb(){try{return JSON.parse(localStorage.getItem(DB_KEY)||'{}')}catch{return{}}}
+ function currentPlayer(){const name=document.querySelector('#evalSelect')?.value||'';return (readDb().roster||[]).find(p=>p.name===name)||null}
+ function remove(){document.querySelector('#rwRecruitingSection')?.remove()}
+ function textProfile(player){
+  const positions=String(player?.positions||'').trim().replace(/\s*\|\s*/g,'/');
+  const message=window.HotBSms?.recruitingProfileMessage({name:player?.name,grad:player?.grad,positions,url:PROFILE_URL})||`${player?.name||PLAYER} Recruiting Profile: ${PROFILE_URL}`;
+  const destination=window.HotBSms?.composeSmsUrl({message,userAgent:navigator.userAgent||''})||'';
+  if(destination)location.href=destination;
+ }
+ function mount(){
+  const evalApp=document.querySelector('.eval-app'),select=document.querySelector('#evalSelect');
+  if(!evalApp||!select){remove();lastSelect=null;return}
+  const name=select.value;
+  if(name!==PLAYER){remove();lastSelect=name;return}
+  const anchor=document.querySelector('.player-card.player-profile');
+  if(!anchor)return;
+  const existing=document.querySelector('#rwRecruitingSection');
+  if(existing&&existing.dataset.player===name){lastSelect=name;return}
+  remove();
+  const section=document.createElement('section');
+  section.className='rw-recruiting';section.id='rwRecruitingSection';section.dataset.player=name;
+  section.innerHTML='<div class="rw-section-head"><div><h2>Recruiting</h2></div><small>Brooklyn pilot</small></div><div class="rw-buttons"><button type="button" class="rw-profile">Profile</button><button type="button" class="rw-email">Email</button><button type="button" class="rw-text">Text</button></div>';
+  anchor.insertAdjacentElement('afterend',section);
+  section.querySelector('.rw-profile').addEventListener('click',()=>window.open(PROFILE_PATH,'_blank','noopener'));
+  section.querySelector('.rw-text').addEventListener('click',()=>textProfile(currentPlayer()));
+  lastSelect=name;
+ }
+ function scheduleMount(){setTimeout(mount,0);setTimeout(mount,80);setTimeout(mount,250)}
+ document.addEventListener('change',event=>{if(event.target?.id==='evalSelect')scheduleMount()});
+ document.addEventListener('click',event=>{if(event.target.closest('button,a'))setTimeout(mount,120)},true);
+ window.addEventListener('pageshow',scheduleMount);
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scheduleMount,{once:true});else scheduleMount();
+ setInterval(()=>{const select=document.querySelector('#evalSelect');const name=select?.value||null;if(name!==lastSelect||name===PLAYER&&!document.querySelector('#rwRecruitingSection'))mount()},1000);
+})();
