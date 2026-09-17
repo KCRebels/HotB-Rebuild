@@ -8,9 +8,13 @@ function restorePortal(){const a=app();if(!a||!portalScreen)return false;a.repla
 document.addEventListener('click',e=>{
  const t=e.target instanceof Element?e.target:null;if(!t)return;
  const tile=t.closest('[data-hbp-view]');if(tile){savePortal();return}
- const directBack=t.closest('#hbpBack');if(directBack&&portalScreen){e.preventDefault();e.stopImmediatePropagation();restorePortal();return}
- const evalBack=t.closest('#hbpEvalBack');if(evalBack&&portalScreen&&/Hitting Results/i.test(app()?.textContent||'')){e.preventDefault();e.stopImmediatePropagation();restorePortal()}
+ const modalClose=t.closest('[data-pc-close],[data-aba-close],[data-hhb-close],[data-decision-close],[data-bpp-close],.pem-close');if(modalClose)return;
+ const back=t.closest('#hbpBack,#hbpEvalBack,#pemBack,.hbp-back');if(!back)return;
+ const openModal=document.querySelector('#playerCoachModal,#abaModal,#hhbContactPopup,#decisionQualityModal,#bppModal,.pem-modal');
+ if(openModal){e.preventDefault();e.stopImmediatePropagation();openModal.remove();return}
+ if(document.querySelector('.hbp-main.eval-match')&&portalScreen){e.preventDefault();e.stopImmediatePropagation();restorePortal();return}
+ if(portalScreen){e.preventDefault();e.stopImmediatePropagation();restorePortal();return}
 },true);
-const fix=()=>document.querySelectorAll('#hbpBack').forEach(b=>{if(b.textContent.trim()!=='Back')b.textContent='Back'});
+const fix=()=>document.querySelectorAll('#hbpBack,#hbpEvalBack,#pemBack,.hbp-back').forEach(b=>{if(b.textContent.trim()!=='Back')b.textContent='Back'});
 new MutationObserver(fix).observe(document.documentElement,{childList:true,subtree:true});fix();
 })();
