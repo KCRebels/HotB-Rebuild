@@ -25,7 +25,7 @@
    card.onpointerup=event=>{event.preventDefault();event.stopPropagation();openPitching(card.dataset.pitchRanking)};
   });
   document.querySelectorAll('.eval-app .perf').forEach(card=>{
-   card.onpointerup=event=>{if(event.target.closest('.perf-metric'))return;event.preventDefault();event.stopPropagation();openHitting(String(card.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase())};
+   card.onpointerup=event=>{if(event.target.closest('.perf-metric'))return;const label=String(card.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase();if(label==='HHB%'&&window.HotBHHBPopup?.open){event.preventDefault();event.stopPropagation();window.HotBHHBPopup.open();return}if(label==='IPA%'||label==='REACH%')return;event.preventDefault();event.stopPropagation();openHitting(label)};
   });
   document.querySelectorAll('.eval-app .eval-tile').forEach(card=>{
    card.onpointerup=event=>{if(event.target.closest('.metric-title'))return;event.preventDefault();event.stopPropagation();openSummary(card.querySelector('.metric-title')?.dataset.guide)};
