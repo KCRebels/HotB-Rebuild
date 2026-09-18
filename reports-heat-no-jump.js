@@ -1,5 +1,7 @@
 (() => {
-  const PATCHED = 'hotbHeatNoJump';
+  
+if(new URLSearchParams(location.search).has('portal'))return;
+const PATCHED = 'hotbHeatNoJump';
 
   function patchButton(button) {
     if (!button || button.dataset[PATCHED] === '1' || typeof button.onclick !== 'function') return;
