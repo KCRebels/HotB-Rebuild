@@ -11,7 +11,7 @@ function style(){if(document.getElementById(STYLE))return;const s=document.creat
 `;document.head.appendChild(s)}
 function modal(html){document.getElementById('playerCoachModal')?.remove();const m=document.createElement('div');m.id='playerCoachModal';m.className='modal-backdrop';m.innerHTML=`<div class="modal dark pc-copy">${html}</div>`;m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-pc-close]'))m.remove()});document.body.appendChild(m)}
 const head=(small,title)=>`<div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">${small}</div><h2>${title}</h2></div><button class="btn" data-pc-close>Close</button></div>`;
-function readDb(){try{return JSON.parse(localStorage.getItem('hotbRebuildDbV1')||'{}')}catch{return {}}}
+function readDb(){if(window.__HOTB_PORTAL_EVAL_DB__)return window.__HOTB_PORTAL_EVAL_DB__;try{return JSON.parse(localStorage.getItem('hotbRebuildDbV1')||'{}')}catch{return {}}}
 const pct=v=>v===null||v===undefined?'—%':`${Math.round(v*100)}%`;
 const avg=v=>{const n=Number(v);return Number.isFinite(n)?n.toFixed(3).replace(/^0/,''):'—'};
 function activePlayer(){const explicit=String(window.__HOTB_PORTAL_PLAYER_NAME__||window.__HOTB_PORTAL_PLAYER__?.playerName||window.__HOTB_PORTAL_PLAYER__?.name||'').trim();if(explicit)return explicit.includes(' ')?explicit:(readDb().roster||[]).find(p=>String(p.name||'').split(/\s+/)[0]===explicit)?.name||explicit;const selected=String(document.querySelector('#evalSelect')?.value||'').trim();if(selected&&selected!=='Team')return selected;const db=readDb(),token=new URLSearchParams(location.search).get('portal');const p=(db.roster||[]).find(x=>x.portalId===token||x.portalToken===token);return p?.name||''}
