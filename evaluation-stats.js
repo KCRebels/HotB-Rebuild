@@ -36,6 +36,23 @@
   return ['GB','LD','FB'].includes(filter)&&contact===filter;
  }
 
+ function pitchExecutesPlan(pitch,player){
+  const plan=String(pitch?.plan||'').toUpperCase();
+  if(plan==='CH')return String(pitch?.pitchType||'').toUpperCase()==='CH';
+  if(plan==='NO')return true;
+  const leftHanded=['L','SL'].includes(String(player?.side||'').toUpperCase()),zone=normalizeHeatZone(pitch?.zone);
+  const insideZones=new Set(leftHanded?['L1','L2','C1','C3']:['R1','R2','C2','C4']),outsideZones=new Set(leftHanded?['R1','R2','C2','C4']:['L1','L2','C1','C3']);
+  return plan==='IN'?insideZones.has(zone):plan==='OUT'?outsideZones.has(zone):false;
+ }
+ function executionFromPitches(pitches,player){
+  let successes=0,attempts=0;
+  (pitches||[]).forEach(pitch=>{const inPlan=pitchExecutesPlan(pitch,player),result=String(pitch?.result||'').toUpperCase(),swing=['F','HIT','H4O','E','FC','SAC','K'].includes(result),contact=['F','HIT','H4O','E','FC','SAC'].includes(result),take=['B','KL'].includes(result);
+   if(Number(pitch?.strikesBefore||0)<2){if(String(pitch?.plan||'').toUpperCase()==='NO'){if(swing){attempts++;successes++}}else if(swing||take){attempts++;if(swing?inPlan:!inPlan)successes++}}
+   else if(contact&&inPlan){attempts++;successes++}
+  });
+  return{successes,attempts,rate:attempts?successes/attempts:null};
+ }
+
  function pitchPerformance(games,playerName,pitchType){
   const type=String(pitchType||'FB').toUpperCase(),swingResults=new Set(['F','HIT','H4O','E','FC','SAC','K']),contactResults=new Set(['F','HIT','H4O','E','FC','SAC']),battedResults=new Set(['HIT','H4O','E','FC','SAC']);
   const selected=(games||[]).flatMap(game=>(game.pitches||[]).filter(p=>(!playerName||p.hitter===playerName)&&String(p.pitchType||'FB').toUpperCase()===type));
@@ -86,5 +103,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchPerformance,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchExecutesPlan,executionFromPitches,pitchPerformance,hotBMetrics};
 });
