@@ -1,5 +1,7 @@
 (()=>{
 'use strict';
+
+if(new URLSearchParams(location.search).has('portal'))return;
 const DBKEY='hotbRebuildDbV1';
 function db(){try{return JSON.parse(localStorage.getItem(DBKEY)||'null')}catch(e){return null}}
 function player(name){return (db()?.roster||[]).find(p=>p.name===name)}
