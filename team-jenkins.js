@@ -1,5 +1,7 @@
 (()=>{
 'use strict';
+
+if(new URLSearchParams(location.search).has('portal'))return;
 const DBKEY='hotbRebuildDbV1';
 const TEAM='Team Jenkins';
 const players=[
