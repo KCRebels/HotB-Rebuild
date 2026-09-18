@@ -118,8 +118,8 @@
  }
 
  function evaluationSnapshot(db,playerName){
-  const data=playerEvaluationData(db,playerName),player=(db?.roster||[]).find(p=>p.name===playerName)||{},stats=statsForPAs(data.pas),resultMetric=evaluationResultRate(player,stats);
-  return{...data,player,stats,resultMetric};
+  const data=playerEvaluationData(db,playerName),player=(db?.roster||[]).find(p=>p.name===playerName)||{},stats=statsForPAs(data.pas),resultMetric=evaluationResultRate(player,stats),firstPitchStrike=firstPitchStrikeRate(data.games,playerName),execution=executionTotalsFromPAs(data.pas);
+  return{...data,player,stats,resultMetric,firstPitchStrike,execution};
  }
 
  function statsForPAs(pas){
