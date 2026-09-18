@@ -899,7 +899,7 @@ let practiceSection='hub',practiceFocusPlayer='',practiceFocusRange='weekend',pr
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practiceEquipmentSetupOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
 let focusDrillReplaceIndex=-1,focusDrillQuery='';
 let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0},practiceClockTimer=null,practiceEndSpeech=Promise.resolve(),portalClockTimer=null;
-let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null;
+let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null,playerEvalSyncTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLibraryReturnView='library';
 let observationTargetPaId='',observationTargetPlayer='',observationMode='game',observationScope='current',observationPromptInning=0,observationFromInningPrompt=false,observationRecognition=null;
@@ -1025,6 +1025,11 @@ async function claimPlayerPortal(pin){
   await loadPlayerPortal();
  }catch(error){portalBusy=false;portalMessage='That PIN did not work. Ask your coach to reset the portal if the problem continues.'}
  render();
+}
+function schedulePlayerEvaluationPortalSync(){
+ if(!cloudUser||!cloudStore||cloudBusy||portalToken)return;
+ clearTimeout(playerEvalSyncTimer);
+ playerEvalSyncTimer=setTimeout(()=>syncPlayerEvaluationPortals(),2200);
 }
 async function syncPlayerEvaluationPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return false;
@@ -1169,6 +1174,7 @@ function save(){
  localStorage.setItem(DBKEY,JSON.stringify(db));
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
  scheduleCloudBackup();
+ schedulePlayerEvaluationPortalSync();
 }
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
 function go(r){
