@@ -19,6 +19,24 @@
   return isSlapHitter(player)?{label:'QAB%',key:'qabPct',value:stats?.qabPct}:{label:'HHB%',key:'hhbPct',value:stats?.hhbPct};
  }
 
+ function plateAppearanceType(pa){
+  const outcome=String(pa?.outcome||'').toUpperCase();
+  return{
+   outcome,
+   hit:outcome==='HIT',
+   hitForOut:outcome==='H4O',
+   error:outcome==='E',
+   fieldersChoice:outcome==='FC',
+   strikeout:outcome==='K',
+   walk:outcome==='BB',
+   hitByPitch:outcome==='HBP',
+   sacrifice:outcome==='SAC',
+   atBat:['HIT','H4O','E','FC','K'].includes(outcome),
+   contact:['HIT','H4O','E','FC'].includes(outcome),
+   reach:['HIT','BB','HBP','E','FC'].includes(outcome)
+  };
+ }
+
  function isQualityAtBat(pa){
   return pa?.outcome==='HIT'||pa?.outcome==='BB'||pa?.outcome==='HBP'||
    pa?.outcome==='SAC'||Boolean(pa?.sac)||Number(pa?.rbiCount??(pa?.rbi?1:0))>0||
@@ -104,23 +122,20 @@
  function statsForPAs(pas){
   let AB=0,H=0,TB=0,BB=0,HBP=0,K=0,contact=0,SF=0,RBI=0,HHB=0,WEAK=0,battedBalls=0,trackedHHB=0,QAB=0,REACH=0;
   pas.forEach(pa=>{
-    if(pa.outcome==='HIT'){H++;AB++;contact++;TB += ({'1B':1,'2B':2,'3B':3,'HR':4}[pa.hitType]||1)}
-    else if(pa.outcome==='H4O'){AB++;contact++}
-    else if(pa.outcome==='E'||pa.outcome==='FC'){AB++;contact++}
-    else if(pa.outcome==='SAC'){
-      // Sacrifice bunts do not affect OBP; sacrifice flies do.
-      // HotB records bunt=true when the SAC was a bunt, so a non-bunt SAC is an SF.
-      if(!pa.bunt)SF++;
-    }
-    else if(pa.outcome==='K'){AB++;K++}
-    else if(pa.outcome==='BB'){BB++}
-    else if(pa.outcome==='HBP'){HBP++}
+    const type=plateAppearanceType(pa);
+    if(type.atBat)AB++;
+    if(type.contact)contact++;
+    if(type.hit){H++;TB += ({'1B':1,'2B':2,'3B':3,'HR':4}[pa.hitType]||1)}
+    if(type.sacrifice&&!pa.bunt)SF++;
+    if(type.strikeout)K++;
+    if(type.walk)BB++;
+    if(type.hitByPitch)HBP++;
     RBI+=Number(pa.rbiCount??(pa.rbi?1:0));
     if(pa.hhb)HHB++;
     if(pa.weak)WEAK++;
     if(isTrackedBallInPlay(pa)){battedBalls++;if(pa.hhb)trackedHHB++}
     if(isQualityAtBat(pa))QAB++;
-    if(['HIT','BB','HBP','E','FC'].includes(pa.outcome))REACH++;
+    if(type.reach)REACH++;
   });
   const PA=pas.length,AVG=AB?H/AB:0,obDen=AB+BB+HBP+SF,OBP=obDen?(H+BB+HBP)/obDen:0,SLG=AB?TB/AB:0;
   const OPS=OBP+SLG;
@@ -134,5 +149,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isStrikeResult,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,evaluationSnapshot,pitchPerformance,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isStrikeResult,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,plateAppearanceType,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,evaluationSnapshot,pitchPerformance,hotBMetrics};
 });
