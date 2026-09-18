@@ -1026,10 +1026,14 @@ async function claimPlayerPortal(pin){
  }catch(error){portalBusy=false;portalMessage='That PIN did not work. Ask your coach to reset the portal if the problem continues.'}
  render();
 }
-function schedulePlayerEvaluationPortalSync(){
- if(!cloudUser||!cloudStore||cloudBusy||portalToken)return;
+function schedulePlayerEvaluationPortalSync(delay=2200){
+ if(!cloudUser||!cloudStore||portalToken)return;
  clearTimeout(playerEvalSyncTimer);
- playerEvalSyncTimer=setTimeout(()=>syncPlayerEvaluationPortals(),2200);
+ playerEvalSyncTimer=setTimeout(async()=>{
+  if(cloudBusy){schedulePlayerEvaluationPortalSync(900);return}
+  const ok=await syncPlayerEvaluationPortals();
+  if(!ok&&cloudUser&&cloudStore&&!portalToken)schedulePlayerEvaluationPortalSync(1800);
+ },delay);
 }
 async function syncPlayerEvaluationPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return false;
@@ -1116,7 +1120,7 @@ async function backupToCloud(automatic=false){
   db.roster.filter(player=>!player.isGuest&&player.portalId).forEach(player=>portalDoc(player.portalId).set({evaluationData:playerEvaluationPortalPayload(player.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{}));
   localStorage.setItem(CLOUD_ENABLED_KEY,'true');localStorage.setItem(CLOUD_PENDING_KEY,'false');localStorage.removeItem(CLOUD_ERROR_KEY);cloudLastBackup=new Date();localStorage.setItem(CLOUD_LAST_SUCCESS_KEY,cloudLastBackup.toISOString());cloudMessage=automatic?'':'Cloud backup completed.';
  }catch(error){localStorage.setItem(CLOUD_PENDING_KEY,'true');localStorage.setItem(CLOUD_ERROR_KEY,new Date().toISOString());cloudMessage='Backup needs attention. Your phone data is safe; HotB will retry when it is online.'}
- cloudBusy=false;if(route==='home')render();
+ cloudBusy=false;schedulePlayerEvaluationPortalSync(300);if(route==='home')render();
 }
 async function restoreFromCloud(){
  if(!cloudUser||cloudBusy||!confirm('Replace the data on this device with the latest cloud backup? Your current device data will be replaced.'))return;
