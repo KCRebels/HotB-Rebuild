@@ -2376,8 +2376,9 @@ function evalView(){
  const practiceAttendanceResult=player?practiceAttendance(player):null,practiceRate=practiceAttendanceResult?.percentage??null,practiceRateLabel=practiceAttendanceResult&&!practiceAttendanceResult.eligible?'N/A':practiceRate===null?'':`${practiceRate}%`;
  const evalGames=filteredGames(),teamPas=evalGames.flatMap(game=>game.plateAppearances||[]);
  const pas=teamPas.filter(p=>!player||p.hitter===player.name);
- const snapshot=player?HotBEvaluationStats.evaluationSnapshot({savedGames:evalGames,currentGame:null,roster:db.roster},player.name):null;
- const metrics=HotBEvaluationStats.hotBMetrics(pas,teamPas),s=snapshot?.stats||metrics.stats,teamS=metrics.teamStats;
+ const evalDb={savedGames:evalGames,currentGame:null,roster:db.roster};
+ const snapshot=player?HotBEvaluationStats.evaluationSnapshot(evalDb,player.name):null;
+ const teamStats=HotBEvaluationStats.statsForPAs(teamPas),metrics=player?HotBEvaluationStats.hotBMetrics(snapshot.pas,teamPas):{stats:teamStats,teamStats,hotB:null,executionSuccesses:0,executionAttempts:0,execution:null},s=snapshot?.stats||teamStats,teamS=metrics.teamStats;
  const playerTotals=db.roster.map(r=>statsForPAs(teamPas.filter(p=>p.hitter===r.name))).filter(x=>x.PA>0);
  const avgPlayerRp=playerTotals.length?playerTotals.reduce((sum,x)=>sum+x.rp,0)/playerTotals.length:0;
  const hotb=metrics.hotB;
