@@ -1315,7 +1315,7 @@ function pitchExecutesPlan(pitch,player){return HotBEvaluationStats.pitchExecute
 function executionFromPitches(pitches,player){return HotBEvaluationStats.executionFromPitches(pitches,player)}
 function recalculateGameExecution(game){
  (game?.plateAppearances||[]).forEach(pa=>{
-  const pitches=(game.pitches||[]).filter(pitch=>pitch.hitter===pa.hitter&&pitch.pa===pa.pa);
+  const paKey=HotBEvaluationStats.plateAppearanceKey(pa),pitches=(game.pitches||[]).filter(pitch=>HotBEvaluationStats.plateAppearanceKey(pitch)===paKey);
   const execution=executionFromPitches(pitches,hitterObj(pa.hitter));
   pa.executionSuccesses=execution.successes;
   pa.executionAttempts=execution.attempts;
