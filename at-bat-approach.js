@@ -5,7 +5,7 @@ const PORTAL_MODE=new URLSearchParams(location.search).has('portal');
 const DBKEY='hotbRebuildDbV1',STYLE_ID='aba-style';
 const SWINGS=new Set(['F','HIT','H4O','E','FC','SAC','K']);
 const VALUES={GOOD:1,MINOR:.5,POOR:0};
-const readDb=()=>{try{return JSON.parse(localStorage.getItem(DBKEY)||'{}')}catch{return {}}};
+const readDb=()=>{if(window.__HOTB_PORTAL_EVAL_DB__)return window.__HOTB_PORTAL_EVAL_DB__;try{return JSON.parse(localStorage.getItem(DBKEY)||'{}')}catch{return {}}};
 const selectedPlayer=()=>String(document.querySelector('#evalSelect')?.value||'Team').trim();
 function seasonMeta(value){const d=new Date(value);if(Number.isNaN(d.getTime()))return{season:'',segment:''};const y=d.getFullYear(),m=d.getMonth()+1,day=d.getDate();if((m===7&&day>=31)||m===8)return{season:'',segment:'Dead Period'};const sy=m>=9?y:y-1;let segment='Off Season';if(m>=9&&m<=11)segment='Fall';else if((m===5&&day>=20)||m===6||(m===7&&day<=30))segment='Summer';return{season:`${sy}–${String(sy+1).slice(-2)}`,segment}}
 function gameMatches(game){const season=document.querySelector('#evalSeasonFilter')?.value,mode=document.querySelector('#evalDateRange')?.value||'full',time=new Date(game?.date).getTime();if(Number.isNaN(time))return false;if(mode==='custom'){const s=document.querySelector('#evalDateStart')?.value||'',e=document.querySelector('#evalDateEnd')?.value||'';return time>=(s?new Date(`${s}T00:00:00`).getTime():-Infinity)&&time<=(e?new Date(`${e}T23:59:59.999`).getTime():Infinity)}const meta=seasonMeta(game.date);if(season&&meta.season!==season)return false;if(mode==='full')return meta.segment!=='Dead Period';return meta.segment===({fall:'Fall',summer:'Summer',offseason:'Off Season'}[mode])}
