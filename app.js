@@ -1505,6 +1505,7 @@ function seasonMeta(value){
  else if((month===5&&day>=20)||month===6||(month===7&&day<=30))segment='Summer';
  return {season,segment};
 }
+window.HotBSeasonMeta=seasonMeta;
 function currentSeasonLabel(now=new Date()){
  const year=now.getFullYear(),month=now.getMonth()+1,day=now.getDate();
  const startYear=(month>=9||month===8||(month===7&&day>=31))?year:year-1;
