@@ -38,14 +38,15 @@
  }
 
  function isQualityAtBat(pa){
-  return pa?.outcome==='HIT'||pa?.outcome==='BB'||pa?.outcome==='HBP'||
-   pa?.outcome==='SAC'||Boolean(pa?.sac)||Number(pa?.rbiCount??(pa?.rbi?1:0))>0||
-   Boolean(pa?.rba)||Boolean(pa?.hhb)||Number(pa?.pitchCount)>=8;
+  const type=plateAppearanceType(pa);
+  return type.hit||type.walk||type.hitByPitch||type.sacrifice||Boolean(pa?.sac)||
+   Number(pa?.rbiCount??(pa?.rbi?1:0))>0||Boolean(pa?.rba)||Boolean(pa?.hhb)||Number(pa?.pitchCount)>=8;
  }
 
  function countPerformance(pas,bucket){
   const matches=(pas||[]).filter(pa=>bucket==='6+'?Number(pa.pitchCount||0)>=6:String(pa.finalCount||'')===bucket);
-  const H=matches.filter(pa=>pa.outcome==='HIT').length,H4O=matches.filter(pa=>pa.outcome==='H4O').length,K=matches.filter(pa=>pa.outcome==='K').length;
+  let H=0,H4O=0,K=0;
+  matches.forEach(pa=>{const type=plateAppearanceType(pa);if(type.hit)H++;if(type.hitForOut)H4O++;if(type.strikeout)K++});
   return{bucket,H,H4O,K,AVG:(H+H4O+K)?H/(H+H4O+K):0};
  }
 
