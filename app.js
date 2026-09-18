@@ -1514,7 +1514,6 @@ function bindDateFilters(prefix){
  endInput?.addEventListener('blur',()=>render());
 }
 function gameStats(g){return HotBEvaluationStats.statsForPAs(g?.plateAppearances||[])}
-function fps(g){return HotBEvaluationStats.firstPitchStrikeRate(g?[g]:[]).rate||0}
 function render(){
  captureGameUndo();
  if(portalClockTimer){clearInterval(portalClockTimer);portalClockTimer=null}
@@ -2064,7 +2063,7 @@ function liveView(){
    ${['R1','R2'].map(z=>`<div class="zone zone-${z.toLowerCase()} ${showPct?'heat-zone':''} ${g.pendingZone===z?'selected':''}" style="${showPct?heat[z]:''}" data-zone="${z}">${zoneContent(z)}</div>`).join('')}
    ${['B1','B2'].map(z=>`<div class="zone zone-${z.toLowerCase()} ${showPct?'heat-zone':''} ${g.pendingZone===z?'selected':''}" style="${showPct?heat[z]:''}" data-zone="${z}">${zoneContent(z)}</div>`).join('')}
    <button class="zone-next ${g.previewNext?'active':''}" id="zoneNext" ${nextName?'': 'disabled'}>${g.previewNext?nextInitials:'NXT'}</button>
-   <button class="fps ${g.firstPitchView?'active':''}" id="fpsBtn" aria-label="First-pitch strike percentage"><strong class="${Math.round(fps(g)*100)===100?'fps-compact':'fps-standard'}">${Math.round(fps(g)*100)}%</strong></button>
+   <button class="fps ${g.firstPitchView?'active':''}" id="fpsBtn" aria-label="First-pitch strike percentage"><strong class="${Math.round((HotBEvaluationStats.firstPitchStrikeRate([g]).rate||0)*100)===100?'fps-compact':'fps-standard'}">${Math.round((HotBEvaluationStats.firstPitchStrikeRate([g]).rate||0)*100)}%</strong></button>
   </div>
   <div class="zone-tools"><button class="ai" id="aiBtn">Ai</button>
    ${g.showAi?`<div class="ai-suggestions">${suggestions.map((s,i)=>`<div class="ai-box"><span class="ai-rank">#${i+1}</span><span class="ai-pitch">${esc(s.label)}</span><span class="ai-pct">${s.pct===null?'':`${s.pct}%`}</span></div>`).join('')}</div>`:''}
