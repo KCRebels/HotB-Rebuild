@@ -1606,11 +1606,11 @@ function guestCoachPracticeView(){
 }
 function playerEvaluationPortalPayload(playerName){
  const player=db.roster.find(item=>item.name===playerName)||{},rosterFields=['name','side'];
- const paFields=['hitter','pa','outcome','hitType','contactType','rbi','rbiCount','rba','sac','bunt','hhb','weak','pitchCount','finalCount','executionSuccesses','executionAttempts'];
+ const paFields=['hitter','pa','outcome','hitType','contactType','rbi','rbiCount','rba','sac','bunt','hhb','weak','pitchCount','finalCount'];
  const pitchFields=['id','hitter','pa','strikesBefore','zone','pitchType','plan','result','contactType','hitterStyle','intentionalBall','pitchout','decisionOverride','hhb','ts'];
  const pick=(source,fields)=>Object.fromEntries(fields.filter(key=>source?.[key]!==undefined).map(key=>[key,source[key]]));
  const roster=[pick(player,rosterFields)];
- const sourceGames=[...(db.savedGames||[]),...(db.currentGame?[db.currentGame]:[])],seasonOf=value=>seasonMeta(value).season,seasons=[...new Set(sourceGames.map(game=>seasonOf(game.date)).filter(Boolean))].sort().reverse(),season=seasons[0]||'',games=sourceGames.filter(game=>!season||seasonOf(game.date)===season).map(game=>({id:game.id,date:game.date,opponent:game.opponent,plateAppearances:(game.plateAppearances||[]).filter(pa=>pa.hitter===playerName).map(pa=>pick(pa,paFields)),pitches:(game.pitches||[]).filter(p=>p.hitter===playerName).map(p=>pick(p,pitchFields))})).filter(game=>game.plateAppearances.length||game.pitches.length);
+ const sourceGames=[...(db.savedGames||[]),...(db.currentGame?[db.currentGame]:[])],seasonOf=value=>seasonMeta(value).season,seasons=[...new Set(sourceGames.map(game=>seasonOf(game.date)).filter(Boolean))].sort().reverse(),season=seasons[0]||'',games=sourceGames.filter(game=>!season||seasonOf(game.date)===season).map(game=>{const pitches=(game.pitches||[]).filter(p=>p.hitter===playerName).map(p=>pick(p,pitchFields)),plateAppearances=(game.plateAppearances||[]).filter(pa=>pa.hitter===playerName).map(pa=>{const payload=pick(pa,paFields),paKey=HotBEvaluationStats.plateAppearanceKey(pa),execution=HotBEvaluationStats.executionFromPitches(pitches.filter(p=>HotBEvaluationStats.plateAppearanceKey(p)===paKey),player);return{...payload,executionSuccesses:execution.successes,executionAttempts:execution.attempts}});return{id:game.id,date:game.date,opponent:game.opponent,plateAppearances,pitches}}).filter(game=>game.plateAppearances.length||game.pitches.length);
  return JSON.parse(JSON.stringify({roster,savedGames:games,currentGame:null,evaluationSeason:season}));
 }
 function coachEvaluationPortalPayload(){
