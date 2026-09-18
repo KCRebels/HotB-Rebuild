@@ -1311,37 +1311,8 @@ function pitchDotLabel(p){
  if(['H4O','E','FC','SAC'].includes(p.result))return p.fielder||'';
  return '';
 }
-function pitchExecutesPlan(pitch,player){
- const plan=pitch.plan;
- if(plan==='CH')return pitch.pitchType==='CH';
- if(plan==='NO')return true;
- const leftHanded=isLeftBatter(player);
- const insideZones=new Set(leftHanded?['L','L1','L2','C1','C3']:['R','R1','R2','C2','C4']);
- const outsideZones=new Set(leftHanded?['R','R1','R2','C2','C4']:['L','L1','L2','C1','C3']);
- return plan==='IN'?insideZones.has(pitch.zone):plan==='OUT'?outsideZones.has(pitch.zone):false;
-}
-function executionFromPitches(pitches,player){
- let successes=0,attempts=0;
- pitches.forEach(pitch=>{
-  const inPlan=pitchExecutesPlan(pitch,player);
-  const swing=['F','HIT','H4O','E','FC','SAC','K'].includes(pitch.result);
-  const contact=['F','HIT','H4O','E','FC','SAC'].includes(pitch.result);
-  const take=['B','KL'].includes(pitch.result);
-  if(pitch.strikesBefore<2){
-   // With no assigned location, only actual swings/contact are graded.
-   if(pitch.plan==='NO'){
-    if(swing){attempts++;successes++}
-   }else if(swing||take){
-    attempts++;
-    if(swing?inPlan:!inPlan)successes++;
-   }
-  }else if(contact&&inPlan){
-   // With two strikes, correct-location contact may help; nothing can hurt.
-   attempts++;successes++;
-  }
- });
- return {successes,attempts,rate:attempts?successes/attempts:null};
-}
+function pitchExecutesPlan(pitch,player){return HotBEvaluationStats.pitchExecutesPlan(pitch,player)}
+function executionFromPitches(pitches,player){return HotBEvaluationStats.executionFromPitches(pitches,player)}
 function recalculateGameExecution(game){
  (game?.plateAppearances||[]).forEach(pa=>{
   const pitches=(game.pitches||[]).filter(pitch=>pitch.hitter===pa.hitter&&pitch.pa===pa.pa);
