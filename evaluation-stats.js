@@ -14,6 +14,11 @@
   return{strikes,total,rate:total?strikes/total:null};
  }
 
+ function isSlapHitter(player){return String(player?.side||'').toUpperCase()==='SL'}
+ function evaluationResultRate(player,stats){
+  return isSlapHitter(player)?{label:'QAB%',key:'qabPct',value:stats?.qabPct}:{label:'HHB%',key:'hhbPct',value:stats?.hhbPct};
+ }
+
  function isQualityAtBat(pa){
   return pa?.outcome==='HIT'||pa?.outcome==='BB'||pa?.outcome==='HBP'||
    pa?.outcome==='SAC'||Boolean(pa?.sac)||Number(pa?.rbiCount??(pa?.rbi?1:0))>0||
@@ -124,5 +129,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isStrikeResult,firstPitchStrikeRate,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,pitchPerformance,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isStrikeResult,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,pitchPerformance,hotBMetrics};
 });
