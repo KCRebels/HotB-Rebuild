@@ -2299,7 +2299,7 @@ function countCard(pas,bucket){
 function reportPitchSource(){return reportGames().flatMap(game=>game.pitches||[])}
 function reportPitchForPA(pa){
  const game=reportGames().find(item=>(item.plateAppearances||[]).includes(pa));
- const pitches=(game?.pitches||[]).filter(p=>p.pa===pa.pa&&p.hitter===pa.hitter);
+ const paKey=HotBEvaluationStats.plateAppearanceKey(pa),pitches=(game?.pitches||[]).filter(p=>HotBEvaluationStats.plateAppearanceKey(p)===paKey);
  return pitches[pitches.length-1]||{};
 }
 function reportPitchLabel(pa){
