@@ -32,9 +32,9 @@
  function hotBMetrics(playerPas,teamPas){
   const player=statsForPAs(playerPas||[]),team=statsForPAs(teamPas||[]);
   const teamRate=team.PA?team.rp/team.PA:0;
-  const hotB=player.PA&&teamRate?Math.round((player.rp/player.PA)/teamRate*100):null;
+  const hotBRaw=player.PA&&teamRate?(player.rp/player.PA)/teamRate*100:null,hotB=hotBRaw===null?null:Math.round(hotBRaw);
   const executionTotals=(playerPas||[]).reduce((t,pa)=>({successes:t.successes+Number(pa.executionSuccesses||0),attempts:t.attempts+Number(pa.executionAttempts||0)}),{successes:0,attempts:0});
-  return{stats:player,teamStats:team,hotB,runsProduced:player.rp,execution:executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null,executionSuccesses:executionTotals.successes,executionAttempts:executionTotals.attempts};
+  return{stats:player,teamStats:team,hotB,hotBRaw,runsProduced:player.rp,execution:executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null,executionSuccesses:executionTotals.successes,executionAttempts:executionTotals.attempts};
  }
 
  function statsForPAs(pas){
