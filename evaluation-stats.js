@@ -7,6 +7,13 @@
   return Boolean(String(pa?.contactType||'').trim());
  }
 
+ function isStrikeResult(result){return ['F','K','KL','HIT','H4O','E','FC','SAC'].includes(String(result||'').toUpperCase())}
+ function firstPitchStrikeRate(games,playerName){
+  let strikes=0,total=0;
+  (games||[]).forEach(game=>{const seen=new Set();(game.pitches||[]).forEach(p=>{if(playerName&&p.hitter!==playerName)return;const key=`${p.hitter}::${p.pa}`;if(seen.has(key))return;seen.add(key);total++;if(isStrikeResult(p.result))strikes++})});
+  return{strikes,total,rate:total?strikes/total:null};
+ }
+
  function isQualityAtBat(pa){
   return pa?.outcome==='HIT'||pa?.outcome==='BB'||pa?.outcome==='HBP'||
    pa?.outcome==='SAC'||Boolean(pa?.sac)||Number(pa?.rbiCount??(pa?.rbi?1:0))>0||
@@ -105,5 +112,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,pitchPerformance,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isStrikeResult,firstPitchStrikeRate,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,pitchPerformance,hotBMetrics};
 });
