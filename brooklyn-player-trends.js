@@ -1,5 +1,7 @@
 (()=>{
 'use strict';
+
+if(new URLSearchParams(location.search).has('portal'))return;
 const DBKEY='hotbRebuildDbV1',DEMO_PLAYER='Brooklyn Gering';
 const readDb=()=>{try{return JSON.parse(localStorage.getItem(DBKEY)||'{}')}catch{return {}}};
 const selectedPlayer=()=>String(document.querySelector('#evalSelect')?.value||'').trim();
