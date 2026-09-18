@@ -96,6 +96,11 @@
   return{stats:player,teamStats:team,hotB,hotBRaw,runsProduced:player.rp,execution:executionTotals.rate,executionSuccesses:executionTotals.successes,executionAttempts:executionTotals.attempts};
  }
 
+ function evaluationSnapshot(db,playerName){
+  const data=playerEvaluationData(db,playerName),player=(db?.roster||[]).find(p=>p.name===playerName)||{},stats=statsForPAs(data.pas),resultMetric=evaluationResultRate(player,stats);
+  return{...data,player,stats,resultMetric};
+ }
+
  function statsForPAs(pas){
   let AB=0,H=0,TB=0,BB=0,HBP=0,K=0,contact=0,SF=0,RBI=0,HHB=0,WEAK=0,battedBalls=0,trackedHHB=0,QAB=0,REACH=0;
   pas.forEach(pa=>{
@@ -129,5 +134,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isStrikeResult,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,pitchPerformance,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isStrikeResult,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,evaluationSnapshot,pitchPerformance,hotBMetrics};
 });
