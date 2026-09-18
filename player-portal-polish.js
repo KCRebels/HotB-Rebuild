@@ -9,7 +9,7 @@ const app=()=>document.getElementById('app');
 const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 function header(title='Evaluation'){return `<header class="hbp-head"><button class="hbp-back" id="pemBack">Back</button><h1>${title}</h1><span></span></header>`}function shell(body,title='Evaluation'){return `<div class="hbp-shell">${header(title)}<main class="hbp-main eval-match">${body}</main></div>`}
 let heat='ALL',heatMode='COUNT';
-function portalEvalData(){const db=window.__HOTB_PORTAL_EVAL_DB__||{},who=String(window.__HOTB_PORTAL_PLAYER_NAME__||''),data=window.HotBEvaluationStats?.playerEvaluationData?.(db,who)||{games:[],pitches:[],pas:[]};return{db,who,...data}}
+function portalEvalData(){const db=window.__HOTB_PORTAL_EVAL_DB__||{},who=String(window.__HOTB_PORTAL_PLAYER_NAME__||''),snapshot=window.HotBEvaluationStats?.evaluationSnapshot?.(db,who)||{games:[],pitches:[],pas:[],stats:null,player:{}};return{db,who,...snapshot}}
 function zoneIndex(z){return window.HotBEvaluationStats?.heatZoneIndex?.(z)??-1}
 function resultMatches(p,f){return window.HotBEvaluationStats?.pitchMatchesHeatResult?.(p,f)??false}
 function zoneValues(filter=heat,pitches=portalEvalData().pitches){const v=Array(12).fill(0);pitches.filter(p=>resultMatches(p,filter)).forEach(p=>{const i=zoneIndex(p.zone);if(i>=0)v[i]++});return v}
