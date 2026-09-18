@@ -71,12 +71,17 @@
   return{pitches:selected,swings,contacts,batted,n:selected.length,swingRate:selected.length?swings.length/selected.length:null,contactRate:swings.length?contacts.length/swings.length:null,whiffRate:swings.length?(swings.length-contacts.length)/swings.length:null,hhbRate:batted.length?hardHit/batted.length:null,hardHit};
  }
 
+ function executionTotalsFromPAs(pas){
+  const totals=(pas||[]).reduce((t,pa)=>({successes:t.successes+Number(pa?.executionSuccesses||0),attempts:t.attempts+Number(pa?.executionAttempts||0)}),{successes:0,attempts:0});
+  return{...totals,rate:totals.attempts?totals.successes/totals.attempts:null};
+ }
+
  function hotBMetrics(playerPas,teamPas){
   const player=statsForPAs(playerPas||[]),team=statsForPAs(teamPas||[]);
   const teamRate=team.PA?team.rp/team.PA:0;
   const hotBRaw=player.PA&&teamRate?(player.rp/player.PA)/teamRate*100:null,hotB=hotBRaw===null?null:Math.round(hotBRaw);
-  const executionTotals=(playerPas||[]).reduce((t,pa)=>({successes:t.successes+Number(pa.executionSuccesses||0),attempts:t.attempts+Number(pa.executionAttempts||0)}),{successes:0,attempts:0});
-  return{stats:player,teamStats:team,hotB,hotBRaw,runsProduced:player.rp,execution:executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null,executionSuccesses:executionTotals.successes,executionAttempts:executionTotals.attempts};
+  const executionTotals=executionTotalsFromPAs(playerPas);
+  return{stats:player,teamStats:team,hotB,hotBRaw,runsProduced:player.rp,execution:executionTotals.rate,executionSuccesses:executionTotals.successes,executionAttempts:executionTotals.attempts};
  }
 
  function statsForPAs(pas){
@@ -112,5 +117,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isStrikeResult,firstPitchStrikeRate,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,pitchPerformance,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isStrikeResult,firstPitchStrikeRate,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,pitchPerformance,hotBMetrics};
 });
