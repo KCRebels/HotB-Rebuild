@@ -2,6 +2,7 @@
 'use strict';
 
 const PORTAL_MODE=new URLSearchParams(location.search).has('portal');
+const CALC_ONLY=!!window.__HOTB_CALC_ONLY__;
 const DBKEY='hotbRebuildDbV1',STYLE_ID='aba-style';
 const SWINGS=new Set(['F','HIT','H4O','E','FC','SAC','K']);
 const VALUES={GOOD:1,MINOR:.5,POOR:0};
@@ -24,9 +25,9 @@ function enhanceTile(){ensureStyle();const tile=findSourceTile();if(!tile)return
 function breakdown(label,s){return`<h3 class="aba-section-title">${label}</h3><div class="aba-breakdown"><div><b>${s.counts.GOOD}</b><span>GOOD</span></div><div><b>${s.counts.MINOR}</b><span>MINOR</span></div><div><b>${s.counts.POOR}</b><span>POOR</span></div></div>`}
 function openModal(){const sum=summarize();document.querySelector('#abaModal')?.remove();const el=document.createElement('div');el.id='abaModal';el.className='modal-backdrop';el.innerHTML=`<div class="modal dark aba-modal"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">AT-BAT APPROACH</div><h2>ABA</h2></div><button class="btn" data-aba-close>Close</button></div><div class="aba-summary-grid"><div class="aba-summary-card"><b>${pct(sum.first.rate)}</b><span>1ST PITCH APPROACH</span></div><div class="aba-summary-card"><b>${pct(sum.two.rate)}</b><span>2-STRIKE APPROACH</span></div></div>${breakdown('1st Pitch Approach',sum.first)}${breakdown('2-Strike Approach',sum.two)}<p class="aba-note">1P: ${sum.first.n} scored first pitches · 2K: ${sum.two.n} plate appearances that reached two strikes. Good = full credit · Minor = half credit · Poor = zero.</p></div>`;el.addEventListener('click',e=>{if(e.target===el||e.target.closest('[data-aba-close]'))el.remove()});document.body.appendChild(el)}
 let queued=false;function queue(){if(PORTAL_MODE)return;if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;enhanceTile()})}
-document.addEventListener('click',e=>{const t=e.target instanceof Element?e.target:null;if(t?.closest('[data-aba-open],.aba-tile')){e.preventDefault();e.stopPropagation();openModal()}},true);
-document.addEventListener('change',e=>{if(e.target instanceof Element&&e.target.matches('#evalSelect,#evalSeasonFilter,#evalDateRange,#evalDateStart,#evalDateEnd'))queue()});
-const app=document.querySelector('#app');if(app)new MutationObserver(ms=>{if(ms.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('.eval-app')||n.querySelector?.('.eval-app')))))queue()}).observe(app,{childList:true,subtree:true});
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',queue,{once:true});else queue();
+if(!CALC_ONLY)document.addEventListener('click',e=>{const t=e.target instanceof Element?e.target:null;if(t?.closest('[data-aba-open],.aba-tile')){e.preventDefault();e.stopPropagation();openModal()}},true);
+if(!CALC_ONLY)document.addEventListener('change',e=>{if(e.target instanceof Element&&e.target.matches('#evalSelect,#evalSeasonFilter,#evalDateRange,#evalDateStart,#evalDateEnd'))queue()});
+const app=document.querySelector('#app');if(!CALC_ONLY&&app)new MutationObserver(ms=>{if(ms.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&(n.matches?.('.eval-app')||n.querySelector?.('.eval-app')))))queue()}).observe(app,{childList:true,subtree:true});
+if(!CALC_ONLY){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',queue,{once:true});else queue();}
 window.HotBAtBatApproach={summarize,games,selectedPlayer};
 })();
