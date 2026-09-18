@@ -62,6 +62,13 @@
   return{successes,attempts,rate:attempts?successes/attempts:null};
  }
 
+ function playerEvaluationData(db,playerName){
+  const games=[...(db?.savedGames||[]),...(db?.currentGame?[db.currentGame]:[])];
+  const pitches=games.flatMap(game=>(game.pitches||[]).filter(p=>!playerName||p.hitter===playerName));
+  const pas=games.flatMap(game=>(game.plateAppearances||[]).filter(pa=>!playerName||pa.hitter===playerName));
+  return{games,pitches,pas};
+ }
+
  function pitchPerformance(games,playerName,pitchType){
   const type=String(pitchType||'FB').toUpperCase();
   const selected=(games||[]).flatMap(game=>(game.pitches||[]).filter(p=>(!playerName||p.hitter===playerName)&&String(p.pitchType||'FB').toUpperCase()===type));
@@ -117,5 +124,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isStrikeResult,firstPitchStrikeRate,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,pitchPerformance,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isStrikeResult,firstPitchStrikeRate,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,pitchPerformance,hotBMetrics};
 });
