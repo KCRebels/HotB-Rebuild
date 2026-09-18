@@ -19,6 +19,13 @@
   return{bucket,H,H4O,K,AVG:(H+H4O+K)?H/(H+H4O+K):0};
  }
 
+ function normalizeHeatZone(zone){
+  const value=String(zone||'').toUpperCase(),legacy={T:'T1',L:'L1',R:'R1',B:'B1'};
+  return legacy[value]||value;
+ }
+ function heatZoneIndex(zone){
+  return ['T1','T2','L1','L2','C1','C2','C3','C4','R1','R2','B1','B2'].indexOf(normalizeHeatZone(zone));
+ }
  function pitchMatchesHeatResult(pitch,result){
   const r=String(pitch?.result||'').toUpperCase(),filter=String(result||'ALL').toUpperCase(),contact=String(pitch?.contactType||'').toUpperCase();
   if(filter==='ALL')return true;
@@ -70,5 +77,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isQualityAtBat,countPerformance,pitchMatchesHeatResult,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,hotBMetrics};
 });
