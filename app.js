@@ -2372,10 +2372,10 @@ function evalView(){
  const pas=teamPas.filter(p=>!player||p.hitter===player.name);
  const evalDb={savedGames:evalGames,currentGame:null,roster:db.roster};
  const snapshot=player?HotBEvaluationStats.evaluationSnapshot(evalDb,player.name):null;
- const teamStats=HotBEvaluationStats.statsForPAs(teamPas),metrics=player?HotBEvaluationStats.hotBMetrics(snapshot.pas,teamPas):{stats:teamStats,teamStats,hotB:null,executionSuccesses:0,executionAttempts:0,execution:null},s=snapshot?.stats||teamStats,teamS=metrics.teamStats;
+ const teamStats=HotBEvaluationStats.statsForPAs(teamPas),metrics=player?HotBEvaluationStats.hotBMetrics(snapshot.pas,teamPas):null,s=player?snapshot.stats:teamStats;
  const playerTotals=db.roster.map(r=>HotBEvaluationStats.statsForPAs(teamPas.filter(p=>p.hitter===r.name))).filter(x=>x.PA>0);
  const avgPlayerRp=playerTotals.length?playerTotals.reduce((sum,x)=>sum+x.rp,0)/playerTotals.length:0;
- const hotb=metrics.hotB;
+ const hotb=metrics?.hotB??null;
  const signed=(n,digits=1)=>`${n>0?'+':''}${n.toFixed(digits)}`;
  const deltaClass=n=>n>0?'positive':n<0?'negative':'neutral';
  const comparison=(value,delta,digits=1)=>`<div class="value compare-value"><span>${value}</span><span class="metric-pipe">|</span><span class="metric-delta ${deltaClass(delta)}">${signed(delta,digits)}</span></div>`;
@@ -2385,7 +2385,7 @@ function evalView(){
  const reach=s.PA?s.reachPct:null;
  const ms=measurementTypes(player);
  const metricHead=(metric,label=metric)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${metric}">${label}</button><button class="metric-all" data-ranking="${metric}">ALL</button></div>`;
- const resultMetric=snapshot?.resultMetric||HotBEvaluationStats.evaluationResultRate(player,s),resultRate=[resultMetric.label,s.PA?pct1(resultMetric.value):'—',resultMetric.key];
+ const resultMetric=player?snapshot.resultMetric:HotBEvaluationStats.evaluationResultRate(null,s),resultRate=[resultMetric.label,s.PA?pct1(resultMetric.value):'—',resultMetric.key];
  const performanceTile=([label,value,key])=>{
   const statKey=key==='contact'?'contactPct':key==='K'?'kPct':key,guide=['AVG','OBP','SLG','CONTACT','K%'].includes(label);
   const rating=s.PA>=25&&!['hhbPct','qabPct'].includes(statKey)?grade(s[statKey],key):'';
