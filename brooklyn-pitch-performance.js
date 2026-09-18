@@ -1,5 +1,7 @@
 (()=>{
 'use strict';
+
+if(new URLSearchParams(location.search).has('portal'))return;
 const DBKEY='hotbRebuildDbV1',TYPES=['FB','CH','RS','DP','CV','SC'];
 const NAMES={FB:'FASTBALL',CH:'CHANGEUP',RS:'RISE',DP:'DROP',CV:'CURVE',SC:'SCREW'};
 const SWINGS=new Set(['F','HIT','H4O','E','FC','SAC','K']);
