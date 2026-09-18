@@ -1,5 +1,7 @@
 (()=>{
 'use strict';
+
+if(new URLSearchParams(location.search).has('portal'))return;
 const DBKEY='hotbRebuildDbV1',STYLE_ID='hhb-contact-popup-style',SLAPPERS=new Set(['Maia Waddell','Hailey Marsh']);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const readDb=()=>{try{return JSON.parse(localStorage.getItem(DBKEY)||'{}')}catch{return {}}};
