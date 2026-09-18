@@ -1298,7 +1298,7 @@ function captureGameUndo(){
  lastRenderedUndoState=current;
  localStorage.setItem(DBKEY,JSON.stringify(db));
 }
-function isStrikeResult(r){return ['F','K','KL','HIT','H4O','E','FC','SAC'].includes(r)}
+function isStrikeResult(r){return HotBEvaluationStats.isStrikeResult(r)}
 function resultGroup(p){return p.result==='KL'?'K':p.result}
 function pitchMarkClass(p){
  if(p.result==='HIT')return 'hit';
@@ -1520,11 +1520,7 @@ function bindDateFilters(prefix){
  endInput?.addEventListener('blur',()=>render());
 }
 function gameStats(g){return statsForPAs(g?.plateAppearances||[])}
-function fps(g){
- const seen=new Set();
- const first=(g?.pitches||[]).filter(p=>{const key=`${p.hitter}::${p.pa}`;if(seen.has(key))return false;seen.add(key);return true});
- return first.length?first.filter(p=>isStrikeResult(p.result)).length/first.length:0;
-}
+function fps(g){return HotBEvaluationStats.firstPitchStrikeRate(g?[g]:[]).rate||0}
 function render(){
  captureGameUndo();
  if(portalClockTimer){clearInterval(portalClockTimer);portalClockTimer=null}
