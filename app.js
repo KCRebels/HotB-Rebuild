@@ -1642,7 +1642,7 @@ function guestCoachPracticeView(){
 function playerEvaluationPortalPayload(playerName){
  const player=db.roster.find(item=>item.name===playerName)||{},rosterFields=['name','side'];
  const paFields=['id','hitter','inning','pa','outcome','hitType','contactType','fielder','rbi','rbiCount','rba','sac','error','fc','bunt','slap','hhb','weak','pitchCount','finalCount','firstPitchStrike','execution','executionSuccesses','executionAttempts','ts'];
- const pitchFields=['id','hitter','pa','inning','ballsBefore','strikesBefore','zone','pitchType','plan','result','hitterStyle','intentionalBall','pitchout','decisionOverride','hhb','ts'];
+ const pitchFields=['id','hitter','pa','inning','ballsBefore','strikesBefore','zone','pitchType','plan','result','contactType','hitterStyle','intentionalBall','pitchout','decisionOverride','hhb','ts'];
  const pick=(source,fields)=>Object.fromEntries(fields.filter(key=>source?.[key]!==undefined).map(key=>[key,source[key]]));
  const roster=[pick(player,rosterFields)];
  const games=[...(db.savedGames||[]),...(db.currentGame?[db.currentGame]:[])].map(game=>({id:game.id,date:game.date,opponent:game.opponent,plateAppearances:(game.plateAppearances||[]).filter(pa=>pa.hitter===playerName).map(pa=>pick(pa,paFields)),pitches:(game.pitches||[]).filter(p=>p.hitter===playerName).map(p=>pick(p,pitchFields))})).filter(game=>game.plateAppearances.length||game.pitches.length);
