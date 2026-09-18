@@ -1447,9 +1447,6 @@ function undo(){
  lastRenderedUndoState=gameUndoState(db.currentGame);
  save();render();
 }
-function statsForPAs(pas){
- return HotBEvaluationStats.statsForPAs(pas);
-}
 function allPAs(includeCurrent=true){
  let arr=[...db.savedGames.flatMap(g=>g.plateAppearances||[])];
  if(includeCurrent&&db.currentGame)arr.push(...db.currentGame.plateAppearances);
@@ -1516,7 +1513,7 @@ function bindDateFilters(prefix){
  startInput?.addEventListener('blur',()=>render());
  endInput?.addEventListener('blur',()=>render());
 }
-function gameStats(g){return statsForPAs(g?.plateAppearances||[])}
+function gameStats(g){return HotBEvaluationStats.statsForPAs(g?.plateAppearances||[])}
 function fps(g){return HotBEvaluationStats.firstPitchStrikeRate(g?[g]:[]).rate||0}
 function render(){
  captureGameUndo();
@@ -2276,7 +2273,7 @@ function reportGamesListModal(){
 function reportModal(){
  const games=reportGames(),source=games.flatMap(game=>game.plateAppearances||[]);
  const filtered=reportFilterHitter==='All Hitters'?source:source.filter(pa=>pa.hitter===reportFilterHitter);
- const s=statsForPAs(filtered),opponents=[...new Set(reportBaseGames().map(game=>game.opponent).filter(Boolean))].sort();
+ const s=HotBEvaluationStats.statsForPAs(filtered),opponents=[...new Set(reportBaseGames().map(game=>game.opponent).filter(Boolean))].sort();
  return `<div class="modal-backdrop"><div class="modal">
  <div class="report-tabs"><button class="btn ${reportMode==='current'?'black':''}" data-rmode="current">Current</button><button class="btn ${reportMode==='saved'?'black':''}" data-rmode="saved">All Games</button><button class="btn gold" id="exportReport">Export</button><button class="btn" data-close>Close</button></div>
  <div class="panel report-detail" style="margin:14px 0 0">
@@ -2312,11 +2309,8 @@ function outcomeReport(pas){
  const strikeouts=pas.filter(p=>p.outcome==='K'),hits=pas.filter(p=>p.outcome==='HIT'),outs=pas.filter(p=>p.outcome==='H4O'),items=[...hits,...outs];
  return `${reportSection('STRIKEOUTS',strikeouts,'K')}${reportSection('BASE HITS',hits,'HIT')}<div class="report-spray-box"><div class="field report-spray-field">${items.map(p=>{const coords={1:[50,66],2:[50,85],3:[66,59],4:[62,47],5:[34,59],6:[38,47],7:[22,34],8:[50,25],9:[78,34]}[p.fielder]||[50,65];return `<button class="report-spray-dot ${p.outcome==='HIT'?'hit':'h4o'} ${reportSelectedPaId===p.id?'selected':''}" style="left:${coords[0]}%;top:${coords[1]}%" data-report-pa="${p.id}" aria-label="Select ${p.outcome} by ${esc(p.hitter)}"></button>`}).join('')}</div></div>${reportSection('HITS 4 OUTS',outs,'H4O')}`;
 }
-function pitchMatchesHeatResult(pitch,result){
- return HotBEvaluationStats.pitchMatchesHeatResult(pitch,result);
-}
 function zoneReport(){
- const pitches=reportPitchSource().filter(p=>(reportFilterHitter==='All Hitters'||p.hitter===reportFilterHitter)&&pitchMatchesHeatResult(p,reportHeatResult));
+ const pitches=reportPitchSource().filter(p=>(reportFilterHitter==='All Hitters'||p.hitter===reportFilterHitter)&&HotBEvaluationStats.pitchMatchesHeatResult(p,reportHeatResult));
  const z=Object.fromEntries(chartZoneIds.map(zone=>[zone,0]));let located=0;
  pitches.forEach(p=>{const zone=displayedChartZone(p.zone);if(z[zone]!=null){z[zone]++;located++}});
  const filters=`<div class="heat-result-filters">${['ALL','BALL','FOUL','KS','KL','HIT','H4O','GB','LD','FB'].map(result=>`<button class="${reportHeatResult===result?'active':''}" data-heat-result="${result}">${result}</button>`).join('')}</div>`;
@@ -2379,7 +2373,7 @@ function evalView(){
  const evalDb={savedGames:evalGames,currentGame:null,roster:db.roster};
  const snapshot=player?HotBEvaluationStats.evaluationSnapshot(evalDb,player.name):null;
  const teamStats=HotBEvaluationStats.statsForPAs(teamPas),metrics=player?HotBEvaluationStats.hotBMetrics(snapshot.pas,teamPas):{stats:teamStats,teamStats,hotB:null,executionSuccesses:0,executionAttempts:0,execution:null},s=snapshot?.stats||teamStats,teamS=metrics.teamStats;
- const playerTotals=db.roster.map(r=>statsForPAs(teamPas.filter(p=>p.hitter===r.name))).filter(x=>x.PA>0);
+ const playerTotals=db.roster.map(r=>HotBEvaluationStats.statsForPAs(teamPas.filter(p=>p.hitter===r.name))).filter(x=>x.PA>0);
  const avgPlayerRp=playerTotals.length?playerTotals.reduce((sum,x)=>sum+x.rp,0)/playerTotals.length:0;
  const hotb=metrics.hotB;
  const signed=(n,digits=1)=>`${n>0?'+':''}${n.toFixed(digits)}`;
@@ -2502,7 +2496,7 @@ function hittingRankingModal(metric){
   hhbPct:{label:'HHB%',key:'hhbPct',format:pct1},qabPct:{label:'QAB%',key:'qabPct',format:pct1}
  };
  const definition=definitions[metric]||definitions.AVG,teamPas=filteredPAs();
- const rows=db.roster.map(player=>{const stats=statsForPAs(teamPas.filter(pa=>pa.hitter===player.name));return {player,stats,value:stats.PA?stats[definition.key]:null}}).sort((a,b)=>{
+ const rows=db.roster.map(player=>{const stats=HotBEvaluationStats.statsForPAs(teamPas.filter(pa=>pa.hitter===player.name));return {player,stats,value:stats.PA?stats[definition.key]:null}}).sort((a,b)=>{
   if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
   if(a.value===null)return 1;if(b.value===null)return-1;
   return (definition.lowerIsBetter?a.value-b.value:b.value-a.value)||a.player.name.localeCompare(b.player.name);
