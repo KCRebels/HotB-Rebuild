@@ -3,9 +3,9 @@
 const $ = (sel, root=document) => root.querySelector(sel);
 const $$ = (sel, root=document) => [...root.querySelectorAll(sel)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]));
-const round3 = n => HotBEvaluationStats.formatAverage(n,'.000');
-const pct1 = n => HotBEvaluationStats.formatPercent(n,1,'—');
-const pct0 = n => HotBEvaluationStats.formatPercent(n,0,'—');
+const round3 = n => Number.isFinite(n) ? n.toFixed(3).replace(/^0/,'') : '.000';
+const pct1 = n => `${(n*100).toFixed(1)}%`;
+const pct0 = n => `${Math.round(n*100)}%`;
 const requestedPlanPreferences={
  'Lakyn Farley':'IN','Maleah Pena':'IN','Hailey Marsh':'NO','Maia Waddell':'NO',
  'Aniesa Rohleder':'OUT','Makenna Whitaker':'OUT','Brynna Peter':'OUT',
