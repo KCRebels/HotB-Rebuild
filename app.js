@@ -1298,7 +1298,6 @@ function captureGameUndo(){
  lastRenderedUndoState=current;
  localStorage.setItem(DBKEY,JSON.stringify(db));
 }
-function isStrikeResult(r){return HotBEvaluationStats.isStrikeResult(r)}
 function resultGroup(p){return p.result==='KL'?'K':p.result}
 function pitchMarkClass(p){
  if(p.result==='HIT')return 'hit';
@@ -1311,12 +1310,10 @@ function pitchDotLabel(p){
  if(['H4O','E','FC','SAC'].includes(p.result))return p.fielder||'';
  return '';
 }
-function pitchExecutesPlan(pitch,player){return HotBEvaluationStats.pitchExecutesPlan(pitch,player)}
-function executionFromPitches(pitches,player){return HotBEvaluationStats.executionFromPitches(pitches,player)}
 function recalculateGameExecution(game){
  (game?.plateAppearances||[]).forEach(pa=>{
   const paKey=HotBEvaluationStats.plateAppearanceKey(pa),pitches=(game.pitches||[]).filter(pitch=>HotBEvaluationStats.plateAppearanceKey(pitch)===paKey);
-  const execution=executionFromPitches(pitches,hitterObj(pa.hitter));
+  const execution=HotBEvaluationStats.executionFromPitches(pitches,hitterObj(pa.hitter));
   pa.executionSuccesses=execution.successes;
   pa.executionAttempts=execution.attempts;
   pa.execution=execution.rate;
@@ -1406,7 +1403,7 @@ function closePA(outcome,extra={}){
  const g=currentGame(), h=currentHitter(g);
  const paPitches=g.pitches.filter(p=>p.pa===g.paNumber&&p.hitter===h.name);
  const firstPitchStrike = HotBEvaluationStats.firstPitchStrikeRate([{pitches:paPitches}],h.name).rate===1;
- const execution=executionFromPitches(paPitches,h);
+ const execution=HotBEvaluationStats.executionFromPitches(paPitches,h);
  const pa={
   id:crypto.randomUUID(),hitter:h.name,inning:g.inning,pa:g.paNumber,outcome,
   hitType:extra.hitType||'',contactType:extra.contactType||'',fielder:extra.fielder||null,
