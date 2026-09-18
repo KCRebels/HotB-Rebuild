@@ -72,7 +72,7 @@
   // SACs are excluded from both sides because they are not official ABs.
   const contactPct=AB?contact/AB:0,kPct=PA?K/PA:0,bbPct=PA?BB/PA:0;
   const hhbPct=battedBalls?trackedHHB/battedBalls:0,qabPct=PA?QAB/PA:0,reachPct=PA?REACH/PA:0;
-  // Provisional Runs Produced model for rebuild; calibrate against legacy app.
+  // Authoritative HotB Runs Produced model used by Evaluation and team comparisons.
   const rp = H + Math.max(0,TB-H)*0.65 + BB*0.7 + HBP*0.7 + RBI*0.75 + HHB*0.25 - WEAK*0.25;
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
