@@ -1,5 +1,7 @@
 (() => {
-  function decimal(value, digits) {
+  
+if(new URLSearchParams(location.search).has('portal'))return;
+function decimal(value, digits) {
     const parsed = Number.parseFloat(String(value ?? '').replace(/,/g, ''));
     return Number.isFinite(parsed) ? parsed.toFixed(digits) : String(value ?? '');
   }
