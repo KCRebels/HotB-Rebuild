@@ -13,6 +13,22 @@
    Boolean(pa?.rba)||Boolean(pa?.hhb)||Number(pa?.pitchCount)>=8;
  }
 
+ function countPerformance(pas,bucket){
+  const matches=(pas||[]).filter(pa=>bucket==='6+'?Number(pa.pitchCount||0)>=6:String(pa.finalCount||'')===bucket);
+  const H=matches.filter(pa=>pa.outcome==='HIT').length,H4O=matches.filter(pa=>pa.outcome==='H4O').length,K=matches.filter(pa=>pa.outcome==='K').length;
+  return{bucket,H,H4O,K,AVG:(H+H4O+K)?H/(H+H4O+K):0};
+ }
+
+ function pitchMatchesHeatResult(pitch,result){
+  const r=String(pitch?.result||'').toUpperCase(),filter=String(result||'ALL').toUpperCase(),contact=String(pitch?.contactType||'').toUpperCase();
+  if(filter==='ALL')return true;
+  if(filter==='BALL')return r==='B';
+  if(filter==='FOUL')return r==='F';
+  if(filter==='KS')return r==='K';
+  if(['KL','HIT','H4O'].includes(filter))return r===filter;
+  return ['GB','LD','FB'].includes(filter)&&contact===filter;
+ }
+
  function statsForPAs(pas){
   let AB=0,H=0,TB=0,BB=0,HBP=0,K=0,contact=0,SF=0,RBI=0,HHB=0,WEAK=0,battedBalls=0,trackedHHB=0,QAB=0,REACH=0;
   pas.forEach(pa=>{
@@ -46,5 +62,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isQualityAtBat};
+ return{statsForPAs,isTrackedBallInPlay,isQualityAtBat,countPerformance,pitchMatchesHeatResult};
 });
