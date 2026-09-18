@@ -1,5 +1,7 @@
 (() => {
-  const STYLE_ID = 'reports-heat-match-style';
+  
+if(new URLSearchParams(location.search).has('portal'))return;
+const STYLE_ID = 'reports-heat-match-style';
   const COLORS = {ALL:'#101011',BALL:'#3d8c52',FOUL:'#f0c94d',KS:'#cd3a32',KL:'#cd3a32',HIT:'#3862db',H4O:'#cd3a32'};
   function ensureStyles(){
     if(document.getElementById(STYLE_ID))return;
