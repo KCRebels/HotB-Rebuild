@@ -8,6 +8,11 @@
  }
 
  function isStrikeResult(result){return ['F','K','KL','HIT','H4O','E','FC','SAC'].includes(String(result||'').toUpperCase())}
+ function formatPercent(rate,digits=0,empty='—'){
+  const n=Number(rate);
+  return rate===null||rate===undefined||!Number.isFinite(n)?empty:`${(n*100).toFixed(digits)}%`;
+ }
+
  function plateAppearanceKey(record){return `${record?.hitter||''}::${record?.pa??''}`}
 
  function firstPitchStrikeRate(games,playerName){
@@ -152,5 +157,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isStrikeResult,plateAppearanceKey,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,plateAppearanceType,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,evaluationSnapshot,pitchPerformance,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isStrikeResult,formatPercent,plateAppearanceKey,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,plateAppearanceType,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,evaluationSnapshot,pitchPerformance,hotBMetrics};
 });
