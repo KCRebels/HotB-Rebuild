@@ -76,7 +76,10 @@
   if(filter==='FOUL')return r==='F';
   if(filter==='KS')return r==='K';
   if(['KL','HIT','H4O'].includes(filter))return r===filter;
-  return ['GB','LD','FB'].includes(filter)&&contact===filter;
+  if(filter==='GB')return ['GB','GO'].includes(contact);
+  if(filter==='LD')return ['LD','LO'].includes(contact);
+  if(filter==='FB')return ['FB','FO','PO'].includes(contact);
+  return false;
  }
 
  const SWING_RESULTS=new Set(['F','HIT','H4O','E','FC','SAC','K']),CONTACT_RESULTS=new Set(['F','HIT','H4O','E','FC','SAC']),TAKE_RESULTS=new Set(['B','KL']),BATTED_RESULTS=new Set(['HIT','H4O','E','FC','SAC']);
