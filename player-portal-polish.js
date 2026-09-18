@@ -20,9 +20,8 @@ function pitchData(type){
  const {pitches,pas,games,who,db}=portalEvalData(),ps=pitches.filter(p=>String(p.pitchType||'FB').toUpperCase()===type);
  const swingResults=new Set(['F','HIT','H4O','E','FC','SAC','K']),contactResults=new Set(['F','HIT','H4O','E','FC','SAC']);
  const sw=ps.filter(p=>swingResults.has(String(p.result||'').toUpperCase())),con=sw.filter(p=>contactResults.has(String(p.result||'').toUpperCase())),wh=sw.length-con.length;
- const paMap=new Map(pas.map(pa=>[`${pa.hitter}::${pa.pa}`,pa]));
- const batted=ps.filter(p=>['HIT','H4O','E','FC','SAC'].includes(String(p.result||'').toUpperCase())).filter(p=>String(paMap.get(`${p.hitter}::${p.pa}`)?.contactType||'').trim());
- const hh=batted.filter(p=>paMap.get(`${p.hitter}::${p.pa}`)?.hhb).length;
+ const batted=games.flatMap(g=>{const paMap=new Map((g.plateAppearances||[]).map(pa=>[`${pa.hitter}::${pa.pa}`,pa]));return(g.pitches||[]).filter(p=>(!who||p.hitter===who)&&String(p.pitchType||'FB').toUpperCase()===type&&['HIT','H4O','E','FC','SAC'].includes(String(p.result||'').toUpperCase())).map(p=>({pitch:p,pa:paMap.get(`${p.hitter}::${p.pa}`)})).filter(x=>String(x.pa?.contactType||x.pitch.contactType||'').trim())});
+ const hh=batted.filter(x=>x.pa?.hhb||x.pitch.hhb).length;
  const subGames=games.map(g=>({...g,pitches:(g.pitches||[]).filter(p=>String(p.pitchType||'FB').toUpperCase()===type&&(!who||p.hitter===who))})),dq=window.HotBDecisionQuality?.summary?.(subGames,who,db.roster||[]);
  return{decision:dq&&dq.rate!==null?Math.round(dq.rate*100)+'%':'—',swing:ps.length?Math.round(sw.length/ps.length*100)+'%':'—',contact:sw.length?Math.round(con.length/sw.length*100)+'%':'—',whiff:sw.length?Math.round(wh/sw.length*100)+'%':'—',hhb:batted.length?Math.round(hh/batted.length*100)+'%':'—',n:ps.length,z:zoneValues('ALL',ps)}
 }
