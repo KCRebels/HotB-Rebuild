@@ -1513,7 +1513,6 @@ function bindDateFilters(prefix){
  startInput?.addEventListener('blur',()=>render());
  endInput?.addEventListener('blur',()=>render());
 }
-function gameStats(g){return HotBEvaluationStats.statsForPAs(g?.plateAppearances||[])}
 function render(){
  captureGameUndo();
  if(portalClockTimer){clearInterval(portalClockTimer);portalClockTimer=null}
