@@ -36,6 +36,15 @@
   return ['GB','LD','FB'].includes(filter)&&contact===filter;
  }
 
+ function pitchPerformance(games,playerName,pitchType){
+  const type=String(pitchType||'FB').toUpperCase(),swingResults=new Set(['F','HIT','H4O','E','FC','SAC','K']),contactResults=new Set(['F','HIT','H4O','E','FC','SAC']),battedResults=new Set(['HIT','H4O','E','FC','SAC']);
+  const selected=(games||[]).flatMap(game=>(game.pitches||[]).filter(p=>(!playerName||p.hitter===playerName)&&String(p.pitchType||'FB').toUpperCase()===type));
+  const swings=selected.filter(p=>swingResults.has(String(p.result||'').toUpperCase())),contacts=swings.filter(p=>contactResults.has(String(p.result||'').toUpperCase()));
+  const batted=(games||[]).flatMap(game=>{const paMap=new Map((game.plateAppearances||[]).map(pa=>[`${pa.hitter}::${pa.pa}`,pa]));return(game.pitches||[]).filter(p=>(!playerName||p.hitter===playerName)&&String(p.pitchType||'FB').toUpperCase()===type&&battedResults.has(String(p.result||'').toUpperCase())).map(p=>({pitch:p,pa:paMap.get(`${p.hitter}::${p.pa}`)})).filter(x=>String(x.pa?.contactType||x.pitch.contactType||'').trim())});
+  const hardHit=batted.filter(x=>x.pa?.hhb||x.pitch.hhb).length;
+  return{pitches:selected,swings,contacts,batted,n:selected.length,swingRate:selected.length?swings.length/selected.length:null,contactRate:swings.length?contacts.length/swings.length:null,whiffRate:swings.length?(swings.length-contacts.length)/swings.length:null,hhbRate:batted.length?hardHit/batted.length:null,hardHit};
+ }
+
  function hotBMetrics(playerPas,teamPas){
   const player=statsForPAs(playerPas||[]),team=statsForPAs(teamPas||[]);
   const teamRate=team.PA?team.rp/team.PA:0;
@@ -77,5 +86,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchPerformance,hotBMetrics};
 });
