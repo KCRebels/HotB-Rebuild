@@ -1,5 +1,6 @@
 (()=>{
 'use strict';
+if(new URLSearchParams(location.search).has('portal'))return;
 const KEY='hotbPlayerDevelopmentPlansV1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const player=()=>String(document.querySelector('#evalSelect')?.value||'').trim();
