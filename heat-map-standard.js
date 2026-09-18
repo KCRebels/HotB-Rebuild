@@ -1,5 +1,7 @@
 (() => {
-  const STYLE_ID='heat-map-standard-style';
+  
+if(new URLSearchParams(location.search).has('portal'))return;
+const STYLE_ID='heat-map-standard-style';
   const COLORS={
     ALL:'#101011',BALL:'#3d8c52',FOUL:'#f0c94d',KS:'#cd3a32',KL:'#cd3a32',
     HIT:'#3862db',H4O:'#cd3a32',GB:'#101011',LD:'#101011',FB:'#101011'
