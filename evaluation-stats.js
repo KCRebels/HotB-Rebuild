@@ -29,6 +29,14 @@
   return ['GB','LD','FB'].includes(filter)&&contact===filter;
  }
 
+ function hotBMetrics(playerPas,teamPas){
+  const player=statsForPAs(playerPas||[]),team=statsForPAs(teamPas||[]);
+  const teamRate=team.PA?team.rp/team.PA:0;
+  const hotB=player.PA&&teamRate?Math.round((player.rp/player.PA)/teamRate*100):null;
+  const executionTotals=(playerPas||[]).reduce((t,pa)=>({successes:t.successes+Number(pa.executionSuccesses||0),attempts:t.attempts+Number(pa.executionAttempts||0)}),{successes:0,attempts:0});
+  return{stats:player,teamStats:team,hotB,runsProduced:player.rp,execution:executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null,executionSuccesses:executionTotals.successes,executionAttempts:executionTotals.attempts};
+ }
+
  function statsForPAs(pas){
   let AB=0,H=0,TB=0,BB=0,HBP=0,K=0,contact=0,SF=0,RBI=0,HHB=0,WEAK=0,battedBalls=0,trackedHHB=0,QAB=0,REACH=0;
   pas.forEach(pa=>{
@@ -62,5 +70,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isQualityAtBat,countPerformance,pitchMatchesHeatResult};
+ return{statsForPAs,isTrackedBallInPlay,isQualityAtBat,countPerformance,pitchMatchesHeatResult,hotBMetrics};
 });
