@@ -930,7 +930,7 @@ function initCloud(){
     cloudUser=user&&!user.isAnonymous?user:null;
     portalAuthUser=user||null;
    }
-   if(cloudUser){await loadCloudStatus();if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()}
+   if(cloudUser){await loadCloudStatus();if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();syncPlayerEvaluationPortals().catch(()=>{})}
    if(portalToken)await loadPlayerPortal();
    if(route==='home'||route==='portal')render();
   });
@@ -1026,6 +1026,17 @@ async function claimPlayerPortal(pin){
  }catch(error){portalBusy=false;portalMessage='That PIN did not work. Ask your coach to reset the portal if the problem continues.'}
  render();
 }
+async function syncPlayerEvaluationPortals(){
+ if(!cloudUser||!cloudStore||cloudBusy)return false;
+ const players=db.roster.filter(player=>!player.isGuest&&player.portalId);
+ if(!players.length)return false;
+ try{
+  const batch=cloudStore.batch();
+  players.forEach(player=>batch.set(portalDoc(player.portalId),{playerName:player.name,firstName:practiceFirstName(player.name),evaluationData:playerEvaluationPortalPayload(player.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+  await batch.commit();
+  return true;
+ }catch(error){console.warn('Player Evaluation portal sync failed',error);return false}
+}
 async function setupPlayerPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return;
  cloudBusy=true;portalMessage='Creating private player portals…';render();
@@ -1039,7 +1050,7 @@ async function setupPlayerPortals(){
    const existing=await portalDoc(player.portalId).get();
    batch.set(portalDoc(player.portalId),{playerName:player.name,firstName:practiceFirstName(player.name),pinHash:player.portalPinHash,evaluationData:playerEvaluationPortalPayload(player.name),...(!existing.exists?{ownerUid:null,activePractice:null,focus:null}:{}),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   }
-  await batch.commit();save();portalMessage='Private links and PINs are ready.';
+  await batch.commit();save();portalMessage='Player records refreshed. Existing links and PINs were kept.';
  }catch(error){originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});portalMessage='Player portals could not be created. Confirm Anonymous Authentication and the Player Portal security rules are active.'}
  cloudBusy=false;render();
 }
