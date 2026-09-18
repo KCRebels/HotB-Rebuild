@@ -98,6 +98,12 @@
   return{successes,attempts,rate:attempts?successes/attempts:null};
  }
 
+ function heatZoneValues(pitches,result='ALL'){
+  const values=Array(12).fill(0);
+  (pitches||[]).filter(p=>pitchMatchesHeatResult(p,result)).forEach(p=>{const index=heatZoneIndex(p.zone);if(index>=0)values[index]++});
+  return values;
+ }
+
  function playerEvaluationData(db,playerName){
   const games=[...(db?.savedGames||[]),...(db?.currentGame?[db.currentGame]:[])];
   const pitches=games.flatMap(game=>(game.pitches||[]).filter(p=>!playerName||p.hitter===playerName));
@@ -132,7 +138,8 @@
   const decision=window.HotBDecisionQuality?.summary?.(data.games,playerName,db?.roster||[])||null,approach=window.HotBAtBatApproach?.summarize?.(playerName,data.games)||null;
   const pitchPerformanceByType=Object.fromEntries(['FB','CH','RS','DP','CV','SC'].map(type=>[type,pitchPerformance(data.games,playerName,type)]));
   const countPerformanceByBucket=Object.fromEntries(['0-0','0-2','1-2','2-2','3-2','6+'].map(bucket=>[bucket,countPerformance(data.pas,bucket)]));
-  return{...data,player,stats,resultMetric,firstPitchStrike,execution,decision,approach,pitchPerformanceByType,countPerformanceByBucket};
+  const heatByResult=Object.fromEntries(['ALL','BALL','FOUL','KS','KL','HIT','H4O','GB','LD','FB'].map(result=>[result,heatZoneValues(data.pitches,result)]));
+  return{...data,player,stats,resultMetric,firstPitchStrike,execution,decision,approach,pitchPerformanceByType,countPerformanceByBucket,heatByResult};
  }
 
  function statsForPAs(pas){
@@ -165,5 +172,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isStrikeResult,formatPercent,formatAverage,plateAppearanceKey,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,plateAppearanceType,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,evaluationSnapshot,pitchPerformance,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isStrikeResult,formatPercent,formatAverage,plateAppearanceKey,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,plateAppearanceType,isQualityAtBat,countPerformance,pitchMatchesHeatResult,heatZoneValues,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,evaluationSnapshot,pitchPerformance,hotBMetrics};
 });
