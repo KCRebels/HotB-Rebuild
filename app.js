@@ -2932,6 +2932,12 @@ function updatePracticeClock(){
 }
 function beginPracticeClock(){
  if(practiceClockTimer)clearInterval(practiceClockTimer);
+ // Starting the clock must never discard drills already saved for this exact practice.
+ // Recover them from the persisted session if the in-memory list was lost during a render/navigation.
+ const savedSession=db.activePracticeSession;
+ if(practicePlan&&practiceChosenDrills.length!==practicePlan.drillStations&&savedSession?.plan?.portalDraftId===practicePlan.portalDraftId&&Array.isArray(savedSession.chosenDrills)&&savedSession.chosenDrills.length===practicePlan.drillStations){
+  practiceChosenDrills=structuredClone(savedSession.chosenDrills);
+ }
  practiceEndSpeech=Promise.resolve();
  practiceClock={running:true,finished:false,endAnnounced:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0};
  persistPracticeSession();speakPracticeClock('Begin Block 1');render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);syncPlayerPracticeClock();
