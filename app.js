@@ -2389,13 +2389,11 @@ function evalView(){
  const emptyComparison=()=>`<div class="value compare-value empty-value"><span>—</span><span class="metric-pipe">|</span><span>—</span></div>`;
  const executionTotals={successes:metrics.executionSuccesses,attempts:metrics.executionAttempts};
  const execution=metrics.execution;
- const slapHitter=!!(player&&['Maia Waddell','Hailey Marsh'].includes(player.name));
+ const slapHitter=HotBEvaluationStats.isSlapHitter(player);
  const reach=s.PA?s.reachPct:null;
  const ms=measurementTypes(player);
  const metricHead=(metric,label=metric)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${metric}">${label}</button><button class="metric-all" data-ranking="${metric}">ALL</button></div>`;
- const resultRate=player&&['Maia Waddell','Hailey Marsh'].includes(player.name)
-  ?['QAB%',pct1(s.qabPct),'qabPct']
-  :['HHB%',pct1(s.hhbPct),'hhbPct'];
+ const resultMetric=HotBEvaluationStats.evaluationResultRate(player,s),resultRate=[resultMetric.label,pct1(resultMetric.value||0),resultMetric.key];
  const performanceTile=([label,value,key])=>{
   const statKey=key==='contact'?'contactPct':key==='K'?'kPct':key,guide=['AVG','OBP','SLG','CONTACT','K%'].includes(label);
   const rating=s.PA>=25&&!['hhbPct','qabPct'].includes(statKey)?grade(s[statKey],key):'';
