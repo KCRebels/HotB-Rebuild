@@ -36,6 +36,8 @@
   return ['GB','LD','FB'].includes(filter)&&contact===filter;
  }
 
+ const SWING_RESULTS=new Set(['F','HIT','H4O','E','FC','SAC','K']),CONTACT_RESULTS=new Set(['F','HIT','H4O','E','FC','SAC']),TAKE_RESULTS=new Set(['B','KL']),BATTED_RESULTS=new Set(['HIT','H4O','E','FC','SAC']);
+ function pitchResultType(result){const r=String(result||'').toUpperCase();return{result:r,swing:SWING_RESULTS.has(r),contact:CONTACT_RESULTS.has(r),take:TAKE_RESULTS.has(r),batted:BATTED_RESULTS.has(r)}}
  function pitchExecutesPlan(pitch,player){
   const plan=String(pitch?.plan||'').toUpperCase();
   if(plan==='CH')return String(pitch?.pitchType||'').toUpperCase()==='CH';
@@ -46,7 +48,7 @@
  }
  function executionFromPitches(pitches,player){
   let successes=0,attempts=0;
-  (pitches||[]).forEach(pitch=>{const inPlan=pitchExecutesPlan(pitch,player),result=String(pitch?.result||'').toUpperCase(),swing=['F','HIT','H4O','E','FC','SAC','K'].includes(result),contact=['F','HIT','H4O','E','FC','SAC'].includes(result),take=['B','KL'].includes(result);
+  (pitches||[]).forEach(pitch=>{const inPlan=pitchExecutesPlan(pitch,player),{swing,contact,take}=pitchResultType(pitch?.result);
    if(Number(pitch?.strikesBefore||0)<2){if(String(pitch?.plan||'').toUpperCase()==='NO'){if(swing){attempts++;successes++}}else if(swing||take){attempts++;if(swing?inPlan:!inPlan)successes++}}
    else if(contact&&inPlan){attempts++;successes++}
   });
@@ -54,10 +56,10 @@
  }
 
  function pitchPerformance(games,playerName,pitchType){
-  const type=String(pitchType||'FB').toUpperCase(),swingResults=new Set(['F','HIT','H4O','E','FC','SAC','K']),contactResults=new Set(['F','HIT','H4O','E','FC','SAC']),battedResults=new Set(['HIT','H4O','E','FC','SAC']);
+  const type=String(pitchType||'FB').toUpperCase();
   const selected=(games||[]).flatMap(game=>(game.pitches||[]).filter(p=>(!playerName||p.hitter===playerName)&&String(p.pitchType||'FB').toUpperCase()===type));
-  const swings=selected.filter(p=>swingResults.has(String(p.result||'').toUpperCase())),contacts=swings.filter(p=>contactResults.has(String(p.result||'').toUpperCase()));
-  const batted=(games||[]).flatMap(game=>{const paMap=new Map((game.plateAppearances||[]).map(pa=>[`${pa.hitter}::${pa.pa}`,pa]));return(game.pitches||[]).filter(p=>(!playerName||p.hitter===playerName)&&String(p.pitchType||'FB').toUpperCase()===type&&battedResults.has(String(p.result||'').toUpperCase())).map(p=>({pitch:p,pa:paMap.get(`${p.hitter}::${p.pa}`)})).filter(x=>String(x.pa?.contactType||x.pitch.contactType||'').trim())});
+  const swings=selected.filter(p=>pitchResultType(p.result).swing),contacts=swings.filter(p=>pitchResultType(p.result).contact);
+  const batted=(games||[]).flatMap(game=>{const paMap=new Map((game.plateAppearances||[]).map(pa=>[`${pa.hitter}::${pa.pa}`,pa]));return(game.pitches||[]).filter(p=>(!playerName||p.hitter===playerName)&&String(p.pitchType||'FB').toUpperCase()===type&&pitchResultType(p.result).batted).map(p=>({pitch:p,pa:paMap.get(`${p.hitter}::${p.pa}`)})).filter(x=>String(x.pa?.contactType||x.pitch.contactType||'').trim())});
   const hardHit=batted.filter(x=>x.pa?.hhb||x.pitch.hhb).length;
   return{pitches:selected,swings,contacts,batted,n:selected.length,swingRate:selected.length?swings.length/selected.length:null,contactRate:swings.length?contacts.length/swings.length:null,whiffRate:swings.length?(swings.length-contacts.length)/swings.length:null,hhbRate:batted.length?hardHit/batted.length:null,hardHit};
  }
@@ -103,5 +105,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchExecutesPlan,executionFromPitches,pitchPerformance,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,pitchPerformance,hotBMetrics};
 });
