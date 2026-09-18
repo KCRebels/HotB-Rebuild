@@ -136,7 +136,7 @@
  function evaluationSnapshot(db,playerName){
   const data=playerEvaluationData(db,playerName),player=(db?.roster||[]).find(p=>p.name===playerName)||{},stats=statsForPAs(data.pas),resultMetric=evaluationResultRate(player,stats),firstPitchStrike=firstPitchStrikeRate(data.games,playerName),execution=executionTotalsFromPAs(data.pas);
   const decision=window.HotBDecisionQuality?.summary?.(data.games,playerName,db?.roster||[])||null,approach=window.HotBAtBatApproach?.summarize?.(playerName,data.games)||null;
-  const pitchPerformanceByType=Object.fromEntries(['FB','CH','RS','DP','CV','SC'].map(type=>[type,pitchPerformance(data.games,playerName,type)]));
+  const pitchPerformanceByType=Object.fromEntries(['FB','CH','RS','DP','CV','SC'].map(type=>{const performance=pitchPerformance(data.games,playerName,type),subGames=data.games.map(game=>({...game,pitches:(game.pitches||[]).filter(p=>String(p.pitchType||'FB').toUpperCase()===type&&(!playerName||p.hitter===playerName))})),decision=window.HotBDecisionQuality?.summary?.(subGames,playerName,db?.roster||[])||null;return[type,{...performance,decision,heat:heatZoneValues(performance.pitches,'ALL')}]}));
   const countPerformanceByBucket=Object.fromEntries(['0-0','0-2','1-2','2-2','3-2','6+'].map(bucket=>[bucket,countPerformance(data.pas,bucket)]));
   const heatByResult=Object.fromEntries(['ALL','BALL','FOUL','KS','KL','HIT','H4O','GB','LD','FB'].map(result=>[result,heatZoneValues(data.pitches,result)]));
   return{...data,player,stats,resultMetric,firstPitchStrike,execution,decision,approach,pitchPerformanceByType,countPerformanceByBucket,heatByResult};
