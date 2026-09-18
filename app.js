@@ -2470,12 +2470,13 @@ function evalGuide(title){
 }
 function evalRankingModal(metric){
  const teamPas=filteredPAs();
+ const rankingDb={savedGames:filteredGames(),currentGame:null,roster:db.roster};
  const rows=db.roster.map(player=>{
-  const pas=teamPas.filter(pa=>pa.hitter===player.name),metrics=HotBEvaluationStats.hotBMetrics(pas,teamPas),stats=metrics.stats;
+  const snapshot=HotBEvaluationStats.evaluationSnapshot(rankingDb,player.name),metrics=HotBEvaluationStats.hotBMetrics(snapshot.pas,teamPas),stats=snapshot.stats;
   let value=null;
-  if(metric==='HotB+')value=metrics.stats.PA?metrics.hotBRaw:null;
+  if(metric==='HotB+')value=stats.PA?metrics.hotBRaw:null;
   else if(metric==='Runs Produced')value=stats.PA?metrics.runsProduced:null;
-  else if(metric==='Execution')value=metrics.execution;
+  else if(metric==='Execution')value=snapshot.execution.rate;
   else if(metric==='Reach%')value=stats.PA?stats.reachPct:null;
   return {player,value};
  }).sort((a,b)=>{
