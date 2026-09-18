@@ -2326,8 +2326,7 @@ function reportModal(){
  </div></div></div>`;
 }
 function countCard(pas,bucket){
- const matches=pas.filter(pa=>bucket==='6+'?pa.pitchCount>=6:pa.finalCount===bucket);
- const h=matches.filter(p=>p.outcome==='HIT').length,o=matches.filter(p=>p.outcome==='H4O').length,k=matches.filter(p=>p.outcome==='K').length,ave=(h+o+k)?h/(h+o+k):0;
+ const stats=HotBEvaluationStats.countPerformance(pas,bucket),h=stats.H,o=stats.H4O,k=stats.K,ave=stats.AVG;
  return `<div class="count-card"><b>${bucket}</b><span class="count-value hit ${h===0?'zero':''}">${h}</span><span class="count-separator">|</span><span class="count-value out ${o===0?'zero':''}">${o}</span><span class="count-separator">|</span><span class="count-value strikeout ${k===0?'zero':''}">${k}</span><span class="count-separator">|</span><span class="count-value average ${ave===0?'zero':''}">${round3(ave)}</span></div>`;
 }
 function reportPitchSource(){return reportGames().flatMap(game=>game.pitches||[])}
@@ -2350,12 +2349,7 @@ function outcomeReport(pas){
  return `${reportSection('STRIKEOUTS',strikeouts,'K')}${reportSection('BASE HITS',hits,'HIT')}<div class="report-spray-box"><div class="field report-spray-field">${items.map(p=>{const coords={1:[50,66],2:[50,85],3:[66,59],4:[62,47],5:[34,59],6:[38,47],7:[22,34],8:[50,25],9:[78,34]}[p.fielder]||[50,65];return `<button class="report-spray-dot ${p.outcome==='HIT'?'hit':'h4o'} ${reportSelectedPaId===p.id?'selected':''}" style="left:${coords[0]}%;top:${coords[1]}%" data-report-pa="${p.id}" aria-label="Select ${p.outcome} by ${esc(p.hitter)}"></button>`}).join('')}</div></div>${reportSection('HITS 4 OUTS',outs,'H4O')}`;
 }
 function pitchMatchesHeatResult(pitch,result){
- if(result==='ALL')return true;
- if(result==='BALL')return pitch.result==='B';
- if(result==='FOUL')return pitch.result==='F';
- if(result==='KS')return pitch.result==='K';
- if(['KL','HIT','H4O'].includes(result))return pitch.result===result;
- return ['GB','LD','FB'].includes(result)&&pitch.contactType===result;
+ return HotBEvaluationStats.pitchMatchesHeatResult(pitch,result);
 }
 function zoneReport(){
  const pitches=reportPitchSource().filter(p=>(reportFilterHitter==='All Hitters'||p.hitter===reportFilterHitter)&&pitchMatchesHeatResult(p,reportHeatResult));
