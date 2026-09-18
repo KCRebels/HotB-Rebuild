@@ -3,8 +3,8 @@
 if(!new URLSearchParams(location.search).get('portal'))return;
 let portalScreen=null;
 function app(){return document.getElementById('app')}
-function savePortal(){const a=app();if(!a||portalScreen||!a.querySelector('[data-hbp-view]'))return;const f=document.createDocumentFragment();while(a.firstChild)f.appendChild(a.firstChild);portalScreen=f}
-function restorePortal(){const a=app();if(!a||!portalScreen)return false;a.replaceChildren(portalScreen);portalScreen=null;return true}
+function savePortal(){const a=app();if(!a||portalScreen||!a.querySelector('[data-hbp-view]'))return;portalScreen=a.innerHTML}
+function restorePortal(){const a=app();if(!a||!portalScreen)return false;a.innerHTML=portalScreen;portalScreen=null;const first=a.querySelector('[data-hbp-view]');if(first){const ev=new CustomEvent('hotb:portal-restored');window.dispatchEvent(ev)}return true}
 document.addEventListener('click',e=>{
  const t=e.target instanceof Element?e.target:null;if(!t)return;
  const tile=t.closest('[data-hbp-view]');if(tile){savePortal();return}
