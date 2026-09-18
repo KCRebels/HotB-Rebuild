@@ -8,9 +8,11 @@
  }
 
  function isStrikeResult(result){return ['F','K','KL','HIT','H4O','E','FC','SAC'].includes(String(result||'').toUpperCase())}
+ function plateAppearanceKey(record){return `${record?.hitter||''}::${record?.pa??''}`}
+
  function firstPitchStrikeRate(games,playerName){
   let strikes=0,total=0;
-  (games||[]).forEach(game=>{const seen=new Set();(game.pitches||[]).forEach(p=>{if(playerName&&p.hitter!==playerName)return;const key=`${p.hitter}::${p.pa}`;if(seen.has(key))return;seen.add(key);total++;if(isStrikeResult(p.result))strikes++})});
+  (games||[]).forEach(game=>{const seen=new Set();(game.pitches||[]).forEach(p=>{if(playerName&&p.hitter!==playerName)return;const key=plateAppearanceKey(p);if(seen.has(key))return;seen.add(key);total++;if(isStrikeResult(p.result))strikes++})});
   return{strikes,total,rate:total?strikes/total:null};
  }
 
@@ -97,7 +99,7 @@
   const type=String(pitchType||'FB').toUpperCase();
   const selected=(games||[]).flatMap(game=>(game.pitches||[]).filter(p=>(!playerName||p.hitter===playerName)&&String(p.pitchType||'FB').toUpperCase()===type));
   const swings=selected.filter(p=>pitchResultType(p.result).swing),contacts=swings.filter(p=>pitchResultType(p.result).contact);
-  const batted=(games||[]).flatMap(game=>{const paMap=new Map((game.plateAppearances||[]).map(pa=>[`${pa.hitter}::${pa.pa}`,pa]));return(game.pitches||[]).filter(p=>(!playerName||p.hitter===playerName)&&String(p.pitchType||'FB').toUpperCase()===type&&pitchResultType(p.result).batted).map(p=>({pitch:p,pa:paMap.get(`${p.hitter}::${p.pa}`)})).filter(x=>String(x.pa?.contactType||x.pitch.contactType||'').trim())});
+  const batted=(games||[]).flatMap(game=>{const paMap=new Map((game.plateAppearances||[]).map(pa=>[plateAppearanceKey(pa),pa]));return(game.pitches||[]).filter(p=>(!playerName||p.hitter===playerName)&&String(p.pitchType||'FB').toUpperCase()===type&&pitchResultType(p.result).batted).map(p=>({pitch:p,pa:paMap.get(plateAppearanceKey(p))})).filter(x=>String(x.pa?.contactType||x.pitch.contactType||'').trim())});
   const hardHit=batted.filter(x=>x.pa?.hhb||x.pitch.hhb).length;
   return{pitches:selected,swings,contacts,batted,n:selected.length,swingRate:selected.length?swings.length/selected.length:null,contactRate:swings.length?contacts.length/swings.length:null,whiffRate:swings.length?(swings.length-contacts.length)/swings.length:null,hhbRate:batted.length?hardHit/batted.length:null,hardHit};
  }
@@ -150,5 +152,5 @@
   return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isStrikeResult,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,plateAppearanceType,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,evaluationSnapshot,pitchPerformance,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isStrikeResult,plateAppearanceKey,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,plateAppearanceType,isQualityAtBat,countPerformance,pitchMatchesHeatResult,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,playerEvaluationData,evaluationSnapshot,pitchPerformance,hotBMetrics};
 });
