@@ -129,7 +129,8 @@
 
  function evaluationSnapshot(db,playerName){
   const data=playerEvaluationData(db,playerName),player=(db?.roster||[]).find(p=>p.name===playerName)||{},stats=statsForPAs(data.pas),resultMetric=evaluationResultRate(player,stats),firstPitchStrike=firstPitchStrikeRate(data.games,playerName),execution=executionTotalsFromPAs(data.pas);
-  return{...data,player,stats,resultMetric,firstPitchStrike,execution};
+  const decision=window.HotBDecisionQuality?.summary?.(data.games,playerName,db?.roster||[])||null,approach=window.HotBAtBatApproach?.summarize?.(playerName,data.games)||null;
+  return{...data,player,stats,resultMetric,firstPitchStrike,execution,decision,approach};
  }
 
  function statsForPAs(pas){
