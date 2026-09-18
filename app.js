@@ -2380,8 +2380,7 @@ function evalView(){
  const deltaClass=n=>n>0?'positive':n<0?'negative':'neutral';
  const comparison=(value,delta,digits=1)=>`<div class="value compare-value"><span>${value}</span><span class="metric-pipe">|</span><span class="metric-delta ${deltaClass(delta)}">${signed(delta,digits)}</span></div>`;
  const emptyComparison=()=>`<div class="value compare-value empty-value"><span>—</span><span class="metric-pipe">|</span><span>—</span></div>`;
- const executionTotals=snapshot?.execution||{successes:metrics.executionSuccesses,attempts:metrics.executionAttempts,rate:metrics.execution};
- const execution=executionTotals.rate;
+ const execution=player?snapshot.execution.rate:null;
  const slapHitter=HotBEvaluationStats.isSlapHitter(player);
  const reach=s.PA?s.reachPct:null;
  const ms=measurementTypes(player);
