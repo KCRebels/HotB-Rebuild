@@ -1,5 +1,6 @@
 (()=>{
 'use strict';
+if(new URLSearchParams(location.search).has('portal'))return;
 const DBKEY='hotbRebuildDbV1',DEMO='Brooklyn Gering',SW=new Set(['F','HIT','H4O','E','FC','SAC','K']),BIP=new Set(['HIT','H4O','E','FC','SAC']);
 const db=()=>{try{return JSON.parse(localStorage.getItem(DBKEY)||'{}')}catch{return{}}},who=()=>String(document.querySelector('#evalSelect')?.value||'').trim(),pct=(n,d)=>d?n/d:null,fmt=v=>v==null?'—':`${Math.round(v*100)}%`;
 function seasonMeta(v){const d=new Date(v);if(isNaN(d))return{};const y=d.getFullYear(),m=d.getMonth()+1,day=d.getDate();if((m===7&&day>=31)||m===8)return{season:'',segment:'Dead Period'};const sy=m>=9?y:y-1;let segment='Off Season';if(m>=9&&m<=11)segment='Fall';else if((m===5&&day>=20)||m===6||(m===7&&day<=30))segment='Summer';return{season:`${sy}–${String(sy+1).slice(-2)}`,segment}}
