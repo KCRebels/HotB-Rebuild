@@ -7,7 +7,7 @@ function savePortal(){const a=app();if(!a||portalScreen||!a.querySelector('[data
 function restorePortal(){const a=app();if(!a||!portalScreen)return false;a.replaceChildren(portalScreen);portalScreen=null;return true}
 document.addEventListener('click',e=>{
  const t=e.target instanceof Element?e.target:null;if(!t)return;
- const tile=t.closest('[data-hbp-view]');if(tile){savePortal();return}
+ const tile=t.closest('[data-hbp-view]');if(tile){if(tile.dataset.hbpView==='trends'){e.preventDefault();e.stopImmediatePropagation();location.assign('brooklyn-trends-preview.html?v=20260918-trends3&return='+encodeURIComponent(location.href));return}savePortal();return}
  const modalClose=t.closest('[data-pc-close],[data-aba-close],[data-hhb-close],[data-decision-close],[data-bpp-close],.pem-close');if(modalClose)return;
  const back=t.closest('#hbpBack,#hbpEvalBack,#pemBack,.hbp-back');if(!back)return;
  const openModal=document.querySelector('#playerCoachModal,#abaModal,#hhbContactPopup,#decisionQualityModal,#bppModal,.pem-modal');
