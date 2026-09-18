@@ -7,7 +7,7 @@
   return Boolean(String(pa?.contactType||'').trim());
  }
 
- function isStrikeResult(result){return ['F','K','KL','HIT','H4O','E','FC','SAC'].includes(String(result||'').toUpperCase())}
+ function isStrikeResult(result){const type=pitchResultType(result);return type.swing||type.result==='KL'}
  function formatPercent(rate,digits=0,empty='—'){
   const n=Number(rate);
   return rate===null||rate===undefined||!Number.isFinite(n)?empty:`${(n*100).toFixed(digits)}%`;
