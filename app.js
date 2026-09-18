@@ -2516,7 +2516,7 @@ function evalRankingModal(metric){
  const rows=db.roster.map(player=>{
   const pas=teamPas.filter(pa=>pa.hitter===player.name),metrics=HotBEvaluationStats.hotBMetrics(pas,teamPas),stats=metrics.stats;
   let value=null;
-  if(metric==='HotB+')value=metrics.hotB;
+  if(metric==='HotB+')value=metrics.stats.PA?metrics.hotB:null;
   else if(metric==='Runs Produced')value=stats.PA?metrics.runsProduced:null;
   else if(metric==='Execution')value=metrics.execution;
   else if(metric==='Reach%')value=stats.PA?stats.reachPct:null;
