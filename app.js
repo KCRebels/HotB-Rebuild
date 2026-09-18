@@ -1634,9 +1634,12 @@ function guestCoachPracticeView(){
  return `${portalHeader('Guest Coach')}<main class="portal-page"><section class="portal-welcome active"><span>GUEST COACH · VIEW ONLY</span><h2>Hi, ${esc(name)}</h2><p>${esc(practice.title||'Current Hitting Practice')}</p></section><section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section>${(practice.players||[]).map(player=>`<article class="practice-player-card portal-player-card portal-guest-coach-card"><header><h2>${esc(player.name)}${player.role?` <small>(${esc(player.role)})</small>`:''}</h2></header><ol>${player.schedule.map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>`).join('')}</main>`;
 }
 function playerEvaluationPortalPayload(playerName){
- const player=db.roster.find(item=>item.name===playerName)||{},fields=['name','side'];
- const roster=[Object.fromEntries(fields.map(key=>[key,player[key]??'']))];
- const games=[...(db.savedGames||[]),...(db.currentGame?[db.currentGame]:[])].map(game=>({id:game.id,date:game.date,opponent:game.opponent,plateAppearances:(game.plateAppearances||[]).filter(pa=>pa.hitter===playerName),pitches:(game.pitches||[]).filter(p=>p.hitter===playerName)})).filter(game=>game.plateAppearances.length||game.pitches.length);
+ const player=db.roster.find(item=>item.name===playerName)||{},rosterFields=['name','side'];
+ const paFields=['id','hitter','inning','pa','outcome','hitType','contactType','fielder','rbi','rbiCount','rba','sac','error','fc','bunt','slap','hhb','weak','pitchCount','finalCount','firstPitchStrike','execution','executionSuccesses','executionAttempts','ts'];
+ const pitchFields=['id','hitter','pa','inning','ballsBefore','strikesBefore','zone','pitchType','plan','result','hitterStyle','intentionalBall','pitchout','decisionOverride','hhb','ts'];
+ const pick=(source,fields)=>Object.fromEntries(fields.filter(key=>source?.[key]!==undefined).map(key=>[key,source[key]]));
+ const roster=[pick(player,rosterFields)];
+ const games=[...(db.savedGames||[]),...(db.currentGame?[db.currentGame]:[])].map(game=>({id:game.id,date:game.date,opponent:game.opponent,plateAppearances:(game.plateAppearances||[]).filter(pa=>pa.hitter===playerName).map(pa=>pick(pa,paFields)),pitches:(game.pitches||[]).filter(p=>p.hitter===playerName).map(p=>pick(p,pitchFields))})).filter(game=>game.plateAppearances.length||game.pitches.length);
  return JSON.parse(JSON.stringify({roster,savedGames:games,currentGame:null}));
 }
 function coachEvaluationPortalPayload(){
