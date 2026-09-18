@@ -1037,7 +1037,7 @@ async function setupPlayerPortals(){
    if(!player.portalPin)player.portalPin=newPortalPin();
    player.portalPinHash=await portalHash(player.portalId,player.portalPin);
    const existing=await portalDoc(player.portalId).get();
-   batch.set(portalDoc(player.portalId),{playerName:player.name,firstName:practiceFirstName(player.name),pinHash:player.portalPinHash,...(!existing.exists?{ownerUid:null,activePractice:null,focus:null}:{}),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+   batch.set(portalDoc(player.portalId),{playerName:player.name,firstName:practiceFirstName(player.name),pinHash:player.portalPinHash,evaluationData:playerEvaluationPortalPayload(player.name),...(!existing.exists?{ownerUid:null,activePractice:null,focus:null}:{}),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   }
   await batch.commit();save();portalMessage='Private links and PINs are ready.';
  }catch(error){originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});portalMessage='Player portals could not be created. Confirm Anonymous Authentication and the Player Portal security rules are active.'}
@@ -1097,6 +1097,7 @@ async function backupToCloud(automatic=false){
   if(!daily.exists){chunks.forEach((data,index)=>batch.set(dailyRef.collection('chunks').doc(String(index).padStart(4,'0')),{index,data}));batch.set(dailyRef,{email:CLOUD_EMAIL,chunkCount:chunks.length,createdAt:firebase.firestore.FieldValue.serverTimestamp(),formatVersion:1})}
   await batch.commit();if(!daily.exists){cloudSnapshotCount++;pruneDailySnapshots(root).catch(()=>{})}
   if(db.coachPortal?.portalId)portalDoc(db.coachPortal.portalId).set({evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{});
+  db.roster.filter(player=>!player.isGuest&&player.portalId).forEach(player=>portalDoc(player.portalId).set({evaluationData:playerEvaluationPortalPayload(player.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{}));
   localStorage.setItem(CLOUD_ENABLED_KEY,'true');localStorage.setItem(CLOUD_PENDING_KEY,'false');localStorage.removeItem(CLOUD_ERROR_KEY);cloudLastBackup=new Date();localStorage.setItem(CLOUD_LAST_SUCCESS_KEY,cloudLastBackup.toISOString());cloudMessage=automatic?'':'Cloud backup completed.';
  }catch(error){localStorage.setItem(CLOUD_PENDING_KEY,'true');localStorage.setItem(CLOUD_ERROR_KEY,new Date().toISOString());cloudMessage='Backup needs attention. Your phone data is safe; HotB will retry when it is online.'}
  cloudBusy=false;if(route==='home')render();
@@ -1620,6 +1621,12 @@ function guestCoachPracticeView(){
  const practice=portalData?.activePractice,name=portalData?.firstName||practiceFirstName(portalData?.coachName)||'Coach';
  if(portalData?.expired||!practice)return guestPortalEndedView();
  return `${portalHeader('Guest Coach')}<main class="portal-page"><section class="portal-welcome active"><span>GUEST COACH · VIEW ONLY</span><h2>Hi, ${esc(name)}</h2><p>${esc(practice.title||'Current Hitting Practice')}</p></section><section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section>${(practice.players||[]).map(player=>`<article class="practice-player-card portal-player-card portal-guest-coach-card"><header><h2>${esc(player.name)}${player.role?` <small>(${esc(player.role)})</small>`:''}</h2></header><ol>${player.schedule.map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>`).join('')}</main>`;
+}
+function playerEvaluationPortalPayload(playerName){
+ const player=db.roster.find(item=>item.name===playerName)||{},fields=['name','side'];
+ const roster=[Object.fromEntries(fields.map(key=>[key,player[key]??'']))];
+ const games=[...(db.savedGames||[]),...(db.currentGame?[db.currentGame]:[])].map(game=>({id:game.id,date:game.date,opponent:game.opponent,plateAppearances:(game.plateAppearances||[]).filter(pa=>pa.hitter===playerName),pitches:(game.pitches||[]).filter(p=>p.hitter===playerName)})).filter(game=>game.plateAppearances.length||game.pitches.length);
+ return JSON.parse(JSON.stringify({roster,savedGames:games,currentGame:null}));
 }
 function coachEvaluationPortalPayload(){
  const fields=['name','jersey','grad','positions','side','throws','gpa','school','interest','email','twitter','sportsRecruits','highlightVideo','ncaaId','recruitingStatement','accomplishments','photo','pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct','hittingPracticeAttendanceEligible'];
