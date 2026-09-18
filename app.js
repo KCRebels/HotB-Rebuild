@@ -2388,13 +2388,13 @@ function evalView(){
  const deltaClass=n=>n>0?'positive':n<0?'negative':'neutral';
  const comparison=(value,delta,digits=1)=>`<div class="value compare-value"><span>${value}</span><span class="metric-pipe">|</span><span class="metric-delta ${deltaClass(delta)}">${signed(delta,digits)}</span></div>`;
  const emptyComparison=()=>`<div class="value compare-value empty-value"><span>—</span><span class="metric-pipe">|</span><span>—</span></div>`;
- const executionTotals={successes:metrics.executionSuccesses,attempts:metrics.executionAttempts};
- const execution=metrics.execution;
+ const executionTotals=snapshot?.execution||{successes:metrics.executionSuccesses,attempts:metrics.executionAttempts,rate:metrics.execution};
+ const execution=executionTotals.rate;
  const slapHitter=HotBEvaluationStats.isSlapHitter(player);
  const reach=s.PA?s.reachPct:null;
  const ms=measurementTypes(player);
  const metricHead=(metric,label=metric)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${metric}">${label}</button><button class="metric-all" data-ranking="${metric}">ALL</button></div>`;
- const resultMetric=HotBEvaluationStats.evaluationResultRate(player,s),resultRate=[resultMetric.label,s.PA?pct1(resultMetric.value):'—',resultMetric.key];
+ const resultMetric=snapshot?.resultMetric||HotBEvaluationStats.evaluationResultRate(player,s),resultRate=[resultMetric.label,s.PA?pct1(resultMetric.value):'—',resultMetric.key];
  const performanceTile=([label,value,key])=>{
   const statKey=key==='contact'?'contactPct':key==='K'?'kPct':key,guide=['AVG','OBP','SLG','CONTACT','K%'].includes(label);
   const rating=s.PA>=25&&!['hhbPct','qabPct'].includes(statKey)?grade(s[statKey],key):'';
