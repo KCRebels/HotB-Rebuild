@@ -1405,7 +1405,7 @@ function addPitch(result,extra={}){
 function closePA(outcome,extra={}){
  const g=currentGame(), h=currentHitter(g);
  const paPitches=g.pitches.filter(p=>p.pa===g.paNumber&&p.hitter===h.name);
- const firstPitchStrike = paPitches.length ? isStrikeResult(paPitches[0].result) : false;
+ const firstPitchStrike = HotBEvaluationStats.firstPitchStrikeRate([{pitches:paPitches}],h.name).rate===1;
  const execution=executionFromPitches(paPitches,h);
  const pa={
   id:crypto.randomUUID(),hitter:h.name,inning:g.inning,pa:g.paNumber,outcome,
