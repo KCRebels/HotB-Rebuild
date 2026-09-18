@@ -1,5 +1,7 @@
 (() => {
-  const DBKEY='hotbRebuildDbV1';
+  
+if(new URLSearchParams(location.search).has('portal'))return;
+const DBKEY='hotbRebuildDbV1';
   const MAPKEY='hotbSprayLocationsV1';
   let pending=null;
 
