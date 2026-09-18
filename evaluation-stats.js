@@ -131,7 +131,8 @@
   const data=playerEvaluationData(db,playerName),player=(db?.roster||[]).find(p=>p.name===playerName)||{},stats=statsForPAs(data.pas),resultMetric=evaluationResultRate(player,stats),firstPitchStrike=firstPitchStrikeRate(data.games,playerName),execution=executionTotalsFromPAs(data.pas);
   const decision=window.HotBDecisionQuality?.summary?.(data.games,playerName,db?.roster||[])||null,approach=window.HotBAtBatApproach?.summarize?.(playerName,data.games)||null;
   const pitchPerformanceByType=Object.fromEntries(['FB','CH','RS','DP','CV','SC'].map(type=>[type,pitchPerformance(data.games,playerName,type)]));
-  return{...data,player,stats,resultMetric,firstPitchStrike,execution,decision,approach,pitchPerformanceByType};
+  const countPerformanceByBucket=Object.fromEntries(['0-0','0-2','1-2','2-2','3-2','6+'].map(bucket=>[bucket,countPerformance(data.pas,bucket)]));
+  return{...data,player,stats,resultMetric,firstPitchStrike,execution,decision,approach,pitchPerformanceByType,countPerformanceByBucket};
  }
 
  function statsForPAs(pas){
