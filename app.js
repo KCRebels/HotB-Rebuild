@@ -2513,16 +2513,12 @@ function evalGuide(title){
 }
 function evalRankingModal(metric){
  const teamPas=filteredPAs();
- const teamStats=statsForPAs(teamPas);
- const teamRate=teamStats.PA?teamStats.rp/teamStats.PA:0;
  const rows=db.roster.map(player=>{
-  const pas=teamPas.filter(pa=>pa.hitter===player.name);
-  const stats=statsForPAs(pas);
-  const executionTotals=pas.reduce((totals,pa)=>({successes:totals.successes+Number(pa.executionSuccesses||0),attempts:totals.attempts+Number(pa.executionAttempts||0)}),{successes:0,attempts:0});
+  const pas=teamPas.filter(pa=>pa.hitter===player.name),metrics=HotBEvaluationStats.hotBMetrics(pas,teamPas),stats=metrics.stats;
   let value=null;
-  if(metric==='HotB+')value=stats.PA&&teamRate?(stats.rp/stats.PA)/teamRate*100:null;
-  else if(metric==='Runs Produced')value=stats.PA?stats.rp:null;
-  else if(metric==='Execution')value=executionTotals.attempts?executionTotals.successes/executionTotals.attempts:null;
+  if(metric==='HotB+')value=metrics.hotB;
+  else if(metric==='Runs Produced')value=stats.PA?metrics.runsProduced:null;
+  else if(metric==='Execution')value=metrics.execution;
   else if(metric==='Reach%')value=stats.PA?stats.reachPct:null;
   return {player,value};
  }).sort((a,b)=>{
