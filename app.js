@@ -3053,6 +3053,7 @@ function updatePracticeClock(){
 }
 function beginPracticeClock(){
  if(practiceClock.finished)return;
+ if(!db.activePortalPractice?.id||db.activePortalPractice.id!==practicePlan?.portalDraftId){alert('Activate the player and coach portal plans before starting practice. This keeps every player’s live block and NEXT display synchronized with the coach clock.');return}
  if(practicePlan&&window.HotBPracticeScheduler?.validate){const errors=window.HotBPracticeScheduler.validate(practicePlan);if(errors.length){alert(`This practice cannot start because it failed its safety checks:\n\n${errors.join('\n\n')}`);return}}
  // Starting the clock must never discard drills already saved for this exact practice.
  // Recover them from the persisted session if the in-memory list was lost during a render/navigation.
