@@ -3917,6 +3917,16 @@ function bindRecord(){
  };
 }
 render();
+if(portalToken){
+ const portalStartupGuard=setTimeout(()=>{
+  if(portalBusy){
+   portalBusy=false;
+   portalMessage='HotB could not finish opening this player portal. Please close this page and reopen the player link.';
+   render();
+  }
+ },12000);
+ window.addEventListener('pagehide',()=>clearTimeout(portalStartupGuard),{once:true});
+}
 initCloud();
 if(!recoveredPracticeExpired)resumeRecoveredPracticeClock();
 })();
