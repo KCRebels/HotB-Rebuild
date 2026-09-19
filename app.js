@@ -1342,7 +1342,7 @@ function syncRosterNames(){
 }
 function competitionRoster(){return db.roster.filter(player=>!player.isTeamJenkins)}
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
-const undoViewKeys=['historyTab','allView','zoneScope','zoneFilter','previewNext','firstPitchView','showAi','pendingZone','pitchType'];
+const undoViewKeys=['historyTab','allView','zoneScope','zoneFilter','previewNext','firstPitchView','showAi','pendingZone','pitchType','plan'];
 function gameWithoutUndoViews(game){
  const actionGame=structuredClone(game||{});
  undoViewKeys.forEach(key=>delete actionGame[key]);
