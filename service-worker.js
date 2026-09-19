@@ -1,7 +1,8 @@
-const BUILD_VERSION = '2026.09.19.135';
+const BUILD_VERSION = '2026.09.19.136';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
+const CANONICAL_LAUNCH = './?source=pwa&launch=136';
 const LEGACY_SHELL = './hotb-fresh.html';
 const CORE_FILES = ['./index.html', './hotb-fresh.html', './styles.css', './evaluation-cleanup.css', './app.js'];
 const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/, /\/styles\.css(?:\?|$)/, /\/evaluation-cleanup\.css(?:\?|$)/];
@@ -84,6 +85,14 @@ self.addEventListener('fetch', event => {
     return event.respondWith(fetch(request, {cache: 'no-store'}));
   }
   if (request.mode === 'navigate') {
+    // Normalize old installed launch URLs to the canonical build-136 shell while
+    // preserving localStorage/IndexedDB. This repairs stale Home Screen launch
+    // targets without deleting or reinstalling HotB.
+    if (!url.searchParams.has('portal') && (url.searchParams.get('source')==='pwa' || url.pathname.endsWith('/hotb-fresh.html'))) {
+      const canonicalUrl=new URL(CANONICAL_LAUNCH,self.location.href);
+      const canonical=new Request(canonicalUrl.href,{cache:'no-store'});
+      return event.respondWith(newestNavigation(canonical));
+    }
     // hotb-fresh.html was an emergency bootstrap shell and is now stale.
     // Always route installed-app navigations to the canonical current index.html.
     if (url.pathname.endsWith('/hotb-fresh.html')) {
