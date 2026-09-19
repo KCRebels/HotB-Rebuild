@@ -914,7 +914,8 @@ let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='
 let observationTargetPaId='',observationTargetPlayer='',observationMode='game',observationScope='current',observationPromptInning=0,observationFromInningPrompt=false,observationRecognition=null;
 let observationEditId='',observationEditGameId='';
 if(!db.coachPortal||typeof db.coachPortal!=='object')db.coachPortal={name:'',phone:'',portalId:'',portalPin:'',portalPinHash:''};
-}else{
+}
+if(portalToken){
  // Player portals do not need the coach device's local database migrations.
  // Keeping portal startup independent prevents a stale/malformed coach localStorage
  // record from stopping app.js before the portal can render.
