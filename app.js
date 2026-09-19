@@ -2760,7 +2760,9 @@ async function parseRosterWorkbook(file){
    const importKey=normalizeName(data.name);
    if(importNames.has(importKey))throw new Error(`The spreadsheet lists “${data.name}” more than once. Player names must be unique.`);
    importNames.add(importKey);
-   const matches=db.roster.map((player,index)=>({player,index})).filter(({player})=>normalizeName(player.name)===importKey);
+   const matches=db.roster.map((player,index)=>({player,index})).filter(({player})=>!player.isTeamJenkins&&normalizeName(player.name)===importKey);
+   const jenkinsMatch=db.roster.some(player=>player.isTeamJenkins&&normalizeName(player.name)===importKey);
+   if(jenkinsMatch){items.push({kind:'unchanged',data,player:db.roster.find(player=>player.isTeamJenkins&&normalizeName(player.name)===importKey),index:-1,changes:[]});return}
    const exact=matches.find(({player})=>!data.jersey||cleanCell(player.jersey)===data.jersey);
    const match=exact||(matches.length===1?matches[0]:null);
    if(!match){items.push({kind:'add',data});return}
