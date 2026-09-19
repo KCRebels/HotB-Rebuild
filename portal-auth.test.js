@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-92'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-93'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal132'));
+assert(index.includes('app.js?v=20260919-portal133'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -27,3 +27,6 @@ assert(app.includes("$$('[data-text-portal]').forEach"));
 assert(app.includes("$$('[data-reset-portal]').forEach"));
 assert(!app.includes("$('[data-share-portal]').forEach"));
 assert(!app.includes("$('[data-text-portal]').forEach"));
+
+assert(app.includes("previousClockStart=portalData?.activePractice?.clock?.startedAt||''"));
+assert(app.includes("delete portalData._localPracticeEnded"));
