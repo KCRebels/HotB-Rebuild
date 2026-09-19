@@ -2990,7 +2990,7 @@ function persistPracticeSession(){
  save();
 }
 function persistPracticeDraft(){
- if(practicePlan||!window.HotBPracticeSession?.createDraft)return;
+ if(practicePlan||db.activePortalPractice?.id||!window.HotBPracticeSession?.createDraft)return;
  const checkboxes=$$('[data-practice-player]');
  if(checkboxes.length){const roster=practiceAttendanceRoster();practiceSetupState.selectedNames=checkboxes.filter(input=>input.checked).map(input=>roster[Number(input.dataset.practicePlayer)]?.name).filter(Boolean)}
  const start=$('#practiceStartTime')?.value;if(start)practiceSetupState.startTime=start;
