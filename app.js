@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-126';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-127';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2068,7 +2068,7 @@ function practiceCoachLabel(label,plan=null,blockIndex=-1){
 }
 function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.now()){
  const clock=practice?.clock||{};
- if(clock.status==='finished')return {block:'DONE!',left:'0:00',transition:false,currentBlock:10};
+ if(clock.status==='finished')return {block:'DONE!',left:'0:00',transition:false,currentBlock:10,ended:true};
  const startedAt=Date.parse(clock.startedAt||''),activatedAt=Date.parse(practice?.activatedAt||'');
  // A clock timestamp from an older practice/test must never drive a newly activated plan.
  if(clock.status!=='running'||!Number.isFinite(startedAt)||!Number.isFinite(activatedAt)||startedAt<activatedAt)return {block:'Not Started',left:'—',transition:false,currentBlock:0};
@@ -2083,7 +2083,7 @@ function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.
 }
 function updatePortalPracticeClock(){
  const values=portalPracticeClockValues(),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
- if(values.ended&&portalData?.activePractice?.clock?.status==='running'&&!portalData._localPracticeEnded){
+ if(values.ended&&!portalData._localPracticeEnded){
   // Render the expired state once so old schedule/drill controls disappear
   // immediately instead of waiting for the next Firebase snapshot.
   portalData._localPracticeEnded=true;portalView='practice';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
@@ -2091,7 +2091,7 @@ function updatePortalPracticeClock(){
  }
  if(block)block.textContent=values.block;if(left)left.textContent=values.left;
  const nextPanel=$('#portalPracticeNext'),nextButton=$('#portalPracticeNextButton'),nextHeading=$('#portalPracticeNextHeading'),nextDetail=$('#portalPracticeNextDetail');
- if(values.ended&&portalData?.activePractice?.clock?.status==='running'){
+ if(values.ended){
   // The coach cleanup write may arrive a moment later; stop presenting live
   // assignments once the synchronized practice duration has elapsed.
   portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
