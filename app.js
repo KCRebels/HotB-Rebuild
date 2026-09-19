@@ -1989,7 +1989,8 @@ async function syncPlayerPracticeClock(){
   const attending=new Set(db.activePortalPractice.players||[]),clock=practiceClockPortalPayload(),batch=cloudStore.batch();
   db.roster.filter(player=>attending.has(player.name)&&player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
   if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-  [...practiceGuestPlayers(),...practiceGuestCoaches()].filter(guest=>guest.portalId).forEach(guest=>batch.set(portalDoc(guest.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+  practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).forEach(guest=>batch.set(portalDoc(guest.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+  practiceGuestCoaches().filter(guest=>guest.portalId).forEach(guest=>batch.set(portalDoc(guest.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
   await batch.commit();
  }catch(error){console.warn('Player portal clock sync failed',error)}
 }
