@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-98';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-99';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1181,6 +1181,7 @@ async function loadPlayerPortal(){
 }
 async function claimPlayerPortal(pin){
  if(!portalToken||isCoachPortalUser()||portalBusy)return;
+ const requestedPortalToken=portalToken;
  if(!portalAuthUser){
   try{portalAuthUser=cloudAuth?.currentUser||null;if(!portalAuthUser){const credential=await cloudAuth.signInAnonymously();portalAuthUser=credential?.user||cloudAuth.currentUser||null}}catch(error){portalMessage='HotB could not connect this device to the player portal. Please reopen the link.';render();return}
  }
@@ -1188,17 +1189,18 @@ async function claimPlayerPortal(pin){
  if(!/^\d{6}$/.test(String(pin||'').trim())){portalMessage='Enter the six-digit PIN provided by your coach.';render();return}
  portalBusy=true;portalMessage='Checking your PIN…';render();
  try{
-  const proof=await portalHash(portalToken,pin);
+  const proof=await portalHash(requestedPortalToken,pin);
   // First claim an unowned portal. If it is already owned, add this device as an
   // authorized device. This ordering matches the Firestore rules and avoids a
   // guaranteed permission-denied attempt on every first-time PIN entry.
   try{
-   await portalDoc().update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   await portalDoc(requestedPortalToken).update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
   }catch(firstError){
-   await portalDoc().update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
   }
+  if(portalToken!==requestedPortalToken)throw new Error('portal-claim-token-changed');
   await loadPlayerPortal();
-  if(!portalData)throw new Error('portal-claim-verification-failed');
+  if(portalToken!==requestedPortalToken||!portalData||portalData.id!==requestedPortalToken)throw new Error('portal-claim-verification-failed');
  }catch(error){
   portalBusy=false;
   portalData=null;
