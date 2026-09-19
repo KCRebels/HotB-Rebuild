@@ -1141,7 +1141,9 @@ async function setupCoachPortal(){
   db.coachPortal.name=name;db.coachPortal.phone=phone;db.coachPortal.portalPinHash=await portalHash(db.coachPortal.portalId,db.coachPortal.portalPin);
   const ref=portalDoc(db.coachPortal.portalId),existing=await ref.get();
   const activePractice=db.activePortalPractice?.id===practicePlan?.portalDraftId?coachPracticePortalPayload(db.activePortalPractice?.activatedAt||null):null;
-  await ref.set({portalType:'coach',coachName:name,firstName:practiceFirstName(name),pinHash:db.coachPortal.portalPinHash,...(!existing.exists?{ownerUid:null}:{}),activePractice,evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  const portalUpdate={portalType:'coach',coachName:name,firstName:practiceFirstName(name),pinHash:db.coachPortal.portalPinHash,...(!existing.exists?{ownerUid:null,activePractice:null}:{}),evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  if(activePractice)portalUpdate.activePractice=activePractice;
+  await ref.set(portalUpdate,{merge:true});
   save();portalMessage='The private coach link and PIN are ready.';
  }catch(error){console.error('Coach portal refresh failed',error);portalMessage=`The coach portal could not be refreshed${error?.message?`: ${error.message}`:'. Check the internet connection and try again.'}`}
  cloudBusy=false;render();
