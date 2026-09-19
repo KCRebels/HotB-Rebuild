@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-116'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-117'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal156'));
+assert(index.includes('app.js?v=20260919-portal157'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -142,3 +142,6 @@ assert(!app.includes("if(!recoveredPracticeExpired)resumeRecoveredPracticeClock(
 
 assert(app.includes("const existingCleanup=await Promise.all(cleanupTargets.map"));
 assert(app.includes("existingCleanup.filter(Boolean).forEach(target=>batch.update"));
+
+assert(app.includes("const existingOrphans=await Promise.all(orphanTargets.map"));
+assert(app.includes("existingOrphans.filter(Boolean).forEach(target=>batch.update"));
