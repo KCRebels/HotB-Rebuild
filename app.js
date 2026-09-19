@@ -2084,7 +2084,10 @@ async function recoverOrphanedActivePractice(){
   if(!Array.isArray(remote.players)||!remote.players.length||!Number.isFinite(Number(remote.blockMinutes))||Number(remote.blockMinutes)<=0)throw new Error('practice-payload-incomplete');
   const publishedIds=new Set(remote.players.map(player=>String(player.name||'').trim()).filter(Boolean));if(!publishedIds.size)throw new Error('practice-payload-incomplete');
   for(const player of remote.players){if(!Array.isArray(player.schedule)||player.schedule.length!==10)throw new Error('practice-schedule-incomplete');for(let index=0;index<10;index++){const entry=player.schedule[index];if(Number(entry?.block)!==index+1||!String(entry?.time||'').trim()||!String(entry?.assignment||'').trim())throw new Error('practice-schedule-incomplete')}}
+  const canonicalTimes=remote.players[0].schedule.map(entry=>String(entry.time||'').trim());
+  for(const player of remote.players)for(let index=0;index<10;index++)if(String(player.schedule[index]?.time||'').trim()!==canonicalTimes[index])throw new Error('practice-time-conflict');
   if(!Array.isArray(remote.schedule)||remote.schedule.length!==10)throw new Error('coach-schedule-incomplete');
+  for(let index=0;index<10;index++){const coachBlock=remote.schedule[index];if(Number(coachBlock?.block)!==index+1||!String(coachBlock?.time||'').trim()||!String(coachBlock?.assignment||'').trim())throw new Error('coach-schedule-incomplete');if(String(coachBlock.time).trim()!==canonicalTimes[index])throw new Error('coach-time-conflict')}
   const blockMinutes=Number(remote.blockMinutes)||12,durationMinutes=blockMinutes*10;
   const firstTime=String(remote.players?.[0]?.schedule?.[0]?.time||'').split('–')[0].trim();
   const startLabel=firstTime||remote.startLabel||'6:00p';
