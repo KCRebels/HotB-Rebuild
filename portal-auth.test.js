@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-93'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-94'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal133'));
+assert(index.includes('app.js?v=20260919-portal134'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -30,3 +30,8 @@ assert(!app.includes("$('[data-text-portal]').forEach"));
 
 assert(app.includes("previousClockStart=portalData?.activePractice?.clock?.startedAt||''"));
 assert(app.includes("delete portalData._localPracticeEnded"));
+
+assert(app.includes('const requestedPortalToken=portalToken'));
+assert(app.includes('portalDoc(requestedPortalToken).get()'));
+assert(app.includes('portalDoc(requestedPortalToken).onSnapshot'));
+assert(app.includes('portalToken!==requestedPortalToken'));
