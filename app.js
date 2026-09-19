@@ -2082,7 +2082,8 @@ async function recoverOrphanedActivePractice(){
   let initError='';
   if(window.firebase){try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);cloudAuth=firebase.auth();cloudStore=firebase.firestore();cloudInitStarted=true}catch(error){initError=String(error?.code||error?.message||error||'initialization failed')}}
   if(!cloudStore){
-   const detail=!window.firebase?(loaderError||'Firebase SDK unavailable'):(initError||'Firebase Firestore unavailable');
+   const attempted=[...document.scripts].filter(s=>s.dataset?.hotbFirebase).map(s=>s.dataset.hotbFirebase||'');
+   const detail=!window.firebase?(loaderError||`Firebase SDK unavailable; loader=${window.HotBFirebaseReady?'present':'missing'}; attempts=${attempted.length}`):(initError||'Firebase Firestore unavailable');
    alert(`HotB could not start the portal connection (${detail}). Nothing was changed.`);return
   }
  }
