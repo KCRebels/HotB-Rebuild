@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-94'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-95'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal134'));
+assert(index.includes('app.js?v=20260919-portal135'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -35,3 +35,8 @@ assert(app.includes('const requestedPortalToken=portalToken'));
 assert(app.includes('portalDoc(requestedPortalToken).get()'));
 assert(app.includes('portalDoc(requestedPortalToken).onSnapshot'));
 assert(app.includes('portalToken!==requestedPortalToken'));
+
+assert(app.includes("if(clock.status==='finished')throw new Error('practice-already-finished')"));
+assert(app.includes("startedAt<activatedAt"));
+assert(app.includes("orphan-cleanup-verification-failed"));
+assert(app.includes("kept the local recovery reference"));
