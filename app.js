@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-109';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-110';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1083,6 +1083,7 @@ async function loadPlayerPortal(){
     portalAuthUser=credential?.user||cloudAuth.currentUser||null;
    }
   }catch(error){
+   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
    portalBusy=false;
    portalMessage=String(error?.message||'')==='portal-auth-timeout'
     ?'HotB could not reach the player portal sign-in service. Please reopen the link.'
@@ -1091,6 +1092,7 @@ async function loadPlayerPortal(){
    return;
   }
   if(!portalAuthUser){
+   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
    portalBusy=false;
    portalMessage='HotB could not finish opening this player portal. Please reopen the link.';
    if(route==='portal')render();
@@ -1107,6 +1109,7 @@ async function loadPlayerPortal(){
    try{await portalDoc(requestedPortalToken).update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
    catch(firstError){if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
   }catch(error){
+   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
    portalBusy=false;portalData=null;portalMessage='This practice link could not be connected. Ask the coach to send a fresh link.';
    if(route==='portal')render();
    return;
@@ -1158,6 +1161,7 @@ async function loadPlayerPortal(){
      if(route==='portal')render();
     }
    },()=>{
+    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
     portalData=null;portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';portalView='home';
     portalMessage='This portal is no longer connected to this device.';
     if(portalUnsubscribe){portalUnsubscribe();portalUnsubscribe=null}
@@ -1166,6 +1170,7 @@ async function loadPlayerPortal(){
   }
   else portalMessage='This player portal link is not valid.';
  }catch(error){
+  if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
   portalData=null;
   const code=String(error?.code||'');
   if(String(error?.message||'')==='portal-read-timeout')portalMessage='HotB could not reach the player portal. Please reopen the link.';
