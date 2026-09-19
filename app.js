@@ -1022,6 +1022,17 @@ function smsComposeUrl(phone,message){
  const separator=/iPad|iPhone|iPod/.test(navigator.userAgent)?'&':'?';
  return `sms:${recipient}${separator}body=${encodeURIComponent(body)}`;
 }
+function openSmsComposer(url){
+ if(!url)return false;
+ try{
+  const link=document.createElement('a');
+  link.href=url;link.style.display='none';link.setAttribute('aria-hidden','true');
+  document.body.appendChild(link);link.click();link.remove();
+  return true;
+ }catch(_){
+  try{window.location.assign(url);return true}catch(__){return false}
+ }
+}
 function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}&portalBuild=${PORTAL_BUILD_TOKEN}`}
 function playerPortalTextUrl(player){
  const phone=String(player?.phone||'').replace(/[^\d+]/g,'');
@@ -3386,7 +3397,7 @@ window.HotBCoachPortalText=function(){
  if(!phone){portalMessage='The coach portal does not have a saved cell number.';render();return}
  const url=smsComposeUrl(phone,coachPortalShareText());
  if(!url){portalMessage='Messages could not be prepared from this screen.';render();return}
- try{window.location.href=url}catch(error){portalMessage='Messages could not be opened from this screen.';render()}
+ if(!openSmsComposer(url)){portalMessage='Messages could not be opened from this screen.';render()}
 };
 window.HotBPortalShare=async function(name){
  const player=db.roster.find(item=>item.name===name);
@@ -3401,7 +3412,7 @@ window.HotBPortalShare=async function(name){
 window.HotBPortalText=function(name){
  const player=db.roster.find(item=>item.name===name),url=playerPortalTextUrl(player);
  if(!url){portalMessage=`${practiceFirstName(player?.name||'This player')} does not have a saved cell number.`;render();return}
- try{window.location.href=url}catch(error){portalMessage='Messages could not be opened from this screen.';render()}
+ if(!openSmsComposer(url)){portalMessage='Messages could not be opened from this screen.';render()}
 };
 function bindPlayerPortal(){
  if(isCoachEvaluation())bindEval();
@@ -3486,7 +3497,7 @@ function bindPractice(){
  $('#addGuestCoach')?.addEventListener('click',async()=>{const name=$('#guestCoachName')?.value.trim(),phone=$('#guestCoachPhone')?.value.trim();if(!name){alert('Enter the guest coach’s name.');return}if(String(phone||'').replace(/\D/g,'').length<10){alert('Enter the guest coach’s cell number.');return}const guest={guestId:crypto.randomUUID(),name,phone,isPracticeGuestCoach:true};const button=$('#addGuestCoach');if(button){button.disabled=true;button.textContent='Creating Link…'}try{await createPendingGuestPortal(guest,'guestCoach');practiceSetupState.guestCoaches=practiceGuestCoaches();practiceSetupState.guestCoaches.push(guest);persistPracticeDraft();render()}catch(error){if(button){button.disabled=false;button.textContent='Add Guest Coach'}alert('The guest link could not be created. Confirm Cloud Backup is signed in and you have an internet connection.')}});
  $$('[data-remove-guest-player]').forEach(button=>button.addEventListener('click',async()=>{const guest=practiceGuestPlayers().find(item=>item.guestId===button.dataset.removeGuestPlayer);if(guest?.portalId){if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before removing this guest so HotB can expire the guest link.');return}try{await portalDoc(guest.portalId).set({expired:true,accessStatus:'removed',activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}catch(error){alert('The guest could not be removed. Check your connection and try again.');return}}practiceSetupState.guestPlayers=practiceGuestPlayers().filter(item=>item.guestId!==button.dataset.removeGuestPlayer);if(guest){practiceSetupState.selectedNames=(practiceSetupState.selectedNames||[]).filter(name=>name!==guest.name);delete practiceSetupState.accommodations?.[guest.name]}persistPracticeDraft();render()}));
  $$('[data-remove-guest-coach]').forEach(button=>button.addEventListener('click',async()=>{const guest=practiceGuestCoaches().find(item=>item.guestId===button.dataset.removeGuestCoach);if(guest?.portalId){if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before removing this guest coach so HotB can expire the guest link.');return}try{await portalDoc(guest.portalId).set({expired:true,accessStatus:'removed',activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}catch(error){alert('The guest coach could not be removed. Check your connection and try again.');return}}practiceSetupState.guestCoaches=practiceGuestCoaches().filter(item=>item.guestId!==button.dataset.removeGuestCoach);persistPracticeDraft();render()}));
- $$('[data-text-practice-guest]').forEach(button=>button.addEventListener('click',()=>{const guest=[...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.textPracticeGuest),url=guestPortalTextUrl(guest);if(url)window.location.href=url;else alert('This guest link is not ready. Remove the guest and add them again.')}));
+ $$('[data-text-practice-guest]').forEach(button=>button.addEventListener('click',()=>{const guest=[...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.textPracticeGuest),url=guestPortalTextUrl(guest);if(url)openSmsComposer(url);else alert('This guest link is not ready. Remove the guest and add them again.')}));
  $$('[data-share-setup-guest]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal([...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.shareSetupGuest))));
  $$('[data-practice-adjust]').forEach(button=>button.addEventListener('click',()=>{const panel=$(`[data-accommodation-panel="${button.dataset.practiceAdjust}"]`);if(!panel)return;panel.hidden=!panel.hidden;button.textContent=panel.hidden?'Adjust':'Done'}));
  $$('[data-accommodation-arrival],[data-accommodation-departure],[data-accommodation-pitch],[data-accommodation-warmup],[data-accommodation-catch],[data-accommodation-prepractice],[data-accommodation-limitations]').forEach(input=>input.addEventListener('change',()=>{storePracticeAccommodation(input.dataset.accommodationArrival??input.dataset.accommodationDeparture??input.dataset.accommodationPitch??input.dataset.accommodationWarmup??input.dataset.accommodationCatch??input.dataset.accommodationPrepractice??input.dataset.accommodationLimitations);persistPracticeDraft()}));
@@ -3542,7 +3553,7 @@ function bindPractice(){
  $('#deactivatePlayerPlans')?.addEventListener('click',deactivatePlayerPlans);
  $$('[data-share-practice-guest]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal([...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.sharePracticeGuest))));
  $$('[data-share-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamJenkins&&player.name===button.dataset.sharePracticeJenkins))));
- $$('[data-text-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamJenkins&&item.name===button.dataset.textPracticeJenkins),url=guestPortalTextUrl(player);if(url)window.location.href=url;else alert('This Team Jenkins practice link is not ready. Activate the practice plan first.')}));
+ $$('[data-text-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamJenkins&&item.name===button.dataset.textPracticeJenkins),url=guestPortalTextUrl(player);if(url)openSmsComposer(url);else alert('This Team Jenkins practice link is not ready. Activate the practice plan first.')}));
  $('#printPracticeCards')?.addEventListener('click',()=>window.print());
 }
 
