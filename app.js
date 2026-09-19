@@ -1869,7 +1869,7 @@ function playerFocusGames(range=practiceFocusRange){
  return window.HotBCoachObservations?.gamesInRange(games,range)||games;
 }
 function playerFocusPortalPayload(playerName=practiceFocusPlayer,range=practiceFocusRange){
- const selected=db.roster.find(player=>player.name===playerName);if(!selected)return null;
+ const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===playerName);if(!selected)return null;
  const games=playerFocusGames(range),standalone=window.HotBCoachObservations?.standaloneInRange(db.coachObservations,range)||[];
  const analysis=window.HotBHittingAnalysis?.analyzePlayer(games,selected)||{issues:[],plateAppearances:0};
  const observed=window.HotBCoachObservations?.summarize(games,selected.name,standalone)||{patterns:[],rows:[]};
@@ -2872,8 +2872,8 @@ function openCoachObservation(options={}){
  modal='coachObservation';render();
 }
 function openFocusObservation(){
- if(!practiceFocusPlayer)return;
- observationMode='focus';observationTargetPlayer=practiceFocusPlayer;observationTargetPaId='';
+ const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===practiceFocusPlayer);if(!selected)return;
+ observationMode='focus';observationTargetPlayer=selected.name;observationTargetPaId='';
  modal='coachObservation';render();
 }
 function openManagedObservation(id,gameId=''){
@@ -3480,7 +3480,7 @@ function bindCoachObservation(){
  $('#saveCoachObservation')?.addEventListener('click',()=>{
   try{
    const payload={playerName:observationTargetPlayer,paId:observationTargetPaId,tags:$$('.observation-option.active').map(button=>button.dataset.observationOption),note:$('#observationNote')?.value||''};
-   if(focusMode)payload.observedAt=new Date(api.rangeBounds(practiceFocusRange).end).toISOString();
+   if(focusMode){const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===payload.playerName);if(!selected)throw new Error('Player Focus is only available for competitive-roster players.');payload.observedAt=new Date(api.rangeBounds(practiceFocusRange).end).toISOString()}
    if(manageMode){const editGame=observationEditGameId?(db.savedGames||[]).find(game=>game.id===observationEditGameId):null,record=(editGame?.observations||db.coachObservations||[]).find(item=>item.id===observationEditId);api.updateRecord(record,payload)}
    else if(focusMode)api.saveStandalone(db.coachObservations,payload);else api.saveObservation(g,payload);
    modal=null;save();render();
@@ -3492,7 +3492,7 @@ function bindManageFocusDrills(){
  $('#backToFocusDrills')?.addEventListener('click',()=>{focusDrillReplaceIndex=-1;focusDrillQuery='';render()});
  $('#focusDrillSearch')?.addEventListener('input',event=>{focusDrillQuery=event.target.value;render();const input=$('#focusDrillSearch');if(input){input.focus();input.setSelectionRange(input.value.length,input.value.length)}});
  $$('[data-focus-replacement]').forEach(button=>button.onclick=()=>{
-  const selected=db.roster.find(player=>player.name===practiceFocusPlayer),games=playerFocusGames(),standalone=window.HotBCoachObservations?.standaloneInRange(db.coachObservations,practiceFocusRange)||[],analysis=window.HotBHittingAnalysis?.analyzePlayer(games,selected)||{issues:[]},observed=window.HotBCoachObservations?.summarize(games,selected.name,standalone)||{patterns:[]},query=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>`${item.label} ${item.focus||''}`)].join(' '),names=focusSuggestedDrills(query).map(drill=>drill.name);
+  const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===practiceFocusPlayer);if(!selected)return;const games=playerFocusGames(),standalone=window.HotBCoachObservations?.standaloneInRange(db.coachObservations,practiceFocusRange)||[],analysis=window.HotBHittingAnalysis?.analyzePlayer(games,selected)||{issues:[]},observed=window.HotBCoachObservations?.summarize(games,selected.name,standalone)||{patterns:[]},query=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>`${item.label} ${item.focus||''}`)].join(' '),names=focusSuggestedDrills(query).map(drill=>drill.name);
   names[focusDrillReplaceIndex]=button.dataset.focusReplacement;db.playerFocusDrillOverrides[focusDrillKey()]=names;focusDrillReplaceIndex=-1;focusDrillQuery='';save();render();
  });
  $('#resetFocusDrills')?.addEventListener('click',()=>{delete db.playerFocusDrillOverrides[focusDrillKey()];save();modal=null;render()});
