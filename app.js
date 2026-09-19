@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-70';
+const PORTAL_BUILD_TOKEN='20260919-71';
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1967,6 +1967,12 @@ function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.
 }
 function updatePortalPracticeClock(){
  const values=portalPracticeClockValues(),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
+ if(values.ended&&portalData?.activePractice?.clock?.status==='running'&&!portalData._localPracticeEnded){
+  // Render the expired state once so old schedule/drill controls disappear
+  // immediately instead of waiting for the next Firebase snapshot.
+  portalData._localPracticeEnded=true;portalView='practice';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
+  render();return;
+ }
  if(block)block.textContent=values.block;if(left)left.textContent=values.left;
  const nextPanel=$('#portalPracticeNext'),nextButton=$('#portalPracticeNextButton'),nextHeading=$('#portalPracticeNextHeading'),nextDetail=$('#portalPracticeNextDetail');
  if(values.ended&&portalData?.activePractice?.clock?.status==='running'){
