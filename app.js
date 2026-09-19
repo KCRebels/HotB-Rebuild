@@ -2254,6 +2254,17 @@ async function activatePlayerPlans(){
   // Do not mark the practice locally active until Firebase has accepted every portal update.
   try{await batch.commit()}
   catch(error){throw error}
+  // Verify every permanent player and the coach actually received this exact practice.
+  // A successful batch write is not enough protection against stale/wrong saved portal IDs.
+  const verifyIds=[...new Set([
+   ...pendingPortalPractice.playerPortals.map(entry=>entry.portalId),
+   pendingPortalPractice.coachPortalId
+  ].filter(Boolean))];
+  const verification=await Promise.all(verifyIds.map(async id=>{
+   const snapshot=await portalDoc(id).get();
+   return snapshot.exists&&snapshot.data()?.activePractice?.id===practicePlan.portalDraftId;
+  }));
+  if(verification.some(ok=>!ok))throw new Error('portal-activation-verification-failed');
   db.activePortalPractice=pendingPortalPractice;persistPracticeSession();save();
   render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
  }catch(error){if(button){button.disabled=false;button.textContent='Activate Player Plans'}alert('The player plans could not be activated. Confirm the portal security setup and internet connection.')}
