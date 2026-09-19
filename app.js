@@ -1009,7 +1009,7 @@ function newPortalPin(){return String(crypto.getRandomValues(new Uint32Array(1))
 function newGuestSecret(){return newPortalId()+newPortalId()}
 function standaloneLinkMessage(before,url,after){return window.HotBSms?.buildStandaloneLinkMessage({before,url,after})||''}
 function smsComposeUrl(phone,message){return window.HotBSms?.composeSmsUrl({phone,message,userAgent:navigator.userAgent})||''}
-function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}`}
+function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}&portalBuild=20260919-23`}
 function playerPortalTextUrl(player){
  const phone=String(player?.phone||'').replace(/[^\d+]/g,'');
  if(!phone||!player?.portalId||!player?.portalPin)return'';
