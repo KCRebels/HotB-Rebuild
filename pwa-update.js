@@ -1,6 +1,9 @@
 (() => {
   const BUILD_VERSION = '2026.09.19.4';
   window.HOTB_BUILD_VERSION = BUILD_VERSION;
+  // Player portals must always use the current network app. They do not install,
+  // update, or re-register the coach PWA service worker.
+  if (new URLSearchParams(window.location.search).has('portal')) return;
   if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
 
   let updateShown = false;
