@@ -942,7 +942,19 @@ const recoveredPracticeExpired=!!(practicePlan&&practiceClock.running&&!window.H
 let cloudInitStarted=false,cloudInitRetryTimer=null,cloudInitRetryCount=0;
 async function initCloud(){
  if(cloudInitStarted)return;
- if(!window.firebase&&window.HotBFirebaseReady){try{await window.HotBFirebaseReady}catch(_){}}
+ if(!window.firebase&&window.HotBFirebaseReady){try{await Promise.race([window.HotBFirebaseReady,new Promise((_,reject)=>setTimeout(()=>reject(new Error('firebase-loader-timeout')),8000))])}catch(_){}}
+ if(!window.firebase&&portalToken){
+  try{
+   const sources=['https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js','https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js','https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js'];
+   for(const src of sources){
+    if(window.firebase&&src.includes('firebase-app-compat'))continue;
+    await Promise.race([
+     new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=false;s.dataset.hotbFirebase=src;s.onload=resolve;s.onerror=()=>reject(new Error('firebase-load-failed'));document.head.appendChild(s)}),
+     new Promise((_,reject)=>setTimeout(()=>reject(new Error('firebase-load-timeout')),8000))
+    ]);
+   }
+  }catch(_){}
+ }
  if(!window.firebase){
   if(cloudInitRetryCount<40){cloudInitRetryCount++;clearTimeout(cloudInitRetryTimer);cloudInitRetryTimer=setTimeout(initCloud,250);return}
   const dynamicScripts=[...document.scripts].filter(script=>script.dataset?.hotbFirebase);
