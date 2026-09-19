@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-121';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-122';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2100,7 +2100,7 @@ function updatePortalPracticeClock(){
  const nextEntry=values.transition?(portalData?.activePractice?.schedule||[]).find(entry=>Number(entry.block)===Number(values.currentBlock)+1):null;
  if(nextPanel&&nextButton){
   nextPanel.hidden=!nextEntry;
-  if(nextEntry){const details=portalNextAssignmentDetails(nextEntry.assignment);nextHeading.textContent=details.heading;nextDetail.textContent=details.detail;nextDetail.hidden=!details.detail;nextButton.dataset.portalPracticeDrill=details.drill||'';nextButton.classList.toggle('has-drill',!!details.drill);const hint=nextButton.querySelector('small');if(hint)hint.hidden=!details.drill}
+  if(nextEntry){const details=portalNextAssignmentDetails(nextEntry.assignment),practiceOnly=['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType),drillAllowed=!!details.drill&&(!practiceOnly||(portalData?.activePractice?.drills||[]).includes(details.drill));nextHeading.textContent=details.heading;nextDetail.textContent=details.detail;nextDetail.hidden=!details.detail;nextButton.dataset.portalPracticeDrill=drillAllowed?details.drill:'';nextButton.classList.toggle('has-drill',drillAllowed);const hint=nextButton.querySelector('small');if(hint)hint.hidden=!drillAllowed}
  }
  if(['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType)){const current=Number(values.currentBlock)||0,done=values.block==='DONE!';$$('[data-portal-block]').forEach(row=>row.hidden=done||current>0&&Number(row.dataset.portalBlock)<current);const drills=$('.portal-practice-drills');if(drills)drills.hidden=done;if(nextPanel&&done)nextPanel.hidden=true;if(done&&portalView==='library'){portalView='practice';portalSelectedDrill='';portalLibraryReturnView='library';render();return}}
 }
