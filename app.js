@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-117';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-118';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2472,11 +2472,27 @@ async function activatePlayerPlans(){
   const activationTimestamp=new Date().toISOString();
   for(const player of jenkins)if(!player.portalId||!player.portalSecret)await createPendingGuestPortal(player,'jenkinsPlayer');
   const batch=cloudStore.batch();
-  db.roster.filter(player=>!player.isTeamJenkins&&player.portalId&&attending.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:{...playerPracticePortalPayload(player.name,activationTimestamp),clock:{status:'not-started',startedAt:null,endedAt:null}},updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
-  db.roster.filter(player=>player.isTeamJenkins&&player.portalId&&attending.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),jenkinsPortalResetPayload(player,playerPracticePortalPayload(player.name,activationTimestamp),'active'),{merge:true}));
-  if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:coachPracticePortalPayload(activationTimestamp),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-  for(const guest of practiceGuestPlayers().filter(player=>attending.has(player.name))){if(!guest.portalId||!guest.portalSecret)throw new Error(`Guest link missing for ${guest.name}`);batch.set(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice:playerPracticePortalPayload(guest.name,activationTimestamp),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
-  for(const guest of practiceGuestCoaches()){if(!guest.portalId||!guest.portalSecret)throw new Error(`Guest link missing for ${guest.name}`);const activePractice={...coachPracticePortalPayload(activationTimestamp),coachName:guest.name};batch.set(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
+  const permanentPlayers=db.roster.filter(player=>!player.isTeamJenkins&&player.portalId&&attending.has(player.name));
+  const jenkinsPlayers=db.roster.filter(player=>player.isTeamJenkins&&player.portalId&&attending.has(player.name));
+  const activeGuests=practiceGuestPlayers().filter(player=>attending.has(player.name)),activeGuestCoaches=practiceGuestCoaches();
+  for(const guest of [...activeGuests,...activeGuestCoaches])if(!guest.portalId||!guest.portalSecret)throw new Error(`Guest link missing for ${guest.name}`);
+  // Activation may publish only into complete portal documents that were created
+  // by the setup/guest creation flows. Never let Activate recreate a deleted
+  // permanent or guest portal as a partial active-practice record.
+  const activationTargets=[
+   ...permanentPlayers.map(player=>({id:player.portalId,type:'player',name:player.name})),
+   ...jenkinsPlayers.map(player=>({id:player.portalId,type:'jenkinsPlayer',name:player.name})),
+   ...(db.coachPortal?.portalId?[{id:db.coachPortal.portalId,type:'coach',name:db.coachPortal.name||''}]:[]),
+   ...activeGuests.map(guest=>({id:guest.portalId,type:'guestPlayer',name:guest.name})),
+   ...activeGuestCoaches.map(guest=>({id:guest.portalId,type:'guestCoach',name:guest.name}))
+  ];
+  const activationDocs=await Promise.all(activationTargets.map(async target=>({target,snapshot:await portalDoc(target.id).get()})));
+  for(const {target,snapshot} of activationDocs){const remote=snapshot.exists?snapshot.data():null;if(!remote||remote.portalType!==target.type)throw new Error('portal-activation-target-missing');if(['player','jenkinsPlayer','guestPlayer'].includes(target.type)&&remote.playerName!==target.name)throw new Error('portal-activation-player-mismatch');if(['coach','guestCoach'].includes(target.type)&&target.name&&remote.coachName!==target.name)throw new Error('portal-activation-coach-mismatch')}
+  permanentPlayers.forEach(player=>batch.update(portalDoc(player.portalId),{activePractice:{...playerPracticePortalPayload(player.name,activationTimestamp),clock:{status:'not-started',startedAt:null,endedAt:null}},updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
+  jenkinsPlayers.forEach(player=>batch.update(portalDoc(player.portalId),jenkinsPortalResetPayload(player,playerPracticePortalPayload(player.name,activationTimestamp),'active')));
+  if(db.coachPortal?.portalId)batch.update(portalDoc(db.coachPortal.portalId),{activePractice:coachPracticePortalPayload(activationTimestamp),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  for(const guest of activeGuests)batch.update(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice:playerPracticePortalPayload(guest.name,activationTimestamp),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  for(const guest of activeGuestCoaches){const activePractice={...coachPracticePortalPayload(activationTimestamp),coachName:guest.name};batch.update(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})}
   const pendingPortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:activationTimestamp,players:[...attending],playerPortals:db.roster.filter(player=>attending.has(player.name)&&player.portalId).map(player=>({name:player.name,portalId:player.portalId,isTeamJenkins:!!player.isTeamJenkins})),guestPlayerPortalIds:practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).map(guest=>guest.portalId),guestCoachPortalIds:practiceGuestCoaches().filter(guest=>guest.portalId).map(guest=>guest.portalId),coachPortalId:db.coachPortal?.portalId||''};
   // Do not mark the practice locally active until Firebase has accepted every portal update.
   try{await batch.commit()}
