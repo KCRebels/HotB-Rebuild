@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-107';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-108';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -978,10 +978,9 @@ async function initCloud(){
    }
    if(cloudUser){await loadCloudStatus();if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();syncPlayerEvaluationPortals().catch(()=>{})}
    if(recoveredPracticeExpired&&practicePlan&&practiceClock.running){
-    practiceClock.running=false;practiceClock.finished=true;
-    const scheduledEnd=practiceClock.startAt&&window.HotBPracticeSession?.layout?practiceClock.startAt+window.HotBPracticeSession.layout(practicePlan).totalMs:Date.now();
-    practiceClock.completedAt=practiceClock.completedAt||new Date(scheduledEnd).toISOString();
-    persistPracticeSession();
+    // Do not merely mark an expired restored clock finished locally. The normal
+    // completion path must archive it and clear/verify every published portal.
+    await finishPracticeClock(true);
    }
    if(portalToken)await loadPlayerPortal();
    if(route==='home'||route==='portal')render();
