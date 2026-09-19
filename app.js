@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-81';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-82';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1212,7 +1212,7 @@ async function setupPlayerPortals(){
     if(remote.playerName&&remote.playerName!==player.name)throw new Error('portal-player-identity-mismatch');
    }
    const localActive=db.activePortalPractice?.id&&db.activePortalPractice?.id===practicePlan?.portalDraftId&&db.activePortalPractice?.players?.includes(player.name)
-    ?playerPracticePortalPayload(player.name,db.activePortalPractice?.activatedAt||null):null;
+    ?playerPracticePortalPayload(player.name,db.activePortalPractice?.activatedAt||null,practiceClockPortalPayload()):null;
    // Refresh is authoritative for this coach device. If no local practice is
    // active for this player, remove any stale remote practice left by an old
    // test/session instead of preserving it through merge:true.
@@ -2126,13 +2126,13 @@ function practiceClockPortalPayload(){
  if(practiceClock.running&&practiceClock.startAt)return {status:'running',startedAt:new Date(practiceClock.startAt).toISOString(),endedAt:null};
  return {status:'not-started',startedAt:null,endedAt:null};
 }
-function playerPracticePortalPayload(name,activatedAt=null){
+function playerPracticePortalPayload(name,activatedAt=null,clockOverride=null){
  const schedule=practicePlan.schedule[name]||[];
  const player=practicePlayerByName(name),recoveredSchedule=practicePlan.recoveredPlayerSchedules?.[name],portalSchedule=schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:recoveredSchedule?.[index]?.assignment||practiceEntryText(entry,practicePlan,index)}));
  const assigned=new Map();
  portalSchedule.forEach(entry=>{const drill=portalAssignmentDrillName(entry.assignment);if(!drill||assigned.has(drill))return;const station=String(entry.assignment).match(/^Drill Station (\d+)/i);assigned.set(drill,station?`Drill Station ${station[1]}`:/^Machine\b/i.test(entry.assignment)?'Machine':/^Front Toss\b/i.test(entry.assignment)?'Front Toss':'Assigned Drill')});
  const drillAssignments=[...assigned].map(([name,location])=>({name,location})),assignedDrills=drillAssignments.map(item=>item.name);
- return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:activatedAt||new Date().toISOString(),clock:{status:'not-started',startedAt:null,endedAt:null},schedule:portalSchedule,drills:assignedDrills,drillAssignments};
+ return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:activatedAt||new Date().toISOString(),clock:clockOverride||{status:'not-started',startedAt:null,endedAt:null},schedule:portalSchedule,drills:assignedDrills,drillAssignments};
 }
 function coachPracticePortalPayload(activatedAt=null){
  const schedule=Array.isArray(practicePlan?.recoveredCoachSchedule)&&practicePlan.recoveredCoachSchedule.length?structuredClone(practicePlan.recoveredCoachSchedule):(window.HotBCoachPractice?.build(practicePlan,practiceChosenDrills)||[]);
