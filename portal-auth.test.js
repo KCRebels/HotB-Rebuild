@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-117'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-118'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal157'));
+assert(index.includes('app.js?v=20260919-portal158'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -145,3 +145,8 @@ assert(app.includes("existingCleanup.filter(Boolean).forEach(target=>batch.updat
 
 assert(app.includes("const existingOrphans=await Promise.all(orphanTargets.map"));
 assert(app.includes("existingOrphans.filter(Boolean).forEach(target=>batch.update"));
+
+assert(app.includes("throw new Error('portal-activation-target-missing')"));
+assert(app.includes("throw new Error('portal-activation-player-mismatch')"));
+assert(app.includes("permanentPlayers.forEach(player=>batch.update"));
+assert(app.includes("jenkinsPlayers.forEach(player=>batch.update"));
