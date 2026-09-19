@@ -803,6 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
+const PORTAL_BUILD_TOKEN='20260919-54';
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1021,16 +1022,16 @@ function smsComposeUrl(phone,message){
  const separator=/iPad|iPhone|iPod/.test(navigator.userAgent)?'&':'?';
  return `sms:${recipient}${separator}body=${encodeURIComponent(body)}`;
 }
-function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}&portalBuild=20260919-44`}
+function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}&portalBuild=${PORTAL_BUILD_TOKEN}`}
 function playerPortalTextUrl(player){
  const phone=String(player?.phone||'').replace(/[^\d+]/g,'');
  if(!phone||!player?.portalId||!player?.portalPin)return'';
  const first=practiceFirstName(player.name),message=standaloneLinkMessage(`${first}’s private HotB Player Portal`,playerPortalUrl(player),`PIN: ${player.portalPin}`);
  return smsComposeUrl(phone,message);
 }
-function coachPortalUrl(){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(db.coachPortal?.portalId||'')}`}
+function coachPortalUrl(){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(db.coachPortal?.portalId||'')}&portalBuild=${PORTAL_BUILD_TOKEN}`}
 function coachPortalShareText(){return standaloneLinkMessage(`${db.coachPortal?.name||'Coach'}’s private HotB Coach Portal`,coachPortalUrl(),`PIN: ${db.coachPortal?.portalPin||''}`)}
-function guestPortalUrl(guest){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(guest.portalId||'')}&guest=${encodeURIComponent(guest.portalSecret||'')}`}
+function guestPortalUrl(guest){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(guest.portalId||'')}&guest=${encodeURIComponent(guest.portalSecret||'')}&portalBuild=${PORTAL_BUILD_TOKEN}`}
 function guestPortalShareText(guest){return window.HotBSms?.guestPracticeMessage({firstName:practiceFirstName(guest.name),url:guestPortalUrl(guest)})||''}
 function guestPortalTextUrl(guest){
  const phone=String(guest?.phone||'').replace(/[^\d+]/g,'');
