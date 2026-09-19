@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-112';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-113';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1022,14 +1022,15 @@ function smsComposeUrl(phone,message){
  return `sms:${recipient}${separator}body=${encodeURIComponent(body)}`;
 }
 function openSmsComposer(url){
- if(!url)return false;
+ if(!url||!/^sms:/i.test(String(url)))return false;
  // Keep the external sms: navigation synchronous with the original iPhone tap.
- // An actual anchor click is more reliable in standalone PWAs than assigning
- // location.href and claiming success before iOS has accepted the navigation.
+ // Do not hide the anchor offscreen: iOS standalone PWAs can ignore synthetic
+ // activation of a hidden external-scheme link. Click a temporary visible-sized
+ // link during the original capture-phase user gesture, then remove it next tick.
  try{
   const link=document.createElement('a');
-  link.href=url;link.style.position='fixed';link.style.left='-9999px';link.setAttribute('aria-hidden','true');
-  document.body.appendChild(link);link.click();link.remove();
+  link.href=url;link.setAttribute('aria-label','Open Messages');link.style.position='fixed';link.style.inset='0 auto auto 0';link.style.width='1px';link.style.height='1px';link.style.opacity='0.01';link.style.zIndex='2147483647';
+  document.body.appendChild(link);link.click();setTimeout(()=>link.remove(),0);
   return true;
  }catch(_){}
  try{window.location.assign(url);return true}catch(__){return false}
