@@ -807,7 +807,7 @@ const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_K
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
 const seed = {
- roster: defaultRoster,
+ roster: defaultRoster.map(profile=>({...profile,rosterKey:profile.name})),
  teams:[],
  pitchers:[],
  savedGames:[],
