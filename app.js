@@ -2460,7 +2460,7 @@ function sanitizedBackupDb(){
   backupDb.coachObservations=(backupDb.coachObservations||[]).filter(item=>!jenkinsNames.has(item.playerName));
   (backupDb.savedGames||[]).forEach(game=>{game.observations=(game.observations||[]).filter(item=>!jenkinsNames.has(item.playerName))});
   if(backupDb.currentGame)backupDb.currentGame.observations=(backupDb.currentGame.observations||[]).filter(item=>!jenkinsNames.has(item.playerName));
-  (backupDb.practiceHistory||[]).forEach(record=>{if(Array.isArray(record.attendees))record.attendees=record.attendees.filter(name=>!jenkinsNames.has(name))});
+  (backupDb.practiceHistory||[]).forEach(record=>{if(Array.isArray(record.attendees))record.attendees=record.attendees.filter(name=>!jenkinsNames.has(name));if(Array.isArray(record.rosterPlayers))record.rosterPlayers=record.rosterPlayers.filter(name=>!jenkinsNames.has(name));if(Array.isArray(record.excludedAttendancePlayers))record.excludedAttendancePlayers=record.excludedAttendancePlayers.filter(name=>!jenkinsNames.has(name))});
   Object.keys(backupDb.planPreferences||{}).forEach(name=>{if(jenkinsNames.has(name))delete backupDb.planPreferences[name]});
   Object.keys(backupDb.playerFocusDrillOverrides||{}).forEach(key=>{if([...jenkinsNames].some(name=>key.startsWith(name+'::')))delete backupDb.playerFocusDrillOverrides[key]});
  }
