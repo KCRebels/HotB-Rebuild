@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-84';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-85';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1220,6 +1220,12 @@ async function setupPlayerPortals(){
    batch.set(portalDoc(player.portalId),{playerName:player.name,firstName:practiceFirstName(player.name),pinHash:player.portalPinHash,evaluationData:playerEvaluationPortalPayload(player.name),activePractice:localActive,...(!existing.exists?{ownerUid:null,focus:null}:{}),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   }
   await batch.commit();
+  const playerVerification=await Promise.all(players.map(async player=>{
+   const snapshot=await portalDoc(player.portalId).get(),remote=snapshot.exists?snapshot.data():null;
+   const shouldBeActive=!!(db.activePortalPractice?.id&&db.activePortalPractice.id===practicePlan?.portalDraftId&&db.activePortalPractice.players?.includes(player.name));
+   return !!remote&&remote.playerName===player.name&&(shouldBeActive?remote.activePractice?.id===practicePlan.portalDraftId:!remote.activePractice);
+  }));
+  if(playerVerification.some(ok=>!ok))throw new Error('player-portal-refresh-verification-failed');
   // Persist portal IDs/PINs immediately before any backup/sync work can run.
   db.route=route;
   localStorage.setItem(DBKEY,JSON.stringify(db));
@@ -1245,6 +1251,8 @@ async function setupCoachPortal(){
   const activePractice=db.activePortalPractice?.id===practicePlan?.portalDraftId?coachPracticePortalPayload(db.activePortalPractice?.activatedAt||null):null;
   const portalUpdate={portalType:'coach',coachName:name,firstName:practiceFirstName(name),pinHash:db.coachPortal.portalPinHash,activePractice,...(!existing.exists?{ownerUid:null}:{}),evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
   await ref.set(portalUpdate,{merge:true});
+  const verified=await ref.get(),remote=verified.exists?verified.data():null;
+  if(!remote||remote.coachName!==name||(activePractice&&remote.activePractice?.id!==practicePlan.portalDraftId)||(!activePractice&&remote.activePractice))throw new Error('coach-portal-refresh-verification-failed');
   save();portalMessage='The private coach link and PIN are ready.';
  }catch(error){db.coachPortal=originalCoachPortal;console.error('Coach portal refresh failed',error);portalMessage=`The coach portal could not be refreshed${error?.message?`: ${error.message}`:'. Check the internet connection and try again.'}`}
  cloudBusy=false;render();
@@ -2301,7 +2309,7 @@ async function clearOrphanedActivePractice(){
  catch(error){alert('The stale portal practice could not be removed. Check your connection and try again.')}
 }
 async function syncPlayerPracticeClock(){
- if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return;
+ if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return false;
  const attending=new Set(db.activePortalPractice.players||[]),clock=practiceClockPortalPayload(),activeId=practicePlan.portalDraftId,updates=[],queuedIds=new Set(),queue=id=>{if(!id||queuedIds.has(id))return;queuedIds.add(id);updates.push(portalDoc(id).get().then(snapshot=>{const remote=snapshot.exists?snapshot.data()?.activePractice:null;if(!remote||remote.id!==activeId)throw new Error('portal-practice-mismatch');return portalDoc(id).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})}))};
  (db.activePortalPractice?.playerPortals||[]).forEach(entry=>queue(entry.portalId));
  db.roster.filter(player=>attending.has(player.name)&&player.portalId).forEach(player=>queue(player.portalId));
