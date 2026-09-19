@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-110'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-111'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal150'));
+assert(index.includes('app.js?v=20260919-portal151'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -118,3 +118,9 @@ assert(app.includes("guest links could not be expired and verified"));
 
 assert(app.match(/catch\(error\)\{\n\s+if\(loadGeneration!==portalLoadGeneration\|\|portalToken!==requestedPortalToken\)return;/g)?.length>=3);
 assert(app.includes("},()=>{\n    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;"));
+
+assert(app.includes("batch.update(target.ref,target.data)"));
+assert(app.includes("remote.portalType!=='player'||remote.playerName!==player.name"));
+assert(app.includes("remote.portalType!=='coach'"));
+assert(!app.includes("portalDoc(player.portalId).set({evaluationData:"));
+assert(!app.includes("portalDoc(db.coachPortal.portalId).set({evaluationData:"));
