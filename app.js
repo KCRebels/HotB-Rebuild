@@ -2017,6 +2017,7 @@ async function activatePlayerPlans(){
  }catch(error){if(button){button.disabled=false;button.textContent='Activate Player Plans'}alert('The player plans could not be activated. Confirm the portal security setup and internet connection.')}
 }
 async function deactivatePlayerPlans(){
+ if(practiceClock.running){alert('This practice is currently running. Use DONE! to end the practice and remove the live player and coach plans together.');return}
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId||!confirm('Remove this active practice from the player and coach portals?'))return;
  const button=$('#deactivatePlayerPlans');if(button)button.disabled=true;
  try{await clearActivePlayerPlans();render();alert('Player practice plans are no longer active.')}
