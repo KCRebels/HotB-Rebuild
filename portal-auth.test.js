@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-108'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-109'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal148'));
+assert(index.includes('app.js?v=20260919-portal149'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -111,3 +111,7 @@ assert(!app.includes("if(activeTiming&&practiceClock.running){syncPlayerPractice
 assert(app.includes("if(recoveredPracticeExpired&&practicePlan&&practiceClock.running)"));
 assert(app.includes("await finishPracticeClock(true)"));
 assert(!app.includes("recoveredPracticeExpired&&practicePlan&&practiceClock.running){\n    practiceClock.running=false;practiceClock.finished=true"));
+
+assert(app.includes("draft-guest-expiry-verification-failed"));
+assert(app.includes("remote.expired===true&&remote.accessStatus==='ended'&&!remote.activePractice"));
+assert(app.includes("guest links could not be expired and verified"));
