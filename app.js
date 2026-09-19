@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-72';
+const PORTAL_BUILD_TOKEN='20260919-73';
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1801,13 +1801,15 @@ function portalLoginView(){
 }
 function coachPortalPracticeView(){
  const practice=portalData?.activePractice,name=portalData?.firstName||practiceFirstName(portalData?.coachName)||'Coach';
+ const locallyEnded=!!practice&&portalPracticeClockValues(practice).ended;
+ if(locallyEnded)return `${portalHeader('Coach Portal')}<main class="portal-page"><section class="portal-empty"><span>COACH PORTAL</span><h2>Practice Complete</h2><p>This practice has ended. HotB is waiting for the final cloud cleanup.</p></section><button class="btn red block coach-eval-button" data-portal-view="evaluation">Player Eval</button></main>`;
  return `${portalHeader('Coach Portal')}<main class="portal-page"><section class="portal-welcome ${practice?'active':''}"><span>${practice?'ACTIVE PRACTICE':'COACH PORTAL'}</span><h2>Hi, ${esc(name)}</h2><p>${practice?'Your current coaching assignments are below.':'No practice is active right now.'}</p></section><button class="btn red block coach-eval-button" data-portal-view="evaluation">Player Eval</button>${practice?`<section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section><article class="practice-player-card portal-player-card portal-coach-card"><header><h2>${esc(name)} <small>(Coach)</small></h2></header><ol>${(practice.schedule||[]).map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol></article>`:''}</main>`;
 }
 function guestPortalEndedView(){return `${portalHeader('Hitting Practice')}<main class="portal-page"><section class="portal-empty"><span>GUEST ACCESS</span><h2>This Practice Has Ended</h2><p>This temporary link is no longer active.</p></section></main>`}
 function guestPortalWaitingView(){const first=portalData?.firstName||practiceFirstName(portalData?.playerName||portalData?.coachName),jenkins=portalData?.portalType==='jenkinsPlayer';return `${portalHeader('Hitting Practice')}<main class="portal-page"><section class="portal-empty"><span>${jenkins?'PRACTICE ACCESS':'GUEST ACCESS CONFIRMED'}</span><h2>Hi, ${esc(first)}</h2><p>${jenkins?'No practice is active right now. Use this same link the next time you practice with us.':'You’re connected to tonight’s HotB practice. Your practice plan is not ready yet.'}</p></section></main>`}
 function guestCoachPracticeView(){
  const practice=portalData?.activePractice,name=portalData?.firstName||practiceFirstName(portalData?.coachName)||'Coach';
- if(portalData?.expired||!practice)return guestPortalEndedView();
+ if(portalData?.expired||!practice||portalPracticeClockValues(practice).ended)return guestPortalEndedView();
  return `${portalHeader('Guest Coach')}<main class="portal-page"><section class="portal-welcome active"><span>GUEST COACH · VIEW ONLY</span><h2>Hi, ${esc(name)}</h2><p>${esc(practice.title||'Current Hitting Practice')}</p></section><section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section>${(practice.players||[]).map(player=>`<article class="practice-player-card portal-player-card portal-guest-coach-card"><header><h2>${esc(player.name)}${player.role?` <small>(${esc(player.role)})</small>`:''}</h2></header><ol>${player.schedule.map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>`).join('')}</main>`;
 }
 function playerEvaluationPortalPayload(playerName){
