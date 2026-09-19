@@ -1028,7 +1028,10 @@ async function loadPlayerPortal(){
   }catch(error){}
  }
  try{
-  const snapshot=await portalDoc().get();
+  const snapshot=await Promise.race([
+   portalDoc().get(),
+   new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-read-timeout')),8000))
+  ]);
   if(snapshot.exists){
    portalData={id:snapshot.id,...snapshot.data()};portalMessage='';
    if(portalUnsubscribe)portalUnsubscribe();
@@ -1042,10 +1045,13 @@ async function loadPlayerPortal(){
   else portalMessage='This player portal link is not valid.';
  }catch(error){
   portalData=null;
-  if(!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
+  if(String(error?.message||'')==='portal-read-timeout')portalMessage='HotB could not reach the player portal. Please reopen the link.';
+  else if(!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
   else portalMessage='This player portal link is not valid.';
+ }finally{
+  portalBusy=false;
+  if(route==='portal')render();
  }
- portalBusy=false;
 }
 async function claimPlayerPortal(pin){
  if(!portalToken||!portalAuthUser||isCoachPortalUser()||portalBusy)return;
