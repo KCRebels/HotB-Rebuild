@@ -2077,6 +2077,7 @@ async function recoverOrphanedActivePractice(){
  if(practicePlan)return;
  if(!db.activePortalPractice?.id){alert('HotB no longer has the active practice reference. Nothing was changed.');return}
  if(!cloudStore){
+  if(!window.firebase&&window.HotBFirebaseReady){try{await window.HotBFirebaseReady}catch(_){}}
   if(window.firebase){try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);cloudAuth=firebase.auth();cloudStore=firebase.firestore();cloudInitStarted=true}catch(error){}}
   if(!cloudStore){alert('HotB could not start the portal connection. Nothing was changed.');return}
  }
