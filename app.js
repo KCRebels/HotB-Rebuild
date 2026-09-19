@@ -1973,12 +1973,16 @@ function archiveCompletedPractice(completedAt=new Date()){
 function jenkinsPortalResetPayload(player,activePractice=null,accessStatus='waiting'){
  return {portalType:'jenkinsPlayer',playerName:player.name,firstName:practiceFirstName(player.name),phone:player.phone||'',expired:false,accessStatus,activePractice,evaluationData:firebase.firestore.FieldValue.delete(),focus:firebase.firestore.FieldValue.delete(),coachObservations:firebase.firestore.FieldValue.delete(),observations:firebase.firestore.FieldValue.delete(),measurements:firebase.firestore.FieldValue.delete(),history:firebase.firestore.FieldValue.delete(),practiceHistory:firebase.firestore.FieldValue.delete(),recruiting:firebase.firestore.FieldValue.delete(),stats:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
 }
+function jenkinsPortalCleanupPayload(player,entry){
+ if(player)return jenkinsPortalResetPayload(player);
+ return {portalType:'jenkinsPlayer',playerName:entry?.name||'',firstName:practiceFirstName(entry?.name||''),expired:false,accessStatus:'waiting',activePractice:null,evaluationData:firebase.firestore.FieldValue.delete(),focus:firebase.firestore.FieldValue.delete(),coachObservations:firebase.firestore.FieldValue.delete(),observations:firebase.firestore.FieldValue.delete(),measurements:firebase.firestore.FieldValue.delete(),history:firebase.firestore.FieldValue.delete(),practiceHistory:firebase.firestore.FieldValue.delete(),recruiting:firebase.firestore.FieldValue.delete(),stats:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+}
 async function clearActivePlayerPlans(){
  if(!cloudUser||!cloudStore)throw new Error('cloud-unavailable');
  if(!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)throw new Error('practice-mismatch');
  const batch=cloudStore.batch();
  const activeNames=new Set(db.activePortalPractice?.players||[]),persistedPlayerPortals=db.activePortalPractice?.playerPortals||[];
- persistedPlayerPortals.forEach(entry=>{const player=db.roster.find(item=>item.name===entry.name);batch.set(portalDoc(entry.portalId),entry.isTeamJenkins&&player?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})});
+ persistedPlayerPortals.forEach(entry=>{const player=db.roster.find(item=>item.name===entry.name);batch.set(portalDoc(entry.portalId),entry.isTeamJenkins?jenkinsPortalCleanupPayload(player,entry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})});
  const persistedIds=new Set(persistedPlayerPortals.map(entry=>entry.portalId));
  db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).forEach(player=>batch.set(portalDoc(player.portalId),player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  const coachPortalId=db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId;
@@ -1992,7 +1996,7 @@ async function clearOrphanedActivePractice(){
  if(!cloudUser||!cloudStore||!db.activePortalPractice?.id||practicePlan)return;
  if(!confirm('HotB found active portal plans without a recoverable local practice. Remove those stale portal plans so a new practice can be built?'))return;
  const state=db.activePortalPractice,batch=cloudStore.batch(),activeNames=new Set(state.players||[]),persistedPlayerPortals=state.playerPortals||[];
- persistedPlayerPortals.forEach(entry=>{const player=db.roster.find(item=>item.name===entry.name);batch.set(portalDoc(entry.portalId),entry.isTeamJenkins&&player?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})});
+ persistedPlayerPortals.forEach(entry=>{const player=db.roster.find(item=>item.name===entry.name);batch.set(portalDoc(entry.portalId),entry.isTeamJenkins?jenkinsPortalCleanupPayload(player,entry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})});
  const persistedIds=new Set(persistedPlayerPortals.map(entry=>entry.portalId));
  db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).forEach(player=>batch.set(portalDoc(player.portalId),player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  if(state.coachPortalId)batch.set(portalDoc(state.coachPortalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
