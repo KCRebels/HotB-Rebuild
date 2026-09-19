@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-119'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-120'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal159'));
+assert(index.includes('app.js?v=20260919-portal160'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -154,3 +154,7 @@ assert(app.includes("jenkinsPlayers.forEach(player=>batch.update"));
 assert(app.includes("const existingGuests=await Promise.all(guests.map"));
 assert(app.includes("existingGuests.filter(Boolean).forEach(guest=>batch.update"));
 assert(!app.includes("portalId).set({expired:true,accessStatus:'removed'"));
+
+assert(app.includes("const playerType=['player','jenkinsPlayer','guestPlayer'].includes(loaded.portalType)"));
+assert(app.includes("playerType&&!loaded.playerName||coachType&&!loaded.coachName"));
+assert(app.includes("nextPlayerType&&!nextData.playerName||nextCoachType&&!nextData.coachName"));
