@@ -1648,7 +1648,8 @@ function coachEvaluationPortalPayload(){
  const pitchFields=['id','hitter','pa','strikesBefore','zone','pitchType','plan','result','contactType','hitterStyle','intentionalBall','pitchout','decisionOverride','hhb','ts'];
  const pick=(source,keys)=>Object.fromEntries(keys.filter(key=>source?.[key]!==undefined).map(key=>[key,source[key]]));
  const compactGame=game=>game?{id:game.id,date:game.date,opponent:game.opponent,plateAppearances:game.plateAppearances||[],pitches:(game.pitches||[]).map(pitch=>pick(pitch,pitchFields))}:null;
- const payload={roster:db.roster.filter(player=>!player.isGuest).map(player=>Object.fromEntries(fields.map(key=>[key,player[key]??'']))),savedGames:db.savedGames.map(compactGame),measurements:(db.measurements||[]).map(({id,player,type,value,date})=>({id,player,type,value,date})),coaches:(db.coaches||[]).map(({coachName,coachEmail,collegeName,lastUpdated})=>({coachName,coachEmail,collegeName,lastUpdated})),practiceHistory:window.HotBPracticeHistory?.records(db.practiceHistory)||[],currentGame:compactGame(db.currentGame)};
+ const competitionNames=new Set(competitionRoster().map(player=>player.name)),filterGame=game=>{const compact=compactGame(game);if(!compact)return null;compact.plateAppearances=(compact.plateAppearances||[]).filter(pa=>competitionNames.has(pa.hitter));compact.pitches=(compact.pitches||[]).filter(pitch=>competitionNames.has(pitch.hitter));return compact};
+ const payload={roster:competitionRoster().filter(player=>!player.isGuest).map(player=>Object.fromEntries(fields.map(key=>[key,player[key]??'']))),savedGames:db.savedGames.map(filterGame),measurements:(db.measurements||[]).filter(item=>competitionNames.has(item.player)).map(({id,player,type,value,date})=>({id,player,type,value,date})),coaches:(db.coaches||[]).map(({coachName,coachEmail,collegeName,lastUpdated})=>({coachName,coachEmail,collegeName,lastUpdated})),practiceHistory:window.HotBPracticeHistory?.records(db.practiceHistory)||[],currentGame:filterGame(db.currentGame)};
  return JSON.parse(JSON.stringify(payload));
 }
 function withCoachEvaluationData(callback){const original=db,readOnly=evaluationReadOnly;db=portalData?.evaluationData||{roster:[],savedGames:[],measurements:[],coaches:[],practiceHistory:[],currentGame:null};evaluationReadOnly=true;try{return callback()}finally{db=original;evaluationReadOnly=readOnly}}
@@ -2402,7 +2403,7 @@ function grade(value,metric){
 function evalView(){
  const player=evalPlayer==='Team'?null:hitterObj(evalPlayer);
  const practiceAttendanceResult=player?practiceAttendance(player):null,practiceRate=practiceAttendanceResult?.percentage??null,practiceRateLabel=practiceAttendanceResult&&!practiceAttendanceResult.eligible?'N/A':practiceRate===null?'':`${practiceRate}%`;
- const evalGames=filteredGames(),teamPas=evalGames.flatMap(game=>game.plateAppearances||[]);
+ const evalGames=filteredGames(),competitionNames=new Set(competitionRoster().map(item=>item.name)),teamPas=evalGames.flatMap(game=>game.plateAppearances||[]).filter(pa=>competitionNames.has(pa.hitter));
  const pas=teamPas.filter(p=>!player||p.hitter===player.name);
  const evalDb={savedGames:evalGames,currentGame:null,roster:db.roster};
  const snapshot=player?HotBEvaluationStats.evaluationSnapshot(evalDb,player.name):null;
@@ -2503,9 +2504,9 @@ function evalGuide(title){
  return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>${metricMap[title]}</h2></div><button class="btn" data-close>Close</button></div><table class="guide-table"><thead><tr><th>Rating</th><th>${title.replace('CONTACT','Contact%')}</th></tr></thead><tbody>${table.map(([r,v],i)=>`<tr><td class="${['excellent','good','acceptable','concern','serious'][i]}">${r}</td><td><b>${v}</b></td></tr>`).join('')}</tbody></table><p class="small" style="color:#ddd">The app begins color-grading a player after 25 saved plate appearances.</p></div></div>`;
 }
 function evalRankingModal(metric){
- const teamPas=filteredPAs();
- const rankingDb={savedGames:filteredGames(),currentGame:null,roster:db.roster};
- const rows=db.roster.map(player=>{
+ const competitionNames=new Set(competitionRoster().map(item=>item.name)),teamPas=filteredPAs().filter(pa=>competitionNames.has(pa.hitter));
+ const rankingDb={savedGames:filteredGames(),currentGame:null,roster:competitionRoster()};
+ const rows=competitionRoster().map(player=>{
   const snapshot=HotBEvaluationStats.evaluationSnapshot(rankingDb,player.name),metrics=HotBEvaluationStats.hotBMetrics(snapshot.pas,teamPas),stats=snapshot.stats;
   let value=null;
   if(metric==='HotB+')value=stats.PA?metrics.hotBRaw:null;
@@ -2529,7 +2530,7 @@ function hittingRankingModal(metric){
   contactPct:{label:'CONTACT',key:'contactPct',format:pct0},kPct:{label:'K%',key:'kPct',format:pct1,lowerIsBetter:true},
   hhbPct:{label:'HHB%',key:'hhbPct',format:pct1},qabPct:{label:'QAB%',key:'qabPct',format:pct1}
  };
- const definition=definitions[metric]||definitions.AVG,teamPas=filteredPAs();
+ const competitionNames=new Set(competitionRoster().map(item=>item.name)),definition=definitions[metric]||definitions.AVG,teamPas=filteredPAs().filter(pa=>competitionNames.has(pa.hitter));
  const rows=competitionRoster().map(player=>{const stats=HotBEvaluationStats.statsForPAs(teamPas.filter(pa=>pa.hitter===player.name));return {player,stats,value:stats.PA?stats[definition.key]:null}}).sort((a,b)=>{
   if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
   if(a.value===null)return 1;if(b.value===null)return-1;
@@ -2542,7 +2543,7 @@ function hittingRankingModal(metric){
 function pitcherRankingModal(key){
  const labels={pitcherIP:'IP',pitcherERA:'ERA',pitcherWHIP:'WHIP',pitcherKBB:'K/BB',pitcherOBA:'OBA',pitcherStrikePct:'Strike %'};
  const lowerIsBetter=['pitcherERA','pitcherWHIP','pitcherOBA'].includes(key);
- const rows=db.roster.filter(isPitcherProfile).map(player=>{
+ const rows=competitionRoster().filter(isPitcherProfile).map(player=>{
   const display=cleanCell(player[key]);
   const value=display?Number(display.replace('%','')):null;
   return {player,display:display||'—',value:Number.isFinite(value)?value:null};
@@ -2556,14 +2557,14 @@ function pitcherRankingModal(key){
  </div></div>`;
 }
 function recordModal(){
- const p=evalPlayer==='Team'?db.roster[0]?.name:evalPlayer;
+ const roster=competitionRoster(),p=evalPlayer==='Team'?roster[0]?.name:evalPlayer;
  const player=hitterObj(p);
  const types=measurementTypes(player);
  const selectedType=recordType&&types.includes(recordType)?recordType:types[0];
  const timed=stopwatchMeasurements.includes(selectedType);
  const attempts=db.measurements.filter(m=>m.player===p&&m.type===selectedType);
  return `<div class="modal-backdrop"><div class="modal"><div class="modal-header"><h2>Record Measurement</h2><button class="btn" data-close>Close</button></div>
- <label class="label">Player</label><select class="input" id="mPlayer">${db.roster.map(r=>`<option ${r.name===p?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
+ <label class="label">Player</label><select class="input" id="mPlayer">${roster.map(r=>`<option ${r.name===p?'selected':''}>${esc(r.name)}</option>`).join('')}</select>
  <label class="label">Measurement</label><select class="input" id="mType">${types.map(t=>`<option ${t===selectedType?'selected':''}>${t}</option>`).join('')}</select>
  <div class="stopwatch" id="measurementStopwatch" ${timed?'':'hidden'}><div class="timer-actions"><button class="btn green" id="timerStart">Start</button><button class="btn red" id="timerSave" hidden>Save</button></div><div class="timer-display"><div class="small">STOPWATCH</div><div class="time" id="timerTime">0.00</div></div></div>
  <div class="manual-entry ${timed?'':'manual-entry-large'}" id="manualEntryPanel" ${timed?'hidden':''}><label class="label" id="measurementUnitLabel">${measurementUnit(selectedType)}</label><div class="manual-entry-row"><input class="input" id="mValue" inputmode="decimal" placeholder="${timed?'0.00':'0'}"><button class="btn red" id="saveManualMeasurement" disabled>Save</button></div></div>
@@ -2654,7 +2655,7 @@ function pitchingImportModal(){
 async function parsePitchingImport(file){
  if(!window.XLSX)throw new Error('Excel import is not available right now. No statistics were changed.');
  const workbook=XLSX.read(await file.arrayBuffer(),{type:'array'}),sheets=workbook.SheetNames.map(name=>({name,rows:XLSX.utils.sheet_to_json(workbook.Sheets[name],{header:1,defval:'',raw:false})}));
- const pitchers=db.roster.map((player,index)=>({player,index})).filter(({player})=>isPitcherProfile(player));
+ const pitchers=db.roster.map((player,index)=>({player,index})).filter(({player})=>!player.isTeamJenkins&&isPitcherProfile(player));
  const parsed=window.HotBGameChangerPitching.parseSheets(sheets,pitchers.map(({player})=>player));
  parsed.ready.forEach(item=>item.playerIndex=pitchers[item.playerIndex].index);
  return parsed;
