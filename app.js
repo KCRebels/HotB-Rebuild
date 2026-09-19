@@ -3436,7 +3436,7 @@ function bindPlayerInfo(){
 }
 function bindFocusPublishPreview(){
  $('#confirmPublishPlayerFocus')?.addEventListener('click',async()=>{
-  const player=db.roster.find(item=>item.name===practiceFocusPlayer),focus=playerFocusPortalPayload();
+  const player=db.roster.find(item=>!item.isTeamJenkins&&item.name===practiceFocusPlayer),focus=playerFocusPortalPayload();
   if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before publishing Player Focus.');return}
   if(!player?.portalId){alert(`Create ${practiceFirstName(practiceFocusPlayer)}’s Player Portal before publishing.`);return}
   if(!focus)return;
