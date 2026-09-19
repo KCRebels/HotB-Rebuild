@@ -1822,7 +1822,7 @@ function updatePortalPracticeClock(){
   nextPanel.hidden=!nextEntry;
   if(nextEntry){const details=portalNextAssignmentDetails(nextEntry.assignment);nextHeading.textContent=details.heading;nextDetail.textContent=details.detail;nextDetail.hidden=!details.detail;nextButton.dataset.portalPracticeDrill=details.drill||'';nextButton.classList.toggle('has-drill',!!details.drill);const hint=nextButton.querySelector('small');if(hint)hint.hidden=!details.drill}
  }
- if(['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType)){const current=Number(values.currentBlock)||0,done=values.block==='DONE!';$$$('[data-portal-block]').forEach(row=>row.hidden=done||current>0&&Number(row.dataset.portalBlock)<current);const drills=$('.portal-practice-drills');if(drills)drills.hidden=done;if(nextPanel&&done)nextPanel.hidden=true;if(done&&portalView==='library'){portalView='practice';portalSelectedDrill='';portalLibraryReturnView='library';render();return}}
+ if(['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType)){const current=Number(values.currentBlock)||0,done=values.block==='DONE!';$('[data-portal-block]').forEach(row=>row.hidden=done||current>0&&Number(row.dataset.portalBlock)<current);const drills=$('.portal-practice-drills');if(drills)drills.hidden=done;if(nextPanel&&done)nextPanel.hidden=true;if(done&&portalView==='library'){portalView='practice';portalSelectedDrill='';portalLibraryReturnView='library';render();return}}
 }
 function practiceActivityLabel(activity,plan=null){
  const match=String(activity||'').match(/^Drill #(\d+)$/),drill=match?practiceChosenDrills[Number(match[1])-1]:null;
@@ -3179,7 +3179,7 @@ function bindPlayerPortal(){
  $$('[data-portal-view]').forEach(button=>button.addEventListener('click',()=>{portalView=button.dataset.portalView;portalSelectedDrill='';portalDrillQuery='';portalDrillResults=[];render();window.scrollTo(0,0)}));
  $('#portalDrillSearch')?.addEventListener('input',event=>{portalDrillQuery=event.target.value;render();const search=$('#portalDrillSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
  $$('[data-portal-drill]').forEach(button=>button.addEventListener('click',()=>{portalSelectedDrill=button.dataset.portalDrill;render();window.scrollTo(0,0)}));
- $$$('[data-portal-practice-drill]').forEach(button=>button.addEventListener('click',()=>{if(!button.dataset.portalPracticeDrill)return;if(['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType)&&portalPracticeClockValues().block==='DONE!')return;portalLibraryReturnView='practice';portalSelectedDrill=button.dataset.portalPracticeDrill;portalView='library';render();window.scrollTo(0,0)}));
+ $('[data-portal-practice-drill]').forEach(button=>button.addEventListener('click',()=>{if(!button.dataset.portalPracticeDrill)return;if(['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType)&&portalPracticeClockValues().block==='DONE!')return;portalLibraryReturnView='practice';portalSelectedDrill=button.dataset.portalPracticeDrill;portalView='library';render();window.scrollTo(0,0)}));
  $('#portalLibraryBack')?.addEventListener('click',()=>{if(portalLibraryReturnView==='practice')portalView='practice';portalLibraryReturnView='library';portalSelectedDrill='';render();window.scrollTo(0,0)});
  $('#findPortalDrills')?.addEventListener('click',()=>{portalDrillQuery=$('#portalProblem')?.value.trim()||'';portalDrillResults=recommendPortalDrills(portalDrillQuery);render();window.scrollTo(0,0)});
  $$('[data-portal-recommendation]').forEach(button=>button.addEventListener('click',()=>{portalSelectedDrill=button.dataset.portalRecommendation;portalView='library';render();window.scrollTo(0,0)}));
@@ -3564,7 +3564,7 @@ function bindPitcherChange(){
  };
 }
 function bindHitterChange(){
- $$$("[data-sub-hitter]").forEach(button=>button.onclick=()=>{
+ $("[data-sub-hitter]").forEach(button=>button.onclick=()=>{
   const g=currentGame(),outgoing=currentHitter(g).name,incoming=button.dataset.subHitter,player=competitionRoster().find(item=>item.name===incoming);
   if(!player||g.battingOrder.includes(incoming))return;
   g.pitches.filter(p=>p.pa===g.paNumber&&p.hitter===outgoing).forEach(p=>p.hitter=incoming);
@@ -3623,8 +3623,8 @@ function bindReports(){
    const template=document.createElement('template');template.innerHTML=zoneReport().trim();const next=template.content.firstElementChild;
    if(next){current.replaceWith(next);bindHeatChart()}
   };
-  $$$('[data-heat-result]').forEach(button=>button.onclick=()=>{reportHeatResult=button.dataset.heatResult;refreshHeatChart()});
-  $$$('[data-heat-display]').forEach(button=>button.onclick=()=>{reportHeatDisplay=button.dataset.heatDisplay;refreshHeatChart()});
+  $('[data-heat-result]').forEach(button=>button.onclick=()=>{reportHeatResult=button.dataset.heatResult;refreshHeatChart()});
+  $('[data-heat-display]').forEach(button=>button.onclick=()=>{reportHeatDisplay=button.dataset.heatDisplay;refreshHeatChart()});
  };
  bindHeatChart();
  $$('[data-report-pa]').forEach(button=>button.onclick=()=>{reportSelectedPaId=reportSelectedPaId===button.dataset.reportPa?null:button.dataset.reportPa;$$('.report-spray-dot').forEach(dot=>dot.classList.toggle('selected',dot.dataset.reportPa===reportSelectedPaId))});
