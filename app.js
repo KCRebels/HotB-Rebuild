@@ -1303,7 +1303,7 @@ function renamePlayerReferences(oldName,newName){
  if(Array.isArray(db.activePortalPractice?.players))db.activePortalPractice.players=db.activePortalPractice.players.map(name=>name===oldName?newName:name);
 }
 function syncRosterNames(){
- const inputs=$('.roster-name'),desired=inputs.map(input=>({input,player:db.roster[+input.dataset.i],name:input.value.trim()||'Unnamed Player'})).filter(item=>item.player);
+ const inputs=$$('.roster-name'),desired=inputs.map(input=>({input,player:db.roster[+input.dataset.i],name:input.value.trim()||'Unnamed Player'})).filter(item=>item.player);
  const seen=new Map();
  for(const item of desired){const key=item.name.toLowerCase();if(seen.has(key)){alert(`Player names must be unique. “${item.name}” is listed more than once.`);item.input.focus();return false}seen.set(key,item)}
  desired.forEach(({player,name:next})=>{
@@ -2729,12 +2729,15 @@ async function parseRosterWorkbook(file){
   const headers=rows[headerIndex].map(cleanCell);
   const missing=recruitingColumns.filter(([label])=>!headers.includes(label)).map(([label])=>label);
   if(missing.length)throw new Error(`The spreadsheet is missing: ${missing.join(', ')}.`);
-  const items=[];
+  const items=[],importNames=new Set();
   rows.slice(headerIndex+1).forEach(row=>{
    const data={};
    playerInfoColumns.forEach(([label,key])=>data[key]=headers.includes(label)?cleanCell(row[headers.indexOf(label)]):'');
    if(!data.name)return;
-   const matches=db.roster.map((player,index)=>({player,index})).filter(({player})=>normalizeName(player.name)===normalizeName(data.name));
+   const importKey=normalizeName(data.name);
+   if(importNames.has(importKey))throw new Error(`The spreadsheet lists “${data.name}” more than once. Player names must be unique.`);
+   importNames.add(importKey);
+   const matches=db.roster.map((player,index)=>({player,index})).filter(({player})=>normalizeName(player.name)===importKey);
    const exact=matches.find(({player})=>!data.jersey||cleanCell(player.jersey)===data.jersey);
    const match=exact||(matches.length===1?matches[0]:null);
    if(!match){items.push({kind:'add',data});return}
@@ -2747,7 +2750,14 @@ async function parseRosterWorkbook(file){
 function applyRosterImport(){
  (pendingRosterImport?.items||[]).forEach(item=>{
   if(item.kind==='unchanged')return;
-  const target=item.kind==='add'?{name:item.data.name,side:item.data.side||'R',isGuest:true}:db.roster[item.index];
+  let target;
+  if(item.kind==='add'){
+   const canonical=defaultRoster.find(profile=>normalizeName(profile.name)===normalizeName(item.data.name)),removed=new Set(db.removedRosterNames||[]);
+   if(canonical&&removed.has(canonical.name)){
+    target={...canonical,rosterKey:canonical.name,isGuest:false};
+    db.removedRosterNames=(db.removedRosterNames||[]).filter(name=>name!==canonical.name);
+   }else target={name:item.data.name,side:item.data.side||'R',isGuest:true};
+  }else target=db.roster[item.index];
   playerInfoColumns.forEach(([,key])=>{if(item.data[key])target[key]=item.data[key]});
   if(item.kind==='add')db.roster.push(target);
  });
@@ -2756,7 +2766,7 @@ function applyRosterImport(){
 }
 function exportRosterWorkbook(){
  const headings=playerInfoColumns.map(([label])=>label);
- const rows=db.roster.map(player=>playerInfoColumns.map(([,key])=>player[key]||''));
+ const rows=competitionRoster().map(player=>playerInfoColumns.map(([,key])=>player[key]||''));
  if(!window.XLSX){
   const csv=[headings,...rows].map(row=>row.map(value=>`"${String(value).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));link.download='HotB_Player_Recruiting_Information.csv';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);return;
