@@ -3069,14 +3069,15 @@ async function finishPracticeClock(automatic=false){
  practiceCompletionBusy=true;
  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
  practiceClock.running=false;practiceClock.finished=true;
- const completedAt=new Date();archiveCompletedPractice(completedAt);clearPracticeSession();
+ const completedAt=new Date();archiveCompletedPractice(completedAt);
  if(!practiceClock.endAnnounced){practiceClock.endAnnounced=true;practiceEndSpeech=speakPracticeClock('Times Up, Good Practice, Please start to clean up')}
+ persistPracticeSession();
  const endingSpeech=practiceEndSpeech;render();
  const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
  if(shouldClearPortals){
-  try{await clearActivePlayerPlans();render()}
+  try{await clearActivePlayerPlans();clearPracticeSession();render()}
   catch(error){alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap DONE! again.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in through Cloud Backup, then tap DONE! again.')}
- }
+ }else clearPracticeSession();
  practiceCompletionBusy=false;
  if(!automatic){
   await endingSpeech;
