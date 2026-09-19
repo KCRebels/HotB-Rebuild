@@ -2057,8 +2057,15 @@ function recoveryAssignmentToEntry(assignment){
 async function recoverOrphanedActivePractice(){
  if(practicePlan)return;
  if(!db.activePortalPractice?.id){alert('HotB no longer has the active practice reference. Nothing was changed.');return}
- if(!cloudStore){alert('HotB is still connecting to the portal service. Wait a few seconds and press Recover Practice again.');return}
- if(!cloudUser){alert('HotB needs the coach cloud sign-in before it can safely recover this practice. Open Cloud Backup, sign in as the coach, then return here. Nothing was changed.');return}
+ if(!cloudStore){
+  if(window.firebase){try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);cloudAuth=firebase.auth();cloudStore=firebase.firestore()}catch(error){}}
+  if(!cloudStore){alert('HotB could not start the portal connection. Nothing was changed.');return}
+ }
+ if(!cloudUser){
+  const current=cloudAuth?.currentUser;
+  if(current&&!current.isAnonymous&&String(current.email||'').toLowerCase()===CLOUD_EMAIL)cloudUser=current;
+  else{alert('HotB is connected to the portal service, but the coach cloud session is signed out. Nothing was changed.');return}
+ }
  const state=db.activePortalPractice,coachId=state.coachPortalId||db.coachPortal?.portalId;
  if(!coachId){alert('HotB cannot safely recover this practice because the saved coach portal reference is missing. Nothing was changed.');return}
  const button=$('#recoverOrphanedPractice');if(button){button.disabled=true;button.textContent='Recovering…'}
