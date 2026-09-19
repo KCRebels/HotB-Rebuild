@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-54';
+const PORTAL_BUILD_TOKEN='20260919-63';
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2266,6 +2266,7 @@ async function syncPlayerPracticeClock(){
  (db.activePortalPractice?.guestCoachPortalIds||[]).forEach(queue);
  practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).forEach(guest=>queue(guest.portalId));
  practiceGuestCoaches().filter(guest=>guest.portalId).forEach(guest=>queue(guest.portalId));
+ if(!updates.length){console.warn('Player portal clock sync had no portal targets');return false}
  const results=await Promise.allSettled(updates),failed=results.filter(result=>result.status==='rejected');
  if(failed.length){console.warn(`Player portal clock sync failed for ${failed.length} of ${updates.length} portal documents`);return false}
  return true;
