@@ -812,6 +812,7 @@ const seed = {
  pitchers:[],
  savedGames:[],
  gameGroups:[],
+ removedRosterNames:[],
  measurements:[],
  coaches:defaultCoaches,
  practiceHistory:[],
@@ -1155,7 +1156,8 @@ function load(){
   if(d){
    const aliases={'Matti Hardy':'Mattingly Hardy'};
    const savedByName=new Map((d.roster||[]).map(r=>[aliases[r.name]||r.name,r]));
-   const roster=defaultRoster.map(profile=>{const saved=savedByName.get(profile.name)||{};return {...profile,...saved,name:profile.name,side:saved.side||profile.side}});
+   const removedNames=new Set(Array.isArray(d.removedRosterNames)?d.removedRosterNames.map(name=>aliases[name]||name):[]);
+   const roster=defaultRoster.filter(profile=>!removedNames.has(profile.name)).map(profile=>{const saved=savedByName.get(profile.name)||{};return {...profile,...saved,name:profile.name,side:saved.side||profile.side}});
    const standardNames=new Set(defaultRoster.map(r=>r.name));
    const guests=(d.roster||[]).filter(r=>!standardNames.has(aliases[r.name]||r.name)).map(r=>({...r,isGuest:true}));
    roster.push(...guests);
@@ -3238,7 +3240,7 @@ function bindGameGroup(){
 }
 function bindRoster(){
  $$('.sidebtn').forEach(b=>b.onclick=()=>{db.roster[+b.dataset.i].side=b.dataset.side;save();render()});
- $$('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Remove this player?')){db.roster.splice(+b.dataset.del,1);save();render()}});
+ $('[data-del]').forEach(b=>b.onclick=()=>{if(!confirm('Remove this player?'))return;const index=+b.dataset.del,player=db.roster[index];if(!player)return;const standardName=defaultRoster.find(profile=>profile.name===player.name)?.name;if(standardName){db.removedRosterNames=Array.isArray(db.removedRosterNames)?db.removedRosterNames:[];if(!db.removedRosterNames.includes(standardName))db.removedRosterNames.push(standardName)}db.roster.splice(index,1);save();render()});
  $$('[data-info]').forEach(b=>b.onclick=()=>{syncRosterNames();infoPlayerIndex=+b.dataset.info;save();modal='playerInfo';render()});
  $('#addPlayer').onclick=()=>{db.roster.push({name:'Guest',side:'R',jersey:'',grad:'',positions:'',gpa:'',interest:'',school:'',isGuest:true});save();render();setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),0)};
  $('#saveRoster').onclick=()=>{syncRosterNames();save();go('home')};
