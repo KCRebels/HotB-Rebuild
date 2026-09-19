@@ -3613,14 +3613,16 @@ function bindReports(){
  bindDateFilters('report');
  $('#reportHitter')?.addEventListener('change',e=>{reportFilterHitter=e.target.value;reportSelectedPaId=null;render()});
  $('#reportOpponent')?.addEventListener('change',e=>{reportOpponent=e.target.value;reportSelectedPaId=null;render()});
- const refreshHeatChart=()=>{
-  const current=$('.report-heat');if(!current)return;
-  const template=document.createElement('template');template.innerHTML=zoneReport().trim();const next=template.content.firstElementChild;
-  if(next)current.replaceWith(next);
-  bindReports();
+ const bindHeatChart=()=>{
+  const refreshHeatChart=()=>{
+   const current=$('.report-heat');if(!current)return;
+   const template=document.createElement('template');template.innerHTML=zoneReport().trim();const next=template.content.firstElementChild;
+   if(next){current.replaceWith(next);bindHeatChart()}
+  };
+  $('[data-heat-result]').forEach(button=>button.onclick=()=>{reportHeatResult=button.dataset.heatResult;refreshHeatChart()});
+  $('[data-heat-display]').forEach(button=>button.onclick=()=>{reportHeatDisplay=button.dataset.heatDisplay;refreshHeatChart()});
  };
- $('[data-heat-result]').forEach(button=>button.onclick=()=>{reportHeatResult=button.dataset.heatResult;refreshHeatChart()});
- $('[data-heat-display]').forEach(button=>button.onclick=()=>{reportHeatDisplay=button.dataset.heatDisplay;refreshHeatChart()});
+ bindHeatChart();
  $$('[data-report-pa]').forEach(button=>button.onclick=()=>{reportSelectedPaId=reportSelectedPaId===button.dataset.reportPa?null:button.dataset.reportPa;$$('.report-spray-dot').forEach(dot=>dot.classList.toggle('selected',dot.dataset.reportPa===reportSelectedPaId))});
  $('#exportReport')?.addEventListener('click',exportCsv);
 }
