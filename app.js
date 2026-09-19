@@ -1996,6 +1996,7 @@ async function syncPlayerPracticeClock(){
 async function activatePlayerPlans(){
  if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before activating player portals.');return}
  if(!practicePlan||practiceChosenDrills.length!==practicePlan.drillStations){alert('Choose all practice drills before activating player plans.');return}
+ if(window.HotBPracticeScheduler?.validate){const errors=window.HotBPracticeScheduler.validate(practicePlan);if(errors.length){alert(`The practice plans cannot be activated because this schedule failed its safety checks:\n\n${errors.join('\n\n')}`);return}}
  const attending=new Set(practicePlan.players.filter(player=>(player.availableFromBlock??0)<(player.availableUntilBlock??10)).map(player=>player.name)),jenkins=db.roster.filter(player=>player.isTeamJenkins&&attending.has(player.name)),missing=db.roster.filter(player=>!player.isTeamJenkins&&attending.has(player.name)&&!player.portalId);
  if(missing.length){alert(`Create Player Portals first. Missing: ${missing.map(player=>practiceFirstName(player.name)).join(', ')}.`);return}
  const button=$('#activatePlayerPlans');if(button){button.disabled=true;button.textContent='Activating…'}
