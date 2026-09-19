@@ -830,8 +830,8 @@ if(!Array.isArray(db.coachObservations))db.coachObservations=[];
 if(!db.playerFocusDrillOverrides||typeof db.playerFocusDrillOverrides!=='object')db.playerFocusDrillOverrides={};
 // Team Jenkins is practice-only. Purge any legacy performance/history data that may
 // have been saved before practice-only isolation was enforced.
-if((db.teamJenkinsDataCleanupVersion||0)<1){
- const jenkinsNames=new Set((db.roster||[]).filter(player=>player.isTeamJenkins).map(player=>player.name));
+if((db.teamJenkinsDataCleanupVersion||0)<2){
+ const jenkinsNames=new Set((db.roster||[]).filter(player=>player.isTeamJenkins||player.teamName==='Team Jenkins').map(player=>player.name));
  if(jenkinsNames.size){
   db.measurements=(db.measurements||[]).filter(item=>!jenkinsNames.has(item.player));
   db.coachObservations=(db.coachObservations||[]).filter(item=>!jenkinsNames.has(item.playerName));
@@ -841,7 +841,7 @@ if((db.teamJenkinsDataCleanupVersion||0)<1){
   Object.keys(db.planPreferences||{}).forEach(name=>{if(jenkinsNames.has(name))delete db.planPreferences[name]});
   Object.keys(db.playerFocusDrillOverrides||{}).forEach(key=>{if([...jenkinsNames].some(name=>key.startsWith(name+'::')))delete db.playerFocusDrillOverrides[key]});
  }
- db.teamJenkinsDataCleanupVersion=1;
+ db.teamJenkinsDataCleanupVersion=2;
  localStorage.setItem(DBKEY,JSON.stringify(db));
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
 }
