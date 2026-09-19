@@ -1975,6 +1975,7 @@ function jenkinsPortalResetPayload(player,activePractice=null,accessStatus='wait
 }
 async function clearActivePlayerPlans(){
  if(!cloudUser||!cloudStore)throw new Error('cloud-unavailable');
+ if(!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)throw new Error('practice-mismatch');
  const batch=cloudStore.batch();
  const activeNames=new Set(db.activePortalPractice?.players||[]);
  db.roster.filter(player=>!player.isTeamJenkins&&player.portalId&&activeNames.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
