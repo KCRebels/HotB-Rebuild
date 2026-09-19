@@ -18,7 +18,10 @@
       if (url.searchParams.has('portal')) {
         url.searchParams.set('hotb-portal-refresh', Date.now().toString());
       }
-      window.location.assign(url.href);
+      navigator.serviceWorker.getRegistration('./').then(registration => {
+        if (registration?.waiting) registration.waiting.postMessage({type: 'SKIP_WAITING'});
+        setTimeout(() => window.location.assign(url.href), 250);
+      }).catch(() => window.location.assign(url.href));
     });
     document.body.appendChild(notice);
   }
@@ -29,7 +32,6 @@
     }
     if (registration.waiting) {
       showUpdate();
-      registration.waiting.postMessage({type: 'SKIP_WAITING'});
     }
   }
 
