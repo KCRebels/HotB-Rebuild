@@ -145,7 +145,10 @@
     return aMatch-bMatch||(liveCatcherLoads.get(a.name)||0)-(liveCatcherLoads.get(b.name)||0)||orderedCatchers.indexOf(a)-orderedCatchers.indexOf(b);
    }):[];
    const catcher=catcherChoices.find(candidate=>(liveCatcherLoads.get(candidate.name)||0)<2&&candidate.name!==pitcher?.name&&isOpen(candidate,liveBlock))||null;
-   if(usePlayerCatcher&&!catcher)fallbackWarnings.push(`Block ${liveBlock+1} uses 9Square because no eligible catcher is available for that live session.`);
+   if(usePlayerCatcher&&!catcher){
+    if(coachPitch)feasibilityErrors.push(`Block ${liveBlock+1} cannot use Coach Pitch because no eligible catcher is available. Add a catcher, adjust availability, or use a player pitcher.`);
+    else fallbackWarnings.push(`Block ${liveBlock+1} uses 9Square because no eligible catcher is available for that live session.`);
+   }
    if(catcher)liveCatcherLoads.set(catcher.name,(liveCatcherLoads.get(catcher.name)||0)+1);
    return {pitcher,index,liveBlock,catcher};
   });
