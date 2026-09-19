@@ -1588,7 +1588,7 @@ function render(){
  route==='new'?newGameView():route==='roster'?rosterView():
  route==='live'?liveView():route==='eval'?evalView():route==='reports'?reportsPage():route==='practice'?practicePage():route==='portal'?playerPortalPage():homeView()}</div>${modal?modalView():''}`;
  bind();
- if(route==='portal'&&portalData?.activePractice&&(portalView==='practice'||portalData.portalType==='coach'||portalData.portalType?.startsWith('guest'))){updatePortalPracticeClock();portalClockTimer=setInterval(updatePortalPracticeClock,500)}
+ if(route==='portal'&&portalData?.activePractice&&(portalView==='practice'||portalData.portalType==='coach'||portalData.portalType==='jenkinsPlayer'||portalData.portalType?.startsWith('guest'))){updatePortalPracticeClock();portalClockTimer=setInterval(updatePortalPracticeClock,500)}
  if(route==='eval')requestAnimationFrame(fitEvalMetricValues);
 }
 function fitEvalMetricValues(){
