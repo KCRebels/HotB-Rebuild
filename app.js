@@ -1966,7 +1966,7 @@ function coachPracticePortalPayload(){
 }
 function archiveCompletedPractice(completedAt=new Date()){
  if(!practicePlan||!window.HotBPracticeHistory)return;
- const permanentNames=new Set(db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins).map(player=>player.name)),record={id:practicePlan.portalDraftId,status:'completed',practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees:practicePlan.players.map(player=>player.name).filter(name=>permanentNames.has(name)),drills:practiceAllSelectedDrills().map(drill=>drill.name)};
+ const permanentNames=new Set(db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins).map(player=>player.name)),attendees=practicePlan.players.filter(player=>(player.availableFromBlock??0)<(player.availableUntilBlock??10)).map(player=>player.name).filter(name=>permanentNames.has(name)),record={id:practicePlan.portalDraftId,status:'completed',practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees,drills:practiceAllSelectedDrills().map(drill=>drill.name)};
  db.practiceHistory=window.HotBPracticeHistory.saveCompleted(db.practiceHistory,record);save();
 }
 function jenkinsPortalResetPayload(player,activePractice=null,accessStatus='waiting'){
