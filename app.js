@@ -1894,7 +1894,7 @@ function practiceUsageBoxes(name){
 }
 function practiceHub(){
  const hasDraft=db.activePracticeSession?.stage==='setup';
- return `${practiceHeader()}<main class="practice-hub no-print"><section class="practice-hub-intro"><h2>Plan Your Hitting Practice</h2><p>Build today's schedule, organize your drills, or focus on one player.</p></section>${db.activePortalPractice?.id&&!practicePlan?`<section class="practice-portal-publish"><div><span>RECOVERY NEEDED</span><h2>Portal Practice Still Active</h2><p>The local practice session is unavailable, but HotB still has the portal cleanup information. Remove the stale plans before building another practice.</p></div><button class="btn red" id="clearOrphanedPractice">Clean Up</button></section>`:''}<section class="practice-hub-actions"><button class="practice-hub-card primary" id="openPracticeBuilder"><span>${hasDraft?'SAVED DRAFT':'PLAN'}</span><h3>${hasDraft?'Continue Practice':'Build Practice'}</h3><p>${hasDraft?'Return to your saved attendance and adjustments.':'Choose attendance, time and create the complete rotation.'}</p></button><button class="practice-hub-card" id="openDrillLibrary"><span>LIBRARY</span><h3>Drill Library</h3><p>Search your hitting drills, setups and coaching purposes.</p></button><button class="practice-hub-card" id="openPlayerFocus"><span>PLAYER</span><h3>Player Focus</h3><p>Combine game data and coach observations into an individual hitting focus.</p></button></section></main>`;
+ return `${practiceHeader()}<main class="practice-hub no-print"><section class="practice-hub-intro"><h2>Plan Your Hitting Practice</h2><p>Build today's schedule, organize your drills, or focus on one player.</p></section>${db.activePortalPractice?.id&&!practicePlan?`<section class="practice-portal-publish"><div><span>RECOVERY NEEDED</span><h2>Portal Practice Still Active</h2><p>The local practice session is unavailable, but the activated coach portal can restore the published practice without rebuilding it.</p></div><button class="btn red" id="recoverOrphanedPractice">Recover Practice</button></section>`:''}<section class="practice-hub-actions"><button class="practice-hub-card primary" id="openPracticeBuilder"><span>${hasDraft?'SAVED DRAFT':'PLAN'}</span><h3>${hasDraft?'Continue Practice':'Build Practice'}</h3><p>${hasDraft?'Return to your saved attendance and adjustments.':'Choose attendance, time and create the complete rotation.'}</p></button><button class="practice-hub-card" id="openDrillLibrary"><span>LIBRARY</span><h3>Drill Library</h3><p>Search your hitting drills, setups and coaching purposes.</p></button><button class="practice-hub-card" id="openPlayerFocus"><span>PLAYER</span><h3>Player Focus</h3><p>Combine game data and coach observations into an individual hitting focus.</p></button></section></main>`;
 }
 function practiceLibrary(){
  const drills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[];
@@ -2036,6 +2036,56 @@ async function clearActivePlayerPlans(){
  guestPortalIds.forEach(id=>batch.set(portalDoc(id),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  await batch.commit();db.activePortalPractice=null;
  if(db.activePracticeSession&&practicePlan)persistPracticeSession();else save();
+}
+function recoveryDrillByName(name){
+ return (Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[]).find(drill=>drill.name===name)||{name,category:'Recovered Practice',hittingMethod:'',primaryPurpose:''};
+}
+function recoveryAssignmentToEntry(assignment){
+ const value=String(assignment||'').trim();
+ if(!value)return {activity:'Not Present'};
+ let match=value.match(/^Drill Station (\d+)\s+—/i);if(match)return {activity:`Drill #${match[1]}`};
+ match=value.match(/^Pitch Live \(([^)]+)\)/i);if(match)return {activity:'Pitch Live',partner:match[1]};
+ match=value.match(/^Catch Live\s+—\s+([^—]+)/i);if(match)return {activity:'Catch Live',partner:match[1].trim()};
+ match=value.match(/^Hit Live\s+—.*?—\s+([^\s—]+)\s+\(([^)]+)\)/i);if(match)return {activity:'Hit Live',partner:match[1]};
+ if(/^Machine\b/i.test(value))return {activity:'Machine'};
+ if(/^Front Toss\b/i.test(value))return {activity:'Front Toss'};
+ if(/^Stretch$/i.test(value))return {activity:'Stretch'};
+ if(/^Tee Work$/i.test(value))return {activity:'Tee Work'};
+ if(/^Not Present$/i.test(value))return {activity:'Not Present'};
+ return {activity:value};
+}
+async function recoverOrphanedActivePractice(){
+ if(!cloudUser||!cloudStore||!db.activePortalPractice?.id||practicePlan)return;
+ const state=db.activePortalPractice,coachId=state.coachPortalId||db.coachPortal?.portalId;
+ if(!coachId){alert('HotB cannot safely recover this practice because the saved coach portal reference is missing. Nothing was changed.');return}
+ const button=$('#recoverOrphanedPractice');if(button){button.disabled=true;button.textContent='Recovering…'}
+ try{
+  const snapshot=await portalDoc(coachId).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null;
+  if(!remote||remote.id!==state.id)throw new Error('practice-mismatch');
+  const blockMinutes=Number(remote.blockMinutes)||12,durationMinutes=blockMinutes*10;
+  const firstTime=String(remote.players?.[0]?.schedule?.[0]?.time||'').split('–')[0].trim();
+  const startLabel=firstTime||remote.startLabel||'6:00p';
+  const parseLabel=value=>{const match=String(value).trim().match(/^(\d{1,2}):(\d{2})([ap])$/i);if(!match)return '18:00';let hour=Number(match[1])%12;if(match[3].toLowerCase()==='p')hour+=12;return `${String(hour).padStart(2,'0')}:${match[2]}`};
+  const startTime=parseLabel(startLabel),times=Array.from({length:10},(_,index)=>{const base=practiceTimeMinutes(startTime)+index*blockMinutes;return {block:index+1,start:practiceTimeLabel(practiceTimeValue(base)),end:practiceTimeLabel(practiceTimeValue(base+blockMinutes))}});
+  const rosterByFirst=new Map(db.roster.map(player=>[practiceFirstName(player.name),player]));
+  const players=(remote.players||[]).map(item=>{const source=rosterByFirst.get(item.name),name=source?.name||item.name;return {...practicePlayerModel(source||{name,positions:item.role||''}),name,availableFromBlock:0,availableUntilBlock:10}});
+  const schedule={};
+  (remote.players||[]).forEach(item=>{const source=rosterByFirst.get(item.name),name=source?.name||item.name;schedule[name]=(item.schedule||[]).map(entry=>recoveryAssignmentToEntry(entry.assignment))});
+  const stationNumbers=new Set();Object.values(schedule).flat().forEach(entry=>{const match=String(entry.activity).match(/^Drill #(\d+)$/);if(match)stationNumbers.add(Number(match[1]))});
+  const drillStations=Math.max(0,...stationNumbers);
+  const allDrillNames=Array.isArray(remote.drills)?remote.drills:[];
+  const chosenNames=allDrillNames.slice(0,drillStations),chosenDrills=chosenNames.map(recoveryDrillByName);
+  let machineFocus='Standard',frontTossFocus='Standard';
+  for(const item of remote.players||[])for(const entry of item.schedule||[]){let match=String(entry.assignment||'').match(/^Machine\s+—\s+(.+)$/i);if(match)machineFocus=match[1].trim();match=String(entry.assignment||'').match(/^Front Toss\s+—\s+(.+)$/i);if(match)frontTossFocus=match[1].trim()}
+  const liveSessions=[];Object.entries(schedule).forEach(([name,entries])=>entries.forEach((entry,index)=>{if(entry.activity==='Pitch Live'){let session=liveSessions.find(item=>item.block===index);if(!session){session={block:index,pitcher:name,catcher:entry.partner||'9Square',hitters:[]};liveSessions.push(session)}}}));
+  Object.entries(schedule).forEach(([name,entries])=>entries.forEach((entry,index)=>{if(entry.activity==='Hit Live'){const session=liveSessions.find(item=>item.block===index);if(session)session.hitters.push(name)}}));
+  practicePlan={portalDraftId:remote.id,startTime,durationMinutes,blockMinutes,times,players,schedule,drillStations,liveSessions,machineFocus,frontTossFocus,warnings:['Recovered from the activated coach portal without rebuilding the scheduler.']};
+  practiceChosenDrills=chosenDrills;practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceSection='builder';
+  const clock=remote.clock||{},startedAt=Date.parse(clock.startedAt||'');
+  practiceClock={running:clock.status==='running'&&Number.isFinite(startedAt),finished:clock.status==='finished',endAnnounced:false,startAt:Number.isFinite(startedAt)?startedAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:clock.endedAt||null};
+  persistPracticeSession();render();if(practiceClock.running)resumeRecoveredPracticeClock();
+  alert('The activated practice was recovered from the coach portal. HotB did not rebuild or reactivate it.');
+ }catch(error){console.error('Practice recovery failed',error);alert('HotB could not verify the exact activated practice, so nothing was changed. Do not use Clean Up.')}
 }
 async function clearOrphanedActivePractice(){
  if(!cloudUser||!cloudStore||!db.activePortalPractice?.id||practicePlan)return;
@@ -3267,7 +3317,7 @@ function bindPractice(){
  $('#backToPracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice();practiceEquipmentSetupOpen=false;practiceDrillPickerOpen=true;persistPracticeSession();render();window.scrollTo(0,0)});
  $('#completePracticeSetup')?.addEventListener('click',()=>{practiceEquipmentSetupOpen=false;practiceDraftDrills=[];persistPracticeSession();render();window.scrollTo(0,0)});
  $('#practiceHubBack')?.addEventListener('click',()=>{if(practiceSection==='setup')persistPracticeDraft();practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)});
- $('#clearOrphanedPractice')?.addEventListener('click',clearOrphanedActivePractice);
+ $('#recoverOrphanedPractice')?.addEventListener('click',recoverOrphanedActivePractice);
  $('#openPracticeBuilder')?.addEventListener('click',()=>{if(db.activePortalPractice?.id&&!practicePlan){alert('A practice is still active on the player and coach portals. Resume and finish that practice before building a new one.');return}practiceSection='setup';render();window.scrollTo(0,0)});
  $('#openDrillLibrary')?.addEventListener('click',()=>{practiceSection='library';render();window.scrollTo(0,0)});
  $('#practiceDrillSearch')?.addEventListener('input',event=>{practiceDrillQuery=event.target.value;render();const search=$('#practiceDrillSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
