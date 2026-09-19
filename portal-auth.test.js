@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-128'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-129'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal168'));
+assert(index.includes('app.js?v=20260919-portal169'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -188,3 +188,8 @@ assert(app.includes("if(values.ended){"));
 assert(app.includes("if(!portalData.activePractice){"));
 assert(app.includes("else if(portalPracticeClockValues(portalData.activePractice).ended)"));
 assert(app.includes("portalData._localPracticeEnded=true"));
+
+assert(app.includes("throw new Error('portal-active-practice-conflict')"));
+assert(app.includes("throw new Error('coach-active-practice-conflict')"));
+assert(!app.includes("pinHash:player.portalPinHash,evaluationData:playerEvaluationPortalPayload(player.name),activePractice:localActive"));
+assert(!app.includes("pinHash:db.coachPortal.portalPinHash,activePractice,..."));
