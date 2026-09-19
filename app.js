@@ -2102,6 +2102,7 @@ async function recoverOrphanedActivePractice(){
   practiceChosenDrills=chosenDrills;practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceSection='builder';
   const clock=remote.clock||{},startedAt=Date.parse(clock.startedAt||'');
   practiceClock={running:clock.status==='running'&&Number.isFinite(startedAt),finished:clock.status==='finished',endAnnounced:false,startAt:Number.isFinite(startedAt)?startedAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:clock.endedAt||null};
+  if(practiceClock.running&&!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now())){practiceClock.running=false;practiceClock.finished=true;practiceClock.completedAt=clock.endedAt||new Date(practiceClock.startAt+window.HotBPracticeSession.layout(practicePlan).totalMs).toISOString()}
   persistPracticeSession();render();if(practiceClock.running)resumeRecoveredPracticeClock();
   alert('The activated practice was recovered from the coach portal. HotB did not rebuild or reactivate it.');
  }catch(error){console.error('Practice recovery failed',error);alert('HotB could not verify the exact activated practice, so nothing was changed. Do not use Clean Up.')}
