@@ -9,3 +9,13 @@ assert(rules.includes("resource.data.authorizedUids.hasAny([request.auth.uid])")
 assert(rules.includes("request.resource.data.authorizedUids.hasAny([request.auth.uid])"));
 assert(rules.includes('request.resource.data.authorizedUids.size() <= 5'));
 console.log('portal-auth tests passed');
+
+const buttons=fs.readFileSync('portal-button-repair.js','utf8');
+const index=fs.readFileSync('index.html','utf8');
+assert(buttons.includes("document.addEventListener('click'"));
+assert(buttons.includes("stopImmediatePropagation"));
+assert(buttons.includes("HotBPortalShare"));
+assert(buttons.includes("HotBPortalText"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-90'"));
+assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
+assert(index.includes('app.js?v=20260919-portal130'));
