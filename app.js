@@ -2071,7 +2071,7 @@ async function recoverOrphanedActivePractice(){
  if(!coachId){alert('HotB cannot safely recover this practice because the saved coach portal reference is missing. Nothing was changed.');return}
  const button=$('#recoverOrphanedPractice');if(button){button.disabled=true;button.textContent='Recovering…'}
  try{
-  const snapshot=await portalDoc(coachId).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null;
+  const snapshot=await Promise.race([portalDoc(coachId).get(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('practice-recovery-timeout')),8000))]),remote=snapshot.exists?snapshot.data()?.activePractice:null;
   if(!remote||remote.id!==state.id)throw new Error('practice-mismatch');
   const blockMinutes=Number(remote.blockMinutes)||12,durationMinutes=blockMinutes*10;
   const firstTime=String(remote.players?.[0]?.schedule?.[0]?.time||'').split('–')[0].trim();
@@ -2105,7 +2105,8 @@ async function recoverOrphanedActivePractice(){
   if(practiceClock.running&&!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now())){practiceClock.running=false;practiceClock.finished=true;practiceClock.completedAt=clock.endedAt||new Date(practiceClock.startAt+window.HotBPracticeSession.layout(practicePlan).totalMs).toISOString()}
   persistPracticeSession();render();if(practiceClock.running)resumeRecoveredPracticeClock();
   alert('The activated practice was recovered from the coach portal. HotB did not rebuild or reactivate it.');
- }catch(error){console.error('Practice recovery failed',error);alert('HotB could not verify the exact activated practice, so nothing was changed. Do not use Clean Up.')}
+ }catch(error){console.error('Practice recovery failed',error);alert(String(error?.message||'')==='practice-recovery-timeout'?'HotB could not reach the activated coach practice in time. Nothing was changed.':'HotB could not verify the exact activated practice, so nothing was changed. Do not use Clean Up.')}
+ finally{if(button){button.disabled=false;button.textContent='Recover Practice'}}
 }
 async function clearOrphanedActivePractice(){
  if(!cloudUser||!cloudStore||!db.activePortalPractice?.id||practicePlan)return;
