@@ -2082,14 +2082,15 @@ async function recoverOrphanedActivePractice(){
   const players=(remote.players||[]).map(item=>{const source=rosterByFirst.get(item.name),name=source?.name||item.name,base=practicePlayerModel(source||{name,positions:item.role||''});return {...base,name,isPitcher:base.isPitcher||/P/.test(item.role||''),isCatcher:base.isCatcher||/C/.test(item.role||''),canPitch:base.isPitcher||/P/.test(item.role||''),requiresPitchWarmup:base.isPitcher||/P/.test(item.role||''),canCatch:base.isCatcher||/C/.test(item.role||''),availableFromBlock:0,availableUntilBlock:10}});
   const schedule={};
   (remote.players||[]).forEach(item=>{const source=rosterByFirst.get(item.name),name=source?.name||item.name;schedule[name]=(item.schedule||[]).map(entry=>recoveryAssignmentToEntry(entry.assignment))});
-  const stationNumbers=new Set();Object.values(schedule).flat().forEach(entry=>{const match=String(entry.activity).match(/^Drill #(\d+)$/);if(match)stationNumbers.add(Number(match[1]))});
+  const stationNumbers=new Set(),stationDrillNames=new Map();
+  Object.values(schedule).flat().forEach(entry=>{const match=String(entry.activity).match(/^Drill #(\d+)$/);if(match)stationNumbers.add(Number(match[1]))});
+  for(const item of remote.players||[])for(const entry of item.schedule||[]){const match=String(entry.assignment||'').match(/^Drill Station (\d+)\s+—\s+(.+)$/i);if(match){const number=Number(match[1]),name=match[2].trim();if(stationDrillNames.has(number)&&stationDrillNames.get(number)!==name)throw new Error('drill-station-conflict');stationDrillNames.set(number,name)}}
   const drillStations=Math.max(0,...stationNumbers);
-  const allDrillNames=Array.isArray(remote.drills)?remote.drills:[];
   let machineFocus='Standard',frontTossFocus='Standard';
   for(const item of remote.players||[])for(const entry of item.schedule||[]){let match=String(entry.assignment||'').match(/^Machine\s+—\s+(.+)$/i);if(match)machineFocus=match[1].trim();match=String(entry.assignment||'').match(/^Front Toss\s+—\s+(.+)$/i);if(match)frontTossFocus=match[1].trim()}
-  const focusNames=new Set([machineFocus,frontTossFocus].filter(name=>name&&name!=='Standard'));
-  const chosenNames=allDrillNames.filter(name=>!focusNames.has(name)).slice(0,drillStations),chosenDrills=chosenNames.map(recoveryDrillByName);
-  if(chosenDrills.length!==drillStations)throw new Error('drill-recovery-mismatch');
+  const chosenNames=Array.from({length:drillStations},(_,index)=>stationDrillNames.get(index+1)||'');
+  if(chosenNames.some(name=>!name))throw new Error('drill-recovery-mismatch');
+  const chosenDrills=chosenNames.map(recoveryDrillByName);
   const liveSessions=[];Object.entries(schedule).forEach(([name,entries])=>entries.forEach((entry,index)=>{if(entry.activity==='Pitch Live'){let session=liveSessions.find(item=>item.block===index);if(!session){session={block:index,pitcher:name,catcher:entry.partner||'9Square',hitters:[]};liveSessions.push(session)}}}));
   Object.entries(schedule).forEach(([name,entries])=>entries.forEach((entry,index)=>{if(entry.activity==='Hit Live'){const session=liveSessions.find(item=>item.block===index);if(session)session.hitters.push(name)}}));
   const blocks=Array.isArray(remote.schedule)&&remote.schedule.length===10
