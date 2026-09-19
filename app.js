@@ -2072,11 +2072,12 @@ async function recoverOrphanedActivePractice(){
  if(practicePlan)return;
  if(!db.activePortalPractice?.id){alert('HotB no longer has the active practice reference. Nothing was changed.');return}
  if(!cloudStore){
-  if(window.firebase){try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);cloudAuth=firebase.auth();cloudStore=firebase.firestore()}catch(error){}}
+  if(window.firebase){try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);cloudAuth=firebase.auth();cloudStore=firebase.firestore();cloudInitStarted=true}catch(error){}}
   if(!cloudStore){alert('HotB could not start the portal connection. Nothing was changed.');return}
  }
  if(!cloudUser){
-  const current=cloudAuth?.currentUser;
+  let current=cloudAuth?.currentUser;
+  if(!current&&cloudAuth){try{current=await new Promise(resolve=>{let settled=false;const finish=user=>{if(settled)return;settled=true;clearTimeout(timer);unsubscribe?.();resolve(user||cloudAuth.currentUser||null)},unsubscribe=cloudAuth.onAuthStateChanged(finish),timer=setTimeout(()=>finish(cloudAuth.currentUser),4000)})}catch(error){current=cloudAuth.currentUser}}
   if(current&&!current.isAnonymous&&String(current.email||'').toLowerCase()===CLOUD_EMAIL)cloudUser=current;
   else{alert('HotB is connected to the portal service, but the coach cloud session is signed out. Nothing was changed.');return}
  }
