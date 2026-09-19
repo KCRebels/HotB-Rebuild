@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-108';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-109';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -3473,8 +3473,12 @@ async function endPracticeDraft(){
  const guests=[...practiceGuestPlayers(),...practiceGuestCoaches()].filter(guest=>guest.portalId);
  if(guests.length){
   if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before ending this draft so HotB can expire the guest links.');return}
-  try{const batch=cloudStore.batch();guests.forEach(guest=>batch.set(portalDoc(guest.portalId),{expired:true,accessStatus:'ended',activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));await batch.commit()}
-  catch(error){alert('The guest links could not be expired. Check your connection and try End again.');return}
+  try{
+   const batch=cloudStore.batch();guests.forEach(guest=>batch.set(portalDoc(guest.portalId),{expired:true,accessStatus:'ended',activePractice:null,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));await batch.commit();
+   const verification=await Promise.all(guests.map(async guest=>{try{const snapshot=await portalDoc(guest.portalId).get(),remote=snapshot.exists?snapshot.data():null;return !!remote&&remote.expired===true&&remote.accessStatus==='ended'&&!remote.activePractice}catch(error){return false}}));
+   if(verification.some(ok=>!ok))throw new Error('draft-guest-expiry-verification-failed');
+  }
+  catch(error){alert('The guest links could not be expired and verified. Check your connection and try End again.');return}
  }
  closePracticeWorkspace();
 }
