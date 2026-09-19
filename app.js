@@ -3354,15 +3354,20 @@ function bindPlayerPortal(){
  $('#resetCoachPortal')?.addEventListener('click',resetCoachPortal);
  $('#shareCoachPortal')?.addEventListener('click',async()=>{const share={title:`${db.coachPortal.name}’s HotB Coach Portal`,text:coachPortalShareText()};try{if(navigator.share)await navigator.share(share);else{await navigator.clipboard.writeText(share.text);portalMessage='Coach portal link and PIN copied.';render()}}catch(error){if(error?.name!=='AbortError'){portalMessage='The coach portal link could not be shared from this device.';render()}}});
  $('#textCoachPortal')?.addEventListener('click',()=>{const phone=String(db.coachPortal?.phone||'').replace(/[^\d+]/g,'');if(!phone)return;const separator=/iPad|iPhone|iPod/.test(navigator.userAgent)?'&':'?';window.location.href=`sms:${phone}${separator}body=${encodeURIComponent(coachPortalShareText())}`});
- $$('[data-share-portal]').forEach(button=>button.addEventListener('click',async()=>{
-  const player=db.roster.find(item=>item.name===button.dataset.sharePortal);if(!player?.portalId)return;
+ $('[data-share-portal]').forEach(button=>button.addEventListener('click',async()=>{
+  const player=db.roster.find(item=>item.name===button.dataset.sharePortal);
+  if(!player?.portalId){portalMessage='This player portal is missing its saved link. Tap Refresh Player Records once.';render();return}
   const share={title:`${practiceFirstName(player.name)}’s HotB Player Portal`,text:`${practiceFirstName(player.name)}’s private HotB Player Portal\nPIN: ${player.portalPin}\n${playerPortalUrl(player)}`};
- try{if(navigator.share)await navigator.share(share);else{await navigator.clipboard.writeText(share.text);portalMessage='Portal link and PIN copied.';render()}}catch(error){if(error?.name!=='AbortError'){portalMessage='The portal link could not be shared from this device.';render()}}
+  try{
+   if(typeof navigator.share==='function'){await navigator.share(share);return}
+   if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(share.text);portalMessage='Portal link and PIN copied.';render();return}
+   portalMessage='Sharing is unavailable on this screen. Use Text instead.';render();
+  }catch(error){if(error?.name!=='AbortError'){portalMessage=`Share failed: ${String(error?.name||"unknown")}.`;render()}}
  }));
  $$('[data-text-portal]').forEach(button=>button.addEventListener('click',()=>{
   const player=db.roster.find(item=>item.name===button.dataset.textPortal),url=playerPortalTextUrl(player);
   if(!url){portalMessage=`${practiceFirstName(player?.name||'This player')} does not have a saved cell number.`;render();return}
-  window.location.href=url;
+  try{window.location.assign(url)}catch(error){portalMessage='Messages could not be opened from this screen.';render()}
  }));
  $$('[data-reset-portal]').forEach(button=>button.addEventListener('click',()=>resetPlayerPortal(db.roster.find(item=>item.name===button.dataset.resetPortal))));
  $('#openPlayerPortal')?.addEventListener('click',()=>claimPlayerPortal($('#portalPin')?.value));
