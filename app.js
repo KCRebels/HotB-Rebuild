@@ -2160,7 +2160,7 @@ function liveView(){
  </div>
  <div class="control-row">
   <div class="control-card"><div class="pill-row">${['IN','OUT','CH','NO'].map(x=>`<button class="pill red ${g.strikes<2&&currentPlan===x?'active':''}" data-plan="${x}">${x}</button>`).join('')}</div></div>
-  <div class="control-card outs-stepper" role="group" aria-label="${g.outs} outs"><button class="outs-stepper-circle" id="decreaseOuts" aria-label="Subtract one out" ${g.outs===0?'disabled':''}>−</button><output class="outs-stepper-circle outs-count" aria-live="polite" aria-label="${g.outs} outs">${g.outs}</output><button class="outs-stepper-circle" id="increaseOuts" aria-label="Add one out">+</button></div>
+  <div class="control-card outs-stepper" role="group" aria-label="${g.outs} outs"><button class="outs-stepper-circle" id="decreaseOuts" aria-label="Subtract one out" ${g.outs===0?'disabled':''}>−</button><output class="outs-stepper-circle outs-count" aria-live="polite" aria-label="${g.outs} outs">${g.outs}</output><button class="outs-stepper-circle" id="increaseOuts" aria-label="Add one out">+</button><button class="outs-force-end" id="forceEndInning" type="button">END INN</button></div>
   <div class="control-card"><div class="pill-row">${[3,2,1].map(x=>`<button class="runner ${g.runners.includes(x)?'active':''}" data-runner="${x}"><span>${x}</span></button>`).join('')}</div></div>
  </div>
  <div class="live-workspace"><div class="live-left"><div class="zone-card">
@@ -3532,6 +3532,7 @@ function bindLive(){
  $('#coachObservation').onclick=openCoachObservation;
  $('#decreaseOuts').onclick=()=>{subtractManualOut(g);save();render()};
  $('#increaseOuts').onclick=()=>{addManualOut(g);save();render()};
+ $('#forceEndInning').onclick=()=>{if(!confirm(`End inning ${g.inning} now? This will clear the bases and reset the count.`))return;const completedInning=g.inning;g.outs=0;g.inning+=1;g.runners=[];resetLiveCount(g);queueInningObservation(g,completedInning);save();render()};
  $('#openLineup').onclick=()=>{modal='lineup';render()};
  $('#openProfile').onclick=()=>{evalPlayer=currentHitter(g).name;go('eval')};
  $('#openReports').onclick=()=>{modal='reports';reportMode='current';render()};
