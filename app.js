@@ -2059,7 +2059,7 @@ function newGameView(){
 function rosterView(){
  return `<div class="roster-hero"><div class="roster-hero-row"><button class="roster-nav roster-cancel" data-go="home">Cancel</button><h1>Edit Roster</h1><button class="roster-nav roster-save" id="saveRoster">Save</button></div></div>
  <div class="roster-data-tools"><button class="btn black" id="importRosterInfo">Import Info</button><button class="btn" id="exportRosterInfo">Export Info</button><input id="rosterInfoFile" type="file" accept=".xlsx,.csv" hidden><p>Import the Excel template for larger updates, or tap <b>Info</b> beside one player for a quick change. Blank imported cells leave saved information unchanged.</p></div>
- <div class="roster-editor">${db.roster.map((r,i)=>`<div class="roster-edit-row">
+ <div class="roster-editor">${db.roster.map((r,i)=>({r,i})).filter(({r})=>!r.isTeamJenkins).map(({r,i})=>`<div class="roster-edit-row">
  <input class="input roster-name" data-i="${i}" value="${esc(r.name)}">
  <button class="sidebtn ${r.side==='R'?'active':''}" data-side="R" data-i="${i}">R</button>
  <button class="sidebtn ${r.side==='L'?'active':''}" data-side="L" data-i="${i}">L</button>
