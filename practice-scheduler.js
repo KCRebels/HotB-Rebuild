@@ -275,6 +275,7 @@
  function validate(plan){
   const errors=[];
   if(!plan||plan.times?.length!==BLOCK_COUNT)errors.push('Schedule must contain ten blocks.');
+  if(!plan||!Array.isArray(plan.players)||!plan.schedule||typeof plan.schedule!=='object'){errors.push('Practice roster or schedule data is invalid.');return [...new Set(errors)]}
   Object.entries(plan?.schedule||{}).forEach(([name,entries])=>{
    if(!Array.isArray(entries)){errors.push(`${name} has an invalid schedule.`);return}
    if(entries.length!==BLOCK_COUNT||entries.some(entry=>!entry?.activity))errors.push(`${name} has downtime while present.`);
@@ -323,7 +324,7 @@
   const pitcherBlockCounts={};
   (plan?.liveSessions||[]).filter(session=>session.pitcher&&session.pitcher!=='Coach').forEach(session=>pitcherBlockCounts[session.pitcher]=(pitcherBlockCounts[session.pitcher]||0)+1);
   Object.entries(pitcherBlockCounts).forEach(([name,count])=>{if(count>2)errors.push(`${name} exceeds the two-block live pitching limit.`)});
-  return errors;
+  return [...new Set(errors)];
  }
  return {BLOCK_COUNT,BLOCK_MINUTES,blockTimes,buildSchedule,validate};
 });
