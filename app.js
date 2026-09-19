@@ -3024,8 +3024,8 @@ function updatePracticeClock(){
  if(!state){
   if(currentBlock)currentBlock.textContent='DONE!';
   if(timeLeft)timeLeft.textContent='0:00';
-  if(!practiceClock.endAnnounced){practiceClock.endAnnounced=true;practiceEndSpeech=speakPracticeClock('Times Up, Good Practice, Please start to clean up');persistPracticeSession()}
   if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
+  finishPracticeClock(true);
   return;
  }
  const {block,remaining,transition}=state,seconds=Math.ceil(remaining/1000);
