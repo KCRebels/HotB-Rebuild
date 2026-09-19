@@ -830,9 +830,9 @@ if(!Array.isArray(db.coachObservations))db.coachObservations=[];
 if(!db.playerFocusDrillOverrides||typeof db.playerFocusDrillOverrides!=='object')db.playerFocusDrillOverrides={};
 // Team Jenkins is practice-only. Purge any legacy performance/history data that may
 // have been saved before practice-only isolation was enforced.
-if((db.teamJenkinsDataCleanupVersion||0)<4){
+if((db.teamJenkinsDataCleanupVersion||0)<5){
  db=sanitizeJenkinsData(db);
- db.teamJenkinsDataCleanupVersion=4;
+ db.teamJenkinsDataCleanupVersion=5;
  localStorage.setItem(DBKEY,JSON.stringify(db));
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
 }
@@ -2455,11 +2455,12 @@ function sanitizeJenkinsData(sourceDb){
   const sanitizeGame=game=>{if(!game)return;const previousOrder=game.battingOrder||[],previousIdx=Math.max(0,Number(game.currentIdx)||0),previousHitter=previousOrder[previousIdx]||'';game.battingOrder=previousOrder.filter(name=>!jenkinsNames.has(name));game.hittersUsed=(game.hittersUsed||[]).filter(name=>!jenkinsNames.has(name));game.pitches=(game.pitches||[]).filter(item=>!jenkinsNames.has(item.hitter));game.plateAppearances=(game.plateAppearances||[]).filter(item=>!jenkinsNames.has(item.hitter));game.observations=(game.observations||[]).filter(item=>!jenkinsNames.has(item.playerName));game.hitterSubstitutions=(game.hitterSubstitutions||[]).filter(item=>!jenkinsNames.has(item.out)&&!jenkinsNames.has(item.in));if(game.battingOrder.length){const preservedIdx=game.battingOrder.indexOf(previousHitter);game.currentIdx=preservedIdx>=0?preservedIdx:Math.min(previousIdx,game.battingOrder.length-1)}else game.currentIdx=0;if(jenkinsNames.has(previousHitter))game.plan=null};
   (cleanDb.savedGames||[]).forEach(sanitizeGame);
   sanitizeGame(cleanDb.currentGame);
+  if(cleanDb.currentGame&&!(cleanDb.currentGame.battingOrder||[]).length&&!(cleanDb.currentGame.pitches||[]).length&&!(cleanDb.currentGame.plateAppearances||[]).length)cleanDb.currentGame=null;
   (cleanDb.practiceHistory||[]).forEach(record=>{if(Array.isArray(record.attendees))record.attendees=record.attendees.filter(name=>!jenkinsNames.has(name));if(Array.isArray(record.rosterPlayers))record.rosterPlayers=record.rosterPlayers.filter(name=>!jenkinsNames.has(name));if(Array.isArray(record.excludedAttendancePlayers))record.excludedAttendancePlayers=record.excludedAttendancePlayers.filter(name=>!jenkinsNames.has(name))});
   Object.keys(cleanDb.planPreferences||{}).forEach(name=>{if(jenkinsNames.has(name))delete cleanDb.planPreferences[name]});
   Object.keys(cleanDb.playerFocusDrillOverrides||{}).forEach(key=>{if([...jenkinsNames].some(name=>key.startsWith(name+'::')))delete cleanDb.playerFocusDrillOverrides[key]});
  }
- cleanDb.teamJenkinsDataCleanupVersion=4;
+ cleanDb.teamJenkinsDataCleanupVersion=5;
  return cleanDb;
 }
 function sanitizedBackupDb(){return sanitizeJenkinsData(db);}
