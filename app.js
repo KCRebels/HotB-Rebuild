@@ -2078,7 +2078,7 @@ async function recoverOrphanedActivePractice(){
  if(!db.activePortalPractice?.id){alert('HotB no longer has the active practice reference. Nothing was changed.');return}
  if(!cloudStore){
   let loaderError='';
-  if(!window.firebase&&window.HotBFirebaseReady){try{await window.HotBFirebaseReady}catch(error){loaderError=String(error?.message||error||'loader failed')}}
+  if(window.HotBFirebaseReady){try{await window.HotBFirebaseReady}catch(error){loaderError=String(error?.message||error||'loader failed')}}
   let initError='';
   if(window.firebase){try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);cloudAuth=firebase.auth();cloudStore=firebase.firestore();cloudInitStarted=true}catch(error){initError=String(error?.code||error?.message||error||'initialization failed')}}
   if(!cloudStore){
