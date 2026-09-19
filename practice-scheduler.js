@@ -76,6 +76,7 @@
   const liveSessions=[];
   const coachPitch=!pitchers.length&&options.noPitchersMode==='coach';
   if(!pitchers.length&&!coachPitch)warnings.push('Live pitching was replaced because no pitchers are attending.');
+  if(!pitchers.length&&coachPitch&&!catchers.length)feasibilityErrors.push('Coach Pitch requires an attending catcher because Coach cannot pitch and catch the same live session.');
   const today=new Date(),todayDate=Date.UTC(today.getFullYear(),today.getMonth(),today.getDate());
   const weekNumber=Math.floor((todayDate-Date.UTC(2026,7,31))/(7*24*60*60*1000));
   const heavyCatcherIndex=((weekNumber%2)+2)%2;
