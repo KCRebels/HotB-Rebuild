@@ -954,8 +954,13 @@ function initCloud(){
     cloudUser=user&&!user.isAnonymous?user:null;
     portalAuthUser=user||null;
    }
-   if(cloudUser){await loadCloudStatus();if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();syncPlayerEvaluationPortals().catch(()=>{});if(recoveredPracticeExpired&&practicePlan&&practiceClock.running)await finishPracticeClock(true)}
-   else if(recoveredPracticeExpired&&practicePlan&&practiceClock.running)await finishPracticeClock(true)
+   if(cloudUser){await loadCloudStatus();if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();syncPlayerEvaluationPortals().catch(()=>{})}
+   if(recoveredPracticeExpired&&practicePlan&&practiceClock.running){
+    practiceClock.running=false;practiceClock.finished=true;
+    const scheduledEnd=practiceClock.startAt&&window.HotBPracticeSession?.layout?practiceClock.startAt+window.HotBPracticeSession.layout(practicePlan).totalMs:Date.now();
+    practiceClock.completedAt=practiceClock.completedAt||new Date(scheduledEnd).toISOString();
+    persistPracticeSession();
+   }
    if(portalToken)await loadPlayerPortal();
    if(route==='home'||route==='portal')render();
   });
