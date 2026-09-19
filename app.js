@@ -1977,9 +1977,10 @@ async function clearActivePlayerPlans(){
  if(!cloudUser||!cloudStore)throw new Error('cloud-unavailable');
  if(!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)throw new Error('practice-mismatch');
  const batch=cloudStore.batch();
- const activeNames=new Set(db.activePortalPractice?.players||[]);
- db.roster.filter(player=>!player.isTeamJenkins&&player.portalId&&activeNames.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
- db.roster.filter(player=>player.isTeamJenkins&&player.portalId&&activeNames.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),jenkinsPortalResetPayload(player),{merge:true}));
+ const activeNames=new Set(db.activePortalPractice?.players||[]),persistedPlayerPortals=db.activePortalPractice?.playerPortals||[];
+ persistedPlayerPortals.forEach(entry=>{const player=db.roster.find(item=>item.name===entry.name);batch.set(portalDoc(entry.portalId),entry.isTeamJenkins&&player?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})});
+ const persistedIds=new Set(persistedPlayerPortals.map(entry=>entry.portalId));
+ db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).forEach(player=>batch.set(portalDoc(player.portalId),player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  const coachPortalId=db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId;
  if(coachPortalId)batch.set(portalDoc(coachPortalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
  const guestPortalIds=new Set([...(db.activePortalPractice?.guestPlayerPortalIds||[]),...(db.activePortalPractice?.guestCoachPortalIds||[]),...practiceGuestPlayers().filter(guest=>activeNames.has(guest.name)).map(guest=>guest.portalId),...practiceGuestCoaches().map(guest=>guest.portalId)].filter(Boolean));
@@ -1990,8 +1991,10 @@ async function clearActivePlayerPlans(){
 async function clearOrphanedActivePractice(){
  if(!cloudUser||!cloudStore||!db.activePortalPractice?.id||practicePlan)return;
  if(!confirm('HotB found active portal plans without a recoverable local practice. Remove those stale portal plans so a new practice can be built?'))return;
- const state=db.activePortalPractice,batch=cloudStore.batch(),activeNames=new Set(state.players||[]);
- db.roster.filter(player=>player.portalId&&activeNames.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+ const state=db.activePortalPractice,batch=cloudStore.batch(),activeNames=new Set(state.players||[]),persistedPlayerPortals=state.playerPortals||[];
+ persistedPlayerPortals.forEach(entry=>{const player=db.roster.find(item=>item.name===entry.name);batch.set(portalDoc(entry.portalId),entry.isTeamJenkins&&player?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})});
+ const persistedIds=new Set(persistedPlayerPortals.map(entry=>entry.portalId));
+ db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).forEach(player=>batch.set(portalDoc(player.portalId),player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  if(state.coachPortalId)batch.set(portalDoc(state.coachPortalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
  (state.guestPlayerPortalIds||[]).forEach(id=>batch.set(portalDoc(id),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  (state.guestCoachPortalIds||[]).forEach(id=>batch.set(portalDoc(id),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
@@ -2001,6 +2004,7 @@ async function clearOrphanedActivePractice(){
 async function syncPlayerPracticeClock(){
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return;
  const attending=new Set(db.activePortalPractice.players||[]),clock=practiceClockPortalPayload(),updates=[],queuedIds=new Set(),queue=id=>{if(!id||queuedIds.has(id))return;queuedIds.add(id);updates.push(portalDoc(id).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}))};
+ (db.activePortalPractice?.playerPortals||[]).forEach(entry=>queue(entry.portalId));
  db.roster.filter(player=>attending.has(player.name)&&player.portalId).forEach(player=>queue(player.portalId));
  queue(db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId);
  (db.activePortalPractice?.guestPlayerPortalIds||[]).forEach(queue);
@@ -2027,7 +2031,7 @@ async function activatePlayerPlans(){
   if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:coachPracticePortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   for(const guest of practiceGuestPlayers().filter(player=>attending.has(player.name))){if(!guest.portalId||!guest.portalSecret)throw new Error(`Guest link missing for ${guest.name}`);batch.set(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice:playerPracticePortalPayload(guest.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
   for(const guest of practiceGuestCoaches()){if(!guest.portalId||!guest.portalSecret)throw new Error(`Guest link missing for ${guest.name}`);const activePractice={...coachPracticePortalPayload(),coachName:guest.name};batch.set(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
-  db.activePortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:new Date().toISOString(),players:[...attending],guestPlayerPortalIds:practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).map(guest=>guest.portalId),guestCoachPortalIds:practiceGuestCoaches().filter(guest=>guest.portalId).map(guest=>guest.portalId),coachPortalId:db.coachPortal?.portalId||''};persistPracticeSession();save();
+  db.activePortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:new Date().toISOString(),players:[...attending],playerPortals:db.roster.filter(player=>attending.has(player.name)&&player.portalId).map(player=>({name:player.name,portalId:player.portalId,isTeamJenkins:!!player.isTeamJenkins})),guestPlayerPortalIds:practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).map(guest=>guest.portalId),guestCoachPortalIds:practiceGuestCoaches().filter(guest=>guest.portalId).map(guest=>guest.portalId),coachPortalId:db.coachPortal?.portalId||''};persistPracticeSession();save();
   try{await batch.commit()}
   catch(error){db.activePortalPractice=null;persistPracticeSession();save();throw error}
   render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
