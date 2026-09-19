@@ -2000,11 +2000,13 @@ async function clearOrphanedActivePractice(){
 }
 async function syncPlayerPracticeClock(){
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return;
- const attending=new Set(db.activePortalPractice.players||[]),clock=practiceClockPortalPayload(),updates=[];
- db.roster.filter(player=>attending.has(player.name)&&player.portalId).forEach(player=>updates.push(portalDoc(player.portalId).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})));
- if(db.coachPortal?.portalId)updates.push(portalDoc(db.coachPortal.portalId).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
- practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).forEach(guest=>updates.push(portalDoc(guest.portalId).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})));
- practiceGuestCoaches().filter(guest=>guest.portalId).forEach(guest=>updates.push(portalDoc(guest.portalId).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})));
+ const attending=new Set(db.activePortalPractice.players||[]),clock=practiceClockPortalPayload(),updates=[],queuedIds=new Set(),queue=id=>{if(!id||queuedIds.has(id))return;queuedIds.add(id);updates.push(portalDoc(id).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}))};
+ db.roster.filter(player=>attending.has(player.name)&&player.portalId).forEach(player=>queue(player.portalId));
+ queue(db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId);
+ (db.activePortalPractice?.guestPlayerPortalIds||[]).forEach(queue);
+ (db.activePortalPractice?.guestCoachPortalIds||[]).forEach(queue);
+ practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).forEach(guest=>queue(guest.portalId));
+ practiceGuestCoaches().filter(guest=>guest.portalId).forEach(guest=>queue(guest.portalId));
  const results=await Promise.allSettled(updates),failed=results.filter(result=>result.status==='rejected');
  if(failed.length)console.warn(`Player portal clock sync failed for ${failed.length} of ${updates.length} portal documents`);
 }
