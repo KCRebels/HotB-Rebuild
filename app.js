@@ -949,6 +949,7 @@ function initCloud(){
     portalAuthUser=user||null;
    }
    if(cloudUser){await loadCloudStatus();if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();syncPlayerEvaluationPortals().catch(()=>{});if(recoveredPracticeExpired&&practicePlan&&practiceClock.running)await finishPracticeClock(true)}
+   else if(recoveredPracticeExpired&&practicePlan&&practiceClock.running&&db.activePortalPractice?.id!==practicePlan.portalDraftId)await finishPracticeClock(true)
    if(portalToken)await loadPlayerPortal();
    if(route==='home'||route==='portal')render();
   });
