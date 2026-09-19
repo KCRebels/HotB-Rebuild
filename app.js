@@ -3003,6 +3003,7 @@ function clearPracticeSession(){
  db.activePracticeSession=null;save();
 }
 async function endPracticeDraft(){
+ if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('This practice is active on the player and coach portals. Deactivate the portal plans before ending the draft.');return}
  if(!confirm('End this unfinished practice? All attendance, adjustments and guest information will be cleared, and every guest link will expire.'))return;
  const guests=[...practiceGuestPlayers(),...practiceGuestCoaches()].filter(guest=>guest.portalId);
  if(guests.length){
