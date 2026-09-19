@@ -278,6 +278,7 @@
   Object.entries(plan?.schedule||{}).forEach(([name,entries])=>{
    if(entries.length!==BLOCK_COUNT||entries.some(entry=>!entry?.activity))errors.push(`${name} has downtime while present.`);
    const player=plan.players?.find(item=>item.name===name),from=player?.availableFromBlock||0,until=player?.availableUntilBlock??BLOCK_COUNT;
+   entries.forEach((entry,index)=>{const shouldBeAbsent=index<from||index>=until;if(shouldBeAbsent&&entry?.activity!=='Not Present')errors.push(`${name} is scheduled in Block ${index+1} while unavailable.`);if(!shouldBeAbsent&&entry?.activity==='Not Present')errors.push(`${name} is marked Not Present in Block ${index+1} while available.`)});
    if(!player?.prePracticeComplete&&from<until&&entries[from]?.activity!=='Stretch')errors.push(`${name} must complete Warm-Up in the first attended block.`);
    if(!player?.prePracticeComplete&&from+1<until&&entries[from+1]?.activity!=='Tee Work')errors.push(`${name} must complete Tee Work in the second attended block.`);
    if(entries.some((entry,index)=>entry?.activity==='Tee Work'&&(player?.prePracticeComplete||index!==from+1)))errors.push(`${name} has Tee Work outside the one required tee block.`);
