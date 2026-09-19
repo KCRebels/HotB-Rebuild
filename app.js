@@ -1185,8 +1185,10 @@ async function setupCoachPortal(){
  const name=$('#coachPortalName')?.value.trim()||db.coachPortal?.name||'';
  const phone=$('#coachPortalPhone')?.value.trim()||db.coachPortal?.phone||'';
  if(!name){portalMessage='Enter the coach’s name before creating the coach portal.';render();return}
+ const originalCoachPortal=structuredClone(db.coachPortal||{});
  cloudBusy=true;portalMessage='Creating the private coach portal…';render();
  try{
+  if(!db.coachPortal)db.coachPortal={};
   if(!db.coachPortal.portalId)db.coachPortal.portalId=newPortalId();
   if(!db.coachPortal.portalPin)db.coachPortal.portalPin=newPortalPin();
   db.coachPortal.name=name;db.coachPortal.phone=phone;db.coachPortal.portalPinHash=await portalHash(db.coachPortal.portalId,db.coachPortal.portalPin);
@@ -1196,7 +1198,7 @@ async function setupCoachPortal(){
   if(activePractice)portalUpdate.activePractice=activePractice;
   await ref.set(portalUpdate,{merge:true});
   save();portalMessage='The private coach link and PIN are ready.';
- }catch(error){console.error('Coach portal refresh failed',error);portalMessage=`The coach portal could not be refreshed${error?.message?`: ${error.message}`:'. Check the internet connection and try again.'}`}
+ }catch(error){db.coachPortal=originalCoachPortal;console.error('Coach portal refresh failed',error);portalMessage=`The coach portal could not be refreshed${error?.message?`: ${error.message}`:'. Check the internet connection and try again.'}`}
  cloudBusy=false;render();
 }
 async function resetCoachPortal(){
