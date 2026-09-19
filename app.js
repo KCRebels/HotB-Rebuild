@@ -2078,6 +2078,21 @@ async function recoverOrphanedActivePractice(){
  if(!db.activePortalPractice?.id){alert('HotB no longer has the active practice reference. Nothing was changed.');return}
  if(!cloudStore){
   let loaderError='';
+  if(!window.HotBFirebaseReady&&!window.firebase){
+   try{
+    window.HotBFirebaseReady=(async()=>{
+     const sources=['https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js','https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js','https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js'];
+     for(const src of sources){
+      await new Promise((resolve,reject)=>{
+       const s=document.createElement('script');s.src=src;s.async=false;s.dataset.hotbFirebase=src;
+       s.onload=resolve;s.onerror=()=>reject(new Error('firebase-load-failed:'+src));document.head.appendChild(s);
+      });
+     }
+     if(!window.firebase)throw new Error('firebase-global-missing');
+     return window.firebase;
+    })();
+   }catch(error){loaderError=String(error?.message||error||'loader setup failed')}
+  }
   if(window.HotBFirebaseReady){try{await window.HotBFirebaseReady}catch(error){loaderError=String(error?.message||error||'loader failed')}}
   let initError='';
   if(window.firebase){try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);cloudAuth=firebase.auth();cloudStore=firebase.firestore();cloudInitStarted=true}catch(error){initError=String(error?.code||error?.message||error||'initialization failed')}}
