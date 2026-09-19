@@ -1308,7 +1308,7 @@ function renamePlayerReferences(oldName,newName){
  (db.savedGames||[]).forEach(renameGame);renameGame(db.currentGame);
  (db.measurements||[]).forEach(item=>{if(item.player===oldName)item.player=newName});
  (db.coachObservations||[]).forEach(item=>{if(item.playerName===oldName)item.playerName=newName});
- (db.practiceHistory||[]).forEach(item=>{if(Array.isArray(item.attendees))item.attendees=item.attendees.map(name=>name===oldName?newName:name);if(Array.isArray(item.excludedAttendancePlayers))item.excludedAttendancePlayers=item.excludedAttendancePlayers.map(name=>name===oldName?newName:name)});
+ (db.practiceHistory||[]).forEach(item=>{if(Array.isArray(item.attendees))item.attendees=item.attendees.map(name=>name===oldName?newName:name);if(Array.isArray(item.rosterPlayers))item.rosterPlayers=item.rosterPlayers.map(name=>name===oldName?newName:name);if(Array.isArray(item.excludedAttendancePlayers))item.excludedAttendancePlayers=item.excludedAttendancePlayers.map(name=>name===oldName?newName:name)});
  if(db.planPreferences&&Object.prototype.hasOwnProperty.call(db.planPreferences,oldName)){if(!Object.prototype.hasOwnProperty.call(db.planPreferences,newName))db.planPreferences[newName]=db.planPreferences[oldName];delete db.planPreferences[oldName]}
  if(db.playerFocusDrillOverrides&&typeof db.playerFocusDrillOverrides==='object')Object.keys(db.playerFocusDrillOverrides).filter(key=>key.startsWith(oldName+'::')).forEach(key=>{const next=newName+key.slice(oldName.length);if(!(next in db.playerFocusDrillOverrides))db.playerFocusDrillOverrides[next]=db.playerFocusDrillOverrides[key];delete db.playerFocusDrillOverrides[key]});
  const renamePracticeState=state=>{
