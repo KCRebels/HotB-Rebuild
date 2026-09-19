@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-131';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-132';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -3743,8 +3743,14 @@ async function endPracticeFromScreen(){
   if(practicePlan&&!db.practiceHistory.some(item=>item.id===practicePlan.portalDraftId)){const completedAt=new Date(practiceClock.completedAt||Date.now());practiceClock.completedAt=completedAt.toISOString();archiveCompletedPractice(completedAt);persistPracticeSession()}
   const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
   if(shouldClearPortals){
-   try{await clearActivePlayerPlans()}
-   catch(error){alert(cloudUser&&cloudStore?'The practice is finished, but the player plans could not be removed. Check your connection, then tap DONE! again.':'The practice is finished, but the player plans are still active. Sign in through Cloud Backup, then tap DONE! again.');return}
+   try{
+    // A retry after a failed finish/cleanup must first re-confirm the authoritative
+    // finished clock. Never jump straight from an uncertain remote state to deletion.
+    const finishedSynced=await syncPlayerPracticeClock();
+    if(finishedSynced!==true)throw new Error('finished-clock-retry-verification-failed');
+    await clearActivePlayerPlans();
+   }
+   catch(error){alert(cloudUser&&cloudStore?'The practice is finished, but HotB could not verify and remove every player plan. Check your connection, then tap DONE! again.':'The practice is finished, but the player plans are still active. Sign in through Cloud Backup, then tap DONE! again.');return}
   }
   closePracticeWorkspace();return
  }
