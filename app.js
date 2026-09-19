@@ -1154,12 +1154,12 @@ function load(){
  try{
   const d=JSON.parse(localStorage.getItem(DBKEY));
   if(d){
-   const aliases={'Matti Hardy':'Mattingly Hardy'};
-   const savedByName=new Map((d.roster||[]).map(r=>[aliases[r.name]||r.name,r]));
+   const aliases={'Matti Hardy':'Mattingly Hardy'},savedRoster=Array.isArray(d.roster)?d.roster:[],keyFor=player=>player?.rosterKey||aliases[player?.name]||player?.name||'';
+   const savedByKey=new Map(savedRoster.map(player=>[keyFor(player),player]));
    const removedNames=new Set(Array.isArray(d.removedRosterNames)?d.removedRosterNames.map(name=>aliases[name]||name):[]);
-   const roster=defaultRoster.filter(profile=>!removedNames.has(profile.name)).map(profile=>{const saved=savedByName.get(profile.name)||{};return {...profile,...saved,name:profile.name,side:saved.side||profile.side}});
-   const standardNames=new Set(defaultRoster.map(r=>r.name));
-   const guests=(d.roster||[]).filter(r=>!standardNames.has(aliases[r.name]||r.name)).map(r=>({...r,isGuest:true}));
+   const roster=defaultRoster.filter(profile=>!removedNames.has(profile.name)).map(profile=>{const saved=savedByKey.get(profile.name)||{};return {...profile,...saved,rosterKey:profile.name,name:saved.name||profile.name,side:saved.side||profile.side}});
+   const standardKeys=new Set(defaultRoster.map(r=>r.name));
+   const guests=savedRoster.filter(player=>!standardKeys.has(keyFor(player))).map(player=>({...player,isGuest:true}));
    roster.push(...guests);
    return {...seed,...d,roster,coaches:mergeCoachDirectories(d.coaches)};
   }
@@ -3240,7 +3240,7 @@ function bindGameGroup(){
 }
 function bindRoster(){
  $$('.sidebtn').forEach(b=>b.onclick=()=>{db.roster[+b.dataset.i].side=b.dataset.side;save();render()});
- $('[data-del]').forEach(b=>b.onclick=()=>{if(!confirm('Remove this player?'))return;const index=+b.dataset.del,player=db.roster[index];if(!player)return;const standardName=defaultRoster.find(profile=>profile.name===player.name)?.name;if(standardName){db.removedRosterNames=Array.isArray(db.removedRosterNames)?db.removedRosterNames:[];if(!db.removedRosterNames.includes(standardName))db.removedRosterNames.push(standardName)}db.roster.splice(index,1);save();render()});
+ $('[data-del]').forEach(b=>b.onclick=()=>{if(!confirm('Remove this player?'))return;const index=+b.dataset.del,player=db.roster[index];if(!player)return;const standardName=player.rosterKey||defaultRoster.find(profile=>profile.name===player.name)?.name;if(standardName&&defaultRoster.some(profile=>profile.name===standardName)){db.removedRosterNames=Array.isArray(db.removedRosterNames)?db.removedRosterNames:[];if(!db.removedRosterNames.includes(standardName))db.removedRosterNames.push(standardName)}db.roster.splice(index,1);save();render()});
  $$('[data-info]').forEach(b=>b.onclick=()=>{syncRosterNames();infoPlayerIndex=+b.dataset.info;save();modal='playerInfo';render()});
  $('#addPlayer').onclick=()=>{db.roster.push({name:'Guest',side:'R',jersey:'',grad:'',positions:'',gpa:'',interest:'',school:'',isGuest:true});save();render();setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),0)};
  $('#saveRoster').onclick=()=>{syncRosterNames();save();go('home')};
