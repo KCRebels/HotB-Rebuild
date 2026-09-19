@@ -1128,8 +1128,7 @@ async function pruneDailySnapshots(root){
 async function backupToCloud(automatic=false){
  if(!cloudUser||cloudBusy)return;cloudBusy=true;if(!automatic){cloudMessage='Creating a protected cloud backup…';render()}
  try{
-  const backupDb=structuredClone(db),jenkinsNames=new Set((backupDb.roster||[]).filter(player=>player.isTeamJenkins).map(player=>player.name));
-  if(jenkinsNames.size){backupDb.measurements=(backupDb.measurements||[]).filter(item=>!jenkinsNames.has(item.player));backupDb.coachObservations=(backupDb.coachObservations||[]).filter(item=>!jenkinsNames.has(item.playerName));(backupDb.savedGames||[]).forEach(game=>{game.observations=(game.observations||[]).filter(item=>!jenkinsNames.has(item.playerName))});if(backupDb.currentGame)backupDb.currentGame.observations=(backupDb.currentGame.observations||[]).filter(item=>!jenkinsNames.has(item.playerName));(backupDb.practiceHistory||[]).forEach(record=>{if(Array.isArray(record.attendees))record.attendees=record.attendees.filter(name=>!jenkinsNames.has(name))});Object.keys(backupDb.planPreferences||{}).forEach(name=>{if(jenkinsNames.has(name))delete backupDb.planPreferences[name]});Object.keys(backupDb.playerFocusDrillOverrides||{}).forEach(key=>{if([...jenkinsNames].some(name=>key.startsWith(name+'::')))delete backupDb.playerFocusDrillOverrides[key]})}
+  const backupDb=sanitizedBackupDb();
   const json=JSON.stringify(backupDb),chunks=[];for(let i=0;i<json.length;i+=180000)chunks.push(json.slice(i,i+180000));
   const root=cloudRoot(),dailyRef=root.collection('snapshots').doc(dailySnapshotId()),[old,daily]=await Promise.all([root.collection('chunks').get(),dailyRef.get()]),batch=cloudStore.batch();old.docs.forEach(doc=>batch.delete(doc.ref));
   chunks.forEach((data,index)=>batch.set(root.collection('chunks').doc(String(index).padStart(4,'0')),{index,data}));
@@ -2408,8 +2407,21 @@ function gameGroupModal(group=null){
  const selected=(group?.gameIds||reportSelectedGameIds).filter(id=>db.savedGames.some(game=>game.id===id));
  return `<div class="modal-backdrop"><div class="modal game-group-modal"><div class="modal-header"><h2>${group?'Edit':'Create'} Game Group</h2><button class="btn" data-close>Cancel</button></div><label>Group name<input class="input" id="gameGroupName" value="${esc(group?.name||'')}" placeholder="St. Louis Showcase"></label><div class="game-select-list" id="groupGameChoices">${gameChoiceList(selected)||'<p>No saved games are available.</p>'}</div><div class="game-group-footer"><button class="btn" data-close>Cancel</button><button class="btn black" id="saveGameGroup" data-group-id="${group?.id||''}">Save Group</button></div></div></div>`;
 }
+function sanitizedBackupDb(){
+ const backupDb=structuredClone(db),jenkinsNames=new Set((backupDb.roster||[]).filter(player=>player.isTeamJenkins).map(player=>player.name));
+ if(jenkinsNames.size){
+  backupDb.measurements=(backupDb.measurements||[]).filter(item=>!jenkinsNames.has(item.player));
+  backupDb.coachObservations=(backupDb.coachObservations||[]).filter(item=>!jenkinsNames.has(item.playerName));
+  (backupDb.savedGames||[]).forEach(game=>{game.observations=(game.observations||[]).filter(item=>!jenkinsNames.has(item.playerName))});
+  if(backupDb.currentGame)backupDb.currentGame.observations=(backupDb.currentGame.observations||[]).filter(item=>!jenkinsNames.has(item.playerName));
+  (backupDb.practiceHistory||[]).forEach(record=>{if(Array.isArray(record.attendees))record.attendees=record.attendees.filter(name=>!jenkinsNames.has(name))});
+  Object.keys(backupDb.planPreferences||{}).forEach(name=>{if(jenkinsNames.has(name))delete backupDb.planPreferences[name]});
+  Object.keys(backupDb.playerFocusDrillOverrides||{}).forEach(key=>{if([...jenkinsNames].some(name=>key.startsWith(name+'::')))delete backupDb.playerFocusDrillOverrides[key]});
+ }
+ return backupDb;
+}
 function exportFullBackup(){
- const payload={format:'HotB Full Backup',version:1,exportedAt:new Date().toISOString(),db};
+ const payload={format:'HotB Full Backup',version:1,exportedAt:new Date().toISOString(),db:sanitizedBackupDb()};
  const a=document.createElement('a');
  a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
  a.download=`HotB_Full_Backup_${new Date().toISOString().slice(0,10)}.json`;
