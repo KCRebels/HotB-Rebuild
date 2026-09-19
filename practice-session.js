@@ -40,12 +40,12 @@
  function pendingTwoMinuteWarning(plan,clock,now=Date.now()){
   const state=timing(plan,clock,now),{workMs}=layout(plan);
   if(!state||state.transition||workMs<=120000)return null;
-  if(state.remaining<=120000&&state.remaining>115000&&Number(clock.lastTwoMinuteBlock)!==state.block)return state.block;
+  if(state.remaining<=120000&&state.remaining>0&&Number(clock.lastTwoMinuteBlock)!==state.block)return state.block;
   return null;
  }
  function pendingTransitionWarning(plan,clock,now=Date.now()){
   const state=timing(plan,clock,now);
-  if(!state||!state.transition||state.remaining<=55000||Number(clock.lastTransitionBlock)===state.block)return null;
+  if(!state||!state.transition||Number(clock.lastTransitionBlock)===state.block)return null;
   return state.block;
  }
  return{create,createDraft,restore,layout,timing,pendingTwoMinuteWarning,pendingTransitionWarning};
