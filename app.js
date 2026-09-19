@@ -1807,8 +1807,9 @@ function practiceCoachLabel(label,plan=null,blockIndex=-1){
 function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.now()){
  const clock=practice?.clock||{};
  if(clock.status==='finished')return {block:'DONE!',left:'0:00',transition:false,currentBlock:10};
- const startedAt=Date.parse(clock.startedAt||'');
- if(clock.status!=='running'||!Number.isFinite(startedAt))return {block:'Not Started',left:'—',transition:false,currentBlock:0};
+ const startedAt=Date.parse(clock.startedAt||''),activatedAt=Date.parse(practice?.activatedAt||'');
+ // A clock timestamp from an older practice/test must never drive a newly activated plan.
+ if(clock.status!=='running'||!Number.isFinite(startedAt)||!Number.isFinite(activatedAt)||startedAt<activatedAt)return {block:'Not Started',left:'—',transition:false,currentBlock:0};
  const state=window.HotBPracticeSession?.timing(practice,{running:true,startAt:startedAt},now);
  if(!state)return {block:'DONE!',left:'0:00',transition:false,currentBlock:10,ended:true};
  const seconds=Math.ceil(state.remaining/1000);
@@ -1954,7 +1955,7 @@ function playerPracticePortalPayload(name){
  const assigned=new Map();
  portalSchedule.forEach(entry=>{const drill=portalAssignmentDrillName(entry.assignment);if(!drill||assigned.has(drill))return;const station=String(entry.assignment).match(/^Drill Station (\d+)/i);assigned.set(drill,station?`Drill Station ${station[1]}`:/^Machine\b/i.test(entry.assignment)?'Machine':/^Front Toss\b/i.test(entry.assignment)?'Front Toss':'Assigned Drill')});
  const drillAssignments=[...assigned].map(([name,location])=>({name,location})),assignedDrills=drillAssignments.map(item=>item.name);
- return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:practiceClockPortalPayload(),schedule:portalSchedule,drills:assignedDrills,drillAssignments};
+ return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:{status:'not-started',startedAt:null,endedAt:null},schedule:portalSchedule,drills:assignedDrills,drillAssignments};
 }
 function coachPracticePortalPayload(){
  const schedule=window.HotBCoachPractice?.build(practicePlan,practiceChosenDrills)||[];
