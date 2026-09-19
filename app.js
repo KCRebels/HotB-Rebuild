@@ -1107,7 +1107,21 @@ async function loadPlayerPortal(){
    portalData={id:snapshot.id,...snapshot.data()};portalMessage='';
    if(portalUnsubscribe)portalUnsubscribe();
    portalUnsubscribe=portalDoc().onSnapshot(next=>{
-    if(next.exists){portalData={id:next.id,...next.data()};if(route==='portal')render()}
+    if(next.exists){
+     const nextData={id:next.id,...next.data()};
+     const previousPracticeId=portalData?.activePractice?.id||'';
+     const nextPracticeId=nextData?.activePractice?.id||'';
+     portalData=nextData;portalMessage='';
+     // When the coach publishes or removes a practice, return the portal to the
+     // correct current view instead of leaving a stale drill/focus subview open.
+     if(previousPracticeId!==nextPracticeId){
+      portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
+      if(['guestPlayer','jenkinsPlayer','guestCoach','coach'].includes(portalData.portalType))portalView='home';
+      else if(nextPracticeId)portalView='practice';
+      else if(portalView==='practice')portalView='home';
+     }
+     if(route==='portal')render()
+    }
    },()=>{
     portalData=null;portalMessage='This portal is no longer connected to this device.';
     if(route==='portal')render();
