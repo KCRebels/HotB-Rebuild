@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-63';
+const PORTAL_BUILD_TOKEN='20260919-67';
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1121,6 +1121,12 @@ async function loadPlayerPortal(){
       else if(portalView==='practice')portalView='home';
      }
      if(route==='portal')render()
+    }else{
+     // A deleted portal document must immediately invalidate the open screen.
+     // Otherwise the last snapshot can remain visible indefinitely.
+     portalData=null;portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';portalView='home';
+     portalMessage='This portal is no longer available. Ask the coach to send a fresh link.';
+     if(route==='portal')render();
     }
    },()=>{
     portalData=null;portalMessage='This portal is no longer connected to this device.';
