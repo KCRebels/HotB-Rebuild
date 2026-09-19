@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-82';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-83';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1063,7 +1063,8 @@ async function createPendingGuestPortal(guest,type){
  await portalDoc(guest.portalId).set({portalType:type,...(coach?{coachName:guest.name}:{playerName:guest.name}),firstName:practiceFirstName(guest.name),phone:guest.phone,pinHash,ownerUid:null,expired:false,accessStatus:'waiting',activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
 }
 async function loadPlayerPortal(){
- if(!portalToken||!cloudAuth||!cloudStore)return;
+ if(!portalToken)return;
+ if(!cloudAuth||!cloudStore){portalBusy=false;portalData=null;portalMessage='HotB is still connecting to the player portal service. Please wait a moment and reopen this link.';if(route==='portal')render();return;}
  // A reload or token change must never leave the previous portal document
  // listening in the background. That old listener could otherwise repaint
  // stale practice data after a failed read or while PIN entry is shown.
