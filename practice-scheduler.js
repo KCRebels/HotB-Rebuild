@@ -39,6 +39,8 @@
   });
   const isOpen=(player,block)=>block>=0&&block<BLOCK_COUNT&&schedule[player.name][block]===null&&block>(teeBlocks[player.name]??-1);
   const feasibilityErrors=[];
+  if(activeAttendees.length===0)feasibilityErrors.push('At least two available players are required to build a practice.');
+  else if(activeAttendees.length===1)feasibilityErrors.push('At least two available players are required because every hitting station must have 2–3 players.');
   function groupedAssignment(playersToAssign,slots,eligible,requireAllSlots=false){
    const keyFor=player=>player.assignmentKey||player.name;
    const assignments=Array(slots.length).fill(null).map(()=>[]),remaining=new Set(playersToAssign.map(keyFor));
