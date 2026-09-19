@@ -20,8 +20,8 @@
   session.portalState=session.portalState&&typeof session.portalState==='object'?session.portalState:null;
   session.clock={running:!!clock.running,finished:!!clock.finished,endAnnounced:!!clock.endAnnounced,startAt:Number(clock.startAt)||0,lastBlock:Number(clock.lastBlock)||1,lastTwoMinuteBlock:Number(clock.lastTwoMinuteBlock)||0,lastTransitionBlock:Number(clock.lastTransitionBlock)||0,completedAt:clock.completedAt||null};
   if(session.plan&&session.clock.running&&session.clock.startAt){
-   const blockMs=(Number(session.plan.blockMinutes)||12)*60000,elapsed=Math.max(0,Number(now)-session.clock.startAt);
-   session.clock.lastBlock=Math.max(1,Math.min(10,Math.floor(elapsed/blockMs)+1));
+   const blockMs=(Number(session.plan.blockMinutes)||12)*60000,elapsed=Math.max(0,Number(now)-session.clock.startAt),recoveredBlock=Math.max(1,Math.min(10,Math.floor(elapsed/blockMs)+1));
+   session.clock.lastBlock=Math.max(Number(session.clock.lastBlock)||1,recoveredBlock);
   }
   return session;
  }
