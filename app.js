@@ -1670,7 +1670,8 @@ function guestCoachPracticeView(){
  return `${portalHeader('Guest Coach')}<main class="portal-page"><section class="portal-welcome active"><span>GUEST COACH · VIEW ONLY</span><h2>Hi, ${esc(name)}</h2><p>${esc(practice.title||'Current Hitting Practice')}</p></section><section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">Not Started</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">—</b></div></section>${(practice.players||[]).map(player=>`<article class="practice-player-card portal-player-card portal-guest-coach-card"><header><h2>${esc(player.name)}${player.role?` <small>(${esc(player.role)})</small>`:''}</h2></header><ol>${player.schedule.map(entry=>`<li><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>`).join('')}</main>`;
 }
 function playerEvaluationPortalPayload(playerName){
- const player=db.roster.find(item=>item.name===playerName)||{},rosterFields=['name','side'];
+ const player=competitionRoster().find(item=>item.name===playerName);if(!player)return {roster:[],savedGames:[],currentGame:null,evaluationSeason:currentSeasonLabel()};
+ const rosterFields=['name','side'];
  const paFields=['hitter','pa','outcome','hitType','contactType','rbi','rbiCount','rba','sac','bunt','hhb','weak','pitchCount','finalCount'];
  const pitchFields=['id','hitter','pa','strikesBefore','zone','pitchType','plan','result','contactType','hitterStyle','intentionalBall','pitchout','decisionOverride','hhb','ts'];
  const pick=(source,fields)=>Object.fromEntries(fields.filter(key=>source?.[key]!==undefined).map(key=>[key,source[key]]));
@@ -3654,7 +3655,8 @@ function bindRecord(){
  const attemptRows=()=>db.measurements.filter(m=>m.player===$('#mPlayer').value&&m.type===$('#mType').value);
  const updateAttemptBoxes=()=>{const type=$('#mType').value;$('#measurementAttempts').innerHTML=attemptRows().map((m,i)=>`<button class="tab attempt-box" data-delete-measurement="${m.id}" title="Delete attempt ${i+1}">${esc(formatMeasurementValue(type,m.value))}</button>`).join('')};
  const storeMeasurement=value=>{
-  db.measurements.push({id:crypto.randomUUID(),player:$('#mPlayer').value,type:$('#mType').value,value:Number(value),date:$('#mDate').value});
+  const playerName=$('#mPlayer').value,player=competitionRoster().find(item=>item.name===playerName);if(!player)return;
+  db.measurements.push({id:crypto.randomUUID(),player:player.name,type:$('#mType').value,value:Number(value),date:$('#mDate').value});
   save();updateAttemptBoxes();
  };
  const updateStopwatch=()=>{
