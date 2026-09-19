@@ -1158,7 +1158,13 @@ async function setupPlayerPortals(){
    const existing=await portalDoc(player.portalId).get();
    batch.set(portalDoc(player.portalId),{playerName:player.name,firstName:practiceFirstName(player.name),pinHash:player.portalPinHash,evaluationData:playerEvaluationPortalPayload(player.name),...(!existing.exists?{ownerUid:null,activePractice:null,focus:null}:{}),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   }
-  await batch.commit();save();portalMessage='Player records refreshed. Existing links and PINs were kept.';
+  await batch.commit();
+  // Persist portal IDs/PINs immediately before any backup/sync work can run.
+  db.route=route;
+  localStorage.setItem(DBKEY,JSON.stringify(db));
+  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+  portalMessage='Player records refreshed. Existing links and PINs were kept.';
+  scheduleCloudBackup();schedulePlayerEvaluationPortalSync();
  }catch(error){originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});portalMessage='Player portals could not be created. Confirm Anonymous Authentication and the Player Portal security rules are active.'}
  cloudBusy=false;render();
 }
