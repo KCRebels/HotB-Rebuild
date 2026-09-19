@@ -2842,7 +2842,10 @@ function applyRosterImport(){
     target={...canonical,rosterKey:canonical.name,isGuest:false};
     db.removedRosterNames=(db.removedRosterNames||[]).filter(name=>name!==canonical.name);
    }else target={name:item.data.name,side:item.data.side||'R',isGuest:true};
-  }else target=db.roster[item.index];
+  }else{
+   target=db.roster[item.index];
+   if(!target||target.isTeamJenkins||normalizeName(target.name)!==normalizeName(item.player?.name||item.data.name))return;
+  }
   playerInfoColumns.forEach(([,key])=>{if(item.data[key])target[key]=item.data[key]});
   if(item.kind==='add')db.roster.push(target);
  });
