@@ -1,9 +1,10 @@
-const BUILD_VERSION = '2026.09.19.77';
+const BUILD_VERSION = '2026.09.19.78';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
 const LEGACY_SHELL = './hotb-fresh.html';
 const CORE_FILES = ['./index.html', './hotb-fresh.html', './styles.css', './evaluation-cleanup.css', './app.js'];
+const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/, /\/styles\.css(?:\?|$)/, /\/evaluation-cleanup\.css(?:\?|$)/];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
@@ -47,10 +48,27 @@ async function newestAsset(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
     const response = await fetch(request, {cache: 'no-store'});
-    if (response.ok) await cache.put(request, response.clone());
+    if (response.ok) {
+      await cache.put(request, response.clone());
+      // Keep an unversioned offline alias for versioned core assets loaded by index.html.
+      // Without this, an offline launch can find index.html but fail its ?v= script/style URL.
+      const pathname=new URL(request.url).pathname;
+      const corePattern=VERSIONED_CORE_PATTERNS.find(pattern=>pattern.test(pathname));
+      if(corePattern){
+        const aliasUrl=new URL(request.url);aliasUrl.search='';
+        await cache.put(new Request(aliasUrl.href),response.clone());
+      }
+    }
     return response;
   } catch (_) {
-    return (await cache.match(request)) || Response.error();
+    const exact=await cache.match(request);
+    if(exact)return exact;
+    const pathname=new URL(request.url).pathname;
+    if(VERSIONED_CORE_PATTERNS.some(pattern=>pattern.test(pathname))){
+      const aliasUrl=new URL(request.url);aliasUrl.search='';
+      return (await cache.match(new Request(aliasUrl.href))) || Response.error();
+    }
+    return Response.error();
   }
 }
 
