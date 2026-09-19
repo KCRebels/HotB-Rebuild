@@ -940,8 +940,9 @@ if(recoveredPracticeSession){
 const recoveredPracticeExpired=!!(practicePlan&&practiceClock.running&&!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now()));
 
 let cloudInitStarted=false,cloudInitRetryTimer=null,cloudInitRetryCount=0;
-function initCloud(){
+async function initCloud(){
  if(cloudInitStarted)return;
+ if(!window.firebase&&window.HotBFirebaseReady){try{await window.HotBFirebaseReady}catch(_){}}
  if(!window.firebase){
   if(cloudInitRetryCount<40){cloudInitRetryCount++;clearTimeout(cloudInitRetryTimer);cloudInitRetryTimer=setTimeout(initCloud,250);return}
   const scripts=[...document.scripts].filter(script=>/firebase-(?:app|auth|firestore)-compat\.js/.test(script.src||''));
