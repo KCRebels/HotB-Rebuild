@@ -935,6 +935,7 @@ if(recoveredPracticeSession){
  if(recoveredPracticeSession.portalState)db.activePortalPractice=recoveredPracticeSession.portalState;
  if(practicePlan)practiceSection='builder';
 }
+const recoveredPracticeExpired=!!(practicePlan&&practiceClock.running&&!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now()));
 
 function initCloud(){
  if(!window.firebase)return;
@@ -3002,6 +3003,7 @@ async function endPracticeDraft(){
 }
 function resumeRecoveredPracticeClock(){
  if(!practicePlan||!practiceClock.running)return;
+ if(!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now())){finishPracticeClock(true);return}
  const activeTiming=window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now());
  updatePracticeClock();
  if(activeTiming&&practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
