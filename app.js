@@ -2458,8 +2458,9 @@ function sanitizeJenkinsData(sourceDb){
   cleanDb.roster=(cleanDb.roster||[]).map(player=>jenkinsNames.has(player.name)?practiceOnlyJenkinsRecord(player):player);
   cleanDb.measurements=(cleanDb.measurements||[]).filter(item=>!jenkinsNames.has(item.player));
   cleanDb.coachObservations=(cleanDb.coachObservations||[]).filter(item=>!jenkinsNames.has(item.playerName));
-  (cleanDb.savedGames||[]).forEach(game=>{game.observations=(game.observations||[]).filter(item=>!jenkinsNames.has(item.playerName))});
-  if(cleanDb.currentGame)cleanDb.currentGame.observations=(cleanDb.currentGame.observations||[]).filter(item=>!jenkinsNames.has(item.playerName));
+  const sanitizeGame=game=>{if(!game)return;game.battingOrder=(game.battingOrder||[]).filter(name=>!jenkinsNames.has(name));game.hittersUsed=(game.hittersUsed||[]).filter(name=>!jenkinsNames.has(name));game.pitches=(game.pitches||[]).filter(item=>!jenkinsNames.has(item.hitter));game.plateAppearances=(game.plateAppearances||[]).filter(item=>!jenkinsNames.has(item.hitter));game.observations=(game.observations||[]).filter(item=>!jenkinsNames.has(item.playerName));game.hitterSubstitutions=(game.hitterSubstitutions||[]).filter(item=>!jenkinsNames.has(item.out)&&!jenkinsNames.has(item.in));if(game.battingOrder.length){game.currentIdx=Math.min(Number(game.currentIdx)||0,game.battingOrder.length-1)}else game.currentIdx=0};
+  (cleanDb.savedGames||[]).forEach(sanitizeGame);
+  sanitizeGame(cleanDb.currentGame);
   (cleanDb.practiceHistory||[]).forEach(record=>{if(Array.isArray(record.attendees))record.attendees=record.attendees.filter(name=>!jenkinsNames.has(name));if(Array.isArray(record.rosterPlayers))record.rosterPlayers=record.rosterPlayers.filter(name=>!jenkinsNames.has(name));if(Array.isArray(record.excludedAttendancePlayers))record.excludedAttendancePlayers=record.excludedAttendancePlayers.filter(name=>!jenkinsNames.has(name))});
   Object.keys(cleanDb.planPreferences||{}).forEach(name=>{if(jenkinsNames.has(name))delete cleanDb.planPreferences[name]});
   Object.keys(cleanDb.playerFocusDrillOverrides||{}).forEach(key=>{if([...jenkinsNames].some(name=>key.startsWith(name+'::')))delete cleanDb.playerFocusDrillOverrides[key]});
