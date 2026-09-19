@@ -2758,7 +2758,7 @@ async function parsePitchingImport(file){
 }
 function applyPitchingImport(){
  const ready=pendingPitchingImport?.ready||[];
- ready.forEach(item=>{const player=db.roster[item.playerIndex];if(player&&player.name===item.playerName)window.HotBGameChangerPitching.fields.forEach(field=>{player[field]=item.values[field]})});
+ ready.forEach(item=>{const player=db.roster[item.playerIndex];if(player&&!player.isTeamJenkins&&isPitcherProfile(player)&&player.name===item.playerName)window.HotBGameChangerPitching.fields.forEach(field=>{player[field]=item.values[field]})});
  save();pendingPitchingImport=null;modal=null;render();alert(`${ready.length} pitcher${ready.length===1?'':'s'} updated from GameChanger.`);
 }
 async function unzipWorkbook(buffer){
