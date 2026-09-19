@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-105'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-106'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal145'));
+assert(index.includes('app.js?v=20260919-portal146'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -97,3 +97,8 @@ assert(app.includes("active?.clock?.status==='not-started'"));
 assert(app.includes("!active?.clock?.startedAt"));
 assert(app.includes("if(guestPortalIds.has(id))return remote.expired===true"));
 assert(app.includes("remote.accessStatus==='waiting'&&remote.expired===false"));
+
+assert(app.includes("Player portal clock read-back verification failed"));
+assert(app.includes("remoteClock.status===clock.status"));
+assert(app.includes("remoteClock.startedAt===clock.startedAt"));
+assert(app.includes("remoteClock.endedAt===clock.endedAt"));
