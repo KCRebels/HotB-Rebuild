@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-130';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-131';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -3708,6 +3708,17 @@ async function finishPracticeClock(automatic=false){
  archiveCompletedPractice(completedAt);
  if(!practiceClock.endAnnounced){practiceClock.endAnnounced=true;practiceEndSpeech=speakPracticeClock('Times Up, Good Practice, Please start to clean up')}
  persistPracticeSession();
+ // Publish the finished clock before removing activePractice. This gives every
+ // already-open portal an authoritative Practice Complete state immediately,
+ // even if the subsequent cleanup/read-back takes a moment or must be retried.
+ if(shouldClearPortals){
+  const finishedSynced=await syncPlayerPracticeClock();
+  if(finishedSynced!==true){
+   persistPracticeSession();render();
+   alert('Practice is finished, but HotB could not confirm the finished clock on every portal. The active plans were left in place so cleanup can be retried safely with DONE!.');
+   return;
+  }
+ }
  const endingSpeech=practiceEndSpeech;render();
  if(automatic&&Array.isArray(practicePlan?.recoveredCoachSchedule)&&practicePlan.recoveredCoachSchedule.length&&!shouldClearPortals){
   return;
