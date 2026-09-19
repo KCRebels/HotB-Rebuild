@@ -1,4 +1,4 @@
-const BUILD_VERSION = '2026.09.19.104';
+const BUILD_VERSION = '2026.09.19.105';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
