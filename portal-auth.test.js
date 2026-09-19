@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-124'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-125'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal164'));
+assert(index.includes('app.js?v=20260919-portal165'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -172,3 +172,9 @@ assert(app.includes("let practiceResumeVerificationBusy=false"));
 assert(app.includes("if(practiceResumeVerificationBusy||!practicePlan||!practiceClock.running)return"));
 assert(app.includes("if(!cloudUser||!cloudStore)return"));
 assert(app.includes("finally{practiceResumeVerificationBusy=false}"));
+
+assert(app.includes("async function clearFinishedOrphanedPractice(state)"));
+assert(app.includes("await clearFinishedOrphanedPractice(state)"));
+assert(!app.includes("if(remote.clock?.status==='finished'){\n   await clearActivePlayerPlans()"));
+assert(app.includes("accessStatus:'ended'"));
+assert(app.includes("finished-orphan-cleanup-verification-failed"));
