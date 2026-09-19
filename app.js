@@ -1088,9 +1088,15 @@ async function loadPlayerPortal(){
  if(guestPortalSecret&&!isCoachPortalUser()){
   try{
    const proof=await portalHash(portalToken,guestPortalSecret);
-   try{await portalDoc().update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
-   catch(firstError){await portalDoc().update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
-  }catch(error){}
+   // Guest/Jenkins links use the same Firestore ownership rules as permanent
+   // player portals: claim an unowned link first, then authorize extra devices.
+   try{await portalDoc().update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+   catch(firstError){await portalDoc().update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+  }catch(error){
+   portalBusy=false;portalData=null;portalMessage='This practice link could not be connected. Ask the coach to send a fresh link.';
+   if(route==='portal')render();
+   return;
+  }
  }
  try{
   const snapshot=await Promise.race([
