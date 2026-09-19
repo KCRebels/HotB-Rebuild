@@ -2293,12 +2293,15 @@ async function activatePlayerPlans(){
   // Do not mark the practice locally active until Firebase has accepted every portal update.
   try{await batch.commit()}
   catch(error){throw error}
-  // Verify every permanent player and the coach actually received this exact practice.
-  // A successful batch write is not enough protection against stale/wrong saved portal IDs.
+  // Verify every player, coach, guest and Jenkins portal actually received
+  // this exact practice before the coach device records it as active.
   const verifyIds=[...new Set([
    ...pendingPortalPractice.playerPortals.map(entry=>entry.portalId),
-   pendingPortalPractice.coachPortalId
+   pendingPortalPractice.coachPortalId,
+   ...pendingPortalPractice.guestPlayerPortalIds,
+   ...pendingPortalPractice.guestCoachPortalIds
   ].filter(Boolean))];
+  if(!verifyIds.length)throw new Error('portal-activation-no-targets');
   const verification=await Promise.all(verifyIds.map(async id=>{
    const snapshot=await portalDoc(id).get();
    return snapshot.exists&&snapshot.data()?.activePractice?.id===practicePlan.portalDraftId;
