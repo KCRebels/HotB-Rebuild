@@ -1803,7 +1803,7 @@ function updatePortalPracticeClock(){
   nextPanel.hidden=!nextEntry;
   if(nextEntry){const details=portalNextAssignmentDetails(nextEntry.assignment);nextHeading.textContent=details.heading;nextDetail.textContent=details.detail;nextDetail.hidden=!details.detail;nextButton.dataset.portalPracticeDrill=details.drill||'';nextButton.classList.toggle('has-drill',!!details.drill);const hint=nextButton.querySelector('small');if(hint)hint.hidden=!details.drill}
  }
- if(['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType)){const current=Number.parseInt(values.block,10);$('[data-portal-block]').forEach(row=>row.hidden=Number.isFinite(current)&&Number(row.dataset.portalBlock)<current)}
+ if(['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType)){const current=Number.parseInt(values.block,10);$$('[data-portal-block]').forEach(row=>row.hidden=Number.isFinite(current)&&Number(row.dataset.portalBlock)<current)}
 }
 function practiceActivityLabel(activity,plan=null){
  const match=String(activity||'').match(/^Drill #(\d+)$/),drill=match?practiceChosenDrills[Number(match[1])-1]:null;
@@ -3184,9 +3184,9 @@ function bindPractice(){
  $('#endPracticeClock')?.addEventListener('click',endPracticeFromScreen);
  $('#activatePlayerPlans')?.addEventListener('click',activatePlayerPlans);
  $('#deactivatePlayerPlans')?.addEventListener('click',deactivatePlayerPlans);
- $('[data-share-practice-guest]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal([...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.sharePracticeGuest))));
- $('[data-share-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamJenkins&&player.name===button.dataset.sharePracticeJenkins))));
- $('[data-text-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamJenkins&&item.name===button.dataset.textPracticeJenkins),url=guestPortalTextUrl(player);if(url)window.location.href=url;else alert('This Team Jenkins practice link is not ready. Activate the practice plan first.')}));
+ $$('[data-share-practice-guest]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal([...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.sharePracticeGuest))));
+ $$('[data-share-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamJenkins&&player.name===button.dataset.sharePracticeJenkins))));
+ $$('[data-text-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamJenkins&&item.name===button.dataset.textPracticeJenkins),url=guestPortalTextUrl(player);if(url)window.location.href=url;else alert('This Team Jenkins practice link is not ready. Activate the practice plan first.')}));
  $('#printPracticeCards')?.addEventListener('click',()=>window.print());
 }
 
