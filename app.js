@@ -2998,6 +2998,7 @@ function persistPracticeDraft(){
 }
 function clearPracticeSession(){
  if(db.activePracticeSession==null)return;
+ if(practicePlan&&db.activePracticeSession?.plan?.portalDraftId&&db.activePracticeSession.plan.portalDraftId!==practicePlan.portalDraftId)return;
  db.activePracticeSession=null;save();
 }
 async function endPracticeDraft(){
