@@ -3044,6 +3044,8 @@ function updatePracticeClock(){
  if(timeLeft)timeLeft.textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
 }
 function beginPracticeClock(){
+ if(practiceClock.finished)return;
+ if(practicePlan&&window.HotBPracticeScheduler?.validate){const errors=window.HotBPracticeScheduler.validate(practicePlan);if(errors.length){alert(`This practice cannot start because it failed its safety checks:\n\n${errors.join('\n\n')}`);return}}
  if(practiceClockTimer)clearInterval(practiceClockTimer);
  // Starting the clock must never discard drills already saved for this exact practice.
  // Recover them from the persisted session if the in-memory list was lost during a render/navigation.
@@ -3072,7 +3074,7 @@ async function finishPracticeClock(automatic=false){
  const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
  if(shouldClearPortals){
   try{await clearActivePlayerPlans();render()}
-  catch(error){alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap Deactivate.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in, then tap Deactivate.')}
+  catch(error){alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap DONE! again.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in through Cloud Backup, then tap DONE! again.')}
  }
  practiceCompletionBusy=false;
  if(!automatic){
