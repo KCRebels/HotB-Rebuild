@@ -2345,8 +2345,11 @@ async function restoreFullBackup(file){
  const payload=JSON.parse(await file.text());
  if(payload?.format!=='HotB Full Backup'||!payload.db||!Array.isArray(payload.db.roster)||!Array.isArray(payload.db.savedGames))throw new Error('This is not a valid HotB full backup file.');
  if(!confirm('Restore this backup? It will replace all HotB information currently saved on this device.'))return;
- db=payload.db;route='home';db.route='home';modal=null;lastRenderedUndoState=null;save();render();
+ db=payload.db;db.route='home';
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+ if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
  alert('HotB backup restored successfully.');
+ location.reload();
 }
 function grade(value,metric){
  const rules={
