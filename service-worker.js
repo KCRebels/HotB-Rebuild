@@ -15,7 +15,7 @@ self.addEventListener('install', event => {
         // A temporarily unavailable file must not prevent the update from activating.
       }
     }));
-    await self.skipWaiting();
+    // Keep the current HotB session under its existing worker until the user chooses UPDATE NOW.
   })());
 });
 
