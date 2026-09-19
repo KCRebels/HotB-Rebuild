@@ -1461,7 +1461,8 @@ function addPitch(result,extra={}){
  save();render();
 }
 function closePA(outcome,extra={}){
- const g=currentGame(), h=currentHitter(g);
+ const g=currentGame();if(!g||(g.battingOrder||[]).length===0)return;
+ const h=currentHitter(g);
  const paPitches=g.pitches.filter(p=>p.pa===g.paNumber&&p.hitter===h.name);
  const firstPitchStrike = HotBEvaluationStats.firstPitchStrikeRate([{pitches:paPitches}],h.name).rate===1;
  const execution=HotBEvaluationStats.executionFromPitches(paPitches,h);
@@ -2105,6 +2106,7 @@ function rosterView(){
 }
 function liveView(){
  const g=currentGame();if(!g)return `<div class="panel"><p>No current game.</p><button class="btn" data-go="new">New Game</button></div>`;
+ if(!(g.battingOrder||[]).length)return `<div class="panel"><h2>Game Recovery</h2><p>This saved game no longer has a valid batting order, so live scoring is disabled to protect its existing game data.</p><button class="btn" data-go="home">Home</button></div>`;
  const h=currentHitter(g);
  const currentPlan=g.plan||planFor(h.name);
  const activePitchType=g.pitchType||'FB';
