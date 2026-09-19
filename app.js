@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-104';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-105';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2252,7 +2252,14 @@ async function clearActivePlayerPlans(){
  const verification=await Promise.all(verifyIds.map(async id=>{
   const snapshot=await portalDoc(id).get();
   if(!snapshot.exists)return true;
-  return !snapshot.data()?.activePractice;
+  const remote=snapshot.data()||{};
+  if(remote.activePractice)return false;
+  // Temporary guest links must be expired at cleanup. Jenkins links are
+  // intentionally reusable and return to waiting instead of expiring.
+  if(guestPortalIds.has(id))return remote.expired===true;
+  const persisted=persistedPlayerPortals.find(entry=>entry.portalId===id);
+  if(persisted?.isTeamJenkins)return remote.portalType==='jenkinsPlayer'&&remote.accessStatus==='waiting'&&remote.expired===false;
+  return true;
  }));
  if(verification.some(cleared=>!cleared))throw new Error('portal-clear-verification-failed');
  db.activePortalPractice=null;
@@ -2432,8 +2439,8 @@ async function activatePlayerPlans(){
   ].filter(Boolean))];
   if(!verifyIds.length)throw new Error('portal-activation-no-targets');
   const verification=await Promise.all(verifyIds.map(async id=>{
-   const snapshot=await portalDoc(id).get();
-   return snapshot.exists&&snapshot.data()?.activePractice?.id===practicePlan.portalDraftId;
+   const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data():null,active=remote?.activePractice;
+   return !!remote&&active?.id===practicePlan.portalDraftId&&active?.activatedAt===activationTimestamp&&active?.clock?.status==='not-started'&&!active?.clock?.startedAt;
   }));
   if(verification.some(ok=>!ok))throw new Error('portal-activation-verification-failed');
   db.activePortalPractice=pendingPortalPractice;persistPracticeSession();save();
