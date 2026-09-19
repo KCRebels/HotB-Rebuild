@@ -823,6 +823,7 @@ const seed = {
  route:'home'
 };
 let db = load();
+if(!portalToken){
 if(!Array.isArray(db.coaches))db.coaches=structuredClone(defaultCoaches);
 if(!Array.isArray(db.gameGroups))db.gameGroups=[];
 if(!Array.isArray(db.practiceHistory))db.practiceHistory=[];
@@ -913,7 +914,12 @@ let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='
 let observationTargetPaId='',observationTargetPlayer='',observationMode='game',observationScope='current',observationPromptInning=0,observationFromInningPrompt=false,observationRecognition=null;
 let observationEditId='',observationEditGameId='';
 if(!db.coachPortal||typeof db.coachPortal!=='object')db.coachPortal={name:'',phone:'',portalId:'',portalPin:'',portalPinHash:''};
-
+}else{
+ // Player portals do not need the coach device's local database migrations.
+ // Keeping portal startup independent prevents a stale/malformed coach localStorage
+ // record from stopping app.js before the portal can render.
+ db=structuredClone(seed);
+}
 const recoveredPracticeSession=!portalToken&&window.HotBPracticeSession?.restore(db.activePracticeSession);
 if(recoveredPracticeSession){
  practicePlan=recoveredPracticeSession.plan;
