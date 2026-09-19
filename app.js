@@ -1965,11 +1965,14 @@ function archiveCompletedPractice(completedAt=new Date()){
  const permanentNames=new Set(db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins).map(player=>player.name)),record={id:practicePlan.portalDraftId,status:'completed',practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees:practicePlan.players.map(player=>player.name).filter(name=>permanentNames.has(name)),drills:practiceAllSelectedDrills().map(drill=>drill.name)};
  db.practiceHistory=window.HotBPracticeHistory.saveCompleted(db.practiceHistory,record);save();
 }
+function jenkinsPortalResetPayload(player,activePractice=null,accessStatus='waiting'){
+ return {portalType:'jenkinsPlayer',playerName:player.name,firstName:practiceFirstName(player.name),phone:player.phone||'',expired:false,accessStatus,activePractice,evaluationData:firebase.firestore.FieldValue.delete(),focus:firebase.firestore.FieldValue.delete(),coachObservations:firebase.firestore.FieldValue.delete(),observations:firebase.firestore.FieldValue.delete(),measurements:firebase.firestore.FieldValue.delete(),history:firebase.firestore.FieldValue.delete(),practiceHistory:firebase.firestore.FieldValue.delete(),recruiting:firebase.firestore.FieldValue.delete(),stats:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+}
 async function clearActivePlayerPlans(){
  if(!cloudUser||!cloudStore)throw new Error('cloud-unavailable');
  const batch=cloudStore.batch();
  db.roster.filter(player=>!player.isTeamJenkins&&player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
- db.roster.filter(player=>player.isTeamJenkins&&player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{portalType:'jenkinsPlayer',activePractice:null,expired:false,accessStatus:'waiting',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+ db.roster.filter(player=>player.isTeamJenkins&&player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),jenkinsPortalResetPayload(player),{merge:true}));
  if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
  [...practiceGuestPlayers(),...practiceGuestCoaches()].filter(guest=>guest.portalId).forEach(guest=>batch.set(portalDoc(guest.portalId),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  await batch.commit();db.activePortalPractice=null;
@@ -1995,7 +1998,7 @@ async function activatePlayerPlans(){
   for(const player of jenkins)if(!player.portalId||!player.portalSecret)await createPendingGuestPortal(player,'jenkinsPlayer');
   const batch=cloudStore.batch();
   db.roster.filter(player=>!player.isTeamJenkins&&player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:attending.has(player.name)?playerPracticePortalPayload(player.name):null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
-  db.roster.filter(player=>player.isTeamJenkins&&player.portalId).forEach(player=>{const isAttending=attending.has(player.name);batch.set(portalDoc(player.portalId),{portalType:'jenkinsPlayer',playerName:player.name,firstName:practiceFirstName(player.name),phone:player.phone||'',expired:false,accessStatus:isAttending?'active':'waiting',activePractice:isAttending?playerPracticePortalPayload(player.name):null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})});
+  db.roster.filter(player=>player.isTeamJenkins&&player.portalId).forEach(player=>{const isAttending=attending.has(player.name);batch.set(portalDoc(player.portalId),jenkinsPortalResetPayload(player,isAttending?playerPracticePortalPayload(player.name):null,isAttending?'active':'waiting'),{merge:true})});
   if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:coachPracticePortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   for(const guest of practiceGuestPlayers().filter(player=>attending.has(player.name))){if(!guest.portalId||!guest.portalSecret)throw new Error(`Guest link missing for ${guest.name}`);batch.set(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice:playerPracticePortalPayload(guest.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
   for(const guest of practiceGuestCoaches()){if(!guest.portalId||!guest.portalSecret)throw new Error(`Guest link missing for ${guest.name}`);const activePractice={...coachPracticePortalPayload(),coachName:guest.name};batch.set(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
