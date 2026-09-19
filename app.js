@@ -1980,8 +1980,10 @@ async function clearActivePlayerPlans(){
  const activeNames=new Set(db.activePortalPractice?.players||[]);
  db.roster.filter(player=>!player.isTeamJenkins&&player.portalId&&activeNames.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  db.roster.filter(player=>player.isTeamJenkins&&player.portalId&&activeNames.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),jenkinsPortalResetPayload(player),{merge:true}));
- if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
- [...practiceGuestPlayers().filter(guest=>activeNames.has(guest.name)),...practiceGuestCoaches()].filter(guest=>guest.portalId).forEach(guest=>batch.set(portalDoc(guest.portalId),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+ const coachPortalId=db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId;
+ if(coachPortalId)batch.set(portalDoc(coachPortalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+ const guestPortalIds=new Set([...(db.activePortalPractice?.guestPlayerPortalIds||[]),...(db.activePortalPractice?.guestCoachPortalIds||[]),...practiceGuestPlayers().filter(guest=>activeNames.has(guest.name)).map(guest=>guest.portalId),...practiceGuestCoaches().map(guest=>guest.portalId)].filter(Boolean));
+ guestPortalIds.forEach(id=>batch.set(portalDoc(id),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  await batch.commit();db.activePortalPractice=null;
  if(db.activePracticeSession&&practicePlan)persistPracticeSession();else save();
 }
