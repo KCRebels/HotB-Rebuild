@@ -33,8 +33,8 @@
   if(!plan||!clock?.running||!clock.startAt)return null;
   const {blockMs,workMs,totalMs}=layout(plan),elapsed=Math.max(0,Number(now)-Number(clock.startAt));
   if(elapsed>=totalMs)return null;
-  const block=Math.floor(elapsed/blockMs)+1,elapsedInBlock=elapsed%blockMs,transition=block<10&&elapsedInBlock>=workMs;
-  const remaining=(transition?blockMs:workMs)-elapsedInBlock;
+  const block=Math.min(10,Math.floor(elapsed/blockMs)+1),elapsedInBlock=elapsed%blockMs,transition=block<10&&elapsedInBlock>=workMs;
+  const remaining=block===10?totalMs-elapsed:(transition?blockMs:workMs)-elapsedInBlock;
   return{block,remaining,transition};
  }
  function pendingTwoMinuteWarning(plan,clock,now=Date.now()){
