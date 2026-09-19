@@ -1128,7 +1128,9 @@ async function pruneDailySnapshots(root){
 async function backupToCloud(automatic=false){
  if(!cloudUser||cloudBusy)return;cloudBusy=true;if(!automatic){cloudMessage='Creating a protected cloud backup…';render()}
  try{
-  const json=JSON.stringify(db),chunks=[];for(let i=0;i<json.length;i+=180000)chunks.push(json.slice(i,i+180000));
+  const backupDb=structuredClone(db),jenkinsNames=new Set((backupDb.roster||[]).filter(player=>player.isTeamJenkins).map(player=>player.name));
+  if(jenkinsNames.size){backupDb.measurements=(backupDb.measurements||[]).filter(item=>!jenkinsNames.has(item.player));backupDb.coachObservations=(backupDb.coachObservations||[]).filter(item=>!jenkinsNames.has(item.playerName));(backupDb.savedGames||[]).forEach(game=>{game.observations=(game.observations||[]).filter(item=>!jenkinsNames.has(item.playerName))});if(backupDb.currentGame)backupDb.currentGame.observations=(backupDb.currentGame.observations||[]).filter(item=>!jenkinsNames.has(item.playerName));(backupDb.practiceHistory||[]).forEach(record=>{if(Array.isArray(record.attendees))record.attendees=record.attendees.filter(name=>!jenkinsNames.has(name))});Object.keys(backupDb.planPreferences||{}).forEach(name=>{if(jenkinsNames.has(name))delete backupDb.planPreferences[name]});Object.keys(backupDb.playerFocusDrillOverrides||{}).forEach(key=>{if([...jenkinsNames].some(name=>key.startsWith(name+'::')))delete backupDb.playerFocusDrillOverrides[key]})}
+  const json=JSON.stringify(backupDb),chunks=[];for(let i=0;i<json.length;i+=180000)chunks.push(json.slice(i,i+180000));
   const root=cloudRoot(),dailyRef=root.collection('snapshots').doc(dailySnapshotId()),[old,daily]=await Promise.all([root.collection('chunks').get(),dailyRef.get()]),batch=cloudStore.batch();old.docs.forEach(doc=>batch.delete(doc.ref));
   chunks.forEach((data,index)=>batch.set(root.collection('chunks').doc(String(index).padStart(4,'0')),{index,data}));
   batch.set(root,{email:CLOUD_EMAIL,chunkCount:chunks.length,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),formatVersion:1});
