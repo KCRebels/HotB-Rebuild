@@ -2736,7 +2736,17 @@ function sanitizeJenkinsData(sourceDb){
  cleanDb.teamJenkinsDataCleanupVersion=5;
  return cleanDb;
 }
-function sanitizedBackupDb(){return sanitizeJenkinsData(db);}
+function sanitizedBackupDb(){
+ const clean=sanitizeJenkinsData(structuredClone(db));
+ // Portal identity and live-practice ownership are device/cloud-runtime state.
+ // A historical backup must never roll portal links, PINs or the active portal
+ // practice reference back to an older generation during Restore.
+ delete clean.activePortalPractice;
+ delete clean.activePracticeSession;
+ if(clean.coachPortal){delete clean.coachPortal.portalId;delete clean.coachPortal.portalPin;delete clean.coachPortal.portalPinHash}
+ (clean.roster||[]).forEach(player=>{delete player.portalId;delete player.portalPin;delete player.portalPinHash;delete player.portalSecret});
+ return clean;
+}
 function exportFullBackup(){
  const payload={format:'HotB Full Backup',version:1,exportedAt:new Date().toISOString(),db:sanitizedBackupDb()};
  const a=document.createElement('a');
