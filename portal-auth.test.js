@@ -220,3 +220,12 @@ assert(app.includes("const clockVerified=await verifyPublishedPracticeClock()"))
 assert(app.includes("if(clockVerified!==true)"));
 assert(app.includes("if(cloudUser&&recoveredPracticeExpired&&practicePlan&&practiceClock.running)"));
 assert(app.includes("await finishPracticeClock(true)"));
+
+const pwa=fs.readFileSync('pwa-update.js','utf8');
+const worker=fs.readFileSync('service-worker.js','utf8');
+assert(pwa.includes("BUILD_VERSION = '2026.09.19.134'"));
+assert(worker.includes("BUILD_VERSION = '2026.09.19.134'"));
+assert(index.includes('pwa-update.js?v=20260919-pwa134'));
+assert(index.includes('app.js?v=20260919-portal174'));
+assert(worker.includes("url.searchParams.has('portal')"));
+assert(worker.includes("fetch(request, {cache: 'no-store'})"));
