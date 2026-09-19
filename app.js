@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-103';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-104';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -918,7 +918,7 @@ let focusDrillReplaceIndex=-1,focusDrillQuery='';
 let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null},practiceClockTimer=null,practiceEndSpeech=Promise.resolve(),portalClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null,playerEvalSyncTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
-let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLibraryReturnView='library';
+let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLoadGeneration=0,portalLibraryReturnView='library';
 let observationTargetPaId='',observationTargetPlayer='',observationMode='game',observationScope='current',observationPromptInning=0,observationFromInningPrompt=false,observationRecognition=null;
 let observationEditId='',observationEditGameId='';
 if(!db.coachPortal||typeof db.coachPortal!=='object')db.coachPortal={name:'',phone:'',portalId:'',portalPin:'',portalPinHash:''};
@@ -1064,7 +1064,7 @@ async function createPendingGuestPortal(guest,type){
 }
 async function loadPlayerPortal(){
  if(!portalToken)return;
- const requestedPortalToken=portalToken;
+ const requestedPortalToken=portalToken,loadGeneration=++portalLoadGeneration;
  if(!cloudAuth||!cloudStore){portalBusy=false;portalData=null;portalMessage='HotB is still connecting to the player portal service. Please wait a moment and reopen this link.';if(route==='portal')render();return;}
  // A reload or token change must never leave the previous portal document
  // listening in the background. That old listener could otherwise repaint
@@ -1098,13 +1098,15 @@ async function loadPlayerPortal(){
    return;
   }
  }
+ if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
  if(guestPortalSecret&&!isCoachPortalUser()){
   try{
    const proof=await portalHash(requestedPortalToken,guestPortalSecret);
+   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
    // Guest/Jenkins links use the same Firestore ownership rules as permanent
    // player portals: claim an unowned link first, then authorize extra devices.
    try{await portalDoc(requestedPortalToken).update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
-   catch(firstError){await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+   catch(firstError){if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
   }catch(error){
    portalBusy=false;portalData=null;portalMessage='This practice link could not be connected. Ask the coach to send a fresh link.';
    if(route==='portal')render();
@@ -1117,7 +1119,7 @@ async function loadPlayerPortal(){
    new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-read-timeout')),8000))
   ]);
   if(snapshot.exists){
-   if(portalToken!==requestedPortalToken)return;
+   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
    const loaded={id:snapshot.id,...snapshot.data()};
    // A portal URL must never display a cloud document whose identity does not
    // match the requested private portal type. This is a final guard against
@@ -1126,7 +1128,7 @@ async function loadPlayerPortal(){
    portalData=loaded;portalMessage='';
    if(portalUnsubscribe)portalUnsubscribe();
    portalUnsubscribe=portalDoc(requestedPortalToken).onSnapshot(next=>{
-    if(portalToken!==requestedPortalToken)return;
+    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
     if(next.exists){
      const nextData={id:next.id,...next.data()};
      if(!nextData.portalType&&!nextData.playerName&&!nextData.coachName){
@@ -1173,7 +1175,7 @@ async function loadPlayerPortal(){
   else if(!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
   else portalMessage='This player portal link is not valid.';
  }finally{
-  if(portalToken===requestedPortalToken){
+  if(loadGeneration===portalLoadGeneration&&portalToken===requestedPortalToken){
    portalBusy=false;
    if(route==='portal')render();
   }
