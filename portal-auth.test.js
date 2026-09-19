@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-132'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-133'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal172'));
+assert(index.includes('app.js?v=20260919-portal173'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -202,3 +202,6 @@ assert(app.includes("could not confirm the finished clock on every portal"));
 
 assert(app.includes("throw new Error('finished-clock-retry-verification-failed')"));
 assert(app.includes("could not verify and remove every player plan"));
+
+assert(app.includes("if(route==='portal'&&portalData?.activePractice){updatePortalPracticeClock();portalClockTimer=setInterval(updatePortalPracticeClock,500)}"));
+assert(!app.includes("portalView==='practice'||portalData.portalType==='coach'||portalData.portalType==='jenkinsPlayer'||portalData.portalType?.startsWith('guest')"));
