@@ -216,6 +216,7 @@
   attendees.forEach(player=>{
    for(let block=0;block<BLOCK_COUNT;block++)if(schedule[player.name][block]===null)schedule[player.name][block]={activity:'Drill'};
   });
+  Object.keys(plan?.schedule||{}).filter(name=>!(plan?.players||[]).some(player=>player.name===name)).forEach(name=>errors.push(`${name} is scheduled but is not in the attending-player list.`));
   for(let block=0;block<BLOCK_COUNT;block++){
    const drillPlayers=attendees.filter(player=>schedule[player.name][block].activity==='Drill');
    if(drillPlayers.length===1&&attendees.length>1){
@@ -291,6 +292,7 @@
    if(plan.liveSessions?.length&&liveHitCount!==expectedLiveHits)errors.push(`${name} must complete live hitting exactly ${expectedLiveHits===1?'once':'twice'}.`);
   });
   (plan?.players||[]).forEach(player=>{
+   if(!Object.prototype.hasOwnProperty.call(plan.schedule||{},player.name)){errors.push(`${player.name} is missing from the practice schedule.`);return}
    const entries=plan.schedule[player.name]||[];
    if(entries.filter(entry=>entry?.activity==='Catch Live').length>2)errors.push(`${player.name} catches more than two live blocks.`);
    if(entries.filter(entry=>entry?.activity==='Catch Warm-Up').length>1)errors.push(`${player.name} catches more than one pitching warm-up.`);
