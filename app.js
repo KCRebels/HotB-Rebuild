@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-93';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-94';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1064,6 +1064,7 @@ async function createPendingGuestPortal(guest,type){
 }
 async function loadPlayerPortal(){
  if(!portalToken)return;
+ const requestedPortalToken=portalToken;
  if(!cloudAuth||!cloudStore){portalBusy=false;portalData=null;portalMessage='HotB is still connecting to the player portal service. Please wait a moment and reopen this link.';if(route==='portal')render();return;}
  // A reload or token change must never leave the previous portal document
  // listening in the background. That old listener could otherwise repaint
@@ -1116,6 +1117,7 @@ async function loadPlayerPortal(){
    new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-read-timeout')),8000))
   ]);
   if(snapshot.exists){
+   if(portalToken!==requestedPortalToken)return;
    const loaded={id:snapshot.id,...snapshot.data()};
    // A portal URL must never display a cloud document whose identity does not
    // match the requested private portal type. This is a final guard against
@@ -1123,7 +1125,8 @@ async function loadPlayerPortal(){
    if(!loaded.portalType&&!loaded.playerName&&!loaded.coachName)throw new Error('portal-identity-missing');
    portalData=loaded;portalMessage='';
    if(portalUnsubscribe)portalUnsubscribe();
-   portalUnsubscribe=portalDoc().onSnapshot(next=>{
+   portalUnsubscribe=portalDoc(requestedPortalToken).onSnapshot(next=>{
+    if(portalToken!==requestedPortalToken)return;
     if(next.exists){
      const nextData={id:next.id,...next.data()};
      if(!nextData.portalType&&!nextData.playerName&&!nextData.coachName){
