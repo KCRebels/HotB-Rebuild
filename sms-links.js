@@ -24,7 +24,7 @@
  function composeSmsUrl({phone='',message='',userAgent=''}={}){
   const recipient=String(phone??'').replace(/[^\d+]/g,'');
   const body=String(message??'').replace(/\r?\n/g,'\r\n');
-  if(!body)return'';
+  if(!recipient||!body)return'';
   const separator=/iPad|iPhone|iPod/.test(String(userAgent||''))?'&':'?';
   return `sms:${recipient}${separator}body=${encodeURIComponent(body)}`;
  }
