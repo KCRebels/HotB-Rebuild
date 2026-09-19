@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-88';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-89';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1284,7 +1284,13 @@ async function resetCoachPortal(){
 }
 async function resetPlayerPortal(player){
  if(!cloudUser||!player?.portalId||!confirm(`Reset ${practiceFirstName(player.name)}’s saved portal device? Her link and PIN will stay the same.`))return;
- try{await portalDoc(player.portalId).update({ownerUid:null,authorizedUids:firebase.firestore.FieldValue.delete(),pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete()});portalMessage=`${practiceFirstName(player.name)} can connect a new device.`}
+ try{
+  const ref=portalDoc(player.portalId);
+  await ref.update({ownerUid:null,authorizedUids:firebase.firestore.FieldValue.delete(),pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete()});
+  const verified=await ref.get(),remote=verified.exists?verified.data():null;
+  if(!remote||remote.ownerUid!=null||Array.isArray(remote.authorizedUids)&&remote.authorizedUids.length)throw new Error('player-portal-reset-verification-failed');
+  portalMessage=`${practiceFirstName(player.name)} can connect a new device.`;
+ }
  catch(error){portalMessage='That portal could not be reset.'}
  render();
 }
