@@ -1768,7 +1768,8 @@ function practiceAvailability(startTime,durationMinutes,arrival,departure){
  const start=practiceTimeMinutes(startTime),blockMinutes=(Number(durationMinutes)||120)/10,end=start+(Number(durationMinutes)||120);
  let arrive=practiceTimeMinutes(arrival||startTime),leave=practiceTimeMinutes(departure||practiceEndValue(startTime,durationMinutes));
  if(arrive<start)arrive+=1440;if(leave<start)leave+=1440;
- return {availableFromBlock:Math.max(0,Math.min(10,Math.ceil((arrive-start)/blockMinutes-1e-9))),availableUntilBlock:Math.max(0,Math.min(10,Math.floor((Math.min(leave,end)-start)/blockMinutes+1e-9)))};
+ const availableFromBlock=Math.max(0,Math.min(10,Math.ceil((arrive-start)/blockMinutes-1e-9))),availableUntilBlock=Math.max(0,Math.min(10,Math.floor((Math.min(leave,end)-start)/blockMinutes+1e-9)));
+ return {availableFromBlock,availableUntilBlock:Math.max(availableFromBlock,availableUntilBlock)};
 }
 function practicePlayerModel(player,accommodation=null,startTime='18:00',durationMinutes=120){
  const positions=positionTokens(player);
