@@ -2007,7 +2007,7 @@ function practiceClockPortalPayload(){
 }
 function playerPracticePortalPayload(name,activatedAt=null){
  const schedule=practicePlan.schedule[name]||[];
- const player=practicePlayerByName(name),portalSchedule=schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:practiceEntryText(entry,practicePlan,index)}));
+ const player=practicePlayerByName(name),recoveredSchedule=practicePlan.recoveredPlayerSchedules?.[name],portalSchedule=schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:recoveredSchedule?.[index]?.assignment||practiceEntryText(entry,practicePlan,index)}));
  const assigned=new Map();
  portalSchedule.forEach(entry=>{const drill=portalAssignmentDrillName(entry.assignment);if(!drill||assigned.has(drill))return;const station=String(entry.assignment).match(/^Drill Station (\d+)/i);assigned.set(drill,station?`Drill Station ${station[1]}`:/^Machine\b/i.test(entry.assignment)?'Machine':/^Front Toss\b/i.test(entry.assignment)?'Front Toss':'Assigned Drill')});
  const drillAssignments=[...assigned].map(([name,location])=>({name,location})),assignedDrills=drillAssignments.map(item=>item.name);
