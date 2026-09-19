@@ -1305,6 +1305,7 @@ function renamePlayerReferences(oldName,newName){
 function syncRosterNames(){
  $$('.roster-name').forEach(input=>{const player=db.roster[+input.dataset.i];if(!player)return;const next=input.value.trim()||'Unnamed Player',previous=player.name;if(next!==previous)renamePlayerReferences(previous,next);player.name=next});
 }
+function competitionRoster(){return db.roster.filter(player=>!player.isTeamJenkins)}
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
 const undoViewKeys=['historyTab','allView','zoneScope','zoneFilter','previewNext','firstPitchView','showAi','pendingZone','pitchType'];
 function gameWithoutUndoViews(game){
@@ -2002,7 +2003,7 @@ function practicePage(){
  </div>`;
 }
 function newGameView(){
- const opts=db.roster.map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('');
+ const opts=competitionRoster().map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('');
  const teams=[...new Set(db.teams||[])].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
  const pitchers=[...(db.pitchers||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'}));
  const rows=Array.from({length:13},(_,i)=>`<div class="batting-row"><div class="batting-num">${i+1}</div>
@@ -2308,7 +2309,7 @@ function reportModal(){
  <div class="report-tabs"><button class="btn ${reportMode==='current'?'black':''}" data-rmode="current">Current</button><button class="btn ${reportMode==='saved'?'black':''}" data-rmode="saved">All Games</button><button class="btn gold" id="exportReport">Export</button><button class="btn" data-close>Close</button></div>
  <div class="panel report-detail" style="margin:14px 0 0">
  ${reportMode!=='current'?dateFilterControls('report'):''}
- <div class="report-filter-grid"><label>Player<select class="input" id="reportHitter"><option>All Hitters</option>${db.roster.map(r=>`<option ${reportFilterHitter===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label><label>Opponent<select class="input" id="reportOpponent"><option>All Opponents</option>${opponents.map(name=>`<option ${reportOpponent===name?'selected':''}>${esc(name)}</option>`).join('')}</select></label></div>
+ <div class="report-filter-grid"><label>Player<select class="input" id="reportHitter"><option>All Hitters</option>${competitionRoster().map(r=>`<option ${reportFilterHitter===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label><label>Opponent<select class="input" id="reportOpponent"><option>All Opponents</option>${opponents.map(name=>`<option ${reportOpponent===name?'selected':''}>${esc(name)}</option>`).join('')}</select></label></div>
  ${reportGamesButton(games)}
  <div class="report-stat-grid">${[['PA',s.PA],['AVG',round3(s.AVG)],['OBP',round3(s.OBP)],['SLG',round3(s.SLG)],['OPS',round3(s.OPS)],['RBI',s.RBI],['HHB',s.HHB],['WEAK',s.WEAK]].map(([k,v])=>`<div class="report-stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
  <h3 class="count-performance-title"><b>COUNT PERFORMANCE</b><span class="count-key hit">H</span><span class="count-separator">|</span><span class="count-key out">H4O</span><span class="count-separator">|</span><span class="count-key strikeout">K</span><span class="count-separator">|</span><span class="count-key average">AVE</span></h3>
@@ -2406,7 +2407,7 @@ function evalView(){
  const evalDb={savedGames:evalGames,currentGame:null,roster:db.roster};
  const snapshot=player?HotBEvaluationStats.evaluationSnapshot(evalDb,player.name):null;
  const teamStats=HotBEvaluationStats.statsForPAs(teamPas),metrics=player?HotBEvaluationStats.hotBMetrics(snapshot.pas,teamPas):null,s=player?snapshot.stats:teamStats;
- const playerTotals=db.roster.map(r=>HotBEvaluationStats.statsForPAs(teamPas.filter(p=>p.hitter===r.name))).filter(x=>x.PA>0);
+ const playerTotals=competitionRoster().map(r=>HotBEvaluationStats.statsForPAs(teamPas.filter(p=>p.hitter===r.name))).filter(x=>x.PA>0);
  const avgPlayerRp=playerTotals.length?playerTotals.reduce((sum,x)=>sum+x.rp,0)/playerTotals.length:0;
  const hotb=metrics?.hotB??null;
  const signed=(n,digits=1)=>`${n>0?'+':''}${n.toFixed(digits)}`;
@@ -2425,7 +2426,7 @@ function evalView(){
   return `<div class="perf ${rating}"><b>${value}</b><div class="perf-label-row">${guide?`<button class="perf-metric" data-guide="${label}">${label}</button>`:`<span class="perf-metric">${label}</span>`}<button class="perf-all" data-hitting-ranking="${statKey}">ALL</button></div></div>`;
  };
  return `<div class="eval-head"><button class="btn eval-nav" ${evaluationReadOnly?'id="portalBack"':`data-go="${currentGame()?'live':'home'}"`}>${evaluationReadOnly?'Portal':currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><div class="eval-contact-actions" aria-hidden="true"></div></div>
- <label class="eval-player-filter"><span>Player</span><select class="player-select" id="evalSelect"><option>Team</option>${db.roster.map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label>
+ <label class="eval-player-filter"><span>Player</span><select class="player-select" id="evalSelect"><option>Team</option>${competitionRoster().map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label>
  ${dateFilterControls('eval')}
  ${player?`<div class="player-card player-profile ${practiceRateLabel?'has-practice-rate':''}"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div>${practiceRateLabel?`<div class="player-practice-rate">${practiceRateLabel}</div>`:''}</div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
@@ -2529,7 +2530,7 @@ function hittingRankingModal(metric){
   hhbPct:{label:'HHB%',key:'hhbPct',format:pct1},qabPct:{label:'QAB%',key:'qabPct',format:pct1}
  };
  const definition=definitions[metric]||definitions.AVG,teamPas=filteredPAs();
- const rows=db.roster.map(player=>{const stats=HotBEvaluationStats.statsForPAs(teamPas.filter(pa=>pa.hitter===player.name));return {player,stats,value:stats.PA?stats[definition.key]:null}}).sort((a,b)=>{
+ const rows=competitionRoster().map(player=>{const stats=HotBEvaluationStats.statsForPAs(teamPas.filter(pa=>pa.hitter===player.name));return {player,stats,value:stats.PA?stats[definition.key]:null}}).sort((a,b)=>{
   if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
   if(a.value===null)return 1;if(b.value===null)return-1;
   return (definition.lowerIsBetter?a.value-b.value:b.value-a.value)||a.player.name.localeCompare(b.player.name);
@@ -2604,7 +2605,7 @@ function pitcherChangeModal(){
 function hitterChangeModal(){
  const g=currentGame(), outgoing=currentHitter(g);
  const inLineup=new Set(g.battingOrder);
- const available=db.roster.filter(r=>!inLineup.has(r.name));
+ const available=competitionRoster().filter(r=>!inLineup.has(r.name));
  return `<div class="modal-backdrop"><div class="modal substitution-modal"><div class="modal-header"><h2>Substitute Hitter</h2><button class="btn" data-close>Cancel</button></div>
   <p class="substitution-note">Choose who will bat for <b>${esc(outgoing.name)}</b> in this lineup spot.</p>
   <div class="substitute-list">${available.length?available.map(r=>`<button class="substitute-player" data-sub-hitter="${esc(r.name)}"><span>${esc(r.name)}</span><strong>${esc(r.side)}</strong></button>`).join(""):`<div class="substitution-empty">Every rostered player is already in the lineup.</div>`}</div>
@@ -3184,7 +3185,7 @@ function bindNew(){
   sels.forEach((s,i)=>{
    const current=selections[i];
    const used=new Set(selections.filter((v,j)=>j!==i&&v));
-   const available=db.roster.filter(r=>!used.has(r.name));
+   const available=competitionRoster().filter(r=>!used.has(r.name));
    s.innerHTML=`<option value="">Select hitter</option>${available.map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('')}`;
    s.value=current;
   });
