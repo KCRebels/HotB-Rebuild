@@ -6,9 +6,9 @@
  function clone(value){return value==null?value:JSON.parse(JSON.stringify(value))}
  function create({plan,chosenDrills=[],draftDrills=[],drillPickerOpen=false,equipmentSetupOpen=false,setupState={},clock={},portalState=null}={}){
   if(!plan||!plan.portalDraftId)return null;
-  return{version:4,stage:equipmentSetupOpen?'equipment':'schedule',savedAt:new Date().toISOString(),plan:clone(plan),chosenDrills:clone(chosenDrills),draftDrills:clone(draftDrills),drillPickerOpen:!!drillPickerOpen,equipmentSetupOpen:!!equipmentSetupOpen,setupState:clone(setupState),portalState:clone(portalState),clock:{running:!!clock.running,finished:!!clock.finished,endAnnounced:!!clock.endAnnounced,startAt:Number(clock.startAt)||0,lastBlock:Number(clock.lastBlock)||1,lastTwoMinuteBlock:Number(clock.lastTwoMinuteBlock)||0,lastTransitionBlock:Number(clock.lastTransitionBlock)||0}};
+  return{version:4,stage:equipmentSetupOpen?'equipment':'schedule',savedAt:new Date().toISOString(),plan:clone(plan),chosenDrills:clone(chosenDrills),draftDrills:clone(draftDrills),drillPickerOpen:!!drillPickerOpen,equipmentSetupOpen:!!equipmentSetupOpen,setupState:clone(setupState),portalState:clone(portalState),clock:{running:!!clock.running,finished:!!clock.finished,endAnnounced:!!clock.endAnnounced,startAt:Number(clock.startAt)||0,lastBlock:Number(clock.lastBlock)||1,lastTwoMinuteBlock:Number(clock.lastTwoMinuteBlock)||0,lastTransitionBlock:Number(clock.lastTransitionBlock)||0,completedAt:clock.completedAt||null}};
  }
- function createDraft({setupState={}}={}){return{version:4,stage:'setup',savedAt:new Date().toISOString(),plan:null,chosenDrills:[],setupState:clone(setupState),portalState:null,clock:{running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0}}}
+ function createDraft({setupState={}}={}){return{version:4,stage:'setup',savedAt:new Date().toISOString(),plan:null,chosenDrills:[],setupState:clone(setupState),portalState:null,clock:{running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null}}}
  function restore(saved,now=Date.now()){
   if(!saved||(!saved?.plan?.portalDraftId&&saved.stage!=='setup'))return null;
   const session=clone(saved),clock=session.clock||{};
@@ -18,7 +18,7 @@
   session.equipmentSetupOpen=!!session.equipmentSetupOpen||session.stage==='equipment';
   session.setupState=session.setupState&&typeof session.setupState==='object'?session.setupState:{};
   session.portalState=session.portalState&&typeof session.portalState==='object'?session.portalState:null;
-  session.clock={running:!!clock.running,finished:!!clock.finished,endAnnounced:!!clock.endAnnounced,startAt:Number(clock.startAt)||0,lastBlock:Number(clock.lastBlock)||1,lastTwoMinuteBlock:Number(clock.lastTwoMinuteBlock)||0,lastTransitionBlock:Number(clock.lastTransitionBlock)||0};
+  session.clock={running:!!clock.running,finished:!!clock.finished,endAnnounced:!!clock.endAnnounced,startAt:Number(clock.startAt)||0,lastBlock:Number(clock.lastBlock)||1,lastTwoMinuteBlock:Number(clock.lastTwoMinuteBlock)||0,lastTransitionBlock:Number(clock.lastTransitionBlock)||0,completedAt:clock.completedAt||null};
   if(session.plan&&session.clock.running&&session.clock.startAt){
    const blockMs=(Number(session.plan.blockMinutes)||12)*60000,elapsed=Math.max(0,Number(now)-session.clock.startAt);
    session.clock.lastBlock=Math.max(1,Math.min(10,Math.floor(elapsed/blockMs)+1));
