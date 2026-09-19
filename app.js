@@ -2077,9 +2077,14 @@ async function recoverOrphanedActivePractice(){
  if(practicePlan)return;
  if(!db.activePortalPractice?.id){alert('HotB no longer has the active practice reference. Nothing was changed.');return}
  if(!cloudStore){
-  if(!window.firebase&&window.HotBFirebaseReady){try{await window.HotBFirebaseReady}catch(_){}}
-  if(window.firebase){try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);cloudAuth=firebase.auth();cloudStore=firebase.firestore();cloudInitStarted=true}catch(error){}}
-  if(!cloudStore){alert('HotB could not start the portal connection. Nothing was changed.');return}
+  let loaderError='';
+  if(!window.firebase&&window.HotBFirebaseReady){try{await window.HotBFirebaseReady}catch(error){loaderError=String(error?.message||error||'loader failed')}}
+  let initError='';
+  if(window.firebase){try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);cloudAuth=firebase.auth();cloudStore=firebase.firestore();cloudInitStarted=true}catch(error){initError=String(error?.code||error?.message||error||'initialization failed')}}
+  if(!cloudStore){
+   const detail=!window.firebase?(loaderError||'Firebase SDK unavailable'):(initError||'Firebase Firestore unavailable');
+   alert(`HotB could not start the portal connection (${detail}). Nothing was changed.`);return
+  }
  }
  if(!cloudUser){
   let current=cloudAuth?.currentUser;
