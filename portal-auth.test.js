@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-131'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-132'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal171'));
+assert(index.includes('app.js?v=20260919-portal172'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -199,3 +199,6 @@ assert(app.includes("persisted?.isTeamJenkins||rosterPlayer?.isTeamJenkins"));
 
 assert(app.includes("const finishedSynced=await syncPlayerPracticeClock()"));
 assert(app.includes("could not confirm the finished clock on every portal"));
+
+assert(app.includes("throw new Error('finished-clock-retry-verification-failed')"));
+assert(app.includes("could not verify and remove every player plan"));
