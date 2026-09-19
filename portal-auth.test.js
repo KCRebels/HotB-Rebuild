@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-121'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-122'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal161'));
+assert(index.includes('app.js?v=20260919-portal162'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -161,3 +161,6 @@ assert(app.includes("nextPlayerType&&!nextData.playerName||nextCoachType&&!nextD
 
 assert(app.includes("const practiceOnly=['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType),allowed=!practiceOnly"));
 assert(app.includes("!(portalData?.activePractice?.drills||[]).includes(drill)"));
+
+assert(app.includes("drillAllowed=!!details.drill&&(!practiceOnly||(portalData?.activePractice?.drills||[]).includes(details.drill))"));
+assert(app.includes("nextButton.dataset.portalPracticeDrill=drillAllowed?details.drill:''"));
