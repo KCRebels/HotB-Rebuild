@@ -1085,7 +1085,7 @@ async function setupCoachPortal(){
   if(!db.coachPortal.portalPin)db.coachPortal.portalPin=newPortalPin();
   db.coachPortal.name=name;db.coachPortal.phone=phone;db.coachPortal.portalPinHash=await portalHash(db.coachPortal.portalId,db.coachPortal.portalPin);
   const ref=portalDoc(db.coachPortal.portalId),existing=await ref.get();
-  const activePractice=db.activePortalPractice?.id===practicePlan?.portalDraftId?coachPracticePortalPayload(activationTimestamp):null;
+  const activePractice=db.activePortalPractice?.id===practicePlan?.portalDraftId?coachPracticePortalPayload(db.activePortalPractice?.activatedAt||null):null;
   await ref.set({portalType:'coach',coachName:name,firstName:practiceFirstName(name),pinHash:db.coachPortal.portalPinHash,...(!existing.exists?{ownerUid:null}:{}),activePractice,evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   save();portalMessage='The private coach link and PIN are ready.';
  }catch(error){console.error('Coach portal refresh failed',error);portalMessage=`The coach portal could not be refreshed${error?.message?`: ${error.message}`:'. Check the internet connection and try again.'}`}
@@ -2026,7 +2026,7 @@ async function activatePlayerPlans(){
  const button=$('#activatePlayerPlans');if(button){button.disabled=true;button.textContent='Activating…'}
  try{
   const activationTimestamp=new Date().toISOString();
-  for(const player of jenkinsif(!player.portalId||!player.portalSecret)await createPendingGuestPortal(player,'jenkinsPlayer');
+  for(const player of jenkins)if(!player.portalId||!player.portalSecret)await createPendingGuestPortal(player,'jenkinsPlayer');
   const batch=cloudStore.batch();
   db.roster.filter(player=>!player.isTeamJenkins&&player.portalId&&attending.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:{...playerPracticePortalPayload(player.name,activationTimestamp),clock:{status:'not-started',startedAt:null,endedAt:null}},updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
   db.roster.filter(player=>player.isTeamJenkins&&player.portalId&&attending.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),jenkinsPortalResetPayload(player,playerPracticePortalPayload(player.name,activationTimestamp),'active'),{merge:true}));
