@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-114';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-115';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -977,10 +977,16 @@ async function initCloud(){
     portalAuthUser=user||null;
    }
    if(cloudUser){await loadCloudStatus();if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();syncPlayerEvaluationPortals().catch(()=>{})}
-   if(recoveredPracticeExpired&&practicePlan&&practiceClock.running){
-    // Do not merely mark an expired restored clock finished locally. The normal
-    // completion path must archive it and clear/verify every published portal.
+   if(cloudUser&&recoveredPracticeExpired&&practicePlan&&practiceClock.running){
+    // Do not merely mark an expired restored clock finished locally. Wait for the
+    // authenticated coach session so the normal completion path can actually
+    // clear and verify every published portal.
     await finishPracticeClock(true);
+   }else if(cloudUser&&!portalToken&&practicePlan&&practiceClock.running&&!recoveredPracticeExpired){
+    // Startup restores the local practice before Firebase auth is ready. Resume
+    // only after the coach cloud session exists; otherwise an early verification
+    // failure can pause a perfectly healthy live practice.
+    await resumeRecoveredPracticeClock();
    }
    if(portalToken)await loadPlayerPortal();
    if(route==='home'||route==='portal')render();
@@ -4275,5 +4281,6 @@ if(portalToken){
  window.addEventListener('pagehide',()=>clearTimeout(portalStartupGuard),{once:true});
 }
 initCloud();
-if(!recoveredPracticeExpired)resumeRecoveredPracticeClock();
+// A restored live practice is resumed from the authenticated cloud callback.
+// Do not verify/pause it here before Firebase has restored the coach session.
 })();
