@@ -1,7 +1,7 @@
 (() => {
   const DBKEY='hotbRebuildDbV1';
   const CALC_ONLY=!!window.__HOTB_CALC_ONLY__;
-  const VALUES={GOOD:1,MINOR:.5,POOR:0};
+  const VALUES={GOOD:1,MINOR:.5,POOR:null};
   let overridePitchId='';
   function readDb(){if(window.__HOTB_PORTAL_EVAL_DB__)return window.__HOTB_PORTAL_EVAL_DB__;try{return JSON.parse(localStorage.getItem(typeof DBKEY!=='undefined'?DBKEY:'hotbRebuildDbV1')||'{}')}catch{return {}}}
   function inPlan(pitch,player){return window.HotBEvaluationStats.pitchExecutesPlan(pitch,{...player,side:pitch?.hitterStyle||player?.side})}
