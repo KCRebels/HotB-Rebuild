@@ -1943,7 +1943,7 @@ function coachPracticePortalPayload(){
 }
 function archiveCompletedPractice(completedAt=new Date()){
  if(!practicePlan||!window.HotBPracticeHistory)return;
- const permanentNames=new Set(db.roster.filter(player=>!player.isGuest).map(player=>player.name)),record={id:practicePlan.portalDraftId,status:'completed',practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees:practicePlan.players.map(player=>player.name).filter(name=>permanentNames.has(name)),drills:practiceAllSelectedDrills().map(drill=>drill.name)};
+ const permanentNames=new Set(db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins).map(player=>player.name)),record={id:practicePlan.portalDraftId,status:'completed',practiceDate:practiceHistoryDateValue(completedAt),completedAt:completedAt.toISOString(),attendees:practicePlan.players.map(player=>player.name).filter(name=>permanentNames.has(name)),drills:practiceAllSelectedDrills().map(drill=>drill.name)};
  db.practiceHistory=window.HotBPracticeHistory.saveCompleted(db.practiceHistory,record);save();
 }
 async function clearActivePlayerPlans(){
