@@ -1127,6 +1127,3 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 /* HotB mobile: prevent accidental Safari double-tap zoom while preserving normal page scrolling. */
 html,body,button,a,[role="button"]{touch-action:manipulation}
 
-/* 2026-09-18: Practice Adjust time controls must remain directly editable on desktop and mobile. */
-.practice-accommodation-time-shell input[type=time]{opacity:1!important;color:#182233!important;background:#fff!important;padding:8px 10px!important;cursor:pointer!important;color-scheme:light}
-.practice-accommodation-time-display{display:none!important}
