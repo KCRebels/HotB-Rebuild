@@ -21,7 +21,7 @@
   const playerName=typeof player==='string'?player:player?.name;
   if(player&&typeof player==='object'&&player.hittingPracticeAttendanceEligible===false)return{percentage:null,eligible:false};
   if(!playerName)return{percentage:null,eligible:false};
-  const completed=records(history).filter(item=>!(item.excludedAttendancePlayers||[]).includes(playerName));
+  const completed=records(history).filter(item=>!(item.excludedAttendancePlayers||[]).includes(playerName)&&((item.rosterPlayers||[]).length===0||(item.rosterPlayers||[]).includes(playerName)));
   const attended=completed.filter(item=>(item.attendees||[]).includes(playerName)).length;
   return{percentage:completed.length?Math.round(attended/completed.length*100):null,eligible:true};
  }
