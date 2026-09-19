@@ -1958,6 +1958,7 @@ function practiceSetup(){
  <button class="btn black block practice-generate" id="generatePractice">Build Practice Schedule</button></div>`;
 }
 function practiceCoachView(plan){
+ if(Array.isArray(plan.recoveredCoachSchedule)&&plan.recoveredCoachSchedule.length)return `<section class="practice-coach no-print"><h2>Coach View</h2>${plan.recoveredCoachSchedule.map((entry,index)=>`<article class="practice-block"><header><b>Block ${entry.block||index+1}</b><span>${esc(entry.time||'')}</span></header><div><p><strong>${esc(entry.assignment||'Equipment / Float')}</strong></p></div></article>`).join('')}</section>`;
  return `<section class="practice-coach no-print"><h2>Coach View</h2>${plan.blocks.map(block=>`<article class="practice-block"><header><b>Block ${block.block}</b><span>${esc(block.start)}–${esc(block.end)}</span></header><div>${Object.entries(block.assignments).map(([activity,names])=>`<p><strong>${esc(practiceCoachLabel(activity,plan,block.block-1))}</strong><span>${esc(names.map(practiceFirstName).join(', '))}</span></p>`).join('')}</div></article>`).join('')}</section>`;
 }
 function practicePlayerCards(plan,hidden=false){
@@ -2094,7 +2095,7 @@ async function recoverOrphanedActivePractice(){
   const blocks=Array.isArray(remote.schedule)&&remote.schedule.length===10
    ?remote.schedule.map((block,index)=>({block:Number(block.block)||index+1,start:block.start||times[index].start,end:block.end||times[index].end,assignments:block.assignments||{}}))
    :Array.from({length:10},(_,index)=>{const assignments={};Object.entries(schedule).forEach(([name,entries])=>{const entry=entries[index];if(!entry)return;const key=entry.partner?`${entry.activity} — ${entry.partner}`:entry.activity;(assignments[key]||(assignments[key]=[])).push(name)});return {block:index+1,start:times[index].start,end:times[index].end,assignments}});
-  practicePlan={portalDraftId:remote.id,startTime,durationMinutes,blockMinutes,times,players,schedule,blocks,drillStations,liveSessions,machineFocus,frontTossFocus,warnings:['Recovered from the activated coach portal without rebuilding the scheduler.']};
+  practicePlan={portalDraftId:remote.id,startTime,durationMinutes,blockMinutes,times,players,schedule,blocks,drillStations,liveSessions,machineFocus,frontTossFocus,recoveredCoachSchedule:Array.isArray(remote.schedule)?structuredClone(remote.schedule):null,warnings:['Recovered from the activated coach portal without rebuilding the scheduler.']};
   practiceChosenDrills=chosenDrills;practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceSection='builder';
   const clock=remote.clock||{},startedAt=Date.parse(clock.startedAt||'');
   practiceClock={running:clock.status==='running'&&Number.isFinite(startedAt),finished:clock.status==='finished',endAnnounced:false,startAt:Number.isFinite(startedAt)?startedAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:clock.endedAt||null};
