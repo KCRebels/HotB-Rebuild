@@ -32,7 +32,18 @@
   if('caches' in window)caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('hotb-app-')).map(key=>caches.delete(key)))).catch(()=>{});
 }catch(_){}})();
 </script>
-<script src="pwa-update.js?v=20260919-pwa24"></script>
+<script src="pwa-update.js?v=20260919-pwa24"></script><script>
+(()=>{try{
+ if(!new URLSearchParams(location.search).has('portal'))return;
+ setTimeout(()=>{
+  const app=document.getElementById('app');
+  if(!app)return;
+  if(app.textContent.includes('Opening Your Portal')){
+   app.innerHTML='<div class="app portal-app"><main class="portal-page"><section class="portal-welcome"><span>PRIVATE ACCESS</span><h2>Portal Startup Error</h2><p>The player portal app did not start. Error code: P23-SCRIPT</p></section></main></div>';
+  }
+ },10000);
+}catch(_){}})();
+</script>
 <script>if(!new URLSearchParams(location.search).has("portal"))document.write('<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"><\\/script>')</script><script>
 (function(){
  const sources=[
