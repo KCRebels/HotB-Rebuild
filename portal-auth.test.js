@@ -209,3 +209,14 @@ assert(!app.includes("portalView==='practice'||portalData.portalType==='coach'||
 assert(app.includes("if(portalToken&&r!=='portal')"));
 assert(app.includes("portalLoadGeneration++;"));
 assert(app.includes("if(r==='portal'&&portalToken&&!portalUnsubscribe&&!portalBusy)loadPlayerPortal()"));
+
+// iPhone/PWA suspend-resume guards
+
+assert(app.includes("document.addEventListener('visibilitychange'"));
+assert(app.includes("if(document.visibilityState==='hidden'&&practicePlan)persistPracticeSession()"));
+assert(app.includes("if(document.visibilityState==='visible'&&practicePlan&&practiceClock.running)resumeRecoveredPracticeClock()"));
+assert(app.includes("window.addEventListener('pagehide',()=>{if(practicePlan)persistPracticeSession()})"));
+assert(app.includes("const clockVerified=await verifyPublishedPracticeClock()"));
+assert(app.includes("if(clockVerified!==true)"));
+assert(app.includes("if(cloudUser&&recoveredPracticeExpired&&practicePlan&&practiceClock.running)"));
+assert(app.includes("await finishPracticeClock(true)"));
