@@ -1270,7 +1270,7 @@ async function backupToCloud(automatic=false){
 async function restoreFromCloud(){
  if(!cloudUser||cloudBusy||!confirm('Replace the data on this device with the latest cloud backup? Your current device data will be replaced.'))return;
  cloudBusy=true;cloudMessage='Downloading cloud backup…';render();
- try{const root=cloudRoot(),meta=await root.get();if(!meta.exists)throw new Error('No backup');const snap=await root.collection('chunks').orderBy('index').get(),restored=JSON.parse(snap.docs.map(doc=>doc.data().data).join(''));if(!Array.isArray(restored.roster)||!Array.isArray(restored.savedGames))throw new Error('Invalid backup');const cleanRestored=sanitizeJenkinsData(restored);localStorage.setItem(DBKEY,JSON.stringify(cleanRestored));localStorage.setItem(CLOUD_ENABLED_KEY,'true');location.reload()}
+ try{const root=cloudRoot(),meta=await root.get();if(!meta.exists)throw new Error('No backup');const snap=await root.collection('chunks').orderBy('index').get(),restored=JSON.parse(snap.docs.map(doc=>doc.data().data).join(''));if(!Array.isArray(restored.roster)||!Array.isArray(restored.savedGames))throw new Error('Invalid backup');const cleanRestored=stripRestoredPortalState(restored);localStorage.setItem(DBKEY,JSON.stringify(cleanRestored));localStorage.setItem(CLOUD_ENABLED_KEY,'true');location.reload()}
  catch(error){cloudBusy=false;cloudMessage='No usable cloud backup was found. Your device data was not changed.';render()}
 }
 async function cloudPasswordAuth(createAccount=false){
@@ -2754,11 +2754,18 @@ function exportFullBackup(){
  a.download=`HotB_Full_Backup_${new Date().toISOString().slice(0,10)}.json`;
  a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
+function stripRestoredPortalState(restored){
+ const clean=sanitizeJenkinsData(structuredClone(restored));
+ delete clean.activePortalPractice;delete clean.activePracticeSession;
+ if(clean.coachPortal){delete clean.coachPortal.portalId;delete clean.coachPortal.portalPin;delete clean.coachPortal.portalPinHash}
+ (clean.roster||[]).forEach(player=>{delete player.portalId;delete player.portalPin;delete player.portalPinHash;delete player.portalSecret});
+ return clean;
+}
 async function restoreFullBackup(file){
  const payload=JSON.parse(await file.text());
  if(payload?.format!=='HotB Full Backup'||!payload.db||!Array.isArray(payload.db.roster)||!Array.isArray(payload.db.savedGames))throw new Error('This is not a valid HotB full backup file.');
  if(!confirm('Restore this backup? It will replace all HotB information currently saved on this device.'))return;
- db=sanitizeJenkinsData(payload.db);db.route='home';
+ db=stripRestoredPortalState(payload.db);db.route='home';
  localStorage.setItem(DBKEY,JSON.stringify(db));
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
  alert('HotB backup restored successfully.');
