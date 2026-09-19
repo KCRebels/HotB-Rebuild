@@ -2083,6 +2083,8 @@ async function recoverOrphanedActivePractice(){
   if(!remote||remote.id!==state.id)throw new Error('practice-mismatch');
   if(!Array.isArray(remote.players)||!remote.players.length||!Number.isFinite(Number(remote.blockMinutes))||Number(remote.blockMinutes)<=0)throw new Error('practice-payload-incomplete');
   const publishedIds=new Set(remote.players.map(player=>String(player.name||'').trim()).filter(Boolean));if(!publishedIds.size)throw new Error('practice-payload-incomplete');
+  for(const player of remote.players){if(!Array.isArray(player.schedule)||player.schedule.length!==10)throw new Error('practice-schedule-incomplete');for(let index=0;index<10;index++){const entry=player.schedule[index];if(Number(entry?.block)!==index+1||!String(entry?.time||'').trim()||!String(entry?.assignment||'').trim())throw new Error('practice-schedule-incomplete')}}
+  if(!Array.isArray(remote.schedule)||remote.schedule.length!==10)throw new Error('coach-schedule-incomplete');
   const blockMinutes=Number(remote.blockMinutes)||12,durationMinutes=blockMinutes*10;
   const firstTime=String(remote.players?.[0]?.schedule?.[0]?.time||'').split('–')[0].trim();
   const startLabel=firstTime||remote.startLabel||'6:00p';
