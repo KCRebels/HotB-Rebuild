@@ -33,7 +33,7 @@
   if('caches' in window)caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('hotb-app-')).map(key=>caches.delete(key)))).catch(()=>{});
 }catch(_){}})();
 </script>
-<script src="pwa-update.js?v=20260919-pwa130"></script><script>
+<script src="pwa-update.js?v=20260919-pwa131"></script><script>
 (()=>{try{
  if(!new URLSearchParams(location.search).has('portal'))return;
  setTimeout(()=>{
@@ -77,9 +77,9 @@ if(!new URLSearchParams(location.search).has('portal')){
 </script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="practice-equipment.js?v=20260910-equipmentsetup170"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="coach-practice.js?v=20260904-focus133"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="hitting-analysis.js?v=20260902-approach118"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="evaluation-stats.js?v=20260918-shared27"><\\/script>')</script><script src="drill-library.js?v=20260904-restored133"></script><script src="sms-links.js?v=20260919-smslinks180"></script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="coach-observations.js?v=20260908-observationedit154"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="game-data-cleanup.js?v=20260907-gameaudit141"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="gamechanger-pitching-import.js?v=20260914-pitchupload208"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has("portal"))document.write('<script src="decision-quality.js?v=20260918-calc9"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has("portal"))document.write('<script src="at-bat-approach.js?v=20260918-calc8"><\\/script>')</script><script>
 (()=>{try{
  const isPortal=new URLSearchParams(location.search).has('portal');
- if(!isPortal){document.write('<script src="app.js?v=20260919-portal170"><\\/script>');return;}
+ if(!isPortal){document.write('<script src="app.js?v=20260919-portal171"><\\/script>');return;}
  const s=document.createElement('script');
- s.src='app.js?v=20260919-portal170';
+ s.src='app.js?v=20260919-portal171';
  s.onload=()=>{window.__HOTB_APP_SCRIPT_LOADED__=true};
  s.onerror=()=>{
   const app=document.getElementById('app');
