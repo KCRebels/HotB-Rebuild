@@ -9,6 +9,7 @@
  function blockTimes(startTime='18:00',durationMinutes=120){
   const [hour,minute]=String(startTime||'18:00').split(':').map(Number);
   const start=(Number.isFinite(hour)?hour:18)*60+(Number.isFinite(minute)?minute:0);
+  const activeAttendees=attendees.filter(player=>player.availableFromBlock<player.availableUntilBlock);
   const duration=Math.max(10,Math.round((Number(durationMinutes)||120)/10)*10),blockMinutes=duration/BLOCK_COUNT;
   const label=minutes=>{
    const normalized=(minutes+1440)%1440,h=Math.floor(normalized/60),m=normalized%60;
@@ -69,7 +70,7 @@
    }
    return solve()?assignments:null;
   }
-  const pitchers=attendees.filter(player=>player.canPitch),catchers=attendees.filter(player=>player.canCatch);
+  const pitchers=activeAttendees.filter(player=>player.canPitch),catchers=activeAttendees.filter(player=>player.canCatch);
   const liveSessions=[];
   const coachPitch=!pitchers.length&&options.noPitchersMode==='coach';
   if(!pitchers.length&&!coachPitch)warnings.push('Live pitching was replaced because no pitchers are attending.');
@@ -78,7 +79,7 @@
   const heavyCatcherIndex=((weekNumber%2)+2)%2;
   const catcherRotate=catchers.length?heavyCatcherIndex%catchers.length:0;
   const orderedCatchers=catchers.slice(catcherRotate).concat(catchers.slice(0,catcherRotate));
-  const hitterSessionsNeeded=Math.ceil(attendees.length/3);
+  const hitterSessionsNeeded=Math.ceil(activeAttendees.length/3);
   const orderedPitchers=pitchers.slice().sort((a,b)=>a.availableUntilBlock-b.availableUntilBlock||a.availableFromBlock-b.availableFromBlock||a.name.localeCompare(b.name));
   const plannedSessionCount=coachPitch?Math.max(1,hitterSessionsNeeded):pitchers.length?Math.max(pitchers.length,hitterSessionsNeeded):0;
   const rotatedPitchers=orderedPitchers.length?orderedPitchers.slice((weekNumber%orderedPitchers.length+orderedPitchers.length)%orderedPitchers.length).concat(orderedPitchers.slice(0,(weekNumber%orderedPitchers.length+orderedPitchers.length)%orderedPitchers.length)):[];
@@ -119,9 +120,9 @@
    fallbackWarnings.push(`${pitcher.name} will pitch two consecutive live sessions in Blocks ${pitcherBlocks[0]}–${pitcherBlocks[1]}.`);
   });
   const sessionCount=plannedSessions.length;
-  if(attendees.length<2)feasibilityErrors.push('At least two attending players are required because every hitting station must have 2–3 players.');
-  const repeatHittersNeeded=Math.max(0,sessionCount*2-attendees.length);
-  if(repeatHittersNeeded>attendees.length)feasibilityErrors.push(`${sessionCount} live blocks require more second live-hitting assignments than the attendance can safely provide.`);
+  if(activeAttendees.length===1)feasibilityErrors.push('At least two available players are required because every hitting station must have 2–3 players.');
+  const repeatHittersNeeded=Math.max(0,sessionCount*2-activeAttendees.length);
+  if(repeatHittersNeeded>activeAttendees.length)feasibilityErrors.push(`${sessionCount} live blocks require more second live-hitting assignments than the attendance can safely provide.`);
   const catcherTargets=[];
   if(sessionCount===0){}
   else if(sessionCount===1)catcherTargets.push(false);
@@ -169,7 +170,7 @@
   let liveHitterRepeats=[];
   if(liveSessions.length&&!feasibilityErrors.length){
    const roleWeight=player=>(player.canPitch?2:0)+(player.canCatch?2:0);
-   const preferredRepeatOrder=attendees.slice().sort((a,b)=>roleWeight(a)-roleWeight(b)||a.name.localeCompare(b.name));
+   const preferredRepeatOrder=activeAttendees.slice().sort((a,b)=>roleWeight(a)-roleWeight(b)||a.name.localeCompare(b.name));
    const rotateBy=preferredRepeatOrder.length?((weekNumber%preferredRepeatOrder.length)+preferredRepeatOrder.length)%preferredRepeatOrder.length:0;
    const repeatOrder=preferredRepeatOrder.slice(rotateBy).concat(preferredRepeatOrder.slice(0,rotateBy)).sort((a,b)=>roleWeight(a)-roleWeight(b));
    function combinations(items,count,start=0,picked=[]){
@@ -181,11 +182,11 @@
    const repeatChoices=repeatHittersNeeded?combinations(repeatOrder,repeatHittersNeeded):[[]];
    let liveGroups=null,chosenRepeats=[];
    for(const repeats of repeatChoices){
-    const tokens=[...attendees,...repeats.map((player,index)=>({...player,originalName:player.name,assignmentKey:`${player.name}::live-repeat-${index}`}))];
+    const tokens=[...activeAttendees,...repeats.map((player,index)=>({...player,originalName:player.name,assignmentKey:`${player.name}::live-repeat-${index}`}))];
     const byKey=Object.fromEntries(tokens.map(player=>[player.assignmentKey||player.name,player]));
     const groups=groupedAssignment(tokens,liveSessions,(player,session,_index,currentKeys)=>{
      const name=player.originalName||player.name;
-     return session.pitcher!==name&&session.catcher!==name&&isOpen(attendees.find(item=>item.name===name),session.block)&&!currentKeys.some(key=>(byKey[key].originalName||byKey[key].name)===name);
+     return session.pitcher!==name&&session.catcher!==name&&isOpen(activeAttendees.find(item=>item.name===name),session.block)&&!currentKeys.some(key=>(byKey[key].originalName||byKey[key].name)===name);
     },true);
     if(groups){liveGroups=groups;chosenRepeats=repeats;break}
    }
@@ -199,17 +200,17 @@
   }
   const liveBlocks=new Set(liveSessions.map(session=>session.block));
   const frontTossAssignments=[];
-  const prePracticePlayers=attendees.filter(player=>player.prePracticeComplete),reserveEarlyFront=prePracticePlayers.length>=2&&prePracticePlayers.length<=12;
+  const prePracticePlayers=activeAttendees.filter(player=>player.prePracticeComplete),reserveEarlyFront=prePracticePlayers.length>=2&&prePracticePlayers.length<=12;
   const frontTossCandidates=[0,1,2,3,4,5,6,7,8,9].filter(block=>!liveBlocks.has(block));
   const orderedFrontBlocks=frontTossCandidates.slice().sort((a,b)=>(a>=8?0:1)-(b>=8?0:1)||a-b),frontSlots=orderedFrontBlocks.flatMap(block=>[{block,lane:1},{block,lane:2}]);
   if(!feasibilityErrors.length){
-   const frontGroups=groupedAssignment(attendees,frontSlots,(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2)));
+   const frontGroups=groupedAssignment(activeAttendees,frontSlots,(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2)));
    if(!frontGroups)feasibilityErrors.push('Front toss cannot be scheduled exactly once per player in groups of 2–3 with the selected attendance and availability.');
    else frontGroups.forEach((names,index)=>names.forEach(name=>{const {block,lane}=frontSlots[index];schedule[name][block]={activity:`Front Toss Lane ${lane}`};frontTossAssignments.push({player:name,block,lane})}));
   }
   const frontTossBlocks=[...new Set(frontTossAssignments.map(item=>item.block))].sort((a,b)=>a-b);
   if(!feasibilityErrors.length){
-   const machineSlots=[0,1,2,3,4,5,6,7,8,9].map(block=>({block})),machineGroups=groupedAssignment(attendees,machineSlots,(player,slot)=>isOpen(player,slot.block));
+   const machineSlots=[0,1,2,3,4,5,6,7,8,9].map(block=>({block})),machineGroups=groupedAssignment(activeAttendees,machineSlots,(player,slot)=>isOpen(player,slot.block));
    if(!machineGroups)feasibilityErrors.push('Machine cannot be scheduled exactly once per player in groups of 2–3 with the selected attendance and availability.');
    else machineGroups.forEach((names,index)=>names.forEach(name=>{schedule[name][machineSlots[index].block]={activity:'Machine'}}));
   }
@@ -218,7 +219,7 @@
   });
   for(let block=0;block<BLOCK_COUNT;block++){
    const drillPlayers=attendees.filter(player=>schedule[player.name][block].activity==='Drill');
-   if(drillPlayers.length===1&&attendees.length>1){
+   if(drillPlayers.length===1&&activeAttendees.length>1){
     const activities=attendees.map(player=>schedule[player.name][block].activity);
     const support=activities.includes('Machine')?'Machine Feed':activities.some(activity=>activity.startsWith('Front Toss'))?'Front Toss Support':liveSessions.some(session=>session.block===block)?'Live Pitching Support':'Equipment / Ball Reset';
     schedule[drillPlayers[0].name][block]={activity:support};
@@ -258,7 +259,7 @@
    if(failed)drillStations++;else drillsAssigned=true;
   }
   if(!drillsAssigned)warnings.push('The drill stations could not be assigned without a repeat.');
-  attendees.forEach(player=>{
+  activeAttendees.forEach(player=>{
    if(!schedule[player.name].some(entry=>entry.activity.startsWith('Drill #')))feasibilityErrors.push(`${player.name} cannot receive mandatory drill work with this attendance and live-pitching combination.`);
   });
   const blocks=times.map((time,index)=>{
@@ -290,7 +291,7 @@
    const drillEntries=entries.filter(entry=>entry.activity.startsWith('Drill #')).map(entry=>entry.activity);
    if(new Set(drillEntries).size!==drillEntries.length)errors.push(`${name} repeats a drill station.`);
    const liveHitCount=entries.filter(entry=>entry.activity==='Hit Live').length,expectedLiveHits=plan.liveHitterRepeats?.includes(name)?2:1;
-   if(plan.liveSessions?.length&&liveHitCount!==expectedLiveHits)errors.push(`${name} must complete live hitting exactly ${expectedLiveHits===1?'once':'twice'}.`);
+   if(from<until&&plan.liveSessions?.length&&liveHitCount!==expectedLiveHits)errors.push(`${name} must complete live hitting exactly ${expectedLiveHits===1?'once':'twice'}.`);
   });
   Object.keys(plan?.schedule||{}).filter(name=>!(plan?.players||[]).some(player=>player.name===name)).forEach(name=>errors.push(`${name} is scheduled but is not in the attending-player list.`));
   (plan?.players||[]).forEach(player=>{
