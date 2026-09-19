@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-128';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-129';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1298,18 +1298,21 @@ async function setupPlayerPortals(){
     if(remote.playerName&&remote.playerName!==player.name)throw new Error('portal-player-identity-mismatch');
     if(remote.portalType&&remote.portalType!=='player')throw new Error('portal-player-type-mismatch');
    }
-   const localActive=db.activePortalPractice?.id&&db.activePortalPractice?.id===practicePlan?.portalDraftId&&db.activePortalPractice?.players?.includes(player.name)
+   const localPracticeId=db.activePortalPractice?.id||'',remoteActive=existing.exists?(existing.data()||{}).activePractice:null;
+   // Portal setup is identity/PIN setup, not a practice-lifecycle command. Never
+   // erase or replace a live cloud practice just because the coach UI is between
+   // local recovery states. Practice activation/clock/end own activePractice.
+   const localActive=localPracticeId&&localPracticeId===practicePlan?.portalDraftId&&db.activePortalPractice?.players?.includes(player.name)
     ?playerPracticePortalPayload(player.name,db.activePortalPractice?.activatedAt||null,practiceClockPortalPayload()):null;
-   // Refresh is authoritative for this coach device. If no local practice is
-   // active for this player, remove any stale remote practice left by an old
-   // test/session instead of preserving it through merge:true.
-   batch.set(portalDoc(player.portalId),{portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),pinHash:player.portalPinHash,evaluationData:playerEvaluationPortalPayload(player.name),activePractice:localActive,...(!existing.exists?{ownerUid:null,focus:null}:{}),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+   if(remoteActive&&localActive&&remoteActive.id!==localActive.id)throw new Error('portal-active-practice-conflict');
+   const portalUpdate={portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),pinHash:player.portalPinHash,evaluationData:playerEvaluationPortalPayload(player.name),...(!existing.exists?{ownerUid:null,focus:null,activePractice:localActive}:{}),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+   batch.set(portalDoc(player.portalId),portalUpdate,{merge:true});
   }
   await batch.commit();
   const playerVerification=await Promise.all(players.map(async player=>{
    const snapshot=await portalDoc(player.portalId).get(),remote=snapshot.exists?snapshot.data():null;
    const shouldBeActive=!!(db.activePortalPractice?.id&&db.activePortalPractice.id===practicePlan?.portalDraftId&&db.activePortalPractice.players?.includes(player.name));
-   return !!remote&&remote.portalType==='player'&&remote.playerName===player.name&&remote.pinHash===player.portalPinHash&&(shouldBeActive?remote.activePractice?.id===practicePlan.portalDraftId:!remote.activePractice);
+   return !!remote&&remote.portalType==='player'&&remote.playerName===player.name&&remote.pinHash===player.portalPinHash&&(!shouldBeActive||remote.activePractice?.id===practicePlan.portalDraftId);
   }));
   if(playerVerification.some(ok=>!ok))throw new Error('player-portal-refresh-verification-failed');
   // Persist portal IDs/PINs immediately before any backup/sync work can run.
@@ -1339,11 +1342,12 @@ async function setupCoachPortal(){
    if(remoteExisting.coachName&&remoteExisting.coachName!==name)throw new Error('portal-coach-identity-mismatch');
    if(remoteExisting.portalType&&remoteExisting.portalType!=='coach')throw new Error('portal-coach-type-mismatch');
   }
-  const activePractice=db.activePortalPractice?.id===practicePlan?.portalDraftId?coachPracticePortalPayload(db.activePortalPractice?.activatedAt||null):null;
-  const portalUpdate={portalType:'coach',coachName:name,firstName:practiceFirstName(name),pinHash:db.coachPortal.portalPinHash,activePractice,...(!existing.exists?{ownerUid:null}:{}),evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const activePractice=db.activePortalPractice?.id===practicePlan?.portalDraftId?coachPracticePortalPayload(db.activePortalPractice?.activatedAt||null):null,remoteActive=existing.exists?(existing.data()||{}).activePractice:null;
+  if(remoteActive&&activePractice&&remoteActive.id!==activePractice.id)throw new Error('coach-active-practice-conflict');
+  const portalUpdate={portalType:'coach',coachName:name,firstName:practiceFirstName(name),pinHash:db.coachPortal.portalPinHash,...(!existing.exists?{ownerUid:null,activePractice}:{}),evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
   await ref.set(portalUpdate,{merge:true});
   const verified=await ref.get(),remote=verified.exists?verified.data():null;
-  if(!remote||remote.portalType!=='coach'||remote.coachName!==name||remote.pinHash!==db.coachPortal.portalPinHash||(activePractice&&remote.activePractice?.id!==practicePlan.portalDraftId)||(!activePractice&&remote.activePractice))throw new Error('coach-portal-refresh-verification-failed');
+  if(!remote||remote.portalType!=='coach'||remote.coachName!==name||remote.pinHash!==db.coachPortal.portalPinHash||(activePractice&&remote.activePractice?.id!==practicePlan.portalDraftId))throw new Error('coach-portal-refresh-verification-failed');
   save();portalMessage='The private coach link and PIN are ready.';
  }catch(error){db.coachPortal=originalCoachPortal;console.error('Coach portal refresh failed',error);portalMessage=`The coach portal could not be refreshed${error?.message?`: ${error.message}`:'. Check the internet connection and try again.'}`}
  cloudBusy=false;render();
