@@ -15,7 +15,10 @@
     notice.querySelector('button').addEventListener('click', () => {
       const url = new URL(window.location.href);
       url.searchParams.set('hotb-update', version);
-      window.location.replace(url.href);
+      if (url.searchParams.has('portal')) {
+        url.searchParams.set('hotb-portal-refresh', Date.now().toString());
+      }
+      window.location.assign(url.href);
     });
     document.body.appendChild(notice);
   }
