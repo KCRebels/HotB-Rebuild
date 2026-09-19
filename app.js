@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-69';
+const PORTAL_BUILD_TOKEN='20260919-70';
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1957,7 +1957,11 @@ function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.
  // A clock timestamp from an older practice/test must never drive a newly activated plan.
  if(clock.status!=='running'||!Number.isFinite(startedAt)||!Number.isFinite(activatedAt)||startedAt<activatedAt)return {block:'Not Started',left:'—',transition:false,currentBlock:0};
  const state=window.HotBPracticeSession?.timing(practice,{running:true,startAt:startedAt},now);
- if(!state)return {block:'DONE!',left:'0:00',transition:false,currentBlock:10,ended:true};
+ if(!state){
+  // The player clock is derived locally from the synchronized start time.
+  // Do not leave a finished countdown displayed as a still-active practice.
+  return {block:'DONE!',left:'0:00',transition:false,currentBlock:10,ended:true};
+ }
  const seconds=Math.ceil(state.remaining/1000);
  return {block:state.transition?'ROTATE':`${state.block} of 10`,left:`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`,transition:!!state.transition,currentBlock:state.block};
 }
@@ -1965,6 +1969,12 @@ function updatePortalPracticeClock(){
  const values=portalPracticeClockValues(),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
  if(block)block.textContent=values.block;if(left)left.textContent=values.left;
  const nextPanel=$('#portalPracticeNext'),nextButton=$('#portalPracticeNextButton'),nextHeading=$('#portalPracticeNextHeading'),nextDetail=$('#portalPracticeNextDetail');
+ if(values.ended&&portalData?.activePractice?.clock?.status==='running'){
+  // The coach cleanup write may arrive a moment later; stop presenting live
+  // assignments once the synchronized practice duration has elapsed.
+  portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
+  if(portalView==='library')portalView='practice';
+ }
  const nextEntry=values.transition?(portalData?.activePractice?.schedule||[]).find(entry=>Number(entry.block)===Number(values.currentBlock)+1):null;
  if(nextPanel&&nextButton){
   nextPanel.hidden=!nextEntry;
