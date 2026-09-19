@@ -20,6 +20,7 @@
  function attendance(history,player){
   const playerName=typeof player==='string'?player:player?.name;
   if(player&&typeof player==='object'&&player.hittingPracticeAttendanceEligible===false)return{percentage:null,eligible:false};
+  if(!playerName)return{percentage:null,eligible:false};
   const completed=records(history),attended=completed.filter(item=>(item.attendees||[]).includes(playerName)).length;
   return{percentage:completed.length?Math.round(attended/completed.length*100):null,eligible:true};
  }
