@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-96';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-97';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1289,7 +1289,13 @@ async function setupCoachPortal(){
 }
 async function resetCoachPortal(){
  if(!cloudUser||!db.coachPortal?.portalId||!confirm(`Reset ${db.coachPortal.name||'Coach'}’s saved portal device? The link and PIN will stay the same.`))return;
- try{await portalDoc(db.coachPortal.portalId).update({ownerUid:null,authorizedUids:firebase.firestore.FieldValue.delete(),pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete()});portalMessage=`${practiceFirstName(db.coachPortal.name)} can connect a new device.`}
+ try{
+  const ref=portalDoc(db.coachPortal.portalId);
+  await ref.update({ownerUid:null,authorizedUids:firebase.firestore.FieldValue.delete(),pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete()});
+  const verified=await ref.get(),remote=verified.exists?verified.data():null;
+  if(!remote||remote.ownerUid!=null||Array.isArray(remote.authorizedUids)&&remote.authorizedUids.length)throw new Error('coach-portal-reset-verification-failed');
+  portalMessage=`${practiceFirstName(db.coachPortal.name)} can connect a new device.`;
+ }
  catch(error){portalMessage='The coach portal could not be reset.'}
  render();
 }
