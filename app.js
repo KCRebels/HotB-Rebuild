@@ -3216,7 +3216,10 @@ function bindPractice(){
   practicePlan.portalDraftId=crypto.randomUUID();
   practicePlan.machineFocus='Standard';practicePlan.frontTossFocus='Standard';
   const errors=window.HotBPracticeScheduler.validate(practicePlan);
-  if(errors.length)practicePlan.warnings.push(...errors);
+  if(errors.length){
+   const message=`HotB built a practice that failed its safety checks:\n\n${errors.join('\n\n')}\n\nThe practice was not saved. Adjust attendance or player availability, then build again.`;
+   practicePlan=null;alert(message);render();return;
+  }
   persistPracticeSession();render();window.scrollTo(0,0);
  });
  $('#editPracticePlayers')?.addEventListener('click',()=>{stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',limitations:practiceSetupState.accommodations?.[player.name]?.limitations||'',prePracticeComplete:!!player.prePracticeComplete,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={...practiceSetupState,selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;practiceSection='setup';persistPracticeDraft();render();window.scrollTo(0,0)});
