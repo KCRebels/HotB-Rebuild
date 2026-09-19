@@ -1291,6 +1291,16 @@ function renamePlayerReferences(oldName,newName){
  (db.practiceHistory||[]).forEach(item=>{if(Array.isArray(item.attendees))item.attendees=item.attendees.map(name=>name===oldName?newName:name)});
  if(db.planPreferences&&Object.prototype.hasOwnProperty.call(db.planPreferences,oldName)){if(!Object.prototype.hasOwnProperty.call(db.planPreferences,newName))db.planPreferences[newName]=db.planPreferences[oldName];delete db.planPreferences[oldName]}
  if(db.playerFocusDrillOverrides&&typeof db.playerFocusDrillOverrides==='object')Object.keys(db.playerFocusDrillOverrides).filter(key=>key.startsWith(oldName+'::')).forEach(key=>{const next=newName+key.slice(oldName.length);if(!(next in db.playerFocusDrillOverrides))db.playerFocusDrillOverrides[next]=db.playerFocusDrillOverrides[key];delete db.playerFocusDrillOverrides[key]});
+ const renamePracticeState=state=>{
+  if(!state||typeof state!=='object')return;
+  if(Array.isArray(state.selectedNames))state.selectedNames=state.selectedNames.map(name=>name===oldName?newName:name);
+  if(state.accommodations&&Object.prototype.hasOwnProperty.call(state.accommodations,oldName)){if(!Object.prototype.hasOwnProperty.call(state.accommodations,newName))state.accommodations[newName]=state.accommodations[oldName];delete state.accommodations[oldName]}
+ };
+ renamePracticeState(practiceSetupState);
+ const renamePracticePlan=plan=>{if(!plan)return;(plan.players||[]).forEach(player=>{if(player.name===oldName)player.name=newName});(plan.schedule||[]).forEach(row=>{if(row.player===oldName)row.player=newName;if(row.playerName===oldName)row.playerName=newName;if(row.pitcher===oldName)row.pitcher=newName;if(row.catcher===oldName)row.catcher=newName});};
+ renamePracticePlan(practicePlan);
+ if(db.activePracticeSession){renamePracticeState(db.activePracticeSession.setupState);renamePracticePlan(db.activePracticeSession.plan);if(Array.isArray(db.activePracticeSession.portalState?.players))db.activePracticeSession.portalState.players=db.activePracticeSession.portalState.players.map(name=>name===oldName?newName:name)}
+ if(Array.isArray(db.activePortalPractice?.players))db.activePortalPractice.players=db.activePortalPractice.players.map(name=>name===oldName?newName:name);
 }
 function syncRosterNames(){
  $('.roster-name').forEach(input=>{const player=db.roster[+input.dataset.i];if(!player)return;const next=input.value.trim()||'Unnamed Player',previous=player.name;if(next!==previous)renamePlayerReferences(previous,next);player.name=next});
