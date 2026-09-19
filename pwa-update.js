@@ -1,5 +1,5 @@
 (() => {
-  const BUILD_VERSION = '2026.09.14.2';
+  const BUILD_VERSION = '2026.09.19.1';
   window.HOTB_BUILD_VERSION = BUILD_VERSION;
   if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
 
