@@ -1827,7 +1827,7 @@ function updatePortalPracticeClock(){
   nextPanel.hidden=!nextEntry;
   if(nextEntry){const details=portalNextAssignmentDetails(nextEntry.assignment);nextHeading.textContent=details.heading;nextDetail.textContent=details.detail;nextDetail.hidden=!details.detail;nextButton.dataset.portalPracticeDrill=details.drill||'';nextButton.classList.toggle('has-drill',!!details.drill);const hint=nextButton.querySelector('small');if(hint)hint.hidden=!details.drill}
  }
- if(['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType)){const current=Number(values.currentBlock)||0;$('[data-portal-block]').forEach(row=>row.hidden=!!values.ended||current>0&&Number(row.dataset.portalBlock)<current)}
+ if(['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType)){const current=Number(values.currentBlock)||0;$('[data-portal-block]').forEach(row=>row.hidden=values.block==='DONE!'||current>0&&Number(row.dataset.portalBlock)<current)}
 }
 function practiceActivityLabel(activity,plan=null){
  const match=String(activity||'').match(/^Drill #(\d+)$/),drill=match?practiceChosenDrills[Number(match[1])-1]:null;
