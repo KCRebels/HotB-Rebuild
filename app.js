@@ -3069,7 +3069,7 @@ async function finishPracticeClock(automatic=false){
  practiceCompletionBusy=true;
  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
  practiceClock.running=false;practiceClock.finished=true;
- const completedAt=new Date();archiveCompletedPractice(completedAt);
+ const completedAt=practiceClock.startAt&&practicePlan?new Date(practiceClock.startAt+(Number(practicePlan.durationMinutes)||120)*60000):new Date();archiveCompletedPractice(completedAt);
  if(!practiceClock.endAnnounced){practiceClock.endAnnounced=true;practiceEndSpeech=speakPracticeClock('Times Up, Good Practice, Please start to clean up')}
  persistPracticeSession();
  const endingSpeech=practiceEndSpeech;render();
