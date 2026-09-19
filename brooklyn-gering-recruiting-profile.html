@@ -221,7 +221,7 @@
         Object.entries(data.pitching||{}).forEach(([key,value])=>{const el=document.querySelector(`[data-pitch="${key}"]`);if(el)el.textContent=value});
         Object.entries(data.hitting||{}).forEach(([key,value])=>{const el=document.querySelector(`[data-hit="${key}"]`);if(el)el.textContent=value});
         Object.entries(data.measurements||{}).forEach(([name,row])=>measurement(name,row));
-        if(data.updatedAt){const d=new Date(data.updatedAt),updated=document.getElementById('performanceUpdated');if(updated){updated.childNodes[0].nodeValue='2026–27 full season';updated.childNodes[2].nodeValue=`Updated ${d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`}}
+        if(data.updatedAt){const d=new Date(data.updatedAt),updated=document.getElementById('performanceUpdated');if(updated){updated.childNodes[0].nodeValue=String(data.performanceSeason||'2026–27 full season');updated.childNodes[2].nodeValue=`Updated ${d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`}}
         const status=document.getElementById('liveStatus');if(status)status.style.display='block';
       }).catch(()=>{});
     }catch(error){}
