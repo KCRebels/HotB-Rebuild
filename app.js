@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-120';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-121';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1946,7 +1946,7 @@ function coachEvaluationPortalPayload(){
 function withCoachEvaluationData(callback){const original=db,readOnly=evaluationReadOnly;db=portalData?.evaluationData||{roster:[],savedGames:[],measurements:[],coaches:[],practiceHistory:[],currentGame:null};evaluationReadOnly=true;try{return callback()}finally{db=original;evaluationReadOnly=readOnly}}
 function coachPortalEvaluationView(){return withCoachEvaluationData(()=>evalView())}
 function portalAssignmentDrillName(assignment){return (Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[]).find(drill=>assignment===drill.name||String(assignment||'').endsWith(`— ${drill.name}`))?.name||''}
-function portalPracticeAssignment(entry){const drill=portalAssignmentDrillName(entry.assignment);return drill?`<button class="portal-practice-drill-link" data-portal-practice-drill="${esc(drill)}">${esc(entry.assignment)}</button>`:`<strong>${esc(entry.assignment)}</strong>`}
+function portalPracticeAssignment(entry){const drill=portalAssignmentDrillName(entry.assignment),practiceOnly=['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType),allowed=!practiceOnly||!!drill&&(portalData?.activePractice?.drills||[]).includes(drill);return drill&&allowed?`<button class="portal-practice-drill-link" data-portal-practice-drill="${esc(drill)}">${esc(entry.assignment)}</button>`:`<strong>${esc(entry.assignment)}</strong>`}
 function portalNextAssignmentDetails(assignment){
  const value=String(assignment||''),drill=portalAssignmentDrillName(value);
  let match=value.match(/^Drill Station (\d+)\s+—\s+(.+)$/i);
@@ -3755,7 +3755,7 @@ function bindPlayerPortal(){
  $$('[data-portal-view]').forEach(button=>button.addEventListener('click',()=>{portalView=button.dataset.portalView;portalSelectedDrill='';portalDrillQuery='';portalDrillResults=[];render();window.scrollTo(0,0)}));
  $('#portalDrillSearch')?.addEventListener('input',event=>{portalDrillQuery=event.target.value;render();const search=$('#portalDrillSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
  $$('[data-portal-drill]').forEach(button=>button.addEventListener('click',()=>{portalSelectedDrill=button.dataset.portalDrill;render();window.scrollTo(0,0)}));
- $$('[data-portal-practice-drill]').forEach(button=>button.addEventListener('click',()=>{if(!button.dataset.portalPracticeDrill)return;if(['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType)&&portalPracticeClockValues().block==='DONE!')return;portalLibraryReturnView='practice';portalSelectedDrill=button.dataset.portalPracticeDrill;portalView='library';render();window.scrollTo(0,0)}));
+ $('[data-portal-practice-drill]').forEach(button=>button.addEventListener('click',()=>{const drill=button.dataset.portalPracticeDrill;if(!drill)return;const practiceOnly=['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType);if(practiceOnly&&(portalPracticeClockValues().block==='DONE!'||!(portalData?.activePractice?.drills||[]).includes(drill)))return;portalLibraryReturnView='practice';portalSelectedDrill=drill;portalView='library';render();window.scrollTo(0,0)}));
  $('#portalLibraryBack')?.addEventListener('click',()=>{if(portalLibraryReturnView==='practice')portalView='practice';portalLibraryReturnView='library';portalSelectedDrill='';render();window.scrollTo(0,0)});
  $('#findPortalDrills')?.addEventListener('click',()=>{portalDrillQuery=$('#portalProblem')?.value.trim()||'';portalDrillResults=recommendPortalDrills(portalDrillQuery);render();window.scrollTo(0,0)});
  $$('[data-portal-recommendation]').forEach(button=>button.addEventListener('click',()=>{portalSelectedDrill=button.dataset.portalRecommendation;portalView='library';render();window.scrollTo(0,0)}));
