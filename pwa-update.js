@@ -1,5 +1,5 @@
 (() => {
-  const BUILD_VERSION = '2026.09.19.85';
+  const BUILD_VERSION = '2026.09.19.86';
   window.HOTB_BUILD_VERSION = BUILD_VERSION;
   // Player portals must always use the current network app. They do not install,
   // update, or re-register the coach PWA service worker.
