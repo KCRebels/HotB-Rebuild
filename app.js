@@ -1116,11 +1116,20 @@ async function loadPlayerPortal(){
    new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-read-timeout')),8000))
   ]);
   if(snapshot.exists){
-   portalData={id:snapshot.id,...snapshot.data()};portalMessage='';
+   const loaded={id:snapshot.id,...snapshot.data()};
+   // A portal URL must never display a cloud document whose identity does not
+   // match the requested private portal type. This is a final guard against
+   // stale/reused IDs painting another portal's data on screen.
+   if(!loaded.portalType&&!loaded.playerName&&!loaded.coachName)throw new Error('portal-identity-missing');
+   portalData=loaded;portalMessage='';
    if(portalUnsubscribe)portalUnsubscribe();
    portalUnsubscribe=portalDoc().onSnapshot(next=>{
     if(next.exists){
      const nextData={id:next.id,...next.data()};
+     if(!nextData.portalType&&!nextData.playerName&&!nextData.coachName){
+      portalData=null;portalMessage='This portal record is incomplete. Ask the coach to refresh the player portal.';
+      if(route==='portal')render();return;
+     }
      const previousPracticeId=portalData?.activePractice?.id||'';
      const nextPracticeId=nextData?.activePractice?.id||'';
      portalData=nextData;portalMessage='';
