@@ -1127,10 +1127,13 @@ async function claimPlayerPortal(pin){
  portalBusy=true;portalMessage='Checking your PIN…';render();
  try{
   const proof=await portalHash(portalToken,pin);
+  // First claim an unowned portal. If it is already owned, add this device as an
+  // authorized device. This ordering matches the Firestore rules and avoids a
+  // guaranteed permission-denied attempt on every first-time PIN entry.
   try{
-   await portalDoc().update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
-  }catch(firstError){
    await portalDoc().update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  }catch(firstError){
+   await portalDoc().update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
   }
   await loadPlayerPortal();
  }catch(error){portalBusy=false;portalMessage='That PIN did not work. Ask your coach to reset the portal if the problem continues.'}
