@@ -1085,7 +1085,7 @@ async function setupCoachPortal(){
   if(!db.coachPortal.portalPin)db.coachPortal.portalPin=newPortalPin();
   db.coachPortal.name=name;db.coachPortal.phone=phone;db.coachPortal.portalPinHash=await portalHash(db.coachPortal.portalId,db.coachPortal.portalPin);
   const ref=portalDoc(db.coachPortal.portalId),existing=await ref.get();
-  const activePractice=db.activePortalPractice?.id===practicePlan?.portalDraftId?coachPracticePortalPayload():null;
+  const activePractice=db.activePortalPractice?.id===practicePlan?.portalDraftId?coachPracticePortalPayload(activationTimestamp):null;
   await ref.set({portalType:'coach',coachName:name,firstName:practiceFirstName(name),pinHash:db.coachPortal.portalPinHash,...(!existing.exists?{ownerUid:null}:{}),activePractice,evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   save();portalMessage='The private coach link and PIN are ready.';
  }catch(error){console.error('Coach portal refresh failed',error);portalMessage=`The coach portal could not be refreshed${error?.message?`: ${error.message}`:'. Check the internet connection and try again.'}`}
@@ -1957,10 +1957,10 @@ function playerPracticePortalPayload(name,activatedAt=null){
  const drillAssignments=[...assigned].map(([name,location])=>({name,location})),assignedDrills=drillAssignments.map(item=>item.name);
  return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:activatedAt||new Date().toISOString(),clock:{status:'not-started',startedAt:null,endedAt:null},schedule:portalSchedule,drills:assignedDrills,drillAssignments};
 }
-function coachPracticePortalPayload(){
+function coachPracticePortalPayload(activatedAt=null){
  const schedule=window.HotBCoachPractice?.build(practicePlan,practiceChosenDrills)||[];
- const players=practicePlan.players.filter(player=>(player.availableFromBlock??0)<(player.availableUntilBlock??10)).map(player=>({name:practiceFirstName(player.name),role:practiceRole(practicePlayerByName(player.name)||player),schedule:playerPracticePortalPayload(player.name,activationTimestamp).schedule}));
- return{id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',coachName:db.coachPortal?.name||'Coach',startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:practiceClockPortalPayload(),schedule,players,drills:practiceAllSelectedDrills().map(drill=>drill.name)};
+ const players=practicePlan.players.filter(player=>(player.availableFromBlock??0)<(player.availableUntilBlock??10)).map(player=>({name:practiceFirstName(player.name),role:practiceRole(practicePlayerByName(player.name)||player),schedule:playerPracticePortalPayload(player.name,activatedAt).schedule}));
+ return{id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',coachName:db.coachPortal?.name||'Coach',startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:activatedAt||new Date().toISOString(),clock:practiceClockPortalPayload(),schedule,players,drills:practiceAllSelectedDrills().map(drill=>drill.name)};
 }
 function archiveCompletedPractice(completedAt=new Date()){
  if(!practicePlan||!window.HotBPracticeHistory)return;
@@ -2030,9 +2030,9 @@ async function activatePlayerPlans(){
   const batch=cloudStore.batch();
   db.roster.filter(player=>!player.isTeamJenkins&&player.portalId&&attending.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:{...playerPracticePortalPayload(player.name,activationTimestamp),clock:{status:'not-started',startedAt:null,endedAt:null}},updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
   db.roster.filter(player=>player.isTeamJenkins&&player.portalId&&attending.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),jenkinsPortalResetPayload(player,playerPracticePortalPayload(player.name,activationTimestamp),'active'),{merge:true}));
-  if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:coachPracticePortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:coachPracticePortalPayload(activationTimestamp),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   for(const guest of practiceGuestPlayers().filter(player=>attending.has(player.name))){if(!guest.portalId||!guest.portalSecret)throw new Error(`Guest link missing for ${guest.name}`);batch.set(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice:playerPracticePortalPayload(guest.name,activationTimestamp),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
-  for(const guest of practiceGuestCoaches()){if(!guest.portalId||!guest.portalSecret)throw new Error(`Guest link missing for ${guest.name}`);const activePractice={...coachPracticePortalPayload(),coachName:guest.name};batch.set(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
+  for(const guest of practiceGuestCoaches()){if(!guest.portalId||!guest.portalSecret)throw new Error(`Guest link missing for ${guest.name}`);const activePractice={...coachPracticePortalPayload(activationTimestamp),coachName:guest.name};batch.set(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
   db.activePortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:activationTimestamp,players:[...attending],playerPortals:db.roster.filter(player=>attending.has(player.name)&&player.portalId).map(player=>({name:player.name,portalId:player.portalId,isTeamJenkins:!!player.isTeamJenkins})),guestPlayerPortalIds:practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).map(guest=>guest.portalId),guestCoachPortalIds:practiceGuestCoaches().filter(guest=>guest.portalId).map(guest=>guest.portalId),coachPortalId:db.coachPortal?.portalId||''};persistPracticeSession();save();
   try{await batch.commit()}
   catch(error){db.activePortalPractice=null;persistPracticeSession();save();throw error}
