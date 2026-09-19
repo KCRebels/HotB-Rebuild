@@ -1,5 +1,5 @@
 (() => {
-  const BUILD_VERSION = '2026.09.19.3';
+  const BUILD_VERSION = '2026.09.19.4';
   window.HOTB_BUILD_VERSION = BUILD_VERSION;
   if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
 
@@ -19,8 +19,19 @@
         url.searchParams.set('hotb-portal-refresh', Date.now().toString());
       }
       navigator.serviceWorker.getRegistration('./').then(registration => {
-        if (registration?.waiting) registration.waiting.postMessage({type: 'SKIP_WAITING'});
-        setTimeout(() => window.location.assign(url.href), 250);
+        if (!registration?.waiting) {
+          window.location.assign(url.href);
+          return;
+        }
+        let navigated = false;
+        const navigate = () => {
+          if (navigated) return;
+          navigated = true;
+          window.location.assign(url.href);
+        };
+        navigator.serviceWorker.addEventListener('controllerchange', navigate, {once: true});
+        registration.waiting.postMessage({type: 'SKIP_WAITING'});
+        setTimeout(navigate, 2000);
       }).catch(() => window.location.assign(url.href));
     });
     document.body.appendChild(notice);
