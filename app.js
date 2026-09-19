@@ -957,7 +957,14 @@ function initCloud(){
    if(portalToken)await loadPlayerPortal();
    if(route==='home'||route==='portal')render();
   });
- }catch(error){cloudMessage='Cloud backup could not start. Your phone data is still safe.'}
+ }catch(error){
+  cloudMessage='Cloud backup could not start. Your phone data is still safe.';
+  if(portalToken){
+   portalBusy=false;
+   portalMessage='HotB could not start the player portal connection. Please reopen the link.';
+   if(route==='portal')render();
+  }
+ }
 }
 function isCoachPortalUser(user=portalAuthUser){return !!user&&!user.isAnonymous&&String(user.email||'').toLowerCase()===CLOUD_EMAIL}
 function portalDoc(id=portalToken){return cloudStore?.collection('playerPortals').doc(id)}
@@ -1005,11 +1012,16 @@ async function loadPlayerPortal(){
  portalBusy=true;portalMessage='';
  if(!portalAuthUser){
   try{
-   const credential=await cloudAuth.signInAnonymously();
+   const credential=await Promise.race([
+    cloudAuth.signInAnonymously(),
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
+   ]);
    portalAuthUser=credential?.user||cloudAuth.currentUser||null;
   }catch(error){
    portalBusy=false;
-   portalMessage='Player access is not active yet. The coach must finish Firebase portal setup.';
+   portalMessage=String(error?.message||'')==='portal-auth-timeout'
+    ?'HotB could not reach the player portal sign-in service. Please reopen the link.'
+    :'Player access is not active yet. The coach must finish Firebase portal setup.';
    if(route==='portal')render();
    return;
   }
