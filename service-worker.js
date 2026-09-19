@@ -1,4 +1,4 @@
-const BUILD_VERSION = '2026.09.19.23';
+const BUILD_VERSION = '2026.09.19.24';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
@@ -58,6 +58,12 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  // Player/coach portal links must never be served by the coach PWA cache.
+  // Safari can still route a normal portal link through the installed worker before
+  // the page gets a chance to unregister it.
+  if (request.mode === 'navigate' && url.searchParams.has('portal')) {
+    return event.respondWith(fetch(request, {cache: 'no-store'}));
+  }
   if (request.mode === 'navigate') return event.respondWith(newestNavigation(request));
   if (['script', 'style', 'worker'].includes(request.destination)) event.respondWith(newestAsset(request));
 });
