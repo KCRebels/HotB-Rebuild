@@ -3075,7 +3075,11 @@ async function finishPracticeClock(automatic=false){
   catch(error){alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap Deactivate.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in, then tap Deactivate.')}
  }
  practiceCompletionBusy=false;
- if(!automatic){await endingSpeech;closePracticeWorkspace()}
+ if(!automatic){
+  await endingSpeech;
+  if(db.activePortalPractice?.id===practicePlan?.portalDraftId)return;
+  closePracticeWorkspace()
+ }
 }
 function closePracticeWorkspace(){
  stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';clearPracticeSession();render();window.scrollTo(0,0);
