@@ -12,6 +12,7 @@ function decimal(value, digits) {
   }
 
   function formatPitchingStats(root = document) {
+    if (!root || typeof root.querySelectorAll !== 'function') root = document;
     root.querySelectorAll('.pitcher-stats, .pitching-stats, .pitcher-stat-grid, .pitching-stat-grid').forEach(section => {
       section.querySelectorAll('*').forEach(label => {
         if (label.children.length) return;
