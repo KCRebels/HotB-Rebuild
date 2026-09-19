@@ -906,7 +906,7 @@ let selectedSeason=currentSeasonLabel(), dateFilterMode='full', customDateStart=
 let evalPlayer='Team',evaluationReadOnly=false;
 let pendingPitchingImport=null;
 let recordType='';
-let infoPlayerIndex=0;
+let infoPlayerIndex=0,infoPlayerName='';
 let pendingRosterImport=null;
 let timerInt=null,timerStart=0,timerElapsed=0;
 let lastRenderedUndoState=null;
@@ -3423,7 +3423,7 @@ function bindGameGroup(){
 function bindRoster(){
  $$('.sidebtn').forEach(b=>b.onclick=()=>{db.roster[+b.dataset.i].side=b.dataset.side;save();render()});
  $$('[data-del]').forEach(b=>b.onclick=()=>{if(!confirm('Remove this player?'))return;const index=+b.dataset.del,player=db.roster[index];if(!player)return;const standardName=player.rosterKey||defaultRoster.find(profile=>profile.name===player.name)?.name;if(standardName&&defaultRoster.some(profile=>profile.name===standardName)){db.removedRosterNames=Array.isArray(db.removedRosterNames)?db.removedRosterNames:[];if(!db.removedRosterNames.includes(standardName))db.removedRosterNames.push(standardName)}db.roster.splice(index,1);save();render()});
- $('[data-info]').forEach(b=>b.onclick=()=>{if(!syncRosterNames())return;infoPlayerIndex=+b.dataset.info;save();modal='playerInfo';render()});
+ $('[data-info]').forEach(b=>b.onclick=()=>{if(!syncRosterNames())return;infoPlayerIndex=+b.dataset.info;infoPlayerName=db.roster[infoPlayerIndex]?.name||'';save();modal='playerInfo';render()});
  $('#addPlayer').onclick=()=>{db.roster.push({name:'Guest',side:'R',jersey:'',grad:'',positions:'',gpa:'',interest:'',school:'',isGuest:true});save();render();setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),0)};
  $('#saveRoster').onclick=()=>{if(!syncRosterNames())return;save();go('home')};
  $('#importRosterInfo').onclick=()=>{if(!syncRosterNames())return;save();$('#rosterInfoFile').click()};
@@ -3435,8 +3435,8 @@ function bindRoster(){
 }
 function bindPlayerInfo(){
  $('#savePlayerInfo').onclick=()=>{
-  const player=db.roster[infoPlayerIndex];if(!player)return;
-  $$('[data-info-field]').forEach(field=>player[field.dataset.infoField]=field.value.trim());
+  const player=db.roster[infoPlayerIndex];if(!player||player.name!==infoPlayerName)return;
+  $('[data-info-field]').forEach(field=>player[field.dataset.infoField]=field.value.trim());
   if(!['R','L','SL'].includes(player.side.toUpperCase()))player.side='R';else player.side=player.side.toUpperCase();
   player.throws=(player.throws||'').toUpperCase();
   save();modal=null;render();
