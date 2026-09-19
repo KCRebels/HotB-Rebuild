@@ -1127,3 +1127,5 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 /* HotB mobile: prevent accidental Safari double-tap zoom while preserving normal page scrolling. */
 html,body,button,a,[role="button"]{touch-action:manipulation}
 
+
+.outs-stepper{position:relative}.outs-force-end{position:absolute;left:50%;bottom:-18px;transform:translateX(-50%);border:0;border-radius:7px;padding:3px 7px;font-size:10px;font-weight:800;white-space:nowrap;background:#222;color:#fff}
