@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-123';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-124';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -3547,7 +3547,15 @@ async function endPracticeDraft(){
  }
  closePracticeWorkspace();
 }
+let practiceResumeVerificationBusy=false;
 async function resumeRecoveredPracticeClock(){
+ if(practiceResumeVerificationBusy||!practicePlan||!practiceClock.running)return;
+ // Auth restoration can lag local-session restoration on iPhone/PWA startup.
+ // Wait for the authenticated callback instead of treating that short gap as a
+ // portal mismatch and alarming/pausing a valid recovered practice.
+ if(!cloudUser||!cloudStore)return;
+ practiceResumeVerificationBusy=true;
+ try{
  if(!practicePlan||!practiceClock.running)return;
  if(!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now())){await finishPracticeClock(true);return}
  const activeTiming=window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now());
@@ -3563,6 +3571,7 @@ async function resumeRecoveredPracticeClock(){
  }
  updatePracticeClock();
  if(practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
+ }finally{practiceResumeVerificationBusy=false}
 }
 async function verifyPublishedPracticeClock(){
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return false;
