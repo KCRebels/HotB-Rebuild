@@ -3254,7 +3254,7 @@ function bindGamesSelection(){
  $$('[data-open-group]').forEach(button=>button.onclick=()=>{reportGroupId=button.dataset.openGroup;reportMode='group';reportOpponent='All Opponents';modal='reports';render()});
  $$('[data-edit-group]').forEach(button=>button.onclick=()=>{modal=`gameGroup:${button.dataset.editGroup}`;render()});
  $$('[data-rename-group]').forEach(button=>button.onclick=()=>{const group=db.gameGroups.find(item=>item.id===button.dataset.renameGroup),name=prompt('Group name',group?.name||'')?.trim();if(!group||!name)return;group.name=name;save();render()});
- $$('[data-delete-group]').forEach(button=>button.onclick=()=>{const group=db.gameGroups.find(item=>item.id===button.dataset.deleteGroup);if(!group||!confirm(`Delete the game group “${group.name}”? Saved games will not be deleted.`))return;db.gameGroups=db.gameGroups.filter(item=>item.id!==group.id);save();render()});
+ $('[data-delete-group]').forEach(button=>button.onclick=()=>{const group=db.gameGroups.find(item=>item.id===button.dataset.deleteGroup);if(!group||!confirm(`Delete the game group “${group.name}”? Saved games will not be deleted.`))return;db.gameGroups=db.gameGroups.filter(item=>item.id!==group.id);if(reportGroupId===group.id){reportGroupId=null;if(reportMode==='group')reportMode='saved'}save();render()});
 }
 
 function bindGameGroup(){
