@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-127';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-128';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1136,6 +1136,17 @@ async function loadPlayerPortal(){
    const playerType=['player','jenkinsPlayer','guestPlayer'].includes(loaded.portalType),coachType=['coach','guestCoach'].includes(loaded.portalType);
    if(!playerType&&!coachType||playerType&&!loaded.playerName||coachType&&!loaded.coachName)throw new Error('portal-identity-missing');
    portalData=loaded;portalMessage='';
+   // The initial read must get the same lifecycle normalization as later live
+   // snapshots. A reopened iPhone can otherwise keep a stale drill subview from
+   // memory while the cloud document is already waiting/ended/no-practice.
+   if(!portalData.activePractice){
+    portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
+    if(['guestPlayer','jenkinsPlayer','guestCoach','coach'].includes(portalData.portalType)||portalView==='practice')portalView='home';
+   }else if(portalPracticeClockValues(portalData.activePractice).ended){
+    portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';portalView='practice';portalData._localPracticeEnded=true;
+   }else if(['guestPlayer','jenkinsPlayer','guestCoach'].includes(portalData.portalType)){
+    portalView='home';
+   }
    if(portalUnsubscribe)portalUnsubscribe();
    portalUnsubscribe=portalDoc(requestedPortalToken).onSnapshot(next=>{
     if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
