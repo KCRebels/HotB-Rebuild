@@ -2877,7 +2877,8 @@ function openFocusObservation(){
  modal='coachObservation';render();
 }
 function openManagedObservation(id,gameId=''){
- const source=gameId?(db.savedGames||[]).find(game=>game.id===gameId):null,record=(source?.observations||db.coachObservations||[]).find(item=>item.id===id);if(!record)return;
+ const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===practiceFocusPlayer);if(!selected)return;
+ const source=gameId?(db.savedGames||[]).find(game=>game.id===gameId):null,record=(source?.observations||db.coachObservations||[]).find(item=>item.id===id);if(!record||record.playerName!==selected.name)return;
  observationMode='manage';observationEditId=id;observationEditGameId=gameId;observationTargetPlayer=record.playerName;observationTargetPaId=record.paId||'';modal='coachObservation';render();
 }
 function observationCountSummary(playerName,g=currentGame()){
@@ -2922,6 +2923,7 @@ function focusGameAuditModal(){
  return `<div class="modal-backdrop"><div class="modal focus-game-audit-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER FOCUS</div><h2>Included Games</h2></div><button class="btn" data-close>Close</button></div><p class="focus-game-audit-player"><b>${esc(practiceFocusPlayer)}</b><span>${esc(label)}</span></p><section>${rows||'<p class="focus-empty-copy">No saved games are included in this time period.</p>'}</section></div></div>`;
 }
 function manageFocusObservationsModal(){
+ const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===practiceFocusPlayer);if(!selected)return'';
  const games=playerFocusGames(),standalone=window.HotBCoachObservations?.standaloneInRange(db.coachObservations,practiceFocusRange)||[];
  const observed=window.HotBCoachObservations?.summarize(games,practiceFocusPlayer,standalone)||{rows:[]};
  const rows=(observed.rows||[]).slice().sort((a,b)=>new Date(b.observedAt||b.gameDate||b.createdAt||0)-new Date(a.observedAt||a.gameDate||a.createdAt||0));
@@ -2933,7 +2935,7 @@ function manageFocusObservationsModal(){
  return `<div class="modal-backdrop"><div class="modal focus-manage-modal"><div class="modal-header"><div><div class="small info-kicker">${esc(rangeLabel)}</div><h2>${esc(first)}’s Observations</h2></div><button class="btn" data-close>Close</button></div><p class="focus-manage-help">Delete only the extra entry. ${esc(first)}’s game and statistics will not be changed.</p><section class="focus-manage-list">${cards||'<p class="focus-empty-copy">There are no observations to manage in this time period.</p>'}</section></div></div>`;
 }
 function manageFocusDrillsModal(){
- const selected=db.roster.find(player=>player.name===practiceFocusPlayer);if(!selected)return'';
+ const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===practiceFocusPlayer);if(!selected)return'';
  const games=playerFocusGames(),standalone=window.HotBCoachObservations?.standaloneInRange(db.coachObservations,practiceFocusRange)||[],analysis=window.HotBHittingAnalysis?.analyzePlayer(games,selected)||{issues:[]},observed=window.HotBCoachObservations?.summarize(games,selected.name,standalone)||{patterns:[]};
  const query=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>`${item.label} ${item.focus||''}`)].join(' '),current=focusSuggestedDrills(query),library=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[];
  if(focusDrillReplaceIndex>=0){
