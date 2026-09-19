@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-101';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-102';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1024,16 +1024,16 @@ function smsComposeUrl(phone,message){
 }
 function openSmsComposer(url){
  if(!url)return false;
- // iOS Home Screen apps are most reliable when the sms: navigation happens
- // directly inside the user's tap event. A synthetic hidden-anchor click can
- // be accepted by JavaScript yet silently ignored by standalone Safari/PWA.
- try{window.location.href=url;return true}catch(_){}
+ // Keep the external sms: navigation synchronous with the original iPhone tap.
+ // An actual anchor click is more reliable in standalone PWAs than assigning
+ // location.href and claiming success before iOS has accepted the navigation.
  try{
   const link=document.createElement('a');
-  link.href=url;link.style.display='none';link.setAttribute('aria-hidden','true');
+  link.href=url;link.style.position='fixed';link.style.left='-9999px';link.setAttribute('aria-hidden','true');
   document.body.appendChild(link);link.click();link.remove();
   return true;
- }catch(__){return false}
+ }catch(_){}
+ try{window.location.assign(url);return true}catch(__){return false}
 }
 function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}&portalBuild=${PORTAL_BUILD_TOKEN}`}
 function playerPortalTextUrl(player){
