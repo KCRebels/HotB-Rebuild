@@ -279,6 +279,8 @@
   const errors=[];
   if(!plan||plan.times?.length!==BLOCK_COUNT)errors.push('Schedule must contain ten blocks.');
   if(!plan||!Array.isArray(plan.players)||!plan.schedule||typeof plan.schedule!=='object'){errors.push('Practice roster or schedule data is invalid.');return [...new Set(errors)]}
+  const availablePlayers=plan.players.filter(player=>(player?.availableFromBlock??0)<(player?.availableUntilBlock??BLOCK_COUNT));
+  if(availablePlayers.length<2)errors.push('Practice must have at least two available players.');
   Object.entries(plan?.schedule||{}).forEach(([name,entries])=>{
    if(!Array.isArray(entries)){errors.push(`${name} has an invalid schedule.`);return}
    if(entries.length!==BLOCK_COUNT||entries.some(entry=>!entry?.activity))errors.push(`${name} has downtime while present.`);
@@ -317,7 +319,7 @@
    if(Object.values(frontCounts).some(count=>count<2||count>3))errors.push(`Block ${block+1} each Front Toss lane must have 2–3 players.`);
    if(plan.liveSessions?.some(session=>session.block===block)&&entries.some(entry=>entry?.activity.startsWith('Front Toss')))errors.push(`Block ${block+1} has Front Toss while live pitching is active.`);
    const drillCounts={};entries.filter(entry=>entry?.activity.startsWith('Drill #')).forEach(entry=>drillCounts[entry.activity]=(drillCounts[entry.activity]||0)+1);
-   if(Object.values(drillCounts).some(count=>count>3||(count<2&&plan.attendance>1)))errors.push(`Block ${block+1} has a drill station without 2–3 players.`);
+   if(Object.values(drillCounts).some(count=>count>3||(count<2&&availablePlayers.length>1)))errors.push(`Block ${block+1} has a drill station without 2–3 players.`);
    if(Object.values(drillCounts).includes(1)&&Object.values(drillCounts).includes(3))errors.push(`Block ${block+1} must rebalance one- and three-player drill groups into two-player groups.`);
   }
   (plan?.liveSessions||[]).forEach(session=>{
