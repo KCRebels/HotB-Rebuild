@@ -6,9 +6,9 @@
  function isCompleted(item){return !!(item&&item.completedAt&&!['canceled','cancelled','discarded','unfinished'].includes(String(item.status||'').toLowerCase()))}
  function records(history){return(Array.isArray(history)?history:[]).filter(isCompleted)}
  function saveCompleted(history,record){
-  const next=records(history).map(item=>({...item,attendees:[...(item.attendees||[])],drills:[...(item.drills||[])]}));
+  const next=records(history).map(item=>({...item,attendees:[...(item.attendees||[])],excludedAttendancePlayers:[...(item.excludedAttendancePlayers||[])],drills:[...(item.drills||[])]}));
   if(!record?.id)throw new Error('A completed practice requires a stable id');
-  const clean={...record,status:'completed',attendees:[...new Set(record?.attendees||[])],drills:[...new Set(record?.drills||[])]};
+  const clean={...record,status:'completed',attendees:[...new Set(record?.attendees||[])],excludedAttendancePlayers:[...new Set(record?.excludedAttendancePlayers||[])],drills:[...new Set(record?.drills||[])]};
   const index=next.findIndex(item=>item.id===clean.id);
   if(index>=0)next[index]=clean;else next.push(clean);
   return next.sort((a,b)=>String(a.completedAt).localeCompare(String(b.completedAt)));
