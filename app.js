@@ -3255,6 +3255,9 @@ async function finishPracticeClock(automatic=false){
  if(!practiceClock.endAnnounced){practiceClock.endAnnounced=true;practiceEndSpeech=speakPracticeClock('Times Up, Good Practice, Please start to clean up')}
  persistPracticeSession();
  const endingSpeech=practiceEndSpeech;render();
+ if(automatic&&Array.isArray(practicePlan?.recoveredCoachSchedule)&&practicePlan.recoveredCoachSchedule.length){
+  return;
+ }
  if(shouldClearPortals){
   try{await clearActivePlayerPlans();clearPracticeSession();render()}
   catch(error){alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap DONE! again.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in through Cloud Backup, then tap DONE! again.')}
