@@ -1,4 +1,4 @@
-const BUILD_VERSION = '2026.09.19.13';
+const BUILD_VERSION = '2026.09.19.14';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
@@ -35,10 +35,10 @@ async function newestNavigation(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
     const response = await fetch(request, {cache: 'no-store'});
-    if (response.ok) await cache.put(OFFLINE_SHELL, response.clone());
+    if (response.ok) await cache.put(new Request(new URL(OFFLINE_SHELL, self.location.href).href), response.clone());
     return response;
   } catch (_) {
-    return (await cache.match(OFFLINE_SHELL)) || Response.error();
+    return (await cache.match(new Request(new URL(OFFLINE_SHELL, self.location.href).href))) || Response.error();
   }
 }
 
