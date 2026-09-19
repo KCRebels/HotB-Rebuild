@@ -2026,7 +2026,7 @@ async function activatePlayerPlans(){
  try{
   for(const player of jenkins)if(!player.portalId||!player.portalSecret)await createPendingGuestPortal(player,'jenkinsPlayer');
   const batch=cloudStore.batch();
-  db.roster.filter(player=>!player.isTeamJenkins&&player.portalId&&attending.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:playerPracticePortalPayload(player.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+  db.roster.filter(player=>!player.isTeamJenkins&&player.portalId&&attending.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:{...playerPracticePortalPayload(player.name),clock:{status:'not-started',startedAt:null,endedAt:null}},updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
   db.roster.filter(player=>player.isTeamJenkins&&player.portalId&&attending.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),jenkinsPortalResetPayload(player,playerPracticePortalPayload(player.name),'active'),{merge:true}));
   if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:coachPracticePortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   for(const guest of practiceGuestPlayers().filter(player=>attending.has(player.name))){if(!guest.portalId||!guest.portalSecret)throw new Error(`Guest link missing for ${guest.name}`);batch.set(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice:playerPracticePortalPayload(guest.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
