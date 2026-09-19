@@ -1021,7 +1021,7 @@ function smsComposeUrl(phone,message){
  const separator=/iPad|iPhone|iPod/.test(navigator.userAgent)?'&':'?';
  return `sms:${recipient}${separator}body=${encodeURIComponent(body)}`;
 }
-function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}&portalBuild=20260919-23`}
+function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}&portalBuild=20260919-44`}
 function playerPortalTextUrl(player){
  const phone=String(player?.phone||'').replace(/[^\d+]/g,'');
  if(!phone||!player?.portalId||!player?.portalPin)return'';
