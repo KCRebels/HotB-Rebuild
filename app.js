@@ -2148,7 +2148,8 @@ async function syncPlayerPracticeClock(){
  practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).forEach(guest=>queue(guest.portalId));
  practiceGuestCoaches().filter(guest=>guest.portalId).forEach(guest=>queue(guest.portalId));
  const results=await Promise.allSettled(updates),failed=results.filter(result=>result.status==='rejected');
- if(failed.length)console.warn(`Player portal clock sync failed for ${failed.length} of ${updates.length} portal documents`);
+ if(failed.length){console.warn(`Player portal clock sync failed for ${failed.length} of ${updates.length} portal documents`);return false}
+ return true;
 }
 async function activatePlayerPlans(){
  if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before activating player portals.');return}
@@ -3234,7 +3235,7 @@ function beginPracticeClock(){
  if(practiceClockTimer)clearInterval(practiceClockTimer);
  practiceEndSpeech=Promise.resolve();
  practiceClock={running:true,finished:false,endAnnounced:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
- persistPracticeSession();speakPracticeClock('Begin Block 1');render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);syncPlayerPracticeClock();
+ persistPracticeSession();speakPracticeClock('Begin Block 1');render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);syncPlayerPracticeClock().then(ok=>{if(ok===false)console.warn('Initial live practice clock sync was incomplete; later block syncs will retry affected portals.')});
 }
 document.addEventListener('visibilitychange',()=>{
  if(document.visibilityState==='hidden'&&practicePlan)persistPracticeSession();
