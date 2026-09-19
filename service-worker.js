@@ -2,6 +2,7 @@ const BUILD_VERSION = '2026.09.19.34';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
+const LEGACY_SHELL = './hotb-fresh.html';
 const CORE_FILES = ['./index.html', './hotb-fresh.html', './styles.css', './evaluation-cleanup.css', './app.js'];
 
 self.addEventListener('install', event => {
@@ -64,7 +65,15 @@ self.addEventListener('fetch', event => {
   if (request.mode === 'navigate' && url.searchParams.has('portal')) {
     return event.respondWith(fetch(request, {cache: 'no-store'}));
   }
-  if (request.mode === 'navigate') return event.respondWith(newestNavigation(request));
+  if (request.mode === 'navigate') {
+    // hotb-fresh.html was an emergency bootstrap shell and is now stale.
+    // Always route installed-app navigations to the canonical current index.html.
+    if (url.pathname.endsWith('/hotb-fresh.html')) {
+      const canonical = new Request(new URL('./index.html', self.location.href).href, {cache: 'no-store'});
+      return event.respondWith(newestNavigation(canonical));
+    }
+    return event.respondWith(newestNavigation(request));
+  }
   if (['script', 'style', 'worker'].includes(request.destination)) event.respondWith(newestAsset(request));
 });
 
