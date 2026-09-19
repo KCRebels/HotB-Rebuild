@@ -2121,7 +2121,22 @@ async function clearActivePlayerPlans(){
  if(coachPortalId)batch.set(portalDoc(coachPortalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
  const guestPortalIds=new Set([...(db.activePortalPractice?.guestPlayerPortalIds||[]),...(db.activePortalPractice?.guestCoachPortalIds||[]),...practiceGuestPlayers().filter(guest=>activeNames.has(guest.name)).map(guest=>guest.portalId),...practiceGuestCoaches().map(guest=>guest.portalId)].filter(Boolean));
  guestPortalIds.forEach(id=>batch.set(portalDoc(id),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
- await batch.commit();db.activePortalPractice=null;
+ await batch.commit();
+ // Confirm the ended practice is actually gone from every portal before
+ // clearing the coach's local active-practice reference.
+ const verifyIds=[...new Set([
+  ...persistedPlayerPortals.map(entry=>entry.portalId),
+  ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)).map(player=>player.portalId),
+  coachPortalId,
+  ...guestPortalIds
+ ].filter(Boolean))];
+ const verification=await Promise.all(verifyIds.map(async id=>{
+  const snapshot=await portalDoc(id).get();
+  if(!snapshot.exists)return true;
+  return !snapshot.data()?.activePractice;
+ }));
+ if(verification.some(cleared=>!cleared))throw new Error('portal-clear-verification-failed');
+ db.activePortalPractice=null;
  if(db.activePracticeSession&&practicePlan)persistPracticeSession();else save();
 }
 function recoveryDrillByName(name){
