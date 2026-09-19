@@ -1,5 +1,5 @@
 (() => {
-  const BUILD_VERSION = '2026.09.19.13';
+  const BUILD_VERSION = '2026.09.19.14';
   window.HOTB_BUILD_VERSION = BUILD_VERSION;
   // Player portals must always use the current network app. They do not install,
   // update, or re-register the coach PWA service worker.
@@ -30,7 +30,7 @@
         const navigate = () => {
           if (navigated) return;
           navigated = true;
-          window.location.assign(url.href);
+          window.location.replace(url.href);
         };
         navigator.serviceWorker.addEventListener('controllerchange', navigate, {once: true});
         registration.waiting.postMessage({type: 'SKIP_WAITING'});
