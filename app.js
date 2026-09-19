@@ -948,7 +948,7 @@ function initCloud(){
     cloudUser=user&&!user.isAnonymous?user:null;
     portalAuthUser=user||null;
    }
-   if(cloudUser){await loadCloudStatus();if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();syncPlayerEvaluationPortals().catch(()=>{})}
+   if(cloudUser){await loadCloudStatus();if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();syncPlayerEvaluationPortals().catch(()=>{});if(recoveredPracticeExpired&&practicePlan&&practiceClock.running)await finishPracticeClock(true)}
    if(portalToken)await loadPlayerPortal();
    if(route==='home'||route==='portal')render();
   });
@@ -3651,5 +3651,5 @@ function bindRecord(){
 }
 render();
 initCloud();
-resumeRecoveredPracticeClock();
+if(!recoveredPracticeExpired)resumeRecoveredPracticeClock();
 })();
