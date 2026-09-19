@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-134';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-138';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1417,7 +1417,13 @@ async function restoreFromCloud(){
 async function cloudPasswordAuth(createAccount=false){
  const password=$('#cloudPassword')?.value||'';
  if(cloudBusy)return;
- if(!cloudAuth){cloudMessage='Cloud Backup is still connecting. Please wait a moment and tap Sign In again.';render();initCloud();return}
+ if(!cloudAuth){
+  cloudMessage='Cloud Backup is still connecting. Finishing the connection now…';render();
+  await initCloud();
+  const deadline=Date.now()+10000;
+  while(!cloudAuth&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,200));
+  if(!cloudAuth){cloudMessage='Cloud Backup could not finish connecting. Close this window and try once more.';render();return}
+ }
  if(password.length<6){cloudMessage='Your HotB backup password must be at least 6 characters.';render();return}
  cloudBusy=true;cloudMessage=createAccount?'Creating your protected backup login…':'Signing in…';render();
  try{
