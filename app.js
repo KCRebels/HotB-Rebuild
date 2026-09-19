@@ -3048,6 +3048,7 @@ function updatePracticeClock(){
 function beginPracticeClock(){
  if(practiceClock.finished)return;
  if(practicePlan&&window.HotBPracticeScheduler?.validate){const errors=window.HotBPracticeScheduler.validate(practicePlan);if(errors.length){alert(`This practice cannot start because it failed its safety checks:\n\n${errors.join('\n\n')}`);return}}
+ if(!practicePlan||practiceChosenDrills.length!==practicePlan.drillStations){alert('Choose all practice drills before starting the practice clock.');return}
  if(practiceClockTimer)clearInterval(practiceClockTimer);
  // Starting the clock must never discard drills already saved for this exact practice.
  // Recover them from the persisted session if the in-memory list was lost during a render/navigation.
