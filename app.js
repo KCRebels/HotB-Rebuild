@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-133';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-134';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1472,8 +1472,17 @@ window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)
 function go(r){
  if(route==='practice'&&practicePlan)persistPracticeSession();
  if(r==='practice'&&route!=='practice')practiceSection='hub';
+ // A private portal URL is a dedicated surface. Do not let generic app
+ // navigation leave its Firestore listener alive while another coach/app view
+ // is rendered; invalidate any in-flight load before changing routes.
+ if(portalToken&&r!=='portal'){
+  portalLoadGeneration++;
+  if(portalUnsubscribe){portalUnsubscribe();portalUnsubscribe=null}
+  if(portalClockTimer){clearInterval(portalClockTimer);portalClockTimer=null}
+ }
  route=r;modal=null;save();render();window.scrollTo(0,0);
  if(r==='practice')resumeRecoveredPracticeClock();
+ if(r==='portal'&&portalToken&&!portalUnsubscribe&&!portalBusy)loadPlayerPortal();
 }
 function currentGame(){return db.currentGame}
 function planFor(name){
