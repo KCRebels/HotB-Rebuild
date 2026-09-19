@@ -2046,7 +2046,7 @@ function recoveryAssignmentToEntry(assignment){
  if(!value)return {activity:'Not Present'};
  let match=value.match(/^Drill Station (\d+)\s+—/i);if(match)return {activity:`Drill #${match[1]}`};
  match=value.match(/^Pitch Live \(([^)]+)\)/i);if(match)return {activity:'Pitch Live',partner:match[1]};
- match=value.match(/^Catch Live\s+—\s+([^—]+)/i);if(match)return {activity:'Catch Live',partner:match[1].trim()};
+ match=value.match(/^Catch Live\s+—\s+(.+?)(?:\s+—\s+12 pitches minimum per hitter)?$/i);if(match)return {activity:'Catch Live',partner:match[1].trim()};
  match=value.match(/^Hit Live\s+—.*?—\s+([^\s—]+)\s+\(([^)]+)\)/i);if(match)return {activity:'Hit Live',partner:match[1]};
  if(/^Machine\b/i.test(value))return {activity:'Machine'};
  if(/^Front Toss\b/i.test(value))return {activity:'Front Toss'};
