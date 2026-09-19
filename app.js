@@ -3561,8 +3561,9 @@ function bindPitcherChange(){
  };
 }
 function bindHitterChange(){
- $$("[data-sub-hitter]").forEach(button=>button.onclick=()=>{
-  const g=currentGame(),outgoing=currentHitter(g).name,incoming=button.dataset.subHitter;
+ $("[data-sub-hitter]").forEach(button=>button.onclick=()=>{
+  const g=currentGame(),outgoing=currentHitter(g).name,incoming=button.dataset.subHitter,player=competitionRoster().find(item=>item.name===incoming);
+  if(!player||g.battingOrder.includes(incoming))return;
   g.pitches.filter(p=>p.pa===g.paNumber&&p.hitter===outgoing).forEach(p=>p.hitter=incoming);
   g.battingOrder[g.currentIdx]=incoming;
   g.hittersUsed=[...new Set([...(g.hittersUsed||g.battingOrder),outgoing,incoming])];
