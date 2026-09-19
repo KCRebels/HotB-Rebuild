@@ -1962,7 +1962,7 @@ function playerPracticePortalPayload(name){
 }
 function coachPracticePortalPayload(){
  const schedule=window.HotBCoachPractice?.build(practicePlan,practiceChosenDrills)||[];
- const players=practicePlan.players.map(player=>({name:practiceFirstName(player.name),role:practiceRole(practicePlayerByName(player.name)||player),schedule:playerPracticePortalPayload(player.name).schedule}));
+ const players=practicePlan.players.filter(player=>(player.availableFromBlock??0)<(player.availableUntilBlock??10)).map(player=>({name:practiceFirstName(player.name),role:practiceRole(practicePlayerByName(player.name)||player),schedule:playerPracticePortalPayload(player.name).schedule}));
  return{id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',coachName:db.coachPortal?.name||'Coach',startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,activatedAt:new Date().toISOString(),clock:practiceClockPortalPayload(),schedule,players,drills:practiceAllSelectedDrills().map(drill=>drill.name)};
 }
 function archiveCompletedPractice(completedAt=new Date()){
