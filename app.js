@@ -3290,7 +3290,7 @@ function updatePracticeClock(){
  if(currentBlock)currentBlock.textContent=transition?'ROTATE':`${block} of 10`;
  if(timeLeft)timeLeft.textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
 }
-function beginPracticeClock(){
+async function beginPracticeClock(){
  if(practiceClock.finished)return;
  if(!db.activePortalPractice?.id||db.activePortalPractice.id!==practicePlan?.portalDraftId){alert('Activate the player and coach portal plans before starting practice. This keeps every player’s live block and NEXT display synchronized with the coach clock.');return}
  if(practicePlan&&!practicePlan.recoveredCoachSchedule&&window.HotBPracticeScheduler?.validate){const errors=window.HotBPracticeScheduler.validate(practicePlan);if(errors.length){alert(`This practice cannot start because it failed its safety checks:\n\n${errors.join('\n\n')}`);return}}
@@ -3304,7 +3304,15 @@ function beginPracticeClock(){
  if(practiceClockTimer)clearInterval(practiceClockTimer);
  practiceEndSpeech=Promise.resolve();
  practiceClock={running:true,finished:false,endAnnounced:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
- persistPracticeSession();speakPracticeClock('Begin Block 1');render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);syncPlayerPracticeClock().then(ok=>{if(ok===false)console.warn('Initial live practice clock sync was incomplete; later block syncs will retry affected portals.')});
+ persistPracticeSession();
+ const clockSynced=await syncPlayerPracticeClock();
+ if(clockSynced!==true){
+  practiceClock={running:false,finished:false,endAnnounced:false,startAt:null,lastBlock:0,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
+  persistPracticeSession();render();
+  alert('Practice did not start because the live player/coach portal clock could not be confirmed. Check the connection and tap Start again.');
+  return;
+ }
+ speakPracticeClock('Begin Block 1');render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);
 }
 document.addEventListener('visibilitychange',()=>{
  if(document.visibilityState==='hidden'&&practicePlan)persistPracticeSession();
