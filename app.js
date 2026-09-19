@@ -935,16 +935,17 @@ if(recoveredPracticeSession){
 }
 const recoveredPracticeExpired=!!(practicePlan&&practiceClock.running&&!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now()));
 
+let cloudInitStarted=false,cloudInitRetryTimer=null,cloudInitRetryCount=0;
 function initCloud(){
+ if(cloudInitStarted)return;
  if(!window.firebase){
-  if(portalToken){
-   portalBusy=false;
-   portalMessage='HotB could not connect to the player portal service. Please reopen the link.';
-   if(route==='portal')render();
-  }
+  if(cloudInitRetryCount<40){cloudInitRetryCount++;clearTimeout(cloudInitRetryTimer);cloudInitRetryTimer=setTimeout(initCloud,250);return}
+  if(portalToken){portalBusy=false;portalMessage='HotB could not connect to the player portal service. Please reopen the link.';if(route==='portal')render()}
+  else cloudMessage='HotB could not start the portal connection. Your phone data is still safe.';
   return;
  }
  try{
+  cloudInitStarted=true;clearTimeout(cloudInitRetryTimer);cloudInitRetryTimer=null;
   if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
   cloudAuth=firebase.auth();cloudStore=firebase.firestore();
   cloudAuth.onAuthStateChanged(async user=>{
@@ -959,6 +960,7 @@ function initCloud(){
    if(route==='home'||route==='portal')render();
   });
  }catch(error){
+  cloudInitStarted=false;
   cloudMessage='Cloud backup could not start. Your phone data is still safe.';
   if(portalToken){
    portalBusy=false;
