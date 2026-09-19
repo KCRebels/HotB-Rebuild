@@ -1745,7 +1745,8 @@ function practiceEndValue(startTime,durationMinutes){return practiceTimeValue(pr
 function practiceTimeLabel(value){const minutes=practiceTimeMinutes(value),hour=Math.floor(minutes/60);return `${hour%12||12}:${String(minutes%60).padStart(2,'0')}${hour<12?'a':'p'}`}
 function practiceAccommodation(player){
  const saved=practiceSetupState.accommodations?.[player.name]||{};
- return {arrival:saved.arrival||'',departure:saved.departure||'',limitations:saved.limitations||'',prePracticeComplete:!!(player.isPracticeGuest||player.isTeamJenkins)&&!!saved.prePracticeComplete,canPitch:isPitcherProfile(player)?saved.canPitch!==false:false,requiresPitchWarmup:isPitcherProfile(player)?saved.requiresPitchWarmup!==false:false,canCatch:positionTokens(player).includes('C')?saved.canCatch!==false:false};
+ const hasPrePracticeSetting=Object.prototype.hasOwnProperty.call(saved,'prePracticeComplete');
+ return {arrival:saved.arrival||'',departure:saved.departure||'',limitations:saved.limitations||'',prePracticeComplete:player.isTeamJenkins?(hasPrePracticeSetting?!!saved.prePracticeComplete:true):(!!player.isPracticeGuest&&!!saved.prePracticeComplete),canPitch:isPitcherProfile(player)?saved.canPitch!==false:false,requiresPitchWarmup:isPitcherProfile(player)?saved.requiresPitchWarmup!==false:false,canCatch:positionTokens(player).includes('C')?saved.canCatch!==false:false};
 }
 function practiceAccommodationSummary(player,accommodation,startTime,durationMinutes){
  const endTime=practiceEndValue(startTime,durationMinutes),parts=[];
