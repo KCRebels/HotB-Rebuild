@@ -921,7 +921,11 @@ let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='
 let observationTargetPaId='',observationTargetPlayer='',observationMode='game',observationScope='current',observationPromptInning=0,observationFromInningPrompt=false,observationRecognition=null;
 let observationEditId='',observationEditGameId='';
 if(!db.coachPortal||typeof db.coachPortal!=='object')db.coachPortal={name:'',phone:'',portalId:'',portalPin:'',portalPinHash:''};
-const recoveredPracticeSession=!portalToken&&window.HotBPracticeSession?.restore(db.activePracticeSession);
+const restoredPracticeCandidate=!portalToken&&window.HotBPracticeSession?.restore(db.activePracticeSession);
+const recoveredPracticeSession=restoredPracticeCandidate&&(!db.activePortalPractice?.id||db.activePortalPractice.id===restoredPracticeCandidate.plan?.portalDraftId)?restoredPracticeCandidate:null;
+if(restoredPracticeCandidate&&!recoveredPracticeSession){
+ db.activePracticeSession=null;save();
+}
 if(recoveredPracticeSession){
  practicePlan=recoveredPracticeSession.plan;
  practiceChosenDrills=recoveredPracticeSession.chosenDrills;
