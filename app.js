@@ -2303,7 +2303,7 @@ function reportGamesListModal(){
  return `<div class="modal-backdrop"><div class="modal report-games-modal"><div class="modal-header"><h2>Included Games</h2><button class="btn" data-close>Close</button></div><div class="included-games-list">${games.length?games.map(game=>`<div><b>${esc(game.opponent||'Opponent')}</b><span>${new Date(game.date).toLocaleDateString()}</span></div>`).join(''):'<p>No games match the current filters.</p>'}</div></div></div>`;
 }
 function reportModal(){
- const games=reportGames(),source=games.flatMap(game=>game.plateAppearances||[]);
+ const games=reportGames(),competitionNames=new Set(competitionRoster().map(player=>player.name)),source=games.flatMap(game=>game.plateAppearances||[]).filter(pa=>competitionNames.has(pa.hitter));
  const filtered=reportFilterHitter==='All Hitters'?source:source.filter(pa=>pa.hitter===reportFilterHitter);
  const s=HotBEvaluationStats.statsForPAs(filtered),opponents=[...new Set(reportBaseGames().map(game=>game.opponent).filter(Boolean))].sort();
  return `<div class="modal-backdrop"><div class="modal">
@@ -2322,7 +2322,7 @@ function countCard(pas,bucket){
  const stats=HotBEvaluationStats.countPerformance(pas,bucket),h=stats.H,o=stats.H4O,k=stats.K,ave=stats.AVG;
  return `<div class="count-card"><b>${bucket}</b><span class="count-value hit ${h===0?'zero':''}">${h}</span><span class="count-separator">|</span><span class="count-value out ${o===0?'zero':''}">${o}</span><span class="count-separator">|</span><span class="count-value strikeout ${k===0?'zero':''}">${k}</span><span class="count-separator">|</span><span class="count-value average ${ave===0?'zero':''}">${round3(ave)}</span></div>`;
 }
-function reportPitchSource(){return reportGames().flatMap(game=>game.pitches||[])}
+function reportPitchSource(){const names=new Set(competitionRoster().map(player=>player.name));return reportGames().flatMap(game=>game.pitches||[]).filter(pitch=>names.has(pitch.hitter))}
 function reportPitchForPA(pa){
  const game=reportGames().find(item=>(item.plateAppearances||[]).includes(pa));
  const paKey=HotBEvaluationStats.plateAppearanceKey(pa),pitches=(game?.pitches||[]).filter(p=>HotBEvaluationStats.plateAppearanceKey(p)===paKey);
@@ -3474,7 +3474,8 @@ function bindReports(){
  $('#exportReport')?.addEventListener('click',exportCsv);
 }
 function exportCsv(){
- let source=reportGames().flatMap(game=>game.plateAppearances||[]);
+ const competitionNames=new Set(competitionRoster().map(player=>player.name));
+ let source=reportGames().flatMap(game=>game.plateAppearances||[]).filter(pa=>competitionNames.has(pa.hitter));
  if(reportFilterHitter!=='All Hitters')source=source.filter(pa=>pa.hitter===reportFilterHitter);
  const rows=[['Hitter','Inning','PA','Outcome','Contact Type','Hit Type','Fielder','Final Count','Pitch Count','RBI','RBA','SAC','HHB','WEAK'],...source.map(p=>[p.hitter,p.inning,p.pa,p.outcome,p.contactType||'',p.hitType,p.fielder||'',p.finalCount,p.pitchCount,p.rbiCount??(p.rbi?1:0),p.rba,p.sac,p.hhb,p.weak])];
  const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`HotB_${reportMode}_report.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
