@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-74';
+const PORTAL_BUILD_TOKEN='20260919-75';
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1062,6 +1062,10 @@ async function createPendingGuestPortal(guest,type){
 }
 async function loadPlayerPortal(){
  if(!portalToken||!cloudAuth||!cloudStore)return;
+ // A reload or token change must never leave the previous portal document
+ // listening in the background. That old listener could otherwise repaint
+ // stale practice data after a failed read or while PIN entry is shown.
+ if(portalUnsubscribe){portalUnsubscribe();portalUnsubscribe=null}
  portalBusy=true;portalMessage='';
  if(!portalAuthUser){
   try{
@@ -1129,7 +1133,9 @@ async function loadPlayerPortal(){
      if(route==='portal')render();
     }
    },()=>{
-    portalData=null;portalMessage='This portal is no longer connected to this device.';
+    portalData=null;portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';portalView='home';
+    portalMessage='This portal is no longer connected to this device.';
+    if(portalUnsubscribe){portalUnsubscribe();portalUnsubscribe=null}
     if(route==='portal')render();
    });
   }
