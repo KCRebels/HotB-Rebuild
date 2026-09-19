@@ -3073,11 +3073,12 @@ async function finishPracticeClock(automatic=false){
  try{
  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
  practiceClock.running=false;practiceClock.finished=true;
- const scheduledEnd=practiceClock.startAt&&practicePlan&&window.HotBPracticeSession?.layout?practiceClock.startAt+window.HotBPracticeSession.layout(practicePlan).totalMs:0,completedAt=new Date(automatic&&scheduledEnd?scheduledEnd:Date.now());archiveCompletedPractice(completedAt);
+ const scheduledEnd=practiceClock.startAt&&practicePlan&&window.HotBPracticeSession?.layout?practiceClock.startAt+window.HotBPracticeSession.layout(practicePlan).totalMs:0,completedAt=new Date(automatic&&scheduledEnd?scheduledEnd:Date.now());
+ const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
+ if(!shouldClearPortals||cloudUser&&cloudStore)archiveCompletedPractice(completedAt);
  if(!practiceClock.endAnnounced){practiceClock.endAnnounced=true;practiceEndSpeech=speakPracticeClock('Times Up, Good Practice, Please start to clean up')}
  persistPracticeSession();
  const endingSpeech=practiceEndSpeech;render();
- const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
  if(shouldClearPortals){
   try{await clearActivePlayerPlans();clearPracticeSession();render()}
   catch(error){alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap DONE! again.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in through Cloud Backup, then tap DONE! again.')}
