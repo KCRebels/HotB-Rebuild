@@ -3068,6 +3068,7 @@ window.addEventListener('pagehide',()=>{if(practicePlan)persistPracticeSession()
 let practiceCompletionBusy=false;
 async function finishPracticeClock(automatic=false){
  if(practiceCompletionBusy||practiceClock.finished)return;
+ if(!practicePlan)return;
  practiceCompletionBusy=true;
  try{
  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
