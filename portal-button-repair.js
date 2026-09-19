@@ -6,6 +6,7 @@
 // This also survives every HotB render without rebinding individual buttons.
 if(new URLSearchParams(location.search).has('portal'))return;
 
+window.HOTB_PORTAL_BUTTON_REPAIR_ACTIVE=true;
 function invoke(action,name,event){
  const fn=window[action];
  if(typeof fn!=='function')return false;
