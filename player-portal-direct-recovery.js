@@ -34,5 +34,5 @@ async function refreshAuthorizedSnapshot(attempt=0){
 }
 window.addEventListener('load',()=>{setTimeout(watchdog,2500);setTimeout(()=>refreshAuthorizedSnapshot(0),900)});
 window.addEventListener('pageshow',e=>{if(e.persisted)setTimeout(refreshAuthorizedSnapshot,100)});
-setTimeout(watchdog,3500);
+void 0;
 })();
