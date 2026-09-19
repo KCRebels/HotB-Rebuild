@@ -2084,9 +2084,11 @@ async function recoverOrphanedActivePractice(){
   const stationNumbers=new Set();Object.values(schedule).flat().forEach(entry=>{const match=String(entry.activity).match(/^Drill #(\d+)$/);if(match)stationNumbers.add(Number(match[1]))});
   const drillStations=Math.max(0,...stationNumbers);
   const allDrillNames=Array.isArray(remote.drills)?remote.drills:[];
-  const chosenNames=allDrillNames.slice(0,drillStations),chosenDrills=chosenNames.map(recoveryDrillByName);
   let machineFocus='Standard',frontTossFocus='Standard';
   for(const item of remote.players||[])for(const entry of item.schedule||[]){let match=String(entry.assignment||'').match(/^Machine\s+—\s+(.+)$/i);if(match)machineFocus=match[1].trim();match=String(entry.assignment||'').match(/^Front Toss\s+—\s+(.+)$/i);if(match)frontTossFocus=match[1].trim()}
+  const focusNames=new Set([machineFocus,frontTossFocus].filter(name=>name&&name!=='Standard'));
+  const chosenNames=allDrillNames.filter(name=>!focusNames.has(name)).slice(0,drillStations),chosenDrills=chosenNames.map(recoveryDrillByName);
+  if(chosenDrills.length!==drillStations)throw new Error('drill-recovery-mismatch');
   const liveSessions=[];Object.entries(schedule).forEach(([name,entries])=>entries.forEach((entry,index)=>{if(entry.activity==='Pitch Live'){let session=liveSessions.find(item=>item.block===index);if(!session){session={block:index,pitcher:name,catcher:entry.partner||'9Square',hitters:[]};liveSessions.push(session)}}}));
   Object.entries(schedule).forEach(([name,entries])=>entries.forEach((entry,index)=>{if(entry.activity==='Hit Live'){const session=liveSessions.find(item=>item.block===index);if(session)session.hitters.push(name)}}));
   practicePlan={portalDraftId:remote.id,startTime,durationMinutes,blockMinutes,times,players,schedule,drillStations,liveSessions,machineFocus,frontTossFocus,warnings:['Recovered from the activated coach portal without rebuilding the scheduler.']};
