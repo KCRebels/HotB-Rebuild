@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-119';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-120';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1133,15 +1133,16 @@ async function loadPlayerPortal(){
    // A portal URL must never display a cloud document whose identity does not
    // match the requested private portal type. This is a final guard against
    // stale/reused IDs painting another portal's data on screen.
-   if(!loaded.portalType&&!loaded.playerName&&!loaded.coachName)throw new Error('portal-identity-missing');
+   const playerType=['player','jenkinsPlayer','guestPlayer'].includes(loaded.portalType),coachType=['coach','guestCoach'].includes(loaded.portalType);
+   if(!playerType&&!coachType||playerType&&!loaded.playerName||coachType&&!loaded.coachName)throw new Error('portal-identity-missing');
    portalData=loaded;portalMessage='';
    if(portalUnsubscribe)portalUnsubscribe();
    portalUnsubscribe=portalDoc(requestedPortalToken).onSnapshot(next=>{
     if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
     if(next.exists){
-     const nextData={id:next.id,...next.data()};
-     if(!nextData.portalType&&!nextData.playerName&&!nextData.coachName){
-      portalData=null;portalMessage='This portal record is incomplete. Ask the coach to refresh the player portal.';
+     const nextData={id:next.id,...next.data()},nextPlayerType=['player','jenkinsPlayer','guestPlayer'].includes(nextData.portalType),nextCoachType=['coach','guestCoach'].includes(nextData.portalType);
+     if(!nextPlayerType&&!nextCoachType||nextPlayerType&&!nextData.playerName||nextCoachType&&!nextData.coachName){
+      portalData=null;portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';portalView='home';portalMessage='This portal record is incomplete. Ask the coach to refresh the player portal.';
       if(route==='portal')render();return;
      }
      const previousPracticeId=portalData?.activePractice?.id||'';
