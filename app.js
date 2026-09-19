@@ -915,7 +915,7 @@ let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120
 let practiceSection='hub',practiceFocusPlayer='',practiceFocusRange='weekend',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practiceEquipmentSetupOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
 let focusDrillReplaceIndex=-1,focusDrillQuery='';
-let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0},practiceClockTimer=null,practiceEndSpeech=Promise.resolve(),portalClockTimer=null;
+let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null},practiceClockTimer=null,practiceEndSpeech=Promise.resolve(),portalClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudBusy=false,cloudMessage='',cloudBackupTimer=null,playerEvalSyncTimer=null;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLibraryReturnView='library';
@@ -1949,7 +1949,7 @@ function practiceDrillResourceWarnings(drills){
 }
 function practiceClockPortalPayload(){
  if(practiceClock.running&&practiceClock.startAt)return {status:'running',startedAt:new Date(practiceClock.startAt).toISOString(),endedAt:null};
- if(practiceClock.finished)return {status:'finished',startedAt:practiceClock.startAt?new Date(practiceClock.startAt).toISOString():null,endedAt:new Date().toISOString()};
+ if(practiceClock.finished)return {status:'finished',startedAt:practiceClock.startAt?new Date(practiceClock.startAt).toISOString():null,endedAt:practiceClock.completedAt||new Date().toISOString()};
  return {status:'not-started',startedAt:null,endedAt:null};
 }
 function playerPracticePortalPayload(name){
@@ -2979,7 +2979,7 @@ function bind(){
 
 function stopPracticeClock(){
  if(practiceClockTimer)clearInterval(practiceClockTimer);
- practiceClockTimer=null;practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0};
+ practiceClockTimer=null;practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
  if('speechSynthesis'in window)window.speechSynthesis.cancel();
 }
 function persistPracticeSession(){
@@ -3059,7 +3059,7 @@ function beginPracticeClock(){
  if(!practicePlan||practiceChosenDrills.length!==practicePlan.drillStations){alert('Choose all practice drills before starting the practice clock.');return}
  if(practiceClockTimer)clearInterval(practiceClockTimer);
  practiceEndSpeech=Promise.resolve();
- practiceClock={running:true,finished:false,endAnnounced:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0};
+ practiceClock={running:true,finished:false,endAnnounced:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
  persistPracticeSession();speakPracticeClock('Begin Block 1');render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);syncPlayerPracticeClock();
 }
 document.addEventListener('visibilitychange',()=>{
@@ -3075,9 +3075,10 @@ async function finishPracticeClock(automatic=false){
  try{
  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
  practiceClock.running=false;practiceClock.finished=true;
- const scheduledEnd=practiceClock.startAt&&practicePlan&&window.HotBPracticeSession?.layout?practiceClock.startAt+window.HotBPracticeSession.layout(practicePlan).totalMs:0,completedAt=new Date(automatic&&scheduledEnd?scheduledEnd:Date.now());
+ const scheduledEnd=practiceClock.startAt&&practicePlan&&window.HotBPracticeSession?.layout?practiceClock.startAt+window.HotBPracticeSession.layout(practicePlan).totalMs:0,completedAt=new Date(practiceClock.completedAt||(automatic&&scheduledEnd?scheduledEnd:Date.now()));
+ practiceClock.completedAt=completedAt.toISOString();
  const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
- if(!shouldClearPortals||cloudUser&&cloudStore)archiveCompletedPractice(completedAt);
+ archiveCompletedPractice(completedAt);
  if(!practiceClock.endAnnounced){practiceClock.endAnnounced=true;practiceEndSpeech=speakPracticeClock('Times Up, Good Practice, Please start to clean up')}
  persistPracticeSession();
  const endingSpeech=practiceEndSpeech;render();
@@ -3098,6 +3099,7 @@ function closePracticeWorkspace(){
 async function endPracticeFromScreen(){
  if(practiceCompletionBusy)return;
  if(practiceClock.finished){
+  if(practicePlan&&!db.practiceHistory.some(item=>item.id===practicePlan.portalDraftId)){const completedAt=new Date(practiceClock.completedAt||Date.now());practiceClock.completedAt=completedAt.toISOString();archiveCompletedPractice(completedAt);persistPracticeSession()}
   const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
   if(shouldClearPortals){
    try{await clearActivePlayerPlans()}
