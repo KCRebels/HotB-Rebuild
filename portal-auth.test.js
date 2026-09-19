@@ -17,7 +17,7 @@ assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
 assert(app.includes("PORTAL_BUILD_TOKEN='20260919-134'"));
-assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
+assert(index.includes('portal-button-repair.js?v=20260919-sharetext10'));
 assert(index.includes('app.js?v=20260919-portal174'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
