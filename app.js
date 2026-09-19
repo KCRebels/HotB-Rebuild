@@ -1948,8 +1948,8 @@ function practiceDrillResourceWarnings(drills){
  return [`${constrained.map(drill=>drill.name).join(', ')} ${constrained.length===1?'uses':'use'} tunnel or delivery space. Confirm the station can run during blocks when live pitching, machine or front toss is active.`];
 }
 function practiceClockPortalPayload(){
- if(practiceClock.running&&practiceClock.startAt)return {status:'running',startedAt:new Date(practiceClock.startAt).toISOString(),endedAt:null};
  if(practiceClock.finished)return {status:'finished',startedAt:practiceClock.startAt?new Date(practiceClock.startAt).toISOString():null,endedAt:practiceClock.completedAt||new Date().toISOString()};
+ if(practiceClock.running&&practiceClock.startAt)return {status:'running',startedAt:new Date(practiceClock.startAt).toISOString(),endedAt:null};
  return {status:'not-started',startedAt:null,endedAt:null};
 }
 function playerPracticePortalPayload(name){
