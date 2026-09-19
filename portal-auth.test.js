@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-107'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-108'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal147'));
+assert(index.includes('app.js?v=20260919-portal148'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -107,3 +107,7 @@ assert(app.includes("async function verifyPublishedPracticeClock()"));
 assert(app.includes("const clockVerified=await verifyPublishedPracticeClock()"));
 assert(app.includes("coach timer is paused so it cannot overwrite the player portals"));
 assert(!app.includes("if(activeTiming&&practiceClock.running){syncPlayerPracticeClock()"));
+
+assert(app.includes("if(recoveredPracticeExpired&&practicePlan&&practiceClock.running)"));
+assert(app.includes("await finishPracticeClock(true)"));
+assert(!app.includes("recoveredPracticeExpired&&practicePlan&&practiceClock.running){\n    practiceClock.running=false;practiceClock.finished=true"));
