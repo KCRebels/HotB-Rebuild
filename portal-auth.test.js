@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-113'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-114'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal153'));
+assert(index.includes('app.js?v=20260919-portal154'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -132,3 +132,6 @@ assert(app.includes("const verified=await portalDoc(requestedPortalToken).get()"
 assert(app.includes("if(!url||!/^sms:/i.test(String(url)))return false"));
 assert(app.includes("setTimeout(()=>link.remove(),0)"));
 assert(!app.includes("link.style.left='-9999px'"));
+
+assert(app.includes("if(remote.clock?.status==='finished')"));
+assert(app.includes("stale portal plans were cleared instead of reopening the practice"));
