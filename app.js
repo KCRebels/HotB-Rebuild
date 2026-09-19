@@ -3069,6 +3069,7 @@ let practiceCompletionBusy=false;
 async function finishPracticeClock(automatic=false){
  if(practiceCompletionBusy||practiceClock.finished)return;
  practiceCompletionBusy=true;
+ try{
  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
  practiceClock.running=false;practiceClock.finished=true;
  const scheduledEnd=practiceClock.startAt&&practicePlan&&window.HotBPracticeSession?.layout?practiceClock.startAt+window.HotBPracticeSession.layout(practicePlan).totalMs:0,completedAt=new Date(automatic&&scheduledEnd?scheduledEnd:Date.now());archiveCompletedPractice(completedAt);
@@ -3080,12 +3081,12 @@ async function finishPracticeClock(automatic=false){
   try{await clearActivePlayerPlans();clearPracticeSession();render()}
   catch(error){alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap DONE! again.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in through Cloud Backup, then tap DONE! again.')}
  }else clearPracticeSession();
- practiceCompletionBusy=false;
  if(!automatic){
   await endingSpeech;
   if(db.activePortalPractice?.id===practicePlan?.portalDraftId)return;
   closePracticeWorkspace()
  }
+ }finally{practiceCompletionBusy=false}
 }
 function closePracticeWorkspace(){
  stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';clearPracticeSession();render();window.scrollTo(0,0);
