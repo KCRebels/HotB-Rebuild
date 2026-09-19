@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-113';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-114';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2343,6 +2343,14 @@ async function recoverOrphanedActivePractice(){
  try{
   const snapshot=await Promise.race([portalDoc(coachId).get(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('practice-recovery-timeout')),8000))]),remote=snapshot.exists?snapshot.data()?.activePractice:null;
   if(!remote||remote.id!==state.id)throw new Error('practice-mismatch');
+  // A finished remote clock is authoritative. Never reconstruct it into a new
+  // local live practice or give it another chance to republish stale plan data.
+  if(remote.clock?.status==='finished'){
+   await clearActivePlayerPlans();
+   clearPracticeSession();
+   alert('HotB found that this practice had already finished. The stale portal plans were cleared instead of reopening the practice.');
+   render();return;
+  }
   if(!Array.isArray(remote.players)||!remote.players.length||!Number.isFinite(Number(remote.blockMinutes))||Number(remote.blockMinutes)<=0)throw new Error('practice-payload-incomplete');
   const publishedNames=remote.players.map(player=>String(player.name||'').trim()).filter(Boolean),publishedIds=new Set(publishedNames.map(name=>name.toLowerCase()));if(!publishedIds.size||publishedIds.size!==publishedNames.length)throw new Error('practice-player-conflict');
   for(const player of remote.players){if(!Array.isArray(player.schedule)||player.schedule.length!==10)throw new Error('practice-schedule-incomplete');for(let index=0;index<10;index++){const entry=player.schedule[index];if(Number(entry?.block)!==index+1||!String(entry?.time||'').trim()||!String(entry?.assignment||'').trim())throw new Error('practice-schedule-incomplete')}}
