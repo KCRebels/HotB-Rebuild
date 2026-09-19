@@ -1155,7 +1155,7 @@ function load(){
   if(d){
    const aliases={'Matti Hardy':'Mattingly Hardy'};
    const savedByName=new Map((d.roster||[]).map(r=>[aliases[r.name]||r.name,r]));
-   const roster=defaultRoster.map(profile=>({...savedByName.get(profile.name),...profile,side:savedByName.get(profile.name)?.side||profile.side}));
+   const roster=defaultRoster.map(profile=>{const saved=savedByName.get(profile.name)||{};return {...profile,...saved,name:profile.name,side:saved.side||profile.side}});
    const standardNames=new Set(defaultRoster.map(r=>r.name));
    const guests=(d.roster||[]).filter(r=>!standardNames.has(aliases[r.name]||r.name)).map(r=>({...r,isGuest:true}));
    roster.push(...guests);
