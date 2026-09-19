@@ -943,7 +943,7 @@ let cloudInitStarted=false,cloudInitRetryTimer=null,cloudInitRetryCount=0;
 async function initCloud(){
  if(cloudInitStarted)return;
  if(!window.firebase&&window.HotBFirebaseReady){try{await Promise.race([window.HotBFirebaseReady,new Promise((_,reject)=>setTimeout(()=>reject(new Error('firebase-loader-timeout')),8000))])}catch(_){}}
- if(!window.firebase&&portalToken){
+ if(!window.firebase){
   try{
    const sources=['https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js','https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js','https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js'];
    for(const src of sources){
@@ -956,7 +956,7 @@ async function initCloud(){
   }catch(_){}
  }
  if(!window.firebase){
-  if(cloudInitRetryCount<40){cloudInitRetryCount++;clearTimeout(cloudInitRetryTimer);cloudInitRetryTimer=setTimeout(initCloud,250);return}
+  if(cloudInitRetryCount<12){cloudInitRetryCount++;clearTimeout(cloudInitRetryTimer);cloudInitRetryTimer=setTimeout(initCloud,500);return}
   const dynamicScripts=[...document.scripts].filter(script=>script.dataset?.hotbFirebase);
   const attempted=dynamicScripts.map(script=>script.dataset.hotbFirebase||'').filter(Boolean);
   const loaderPresent=!!window.HotBFirebaseReady;
