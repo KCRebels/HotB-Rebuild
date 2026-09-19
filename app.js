@@ -1007,8 +1007,20 @@ function newPortalId(){
 }
 function newPortalPin(){return String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0')}
 function newGuestSecret(){return newPortalId()+newPortalId()}
-function standaloneLinkMessage(before,url,after){return window.HotBSms?.buildStandaloneLinkMessage({before,url,after})||''}
-function smsComposeUrl(phone,message){return window.HotBSms?.composeSmsUrl({phone,message,userAgent:navigator.userAgent})||''}
+function standaloneLinkMessage(before,url,after){
+ const helper=window.HotBSms?.buildStandaloneLinkMessage?.({before,url,after});
+ if(helper)return helper;
+ const clean=value=>String(value??'').replace(/[\r\n]+/g,' ').trim(),leading=(Array.isArray(before)?before:[before]).map(clean).filter(Boolean),trailing=(Array.isArray(after)?after:[after]).map(clean).filter(Boolean);
+ return [...leading,'',String(url||'').trim(),'',...trailing].filter((value,index,array)=>value!==''||index>0&&index<array.length-1).join('\r\n');
+}
+function smsComposeUrl(phone,message){
+ const helper=window.HotBSms?.composeSmsUrl?.({phone,message,userAgent:navigator.userAgent});
+ if(helper)return helper;
+ const recipient=String(phone??'').replace(/[^\d+]/g,''),body=String(message??'').replace(/\r?\n/g,'\r\n');
+ if(!recipient||!body)return'';
+ const separator=/iPad|iPhone|iPod/.test(navigator.userAgent)?'&':'?';
+ return `sms:${recipient}${separator}body=${encodeURIComponent(body)}`;
+}
 function playerPortalUrl(player){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(player.portalId||'')}&portalBuild=20260919-23`}
 function playerPortalTextUrl(player){
  const phone=String(player?.phone||'').replace(/[^\d+]/g,'');
