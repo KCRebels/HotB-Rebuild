@@ -830,18 +830,9 @@ if(!Array.isArray(db.coachObservations))db.coachObservations=[];
 if(!db.playerFocusDrillOverrides||typeof db.playerFocusDrillOverrides!=='object')db.playerFocusDrillOverrides={};
 // Team Jenkins is practice-only. Purge any legacy performance/history data that may
 // have been saved before practice-only isolation was enforced.
-if((db.teamJenkinsDataCleanupVersion||0)<3){
- const jenkinsNames=new Set((db.roster||[]).filter(player=>player.isTeamJenkins||player.teamName==='Team Jenkins').map(player=>player.name));
- if(jenkinsNames.size){
-  db.measurements=(db.measurements||[]).filter(item=>!jenkinsNames.has(item.player));
-  db.coachObservations=(db.coachObservations||[]).filter(item=>!jenkinsNames.has(item.playerName));
-  (db.savedGames||[]).forEach(game=>{game.observations=(game.observations||[]).filter(item=>!jenkinsNames.has(item.playerName))});
-  if(db.currentGame)db.currentGame.observations=(db.currentGame.observations||[]).filter(item=>!jenkinsNames.has(item.playerName));
-  (db.practiceHistory||[]).forEach(record=>{if(Array.isArray(record.attendees))record.attendees=record.attendees.filter(name=>!jenkinsNames.has(name));if(Array.isArray(record.rosterPlayers))record.rosterPlayers=record.rosterPlayers.filter(name=>!jenkinsNames.has(name));if(Array.isArray(record.excludedAttendancePlayers))record.excludedAttendancePlayers=record.excludedAttendancePlayers.filter(name=>!jenkinsNames.has(name))});
-  Object.keys(db.planPreferences||{}).forEach(name=>{if(jenkinsNames.has(name))delete db.planPreferences[name]});
-  Object.keys(db.playerFocusDrillOverrides||{}).forEach(key=>{if([...jenkinsNames].some(name=>key.startsWith(name+'::')))delete db.playerFocusDrillOverrides[key]});
- }
- db.teamJenkinsDataCleanupVersion=3;
+if((db.teamJenkinsDataCleanupVersion||0)<4){
+ db=sanitizeJenkinsData(db);
+ db.teamJenkinsDataCleanupVersion=4;
  localStorage.setItem(DBKEY,JSON.stringify(db));
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
 }
@@ -2465,7 +2456,7 @@ function sanitizeJenkinsData(sourceDb){
   Object.keys(cleanDb.planPreferences||{}).forEach(name=>{if(jenkinsNames.has(name))delete cleanDb.planPreferences[name]});
   Object.keys(cleanDb.playerFocusDrillOverrides||{}).forEach(key=>{if([...jenkinsNames].some(name=>key.startsWith(name+'::')))delete cleanDb.playerFocusDrillOverrides[key]});
  }
- cleanDb.teamJenkinsDataCleanupVersion=3;
+ cleanDb.teamJenkinsDataCleanupVersion=4;
  return cleanDb;
 }
 function sanitizedBackupDb(){return sanitizeJenkinsData(db);}
