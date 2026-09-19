@@ -1157,7 +1157,7 @@ function load(){
    const aliases={'Matti Hardy':'Mattingly Hardy'},savedRoster=Array.isArray(d.roster)?d.roster:[],keyFor=player=>player?.rosterKey||aliases[player?.name]||player?.name||'';
    const savedByKey=new Map(savedRoster.map(player=>[keyFor(player),player]));
    const removedNames=new Set(Array.isArray(d.removedRosterNames)?d.removedRosterNames.map(name=>aliases[name]||name):[]);
-   const roster=defaultRoster.filter(profile=>!removedNames.has(profile.name)).map(profile=>{const saved=savedByKey.get(profile.name)||{};return {...profile,...saved,rosterKey:profile.name,name:saved.name||profile.name,side:saved.side||profile.side}});
+   const roster=defaultRoster.filter(profile=>!removedNames.has(profile.name)).map(profile=>{const saved=savedByKey.get(profile.name)||{},eligibility=Object.prototype.hasOwnProperty.call(profile,'hittingPracticeAttendanceEligible')?{hittingPracticeAttendanceEligible:profile.hittingPracticeAttendanceEligible}:{};return {...profile,...saved,...eligibility,rosterKey:profile.name,name:saved.name||profile.name,side:saved.side||profile.side}});
    const standardKeys=new Set(defaultRoster.map(r=>r.name));
    const guests=savedRoster.filter(player=>!standardKeys.has(keyFor(player))).map(player=>({...player,isGuest:true}));
    roster.push(...guests);
@@ -1303,7 +1303,22 @@ function renamePlayerReferences(oldName,newName){
  if(Array.isArray(db.activePortalPractice?.players))db.activePortalPractice.players=db.activePortalPractice.players.map(name=>name===oldName?newName:name);
 }
 function syncRosterNames(){
- $$('.roster-name').forEach(input=>{const player=db.roster[+input.dataset.i];if(!player)return;const next=input.value.trim()||'Unnamed Player',previous=player.name;if(next!==previous)renamePlayerReferences(previous,next);player.name=next});
+ const inputs=$('.roster-name'),desired=inputs.map(input=>({input,player:db.roster[+input.dataset.i],name:input.value.trim()||'Unnamed Player'})).filter(item=>item.player);
+ const seen=new Map();
+ for(const item of desired){const key=item.name.toLowerCase();if(seen.has(key)){alert(`Player names must be unique. “${item.name}” is listed more than once.`);item.input.focus();return false}seen.set(key,item)}
+ desired.forEach(({player,name:next})=>{
+  const previous=player.name;if(next===previous)return;
+  const canonical=defaultRoster.find(profile=>profile.name.toLowerCase()===next.toLowerCase());
+  const removed=new Set(Array.isArray(db.removedRosterNames)?db.removedRosterNames:[]);
+  if(player.isGuest&&canonical&&removed.has(canonical.name)){
+   renamePlayerReferences(previous,canonical.name);
+   Object.assign(player,{...canonical,...player,name:canonical.name,rosterKey:canonical.name,isGuest:false});
+   db.removedRosterNames=(db.removedRosterNames||[]).filter(name=>name!==canonical.name);
+   return;
+  }
+  renamePlayerReferences(previous,next);player.name=next;
+ });
+ return true;
 }
 function competitionRoster(){return db.roster.filter(player=>!player.isTeamJenkins)}
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
@@ -3271,15 +3286,15 @@ function bindGameGroup(){
 function bindRoster(){
  $$('.sidebtn').forEach(b=>b.onclick=()=>{db.roster[+b.dataset.i].side=b.dataset.side;save();render()});
  $$('[data-del]').forEach(b=>b.onclick=()=>{if(!confirm('Remove this player?'))return;const index=+b.dataset.del,player=db.roster[index];if(!player)return;const standardName=player.rosterKey||defaultRoster.find(profile=>profile.name===player.name)?.name;if(standardName&&defaultRoster.some(profile=>profile.name===standardName)){db.removedRosterNames=Array.isArray(db.removedRosterNames)?db.removedRosterNames:[];if(!db.removedRosterNames.includes(standardName))db.removedRosterNames.push(standardName)}db.roster.splice(index,1);save();render()});
- $$('[data-info]').forEach(b=>b.onclick=()=>{syncRosterNames();infoPlayerIndex=+b.dataset.info;save();modal='playerInfo';render()});
+ $('[data-info]').forEach(b=>b.onclick=()=>{if(!syncRosterNames())return;infoPlayerIndex=+b.dataset.info;save();modal='playerInfo';render()});
  $('#addPlayer').onclick=()=>{db.roster.push({name:'Guest',side:'R',jersey:'',grad:'',positions:'',gpa:'',interest:'',school:'',isGuest:true});save();render();setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),0)};
- $('#saveRoster').onclick=()=>{syncRosterNames();save();go('home')};
- $('#importRosterInfo').onclick=()=>{syncRosterNames();save();$('#rosterInfoFile').click()};
+ $('#saveRoster').onclick=()=>{if(!syncRosterNames())return;save();go('home')};
+ $('#importRosterInfo').onclick=()=>{if(!syncRosterNames())return;save();$('#rosterInfoFile').click()};
  $('#rosterInfoFile').onchange=async event=>{
   const file=event.target.files?.[0];if(!file)return;
   try{pendingRosterImport=await parseRosterWorkbook(file);modal='importRoster';render()}catch(error){alert(error.message||'HotB could not read that spreadsheet.')}
  };
- $('#exportRosterInfo').onclick=()=>{syncRosterNames();save();exportRosterWorkbook()};
+ $('#exportRosterInfo').onclick=()=>{if(!syncRosterNames())return;save();exportRosterWorkbook()};
 }
 function bindPlayerInfo(){
  $('#savePlayerInfo').onclick=()=>{
