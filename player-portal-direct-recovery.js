@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const params=new URLSearchParams(location.search),token=params.get('portal');if(!token)return;
-const COACH='hotbkcrebels@gmail.com';let shown=false,openingPortal=false,currentData=null;try{const cached=sessionStorage.getItem('hotbPortalSnapshot:'+token);if(cached){const data=JSON.parse(cached);requestAnimationFrame(()=>{if(renderAuthorized(data))shown=true})}}catch{}
+const COACH='hotbkcrebels@gmail.com';let shown=false,openingPortal=false,currentData=null;
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 async function hash(pin){const bytes=new TextEncoder().encode(`${token}:${String(pin||'').trim()}`),digest=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(digest)].map(v=>v.toString(16).padStart(2,'0')).join('')}
 function opening(){return [...document.querySelectorAll('h1,h2')].some(el=>/Opening Your Portal/i.test(el.textContent||''))}
