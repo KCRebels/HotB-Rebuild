@@ -1045,7 +1045,10 @@ async function loadPlayerPortal(){
   else portalMessage='This player portal link is not valid.';
  }catch(error){
   portalData=null;
+  const code=String(error?.code||'');
   if(String(error?.message||'')==='portal-read-timeout')portalMessage='HotB could not reach the player portal. Please reopen the link.';
+  else if(code==='permission-denied'&&!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
+  else if(code==='unavailable')portalMessage='HotB could not reach the player portal service. Please check the connection and reopen the link.';
   else if(!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
   else portalMessage='This player portal link is not valid.';
  }finally{
