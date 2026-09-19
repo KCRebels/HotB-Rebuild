@@ -1224,6 +1224,9 @@ function heatStyles(values,color){
  return map;
 }
 function createGame(opponent,pitcherName,pitcherNumber,order){
+ const allowed=new Set(competitionRoster().map(player=>player.name));
+ order=[...new Set((order||[]).filter(name=>allowed.has(name)))];
+ if(!order.length)return null;
  const openingPitcher={name:pitcherName,number:pitcherNumber,enteredAt:Date.now(),pitchIndex:0};
  const g={
   id:crypto.randomUUID(),date:new Date().toISOString(),opponent,pitcherName,pitcherNumber,
@@ -3377,7 +3380,7 @@ function bindNew(){
  });
  $('#startGame').onclick=()=>{
   const order=sels.map(s=>s.value).filter(Boolean);
-  createGame(opponent.value.trim(),pitcherName.value.trim(),pitcherNumber.value.trim(),order);go('live');
+  if(createGame(opponent.value.trim(),pitcherName.value.trim(),pitcherNumber.value.trim(),order))go('live');
  };
 }
 function bindReportsPage(){
