@@ -935,7 +935,14 @@ if(recoveredPracticeSession){
 const recoveredPracticeExpired=!!(practicePlan&&practiceClock.running&&!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now()));
 
 function initCloud(){
- if(!window.firebase)return;
+ if(!window.firebase){
+  if(portalToken){
+   portalBusy=false;
+   portalMessage='HotB could not connect to the player portal service. Please reopen the link.';
+   if(route==='portal')render();
+  }
+  return;
+ }
  try{
   if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
   cloudAuth=firebase.auth();cloudStore=firebase.firestore();
@@ -997,8 +1004,21 @@ async function loadPlayerPortal(){
  if(!portalToken||!cloudAuth||!cloudStore)return;
  portalBusy=true;portalMessage='';
  if(!portalAuthUser){
-  try{await cloudAuth.signInAnonymously()}catch(error){portalBusy=false;portalMessage='Player access is not active yet. The coach must finish Firebase portal setup.'}
-  return;
+  try{
+   const credential=await cloudAuth.signInAnonymously();
+   portalAuthUser=credential?.user||cloudAuth.currentUser||null;
+  }catch(error){
+   portalBusy=false;
+   portalMessage='Player access is not active yet. The coach must finish Firebase portal setup.';
+   if(route==='portal')render();
+   return;
+  }
+  if(!portalAuthUser){
+   portalBusy=false;
+   portalMessage='HotB could not finish opening this player portal. Please reopen the link.';
+   if(route==='portal')render();
+   return;
+  }
  }
  if(guestPortalSecret&&!isCoachPortalUser()){
   try{
