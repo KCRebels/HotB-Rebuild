@@ -3035,7 +3035,7 @@ function updatePracticeClock(){
   return;
  }
  const {block,remaining,transition}=state,seconds=Math.ceil(remaining/1000);
- if(block>practiceClock.lastBlock){practiceClock.lastBlock=block;speakPracticeClock(`Begin Block ${block}`)}
+ if(block>practiceClock.lastBlock){practiceClock.lastBlock=block;speakPracticeClock(`Begin Block ${block}`);persistPracticeSession();syncPlayerPracticeClock()}
  const warningBlock=window.HotBPracticeSession?.pendingTwoMinuteWarning(practicePlan,practiceClock,now);
  if(warningBlock){practiceClock.lastTwoMinuteBlock=warningBlock;speakPracticeClock('Two minutes left');persistPracticeSession()}
  const transitionBlock=window.HotBPracticeSession?.pendingTransitionWarning(practicePlan,practiceClock,now);
