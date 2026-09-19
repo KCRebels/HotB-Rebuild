@@ -1146,7 +1146,7 @@ async function backupToCloud(automatic=false){
 async function restoreFromCloud(){
  if(!cloudUser||cloudBusy||!confirm('Replace the data on this device with the latest cloud backup? Your current device data will be replaced.'))return;
  cloudBusy=true;cloudMessage='Downloading cloud backup…';render();
- try{const root=cloudRoot(),meta=await root.get();if(!meta.exists)throw new Error('No backup');const snap=await root.collection('chunks').orderBy('index').get(),restored=JSON.parse(snap.docs.map(doc=>doc.data().data).join(''));if(!Array.isArray(restored.roster)||!Array.isArray(restored.savedGames))throw new Error('Invalid backup');localStorage.setItem(DBKEY,JSON.stringify(restored));localStorage.setItem(CLOUD_ENABLED_KEY,'true');location.reload()}
+ try{const root=cloudRoot(),meta=await root.get();if(!meta.exists)throw new Error('No backup');const snap=await root.collection('chunks').orderBy('index').get(),restored=JSON.parse(snap.docs.map(doc=>doc.data().data).join(''));if(!Array.isArray(restored.roster)||!Array.isArray(restored.savedGames))throw new Error('Invalid backup');const cleanRestored=sanitizeJenkinsData(restored);localStorage.setItem(DBKEY,JSON.stringify(cleanRestored));localStorage.setItem(CLOUD_ENABLED_KEY,'true');location.reload()}
  catch(error){cloudBusy=false;cloudMessage='No usable cloud backup was found. Your device data was not changed.';render()}
 }
 async function cloudPasswordAuth(createAccount=false){
@@ -2452,20 +2452,22 @@ function practiceOnlyJenkinsRecord(player){
  const allowed=['name','phone','positions','side','isGuest','isTeamJenkins','teamName','isPracticeGuest','portalId','portalSecret'];
  return Object.fromEntries(allowed.filter(key=>player?.[key]!==undefined).map(key=>[key,player[key]]));
 }
-function sanitizedBackupDb(){
- const backupDb=structuredClone(db),jenkinsNames=new Set((backupDb.roster||[]).filter(player=>player.isTeamJenkins||player.teamName==='Team Jenkins').map(player=>player.name));
+function sanitizeJenkinsData(sourceDb){
+ const cleanDb=structuredClone(sourceDb),jenkinsNames=new Set((cleanDb.roster||[]).filter(player=>player.isTeamJenkins||player.teamName==='Team Jenkins').map(player=>player.name));
  if(jenkinsNames.size){
-  backupDb.roster=(backupDb.roster||[]).map(player=>jenkinsNames.has(player.name)?practiceOnlyJenkinsRecord(player):player);
-  backupDb.measurements=(backupDb.measurements||[]).filter(item=>!jenkinsNames.has(item.player));
-  backupDb.coachObservations=(backupDb.coachObservations||[]).filter(item=>!jenkinsNames.has(item.playerName));
-  (backupDb.savedGames||[]).forEach(game=>{game.observations=(game.observations||[]).filter(item=>!jenkinsNames.has(item.playerName))});
-  if(backupDb.currentGame)backupDb.currentGame.observations=(backupDb.currentGame.observations||[]).filter(item=>!jenkinsNames.has(item.playerName));
-  (backupDb.practiceHistory||[]).forEach(record=>{if(Array.isArray(record.attendees))record.attendees=record.attendees.filter(name=>!jenkinsNames.has(name));if(Array.isArray(record.rosterPlayers))record.rosterPlayers=record.rosterPlayers.filter(name=>!jenkinsNames.has(name));if(Array.isArray(record.excludedAttendancePlayers))record.excludedAttendancePlayers=record.excludedAttendancePlayers.filter(name=>!jenkinsNames.has(name))});
-  Object.keys(backupDb.planPreferences||{}).forEach(name=>{if(jenkinsNames.has(name))delete backupDb.planPreferences[name]});
-  Object.keys(backupDb.playerFocusDrillOverrides||{}).forEach(key=>{if([...jenkinsNames].some(name=>key.startsWith(name+'::')))delete backupDb.playerFocusDrillOverrides[key]});
+  cleanDb.roster=(cleanDb.roster||[]).map(player=>jenkinsNames.has(player.name)?practiceOnlyJenkinsRecord(player):player);
+  cleanDb.measurements=(cleanDb.measurements||[]).filter(item=>!jenkinsNames.has(item.player));
+  cleanDb.coachObservations=(cleanDb.coachObservations||[]).filter(item=>!jenkinsNames.has(item.playerName));
+  (cleanDb.savedGames||[]).forEach(game=>{game.observations=(game.observations||[]).filter(item=>!jenkinsNames.has(item.playerName))});
+  if(cleanDb.currentGame)cleanDb.currentGame.observations=(cleanDb.currentGame.observations||[]).filter(item=>!jenkinsNames.has(item.playerName));
+  (cleanDb.practiceHistory||[]).forEach(record=>{if(Array.isArray(record.attendees))record.attendees=record.attendees.filter(name=>!jenkinsNames.has(name));if(Array.isArray(record.rosterPlayers))record.rosterPlayers=record.rosterPlayers.filter(name=>!jenkinsNames.has(name));if(Array.isArray(record.excludedAttendancePlayers))record.excludedAttendancePlayers=record.excludedAttendancePlayers.filter(name=>!jenkinsNames.has(name))});
+  Object.keys(cleanDb.planPreferences||{}).forEach(name=>{if(jenkinsNames.has(name))delete cleanDb.planPreferences[name]});
+  Object.keys(cleanDb.playerFocusDrillOverrides||{}).forEach(key=>{if([...jenkinsNames].some(name=>key.startsWith(name+'::')))delete cleanDb.playerFocusDrillOverrides[key]});
  }
- return backupDb;
+ cleanDb.teamJenkinsDataCleanupVersion=3;
+ return cleanDb;
 }
+function sanitizedBackupDb(){return sanitizeJenkinsData(db);}
 function exportFullBackup(){
  const payload={format:'HotB Full Backup',version:1,exportedAt:new Date().toISOString(),db:sanitizedBackupDb()};
  const a=document.createElement('a');
@@ -2477,7 +2479,7 @@ async function restoreFullBackup(file){
  const payload=JSON.parse(await file.text());
  if(payload?.format!=='HotB Full Backup'||!payload.db||!Array.isArray(payload.db.roster)||!Array.isArray(payload.db.savedGames))throw new Error('This is not a valid HotB full backup file.');
  if(!confirm('Restore this backup? It will replace all HotB information currently saved on this device.'))return;
- db=payload.db;db.route='home';
+ db=sanitizeJenkinsData(payload.db);db.route='home';
  localStorage.setItem(DBKEY,JSON.stringify(db));
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
  alert('HotB backup restored successfully.');
