@@ -1976,7 +1976,8 @@ function jenkinsPortalResetPayload(player,activePractice=null,accessStatus='wait
 async function clearActivePlayerPlans(){
  if(!cloudUser||!cloudStore)throw new Error('cloud-unavailable');
  const batch=cloudStore.batch();
- db.roster.filter(player=>!player.isTeamJenkins&&player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+ const activeNames=new Set(db.activePortalPractice?.players||[]);
+ db.roster.filter(player=>!player.isTeamJenkins&&player.portalId&&activeNames.has(player.name)).forEach(player=>batch.set(portalDoc(player.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  db.roster.filter(player=>player.isTeamJenkins&&player.portalId).forEach(player=>batch.set(portalDoc(player.portalId),jenkinsPortalResetPayload(player),{merge:true}));
  if(db.coachPortal?.portalId)batch.set(portalDoc(db.coachPortal.portalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
  [...practiceGuestPlayers(),...practiceGuestCoaches()].filter(guest=>guest.portalId).forEach(guest=>batch.set(portalDoc(guest.portalId),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
