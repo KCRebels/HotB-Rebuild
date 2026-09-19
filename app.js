@@ -932,7 +932,7 @@ if(recoveredPracticeSession){
  practiceEquipmentSetupOpen=!!recoveredPracticeSession.equipmentSetupOpen;
  practiceSetupState={...practiceSetupState,...recoveredPracticeSession.setupState};
  practiceClock=recoveredPracticeSession.clock;
- if(recoveredPracticeSession.portalState)db.activePortalPractice=recoveredPracticeSession.portalState;
+ if(recoveredPracticeSession.portalState&&(!db.activePortalPractice||db.activePortalPractice.id===recoveredPracticeSession.portalState.id))db.activePortalPractice=recoveredPracticeSession.portalState;
  if(practicePlan)practiceSection='builder';
 }
 const recoveredPracticeExpired=!!(practicePlan&&practiceClock.running&&!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now()));
