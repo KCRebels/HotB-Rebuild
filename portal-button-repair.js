@@ -8,7 +8,7 @@ function player(name){return (db()?.roster||[]).find(p=>p.name===name)}
 function portalUrl(id){return `${location.origin}${location.pathname}?portal=${encodeURIComponent(id)}`}
 function textFor(p){return `${p.name} HotB Portal\n${portalUrl(p.portalId)}\nPIN: ${p.portalPin}`}
 function valid(p){return !!(p?.portalId&&/^\d{6}$/.test(String(p?.portalPin||'')))}
-function sms(phone,body){const number=String(phone||'').replace(/\D/g,'');if(!number)return false;window.location.href=`sms:${number}&body=${encodeURIComponent(body)}`;return true}
+function sms(phone,body){const number=String(phone||'').replace(/\D/g,'');if(!number)return false;const separator=/iPad|iPhone|iPod/.test(navigator.userAgent)?'&':'?';window.location.href=`sms:${number}${separator}body=${encodeURIComponent(body)}`;return true}
 async function share(p){const text=textFor(p);try{if(navigator.share){await navigator.share({title:`${p.name} HotB Portal`,text});return}}catch(e){if(e?.name==='AbortError')return}try{await navigator.clipboard.writeText(text);alert(`${p.name}'s portal link and PIN were copied.`)}catch(e){prompt('Copy this portal link and PIN:',text)}}
 function originalPlayers(){return (db()?.roster||[]).filter(p=>!p.isGuest&&!p.isPracticeGuest&&!p.isTeamJenkins&&p.teamName!=='Team Jenkins'&&valid(p))}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
