@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-101'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-102'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal141'));
+assert(index.includes('app.js?v=20260919-portal142'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -73,3 +73,8 @@ assert(buttons.includes("target.matches('[data-share-portal]')"));
 assert(buttons.includes("target.matches('[data-text-portal]')"));
 assert(buttons.includes("target.id==='shareCoachPortal'"));
 assert(buttons.includes("target.id==='textCoachPortal'"));
+
+assert(app.includes("document.createElement('a')"));
+assert(app.includes("link.href=url"));
+assert(app.includes("link.click();link.remove()"));
+assert(app.includes("window.location.assign(url)"));
