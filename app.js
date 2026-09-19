@@ -13,7 +13,7 @@ const requestedPlanPreferences={
 };
 const heatColors={B:'#3d8c52',F:'#f0c94d',HIT:'#3862db',K:'#cd3a32',H4O:'#cd3a32',FPS:'#cd3a32',REPORT:'#101011'};
 const chartZoneIds=['T1','T2','L1','L2','C1','C2','C3','C4','R1','R2','B1','B2'];
-const displayedChartZone=zone=>HotBEvaluationStats.normalizeHeatZone(zone);
+const displayedChartZone=zone=>window.HotBEvaluationStats?.normalizeHeatZone?window.HotBEvaluationStats.normalizeHeatZone(zone):zone;
 
 const defaultRoster = [
  {name:'Aniesa Rohleder',side:'R',jersey:'9',grad:'2029',positions:'RHP | 1B',gpa:'3.98',interest:'Sports Medicine',school:'Olathe South HS',photo:'Aniesa.jpg'},
