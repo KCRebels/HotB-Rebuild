@@ -1998,14 +1998,13 @@ async function clearOrphanedActivePractice(){
 }
 async function syncPlayerPracticeClock(){
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return;
- try{
-  const attending=new Set(db.activePortalPractice.players||[]),clock=practiceClockPortalPayload(),batch=cloudStore.batch();
-  db.roster.filter(player=>attending.has(player.name)&&player.portalId).forEach(player=>batch.update(portalDoc(player.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
-  if(db.coachPortal?.portalId)batch.update(portalDoc(db.coachPortal.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-  practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).forEach(guest=>batch.update(portalDoc(guest.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
-  practiceGuestCoaches().filter(guest=>guest.portalId).forEach(guest=>batch.update(portalDoc(guest.portalId),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
-  await batch.commit();
- }catch(error){console.warn('Player portal clock sync failed',error)}
+ const attending=new Set(db.activePortalPractice.players||[]),clock=practiceClockPortalPayload(),updates=[];
+ db.roster.filter(player=>attending.has(player.name)&&player.portalId).forEach(player=>updates.push(portalDoc(player.portalId).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})));
+ if(db.coachPortal?.portalId)updates.push(portalDoc(db.coachPortal.portalId).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
+ practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).forEach(guest=>updates.push(portalDoc(guest.portalId).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})));
+ practiceGuestCoaches().filter(guest=>guest.portalId).forEach(guest=>updates.push(portalDoc(guest.portalId).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})));
+ const results=await Promise.allSettled(updates),failed=results.filter(result=>result.status==='rejected');
+ if(failed.length)console.warn(`Player portal clock sync failed for ${failed.length} of ${updates.length} portal documents`);
 }
 async function activatePlayerPlans(){
  if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before activating player portals.');return}
