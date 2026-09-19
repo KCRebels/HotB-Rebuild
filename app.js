@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-105';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-106';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2405,6 +2405,13 @@ async function syncPlayerPracticeClock(){
  if(!updates.length){console.warn('Player portal clock sync had no portal targets');return false}
  const results=await Promise.allSettled(updates),failed=results.filter(result=>result.status==='rejected');
  if(failed.length){console.warn(`Player portal clock sync failed for ${failed.length} of ${updates.length} portal documents`);return false}
+ // A fulfilled update is not enough. Read every target back so Start/rollback
+ // only succeeds when the exact clock state is visible on every live portal.
+ const verification=await Promise.all([...queuedIds].map(async id=>{try{
+  const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null,remoteClock=remote?.clock||{};
+  return remote?.id===activeId&&remoteClock.status===clock.status&&(clock.startedAt?remoteClock.startedAt===clock.startedAt:!remoteClock.startedAt)&&(clock.endedAt?remoteClock.endedAt===clock.endedAt:!remoteClock.endedAt);
+ }catch(error){return false}}));
+ if(verification.some(ok=>!ok)){console.warn('Player portal clock read-back verification failed');return false}
  return true;
 }
 async function activatePlayerPlans(){
