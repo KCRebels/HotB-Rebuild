@@ -3096,7 +3096,7 @@ async function finishPracticeClock(automatic=false){
  }finally{practiceCompletionBusy=false}
 }
 function closePracticeWorkspace(){
- stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';clearPracticeSession();render();window.scrollTo(0,0);
+ clearPracticeSession();stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';render();window.scrollTo(0,0);
 }
 async function endPracticeFromScreen(){
  if(practiceCompletionBusy)return;
