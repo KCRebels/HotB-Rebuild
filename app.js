@@ -1274,8 +1274,26 @@ if((db.measurementCleanupVersion||0)<1){
 }
 function positionTokens(player){return cleanCell(player?.positions).split(/\s*[|,\/]\s*/).map(position=>position.toUpperCase()).filter(Boolean)}
 function isPitcherProfile(player){return positionTokens(player).some(position=>['P','RHP','LHP','PITCHER'].includes(position))}
+function renamePlayerReferences(oldName,newName){
+ if(!oldName||!newName||oldName===newName)return;
+ const renameGame=game=>{
+  if(!game)return;
+  if(Array.isArray(game.battingOrder))game.battingOrder=game.battingOrder.map(name=>name===oldName?newName:name);
+  if(Array.isArray(game.hittersUsed))game.hittersUsed=[...new Set(game.hittersUsed.map(name=>name===oldName?newName:name))];
+  (game.pitches||[]).forEach(pitch=>{if(pitch.hitter===oldName)pitch.hitter=newName});
+  (game.plateAppearances||[]).forEach(pa=>{if(pa.hitter===oldName)pa.hitter=newName});
+  (game.observations||[]).forEach(item=>{if(item.playerName===oldName)item.playerName=newName});
+  (game.hitterSubstitutions||[]).forEach(item=>{if(item.out===oldName)item.out=newName;if(item.in===oldName)item.in=newName});
+ };
+ (db.savedGames||[]).forEach(renameGame);renameGame(db.currentGame);
+ (db.measurements||[]).forEach(item=>{if(item.player===oldName)item.player=newName});
+ (db.coachObservations||[]).forEach(item=>{if(item.playerName===oldName)item.playerName=newName});
+ (db.practiceHistory||[]).forEach(item=>{if(Array.isArray(item.attendees))item.attendees=item.attendees.map(name=>name===oldName?newName:name)});
+ if(db.planPreferences&&Object.prototype.hasOwnProperty.call(db.planPreferences,oldName)){if(!Object.prototype.hasOwnProperty.call(db.planPreferences,newName))db.planPreferences[newName]=db.planPreferences[oldName];delete db.planPreferences[oldName]}
+ if(db.playerFocusDrillOverrides&&typeof db.playerFocusDrillOverrides==='object')Object.keys(db.playerFocusDrillOverrides).filter(key=>key.startsWith(oldName+'::')).forEach(key=>{const next=newName+key.slice(oldName.length);if(!(next in db.playerFocusDrillOverrides))db.playerFocusDrillOverrides[next]=db.playerFocusDrillOverrides[key];delete db.playerFocusDrillOverrides[key]});
+}
 function syncRosterNames(){
- $$('.roster-name').forEach(input=>{const player=db.roster[+input.dataset.i];if(player)player.name=input.value.trim()||'Unnamed Player'});
+ $('.roster-name').forEach(input=>{const player=db.roster[+input.dataset.i];if(!player)return;const next=input.value.trim()||'Unnamed Player',previous=player.name;if(next!==previous)renamePlayerReferences(previous,next);player.name=next});
 }
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
 const undoViewKeys=['historyTab','allView','zoneScope','zoneFilter','previewNext','firstPitchView','showAi','pendingZone','pitchType'];
