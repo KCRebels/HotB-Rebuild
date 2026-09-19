@@ -127,7 +127,7 @@
   if(repeatHittersNeeded>activeAttendees.length)feasibilityErrors.push(`${sessionCount} live blocks require more second live-hitting assignments than the attendance can safely provide.`);
   const catcherTargets=[];
   if(sessionCount===0){}
-  else if(sessionCount===1)catcherTargets.push(false);
+  else if(sessionCount===1)catcherTargets.push(orderedCatchers.length>0);
   else if(orderedCatchers.length>1){
    const playerCaughtBlocks=Math.min(sessionCount,orderedCatchers.length*2),firstCount=Math.ceil(playerCaughtBlocks/2),secondCount=Math.floor(playerCaughtBlocks/2),nineSquareCount=sessionCount-playerCaughtBlocks;
    catcherTargets.push(...Array(firstCount).fill(true),...Array(nineSquareCount).fill(false),...Array(secondCount).fill(true));
