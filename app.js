@@ -1767,7 +1767,9 @@ function practicePlayerByName(name){return practiceAttendanceRoster().find(playe
 function practiceAvailability(startTime,durationMinutes,arrival,departure){
  const start=practiceTimeMinutes(startTime),blockMinutes=(Number(durationMinutes)||120)/10,end=start+(Number(durationMinutes)||120);
  let arrive=practiceTimeMinutes(arrival||startTime),leave=practiceTimeMinutes(departure||practiceEndValue(startTime,durationMinutes));
- if(arrive<start)arrive+=1440;if(leave<start)leave+=1440;
+ const crossesMidnight=end>1440,midnightEnd=crossesMidnight?end-1440:0;
+ if(arrive<start)arrive=crossesMidnight&&arrive<=midnightEnd?arrive+1440:start;
+ if(leave<start)leave=crossesMidnight&&leave<=midnightEnd?leave+1440:leave;
  const availableFromBlock=Math.max(0,Math.min(10,Math.ceil((arrive-start)/blockMinutes-1e-9))),availableUntilBlock=Math.max(0,Math.min(10,Math.floor((Math.min(leave,end)-start)/blockMinutes+1e-9)));
  return {availableFromBlock,availableUntilBlock:Math.max(availableFromBlock,availableUntilBlock)};
 }
