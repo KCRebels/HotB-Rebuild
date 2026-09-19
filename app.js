@@ -1814,7 +1814,7 @@ function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.
  const startedAt=Date.parse(clock.startedAt||'');
  if(clock.status!=='running'||!Number.isFinite(startedAt))return {block:'Not Started',left:'—',transition:false,currentBlock:0};
  const state=window.HotBPracticeSession?.timing(practice,{running:true,startAt:startedAt},now);
- if(!state)return {block:'DONE!',left:'0:00',transition:false,currentBlock:10};
+ if(!state)return {block:'DONE!',left:'0:00',transition:false,currentBlock:10,ended:true};
  const seconds=Math.ceil(state.remaining/1000);
  return {block:state.transition?'ROTATE':`${state.block} of 10`,left:`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`,transition:!!state.transition,currentBlock:state.block};
 }
@@ -1827,7 +1827,7 @@ function updatePortalPracticeClock(){
   nextPanel.hidden=!nextEntry;
   if(nextEntry){const details=portalNextAssignmentDetails(nextEntry.assignment);nextHeading.textContent=details.heading;nextDetail.textContent=details.detail;nextDetail.hidden=!details.detail;nextButton.dataset.portalPracticeDrill=details.drill||'';nextButton.classList.toggle('has-drill',!!details.drill);const hint=nextButton.querySelector('small');if(hint)hint.hidden=!details.drill}
  }
- if(['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType)){const current=Number(values.currentBlock)||0;$('[data-portal-block]').forEach(row=>row.hidden=current>0&&Number(row.dataset.portalBlock)<current)}
+ if(['guestPlayer','jenkinsPlayer'].includes(portalData?.portalType)){const current=Number(values.currentBlock)||0;$('[data-portal-block]').forEach(row=>row.hidden=!!values.ended||current>0&&Number(row.dataset.portalBlock)<current)}
 }
 function practiceActivityLabel(activity,plan=null){
  const match=String(activity||'').match(/^Drill #(\d+)$/),drill=match?practiceChosenDrills[Number(match[1])-1]:null;
