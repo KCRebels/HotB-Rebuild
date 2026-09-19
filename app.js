@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-111';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-112';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1218,14 +1218,23 @@ async function claimPlayerPortal(pin){
    await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
   }
   if(portalToken!==requestedPortalToken)throw new Error('portal-claim-token-changed');
-  await loadPlayerPortal();
-  if(portalToken!==requestedPortalToken||!portalData||portalData.id!==requestedPortalToken)throw new Error('portal-claim-verification-failed');
- }catch(error){
+  // Verify the authorization directly before starting another loader. A concurrent
+  // auth-state loader may supersede this call; that must not turn a correct PIN
+  // into a false failure or clear a newer successful portal.
+  const verified=await portalDoc(requestedPortalToken).get(),remote=verified.exists?verified.data():null,uid=portalAuthUser?.uid;
+  if(!remote||!uid||(remote.ownerUid!==uid&&!(Array.isArray(remote.authorizedUids)&&remote.authorizedUids.includes(uid))))throw new Error('portal-claim-verification-failed');
+  if(portalToken!==requestedPortalToken)return;
   portalBusy=false;
-  portalData=null;
+  await loadPlayerPortal();
+ }catch(error){
+  if(portalToken!==requestedPortalToken)return;
+  // If a newer loader already opened this exact portal, do not let this older
+  // claim path erase it with a misleading PIN error.
+  if(portalData?.id===requestedPortalToken){portalBusy=false;if(route==='portal')render();return}
+  portalBusy=false;portalData=null;
   portalMessage='That PIN did not work, or this device could not confirm the portal connection. Ask your coach to reset the portal if the problem continues.';
+  render();
  }
- render();
 }
 function schedulePlayerEvaluationPortalSync(delay=2200){
  if(!cloudUser||!cloudStore||portalToken)return;
