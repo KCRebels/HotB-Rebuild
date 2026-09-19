@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-85';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-86';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1072,11 +1072,16 @@ async function loadPlayerPortal(){
  portalBusy=true;portalMessage='';
  if(!portalAuthUser){
   try{
-   const credential=await Promise.race([
-    cloudAuth.signInAnonymously(),
-    new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
-   ]);
-   portalAuthUser=credential?.user||cloudAuth.currentUser||null;
+   // Firebase may already have restored an anonymous session before this function
+   // runs. Reuse it instead of issuing another anonymous sign-in request.
+   portalAuthUser=cloudAuth.currentUser||null;
+   if(!portalAuthUser){
+    const credential=await Promise.race([
+     cloudAuth.signInAnonymously(),
+     new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
+    ]);
+    portalAuthUser=credential?.user||cloudAuth.currentUser||null;
+   }
   }catch(error){
    portalBusy=false;
    portalMessage=String(error?.message||'')==='portal-auth-timeout'
@@ -1171,7 +1176,12 @@ async function claimPlayerPortal(pin){
    await portalDoc().update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
   }
   await loadPlayerPortal();
- }catch(error){portalBusy=false;portalMessage='That PIN did not work. Ask your coach to reset the portal if the problem continues.'}
+  if(!portalData)throw new Error('portal-claim-verification-failed');
+ }catch(error){
+  portalBusy=false;
+  portalData=null;
+  portalMessage='That PIN did not work, or this device could not confirm the portal connection. Ask your coach to reset the portal if the problem continues.';
+ }
  render();
 }
 function schedulePlayerEvaluationPortalSync(delay=2200){
