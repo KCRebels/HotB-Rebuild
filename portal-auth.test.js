@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-111'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-112'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal151'));
+assert(index.includes('app.js?v=20260919-portal152'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -124,3 +124,7 @@ assert(app.includes("remote.portalType!=='player'||remote.playerName!==player.na
 assert(app.includes("remote.portalType!=='coach'"));
 assert(!app.includes("portalDoc(player.portalId).set({evaluationData:"));
 assert(!app.includes("portalDoc(db.coachPortal.portalId).set({evaluationData:"));
+
+assert(app.includes("remote.ownerUid!==uid&&!(Array.isArray(remote.authorizedUids)&&remote.authorizedUids.includes(uid))"));
+assert(app.includes("if(portalData?.id===requestedPortalToken){portalBusy=false"));
+assert(app.includes("const verified=await portalDoc(requestedPortalToken).get()"));
