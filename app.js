@@ -2091,7 +2091,9 @@ async function recoverOrphanedActivePractice(){
   if(chosenDrills.length!==drillStations)throw new Error('drill-recovery-mismatch');
   const liveSessions=[];Object.entries(schedule).forEach(([name,entries])=>entries.forEach((entry,index)=>{if(entry.activity==='Pitch Live'){let session=liveSessions.find(item=>item.block===index);if(!session){session={block:index,pitcher:name,catcher:entry.partner||'9Square',hitters:[]};liveSessions.push(session)}}}));
   Object.entries(schedule).forEach(([name,entries])=>entries.forEach((entry,index)=>{if(entry.activity==='Hit Live'){const session=liveSessions.find(item=>item.block===index);if(session)session.hitters.push(name)}}));
-  const blocks=Array.from({length:10},(_,index)=>{const assignments={};Object.entries(schedule).forEach(([name,entries])=>{const entry=entries[index];if(!entry)return;const key=entry.partner?`${entry.activity} — ${entry.partner}`:entry.activity;(assignments[key]||(assignments[key]=[])).push(name)});return {block:index+1,start:times[index].start,end:times[index].end,assignments}});
+  const blocks=Array.isArray(remote.schedule)&&remote.schedule.length===10
+   ?remote.schedule.map((block,index)=>({block:Number(block.block)||index+1,start:block.start||times[index].start,end:block.end||times[index].end,assignments:block.assignments||{}}))
+   :Array.from({length:10},(_,index)=>{const assignments={};Object.entries(schedule).forEach(([name,entries])=>{const entry=entries[index];if(!entry)return;const key=entry.partner?`${entry.activity} — ${entry.partner}`:entry.activity;(assignments[key]||(assignments[key]=[])).push(name)});return {block:index+1,start:times[index].start,end:times[index].end,assignments}});
   practicePlan={portalDraftId:remote.id,startTime,durationMinutes,blockMinutes,times,players,schedule,blocks,drillStations,liveSessions,machineFocus,frontTossFocus,warnings:['Recovered from the activated coach portal without rebuilding the scheduler.']};
   practiceChosenDrills=chosenDrills;practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceSection='builder';
   const clock=remote.clock||{},startedAt=Date.parse(clock.startedAt||'');
