@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-138';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-139';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -976,7 +976,14 @@ async function initCloud(){
     cloudUser=user&&!user.isAnonymous?user:null;
     portalAuthUser=user||null;
    }
-   if(cloudUser){await loadCloudStatus();if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();syncPlayerEvaluationPortals().catch(()=>{})}
+   if(cloudUser){
+    // Publish the authenticated coach state immediately. Cloud status reads can be
+    // slow on iOS; portal management must not remain stuck on Reconnect while
+    // loadCloudStatus is still waiting on Firestore.
+    if(route==='home'||route==='portal')render();
+    try{await loadCloudStatus()}catch(_){cloudMessage='Signed in. Cloud status will retry automatically.'}
+    if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();syncPlayerEvaluationPortals().catch(()=>{})
+   }
    if(cloudUser&&recoveredPracticeExpired&&practicePlan&&practiceClock.running){
     // Do not merely mark an expired restored clock finished locally. Wait for the
     // authenticated coach session so the normal completion path can actually
