@@ -16,9 +16,9 @@ function managerHtml(){const d=db(),players=originalPlayers(),coach=d?.coachPort
 function restoreManager(){if(!location.hash.includes('portal')&&!document.querySelector('.portal-page'))return;const gate=[...document.querySelectorAll('.portal-welcome h2')].find(x=>/Private Player Access/i.test(x.textContent));if(!gate)return;const players=originalPlayers();if(!players.length)return;const main=gate.closest('main');if(main)main.outerHTML=managerHtml()}
 document.addEventListener('click',e=>{
  const t=e.target.closest?.('[data-text-portal]');
- if(t){const p=player(t.dataset.textPortal);if(!valid(p))return;e.preventDefault();e.stopImmediatePropagation();if(!sms(p.phone,textFor(p)))alert(`No cell number is saved for ${p.name}.`);return}
+ if(t){const p=player(t.dataset.textPortal);if(!valid(p))return;e.preventDefault();e.stopImmediatePropagation();if(typeof window.HotBPortalText==='function'){window.HotBPortalText(t.dataset.textPortal);return}if(!sms(p.phone,textFor(p)))alert(`No cell number is saved for ${p.name}.`);return}
  const s=e.target.closest?.('[data-share-portal]');
- if(s){const p=player(s.dataset.sharePortal);if(!valid(p))return;e.preventDefault();e.stopImmediatePropagation();share(p);return}
+ if(s){const p=player(s.dataset.sharePortal);if(!valid(p))return;e.preventDefault();e.stopImmediatePropagation();if(typeof window.HotBPortalShare==='function'){window.HotBPortalShare(s.dataset.sharePortal);return}share(p);return}
  const c=e.target.closest?.('[data-share-coach]');if(c){const coach=db()?.coachPortal;if(valid(coach)){e.preventDefault();e.stopImmediatePropagation();share({...coach,name:coach.name||'Bob'})}}
 },true);
 new MutationObserver(restoreManager).observe(document.documentElement,{childList:true,subtree:true});window.addEventListener('load',restoreManager);setTimeout(restoreManager,250);
