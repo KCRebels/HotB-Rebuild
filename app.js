@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-115';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-116';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2257,14 +2257,20 @@ async function clearActivePlayerPlans(){
  if(!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)throw new Error('practice-mismatch');
  const batch=cloudStore.batch();
  const activeNames=new Set(db.activePortalPractice?.players||[]),persistedPlayerPortals=db.activePortalPractice?.playerPortals||[];
- persistedPlayerPortals.forEach(entry=>{const player=db.roster.find(item=>item.name===entry.name);batch.set(portalDoc(entry.portalId),entry.isTeamJenkins?jenkinsPortalCleanupPayload(player,entry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})});
  const persistedIds=new Set(persistedPlayerPortals.map(entry=>entry.portalId));
- db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).forEach(player=>batch.set(portalDoc(player.portalId),player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  const coachPortalId=db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId;
- if(coachPortalId)batch.set(portalDoc(coachPortalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
  const guestPortalIds=new Set([...(db.activePortalPractice?.guestPlayerPortalIds||[]),...(db.activePortalPractice?.guestCoachPortalIds||[]),...practiceGuestPlayers().filter(guest=>activeNames.has(guest.name)).map(guest=>guest.portalId),...practiceGuestCoaches().map(guest=>guest.portalId)].filter(Boolean));
- guestPortalIds.forEach(id=>batch.set(portalDoc(id),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
- await batch.commit();
+ // Cleanup is update-only. Ending a practice must never recreate a missing
+ // permanent/coach/guest portal document as a partial stale record.
+ const cleanupTargets=[
+  ...persistedPlayerPortals.map(entry=>({id:entry.portalId,data:entry.isTeamJenkins?jenkinsPortalCleanupPayload(db.roster.find(item=>item.name===entry.name),entry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
+  ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).map(player=>({id:player.portalId,data:player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
+  ...(coachPortalId?[{id:coachPortalId,data:{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}]:[]),
+  ...[...guestPortalIds].map(id=>({id,data:{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}))
+ ];
+ const existingCleanup=await Promise.all(cleanupTargets.map(async target=>{const snapshot=await portalDoc(target.id).get();return snapshot.exists?target:null}));
+ existingCleanup.filter(Boolean).forEach(target=>batch.update(portalDoc(target.id),target.data));
+ if(existingCleanup.some(Boolean))await batch.commit();
  // Confirm the ended practice is actually gone from every portal before
  // clearing the coach's local active-practice reference.
  const verifyIds=[...new Set([
