@@ -2070,11 +2070,14 @@ async function recoverOrphanedActivePractice(){
   else{alert('HotB is connected to the portal service, but the coach cloud session is signed out. Nothing was changed.');return}
  }
  const state=db.activePortalPractice,coachId=state.coachPortalId||db.coachPortal?.portalId;
+ if(!state.active){alert('HotB no longer marks this portal practice as active. Nothing was changed.');return}
  if(!coachId){alert('HotB cannot safely recover this practice because the saved coach portal reference is missing. Nothing was changed.');return}
  const button=$('#recoverOrphanedPractice');if(button){button.disabled=true;button.textContent='Recovering…'}
  try{
   const snapshot=await Promise.race([portalDoc(coachId).get(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('practice-recovery-timeout')),8000))]),remote=snapshot.exists?snapshot.data()?.activePractice:null;
   if(!remote||remote.id!==state.id)throw new Error('practice-mismatch');
+  if(!Array.isArray(remote.players)||!remote.players.length||!Number.isFinite(Number(remote.blockMinutes))||Number(remote.blockMinutes)<=0)throw new Error('practice-payload-incomplete');
+  const publishedIds=new Set(remote.players.map(player=>String(player.name||'').trim()).filter(Boolean));if(!publishedIds.size)throw new Error('practice-payload-incomplete');
   const blockMinutes=Number(remote.blockMinutes)||12,durationMinutes=blockMinutes*10;
   const firstTime=String(remote.players?.[0]?.schedule?.[0]?.time||'').split('–')[0].trim();
   const startLabel=firstTime||remote.startLabel||'6:00p';
