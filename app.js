@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-129';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-130';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2280,7 +2280,7 @@ async function clearActivePlayerPlans(){
  // permanent/coach/guest portal document as a partial stale record.
  const cleanupTargets=[
   ...persistedPlayerPortals.map(entry=>({id:entry.portalId,isTeamJenkins:!!entry.isTeamJenkins,data:entry.isTeamJenkins?jenkinsPortalCleanupPayload(db.roster.find(item=>item.name===entry.name),entry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
-  ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).map(player=>({id:player.portalId,data:player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
+  ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).map(player=>({id:player.portalId,isTeamJenkins:!!player.isTeamJenkins,data:player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
   ...(coachPortalId?[{id:coachPortalId,data:{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}]:[]),
   ...[...guestPortalIds].map(id=>({id,isGuest:true,data:{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}))
  ];
@@ -2304,8 +2304,8 @@ async function clearActivePlayerPlans(){
   // Temporary guest links must be expired at cleanup. Jenkins links are
   // intentionally reusable and return to waiting instead of expiring.
   if(guestPortalIds.has(id))return remote.expired===true&&remote.accessStatus==='ended';
-  const persisted=persistedPlayerPortals.find(entry=>entry.portalId===id);
-  if(persisted?.isTeamJenkins)return remote.portalType==='jenkinsPlayer'&&remote.accessStatus==='waiting'&&remote.expired===false;
+  const persisted=persistedPlayerPortals.find(entry=>entry.portalId===id),rosterPlayer=db.roster.find(player=>player.portalId===id&&activeNames.has(player.name));
+  if(persisted?.isTeamJenkins||rosterPlayer?.isTeamJenkins)return remote.portalType==='jenkinsPlayer'&&remote.accessStatus==='waiting'&&remote.expired===false;
   return true;
  }));
  if(verification.some(cleared=>!cleared))throw new Error('portal-clear-verification-failed');
@@ -2334,13 +2334,13 @@ async function clearFinishedOrphanedPractice(state){
  const activeNames=new Set(state.players||[]),persisted=state.playerPortals||[],persistedIds=new Set(persisted.map(entry=>entry.portalId)),guestIds=new Set([...(state.guestPlayerPortalIds||[]),...(state.guestCoachPortalIds||[])].filter(Boolean)),coachId=state.coachPortalId||db.coachPortal?.portalId;
  const targets=[
   ...persisted.map(entry=>({id:entry.portalId,data:entry.isTeamJenkins?jenkinsPortalCleanupPayload(db.roster.find(item=>item.name===entry.name),entry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
-  ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).map(player=>({id:player.portalId,data:player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
+  ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).map(player=>({id:player.portalId,isTeamJenkins:!!player.isTeamJenkins,data:player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
   ...(coachId?[{id:coachId,data:{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}]:[]),
   ...[...guestIds].map(id=>({id,data:{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}))
  ];
  const existing=await Promise.all(targets.map(async target=>{const snapshot=await portalDoc(target.id).get();return snapshot.exists?target:null})),batch=cloudStore.batch();
  existing.filter(Boolean).forEach(target=>batch.update(portalDoc(target.id),target.data));if(existing.some(Boolean))await batch.commit();
- const verifyIds=[...new Set(targets.map(target=>target.id).filter(Boolean))],verification=await Promise.all(verifyIds.map(async id=>{const snapshot=await portalDoc(id).get();if(!snapshot.exists)return true;const remote=snapshot.data()||{};if(remote.activePractice)return false;if(guestIds.has(id))return remote.expired===true&&remote.accessStatus==='ended';const entry=persisted.find(item=>item.portalId===id);if(entry?.isTeamJenkins)return remote.portalType==='jenkinsPlayer'&&remote.accessStatus==='waiting'&&remote.expired===false;return true}));
+ const verifyIds=[...new Set(targets.map(target=>target.id).filter(Boolean))],verification=await Promise.all(verifyIds.map(async id=>{const snapshot=await portalDoc(id).get();if(!snapshot.exists)return true;const remote=snapshot.data()||{};if(remote.activePractice)return false;if(guestIds.has(id))return remote.expired===true&&remote.accessStatus==='ended';const entry=persisted.find(item=>item.portalId===id),rosterPlayer=db.roster.find(player=>player.portalId===id&&activeNames.has(player.name));if(entry?.isTeamJenkins||rosterPlayer?.isTeamJenkins)return remote.portalType==='jenkinsPlayer'&&remote.accessStatus==='waiting'&&remote.expired===false;return true}));
  if(verification.some(Boolean)===false||verification.some(ok=>!ok))throw new Error('finished-orphan-cleanup-verification-failed');
  if(db.activePortalPractice?.id===state.id)db.activePortalPractice=null;db.activePracticeSession=null;save();
 }
@@ -2517,7 +2517,7 @@ async function activatePlayerPlans(){
    ...activeGuestCoaches.map(guest=>({id:guest.portalId,type:'guestCoach',name:guest.name}))
   ];
   const activationDocs=await Promise.all(activationTargets.map(async target=>({target,snapshot:await portalDoc(target.id).get()})));
-  for(const {target,snapshot} of activationDocs){const remote=snapshot.exists?snapshot.data():null;if(!remote||remote.portalType!==target.type)throw new Error('portal-activation-target-missing');if(['player','jenkinsPlayer','guestPlayer'].includes(target.type)&&remote.playerName!==target.name)throw new Error('portal-activation-player-mismatch');if(['coach','guestCoach'].includes(target.type)&&target.name&&remote.coachName!==target.name)throw new Error('portal-activation-coach-mismatch')}
+  for(const {target,snapshot} of activationDocs){const remote=snapshot.exists?snapshot.data():null;if(!remote||remote.portalType!==target.type)throw new Error('portal-activation-target-missing');if(['player','jenkinsPlayer','guestPlayer'].includes(target.type)&&remote.playerName!==target.name)throw new Error('portal-activation-player-mismatch');if(['coach','guestCoach'].includes(target.type)&&target.name&&remote.coachName!==target.name)throw new Error('portal-activation-coach-mismatch');if(remote.activePractice?.id&&remote.activePractice.id!==practicePlan.portalDraftId)throw new Error('portal-activation-live-practice-conflict')}
   permanentPlayers.forEach(player=>batch.update(portalDoc(player.portalId),{activePractice:{...playerPracticePortalPayload(player.name,activationTimestamp),clock:{status:'not-started',startedAt:null,endedAt:null}},updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
   jenkinsPlayers.forEach(player=>batch.update(portalDoc(player.portalId),jenkinsPortalResetPayload(player,playerPracticePortalPayload(player.name,activationTimestamp),'active')));
   if(db.coachPortal?.portalId)batch.update(portalDoc(db.coachPortal.portalId),{activePractice:coachPracticePortalPayload(activationTimestamp),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
