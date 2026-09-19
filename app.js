@@ -1036,14 +1036,15 @@ function schedulePlayerEvaluationPortalSync(delay=2200){
 }
 async function syncPlayerEvaluationPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return false;
- const players=db.roster.filter(player=>!player.isGuest&&player.portalId);
- if(!players.length)return false;
+ const players=db.roster.filter(player=>!player.isGuest&&player.portalId),coachPortalId=db.coachPortal?.portalId||'';
+ if(!players.length&&!coachPortalId)return false;
  try{
   const batch=cloudStore.batch();
   players.forEach(player=>batch.set(portalDoc(player.portalId),{playerName:player.name,firstName:practiceFirstName(player.name),evaluationData:playerEvaluationPortalPayload(player.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+  if(coachPortalId)batch.set(portalDoc(coachPortalId),{evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   await batch.commit();
   return true;
- }catch(error){console.warn('Player Evaluation portal sync failed',error);return false}
+ }catch(error){console.warn('Evaluation portal sync failed',error);return false}
 }
 async function setupPlayerPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return;
