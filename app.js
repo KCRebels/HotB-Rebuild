@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-110';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-111';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1241,10 +1241,14 @@ async function syncPlayerEvaluationPortals(){
  const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId),coachPortalId=db.coachPortal?.portalId||'';
  if(!players.length&&!coachPortalId)return true;
  try{
-  const batch=cloudStore.batch();
-  players.forEach(player=>batch.set(portalDoc(player.portalId),{playerName:player.name,firstName:practiceFirstName(player.name),evaluationData:playerEvaluationPortalPayload(player.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
-  if(coachPortalId)batch.set(portalDoc(coachPortalId),{evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-  await batch.commit();
+  // Evaluation refreshes are background updates only. They must never recreate a
+  // deleted/reset portal as an incomplete document. Verify identity, then update.
+  const targets=await Promise.all([
+   ...players.map(async player=>{const ref=portalDoc(player.portalId),snapshot=await ref.get(),remote=snapshot.exists?snapshot.data():null;if(!remote||remote.portalType!=='player'||remote.playerName!==player.name)return null;return {ref,data:{evaluationData:playerEvaluationPortalPayload(player.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}}),
+   ...(coachPortalId?[async()=>{const ref=portalDoc(coachPortalId),snapshot=await ref.get(),remote=snapshot.exists?snapshot.data():null;if(!remote||remote.portalType!=='coach')return null;return {ref,data:{evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}}] : [])
+  ]);
+  const valid=targets.filter(Boolean);if(!valid.length)return true;
+  const batch=cloudStore.batch();valid.forEach(target=>batch.update(target.ref,target.data));await batch.commit();
   return true;
  }catch(error){console.warn('Evaluation portal sync failed',error);return false}
 }
@@ -1365,8 +1369,9 @@ async function backupToCloud(automatic=false){
   batch.set(root,{email:CLOUD_EMAIL,chunkCount:chunks.length,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),formatVersion:1});
   if(!daily.exists){chunks.forEach((data,index)=>batch.set(dailyRef.collection('chunks').doc(String(index).padStart(4,'0')),{index,data}));batch.set(dailyRef,{email:CLOUD_EMAIL,chunkCount:chunks.length,createdAt:firebase.firestore.FieldValue.serverTimestamp(),formatVersion:1})}
   await batch.commit();if(!daily.exists){cloudSnapshotCount++;pruneDailySnapshots(root).catch(()=>{})}
-  if(db.coachPortal?.portalId)portalDoc(db.coachPortal.portalId).set({evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{});
-  db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId).forEach(player=>portalDoc(player.portalId).set({evaluationData:playerEvaluationPortalPayload(player.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{}));
+  // Keep backup separate from portal creation. Background evaluation sync verifies
+  // portal identity and uses update(), so a deleted portal cannot be resurrected.
+  schedulePlayerEvaluationPortalSync(300);
   localStorage.setItem(CLOUD_ENABLED_KEY,'true');localStorage.setItem(CLOUD_PENDING_KEY,'false');localStorage.removeItem(CLOUD_ERROR_KEY);cloudLastBackup=new Date();localStorage.setItem(CLOUD_LAST_SUCCESS_KEY,cloudLastBackup.toISOString());cloudMessage=automatic?'':'Cloud backup completed.';
  }catch(error){localStorage.setItem(CLOUD_PENDING_KEY,'true');localStorage.setItem(CLOUD_ERROR_KEY,new Date().toISOString());cloudMessage='Backup needs attention. Your phone data is safe; HotB will retry when it is online.'}
  cloudBusy=false;schedulePlayerEvaluationPortalSync(300);if(route==='home')render();
