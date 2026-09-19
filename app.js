@@ -2004,7 +2004,7 @@ async function clearOrphanedActivePractice(){
 }
 async function syncPlayerPracticeClock(){
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return;
- const attending=new Set(db.activePortalPractice.players||[]),clock=practiceClockPortalPayload(),updates=[],queuedIds=new Set(),queue=id=>{if(!id||queuedIds.has(id))return;queuedIds.add(id);updates.push(portalDoc(id).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}))};
+ const attending=new Set(db.activePortalPractice.players||[]),clock=practiceClockPortalPayload(),activeId=practicePlan.portalDraftId,updates=[],queuedIds=new Set(),queue=id=>{if(!id||queuedIds.has(id))return;queuedIds.add(id);updates.push(portalDoc(id).get().then(snapshot=>{const remote=snapshot.exists?snapshot.data()?.activePractice:null;if(!remote||remote.id!==activeId)throw new Error('portal-practice-mismatch');return portalDoc(id).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})}))};
  (db.activePortalPractice?.playerPortals||[]).forEach(entry=>queue(entry.portalId));
  db.roster.filter(player=>attending.has(player.name)&&player.portalId).forEach(player=>queue(player.portalId));
  queue(db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId);
