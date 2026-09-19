@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-94';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-95';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2320,7 +2320,11 @@ async function recoverOrphanedActivePractice(){
   const blocks=Array.from({length:10},(_,index)=>{const assignments={};Object.entries(schedule).forEach(([name,entries])=>{const entry=entries[index];if(!entry)return;let key=entry.activity;if(entry.activity==='Pitch Live')key=`Pitch Live — ${entry.partner||'9Square'}`;else if(entry.activity==='Catch Live')key=`Catch Live — ${entry.partner||''}`;else if(entry.activity==='Hit Live'){const live=liveSessions.find(item=>item.block===index);key=live?`Hit Live — ${live.pitcher} — ${live.catcher}`:'Hit Live'};(assignments[key]||(assignments[key]=[])).push(name)});return {block:index+1,start:times[index].start,end:times[index].end,assignments}});
   const recoveredPlayerSchedules={};for(const item of remote.players||[]){const first=practiceFirstName(item.name),source=rosterByFirst.get(first),name=source?.name||activeNameByFirst.get(first)||item.name;recoveredPlayerSchedules[name]=structuredClone(item.schedule)}
   const recoveredPlan={portalDraftId:remote.id,startTime,durationMinutes,blockMinutes,times,players,schedule,blocks,drillStations,liveSessions,machineFocus,frontTossFocus,recoveredCoachSchedule:structuredClone(remote.schedule),recoveredPlayerSchedules,warnings:['Recovered from the activated coach portal without rebuilding the scheduler.']};
-  const recoveredChosenDrills=chosenDrills,clock=remote.clock||{},startedAt=Date.parse(clock.startedAt||'');
+  const recoveredChosenDrills=chosenDrills,clock=remote.clock||{},startedAt=Date.parse(clock.startedAt||''),activatedAt=Date.parse(remote.activatedAt||'');
+  // Recovery is only valid for the exact still-active publication. An old/test
+  // clock may never resurrect a completed practice or predate its activation.
+  if(clock.status==='finished')throw new Error('practice-already-finished');
+  if(clock.status==='running'&&(!Number.isFinite(startedAt)||!Number.isFinite(activatedAt)||startedAt<activatedAt))throw new Error('practice-clock-invalid');
   const recoveredClock={running:clock.status==='running'&&Number.isFinite(startedAt),finished:clock.status==='finished',endAnnounced:false,startAt:Number.isFinite(startedAt)?startedAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:clock.endedAt||null};
   const recoveredLayout=window.HotBPracticeSession?.layout?.(recoveredPlan),scheduledEnd=Number.isFinite(startedAt)&&recoveredLayout?startedAt+recoveredLayout.totalMs:NaN,expiredByTime=Number.isFinite(scheduledEnd)&&Date.now()>=scheduledEnd;
   if(expiredByTime&&!recoveredClock.finished){recoveredClock.running=false;recoveredClock.finished=true;recoveredClock.completedAt=clock.endedAt||new Date(scheduledEnd).toISOString()}
@@ -2341,8 +2345,14 @@ async function clearOrphanedActivePractice(){
  if(state.coachPortalId)batch.set(portalDoc(state.coachPortalId),{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
  (state.guestPlayerPortalIds||[]).forEach(id=>batch.set(portalDoc(id),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
  (state.guestCoachPortalIds||[]).forEach(id=>batch.set(portalDoc(id),{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
- try{await batch.commit();db.activePortalPractice=null;db.activePracticeSession=null;save();render();alert('The stale portal practice was removed. You can build a new practice now.')}
- catch(error){alert('The stale portal practice could not be removed. Check your connection and try again.')}
+ try{
+  await batch.commit();
+  const verifyIds=[...new Set([...persistedPlayerPortals.map(entry=>entry.portalId),...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)).map(player=>player.portalId),state.coachPortalId,...(state.guestPlayerPortalIds||[]),...(state.guestCoachPortalIds||[])].filter(Boolean))];
+  const verification=await Promise.all(verifyIds.map(async id=>{const snapshot=await portalDoc(id).get();return !snapshot.exists||!snapshot.data()?.activePractice}));
+  if(verification.some(cleared=>!cleared))throw new Error('orphan-cleanup-verification-failed');
+  db.activePortalPractice=null;db.activePracticeSession=null;save();render();alert('The stale portal practice was removed. You can build a new practice now.');
+ }
+ catch(error){alert('The stale portal practice could not be removed or verified. HotB kept the local recovery reference so nothing can be silently lost. Check your connection and try again.')}
 }
 async function syncPlayerPracticeClock(){
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return false;
