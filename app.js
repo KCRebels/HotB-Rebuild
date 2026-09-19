@@ -1220,7 +1220,8 @@ async function restoreFromCloud(){
 }
 async function cloudPasswordAuth(createAccount=false){
  const password=$('#cloudPassword')?.value||'';
- if(!cloudAuth||cloudBusy)return;
+ if(cloudBusy)return;
+ if(!cloudAuth){cloudMessage='Cloud Backup is still connecting. Please wait a moment and tap Sign In again.';render();initCloud();return}
  if(password.length<6){cloudMessage='Your HotB backup password must be at least 6 characters.';render();return}
  cloudBusy=true;cloudMessage=createAccount?'Creating your protected backup login…':'Signing in…';render();
  try{
