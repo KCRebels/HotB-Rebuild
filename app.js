@@ -2410,9 +2410,14 @@ function gameGroupModal(group=null){
  const selected=(group?.gameIds||reportSelectedGameIds).filter(id=>db.savedGames.some(game=>game.id===id));
  return `<div class="modal-backdrop"><div class="modal game-group-modal"><div class="modal-header"><h2>${group?'Edit':'Create'} Game Group</h2><button class="btn" data-close>Cancel</button></div><label>Group name<input class="input" id="gameGroupName" value="${esc(group?.name||'')}" placeholder="St. Louis Showcase"></label><div class="game-select-list" id="groupGameChoices">${gameChoiceList(selected)||'<p>No saved games are available.</p>'}</div><div class="game-group-footer"><button class="btn" data-close>Cancel</button><button class="btn black" id="saveGameGroup" data-group-id="${group?.id||''}">Save Group</button></div></div></div>`;
 }
+function practiceOnlyJenkinsRecord(player){
+ const allowed=['name','phone','positions','side','isGuest','isTeamJenkins','teamName','isPracticeGuest','portalId','portalSecret'];
+ return Object.fromEntries(allowed.filter(key=>player?.[key]!==undefined).map(key=>[key,player[key]]));
+}
 function sanitizedBackupDb(){
- const backupDb=structuredClone(db),jenkinsNames=new Set((backupDb.roster||[]).filter(player=>player.isTeamJenkins).map(player=>player.name));
+ const backupDb=structuredClone(db),jenkinsNames=new Set((backupDb.roster||[]).filter(player=>player.isTeamJenkins||player.teamName==='Team Jenkins').map(player=>player.name));
  if(jenkinsNames.size){
+  backupDb.roster=(backupDb.roster||[]).map(player=>jenkinsNames.has(player.name)?practiceOnlyJenkinsRecord(player):player);
   backupDb.measurements=(backupDb.measurements||[]).filter(item=>!jenkinsNames.has(item.player));
   backupDb.coachObservations=(backupDb.coachObservations||[]).filter(item=>!jenkinsNames.has(item.playerName));
   (backupDb.savedGames||[]).forEach(game=>{game.observations=(game.observations||[]).filter(item=>!jenkinsNames.has(item.playerName))});
