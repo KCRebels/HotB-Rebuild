@@ -3348,7 +3348,7 @@ async function endPracticeFromScreen(){
 }
 function bindPlayerPortal(){
  if(isCoachEvaluation())bindEval();
- $('#openPortalCloudSignIn')?.addEventListener('click',()=>{modal='cloud';render();});
+ $('#openPortalCloudSignIn')?.addEventListener('click',()=>{modal='cloudBackup';render();});
  $('#setupPlayerPortals')?.addEventListener('click',setupPlayerPortals);
  $('#setupCoachPortal')?.addEventListener('click',setupCoachPortal);
  $('#resetCoachPortal')?.addEventListener('click',resetCoachPortal);
