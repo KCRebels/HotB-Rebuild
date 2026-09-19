@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-109'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-110'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal149'));
+assert(index.includes('app.js?v=20260919-portal150'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -115,3 +115,6 @@ assert(!app.includes("recoveredPracticeExpired&&practicePlan&&practiceClock.runn
 assert(app.includes("draft-guest-expiry-verification-failed"));
 assert(app.includes("remote.expired===true&&remote.accessStatus==='ended'&&!remote.activePractice"));
 assert(app.includes("guest links could not be expired and verified"));
+
+assert(app.match(/catch\(error\)\{\n\s+if\(loadGeneration!==portalLoadGeneration\|\|portalToken!==requestedPortalToken\)return;/g)?.length>=3);
+assert(app.includes("},()=>{\n    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;"));
