@@ -3070,7 +3070,7 @@ async function finishPracticeClock(automatic=false){
  practiceCompletionBusy=true;
  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
  practiceClock.running=false;practiceClock.finished=true;
- const completedAt=practiceClock.startAt&&practicePlan&&window.HotBPracticeSession?.layout?new Date(practiceClock.startAt+window.HotBPracticeSession.layout(practicePlan).totalMs):new Date();archiveCompletedPractice(completedAt);
+ const scheduledEnd=practiceClock.startAt&&practicePlan&&window.HotBPracticeSession?.layout?practiceClock.startAt+window.HotBPracticeSession.layout(practicePlan).totalMs:0,completedAt=new Date(automatic&&scheduledEnd?scheduledEnd:Date.now());archiveCompletedPractice(completedAt);
  if(!practiceClock.endAnnounced){practiceClock.endAnnounced=true;practiceEndSpeech=speakPracticeClock('Times Up, Good Practice, Please start to clean up')}
  persistPracticeSession();
  const endingSpeech=practiceEndSpeech;render();
