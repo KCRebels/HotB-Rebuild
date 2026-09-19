@@ -5,7 +5,7 @@ if(new URLSearchParams(location.search).has('portal'))return;
 const DBKEY='hotbRebuildDbV1';
 function db(){try{return JSON.parse(localStorage.getItem(DBKEY)||'null')}catch(e){return null}}
 function player(name){return (db()?.roster||[]).find(p=>p.name===name)}
-function portalUrl(id){return `${location.origin}${location.pathname}?portal=${encodeURIComponent(id)}`}
+function portalUrl(id){const token=window.HOTB_PORTAL_BUILD_TOKEN||'20260919-77';return `${location.origin}${location.pathname}?portal=${encodeURIComponent(id)}&portalBuild=${encodeURIComponent(token)}`}
 function textFor(p){return `${p.name} HotB Portal\n${portalUrl(p.portalId)}\nPIN: ${p.portalPin}`}
 function valid(p){return !!(p?.portalId&&/^\d{6}$/.test(String(p?.portalPin||'')))}
 function sms(phone,body){const number=String(phone||'').replace(/\D/g,'');if(!number)return false;const separator=/iPad|iPhone|iPod/.test(navigator.userAgent)?'&':'?';window.location.href=`sms:${number}${separator}body=${encodeURIComponent(body)}`;return true}
