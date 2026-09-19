@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-106';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-107';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -3479,12 +3479,34 @@ async function endPracticeDraft(){
  }
  closePracticeWorkspace();
 }
-function resumeRecoveredPracticeClock(){
+async function resumeRecoveredPracticeClock(){
  if(!practicePlan||!practiceClock.running)return;
- if(!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now())){finishPracticeClock(true);return}
+ if(!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now())){await finishPracticeClock(true);return}
  const activeTiming=window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now());
+ if(!activeTiming||!practiceClock.running)return;
+ // A reopened coach app must prove the restored clock still matches every live
+ // portal before resuming announcements/timers. Never overwrite the portals from
+ // an unverified local session.
+ const clockVerified=await verifyPublishedPracticeClock();
+ if(clockVerified!==true){
+  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
+  alert('HotB restored this practice, but could not verify the same live clock on every portal. The coach timer is paused so it cannot overwrite the player portals. Check the connection and reopen Practice.');
+  return;
+ }
  updatePracticeClock();
- if(activeTiming&&practiceClock.running){syncPlayerPracticeClock();if(!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250)}
+ if(practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
+}
+async function verifyPublishedPracticeClock(){
+ if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return false;
+ const clock=practiceClockPortalPayload(),activeId=practicePlan.portalDraftId,ids=[...new Set([
+  ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),
+  db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
+  ...(db.activePortalPractice?.guestPlayerPortalIds||[]),
+  ...(db.activePortalPractice?.guestCoachPortalIds||[])
+ ].filter(Boolean))];
+ if(!ids.length)return false;
+ const verification=await Promise.all(ids.map(async id=>{try{const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null,remoteClock=remote?.clock||{};return remote?.id===activeId&&remoteClock.status===clock.status&&(clock.startedAt?remoteClock.startedAt===clock.startedAt:!remoteClock.startedAt)&&(clock.endedAt?remoteClock.endedAt===clock.endedAt:!remoteClock.endedAt)}catch(error){return false}}));
+ return verification.every(Boolean);
 }
 function speakPracticeClock(message,quiet=false){
  if(!('speechSynthesis'in window))return Promise.resolve();
