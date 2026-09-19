@@ -3082,7 +3082,14 @@ function closePracticeWorkspace(){
 }
 async function endPracticeFromScreen(){
  if(practiceCompletionBusy)return;
- if(practiceClock.finished){closePracticeWorkspace();return}
+ if(practiceClock.finished){
+  const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
+  if(shouldClearPortals){
+   try{await clearActivePlayerPlans()}
+   catch(error){alert(cloudUser&&cloudStore?'The practice is finished, but the player plans could not be removed. Check your connection, then tap DONE! again.':'The practice is finished, but the player plans are still active. Sign in through Cloud Backup, then tap DONE! again.');return}
+  }
+  closePracticeWorkspace();return
+ }
  if(practiceClock.running){
   if(!confirm('End this practice now? It will be saved to Practice History and removed from the player and coach portals.'))return;
   await finishPracticeClock(false);return;
