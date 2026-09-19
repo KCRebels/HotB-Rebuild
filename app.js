@@ -945,10 +945,10 @@ async function initCloud(){
  if(!window.firebase&&window.HotBFirebaseReady){try{await window.HotBFirebaseReady}catch(_){}}
  if(!window.firebase){
   if(cloudInitRetryCount<40){cloudInitRetryCount++;clearTimeout(cloudInitRetryTimer);cloudInitRetryTimer=setTimeout(initCloud,250);return}
-  const scripts=[...document.scripts].filter(script=>/firebase-(?:app|auth|firestore)-compat\.js/.test(script.src||''));
-  const loaded=scripts.map(script=>{const match=(script.src||'').match(/firebase-(app|auth|firestore)-compat\.js/);return match?match[1]:''}).filter(Boolean);
-  const missing=['app','auth','firestore'].filter(name=>!loaded.includes(name));
-  const detail=!navigator.onLine?'iPhone reports no network connection.':!scripts.length?'Firebase scripts were not added to this page.':missing.length?`Firebase SDK files missing: ${missing.join(', ')}.`:'Firebase SDK files were requested but did not load.';
+  const dynamicScripts=[...document.scripts].filter(script=>script.dataset?.hotbFirebase);
+  const attempted=dynamicScripts.map(script=>script.dataset.hotbFirebase||'').filter(Boolean);
+  const loaderPresent=!!window.HotBFirebaseReady;
+  const detail=!navigator.onLine?'iPhone reports no network connection.':!loaderPresent?'Firebase loader was not present in this build.':attempted.length?`Firebase loader ran but the SDK did not initialize (${attempted.length} source attempt${attempted.length===1?'':'s'}).`:'Firebase loader started but no SDK source was attempted.';
   if(portalToken){portalBusy=false;portalMessage=`HotB could not connect to the player portal service. ${detail} Please reopen the link.`;if(route==='portal')render()}
   else cloudMessage=`HotB could not start the portal connection. ${detail} Your phone data is still safe.`;
   return;
