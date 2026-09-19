@@ -16,9 +16,9 @@ assert(buttons.includes("document.addEventListener('click'"));
 assert(buttons.includes("stopImmediatePropagation"));
 assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
-assert(app.includes("PORTAL_BUILD_TOKEN='20260919-118'"));
+assert(app.includes("PORTAL_BUILD_TOKEN='20260919-119'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext9'));
-assert(index.includes('app.js?v=20260919-portal158'));
+assert(index.includes('app.js?v=20260919-portal159'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -150,3 +150,7 @@ assert(app.includes("throw new Error('portal-activation-target-missing')"));
 assert(app.includes("throw new Error('portal-activation-player-mismatch')"));
 assert(app.includes("permanentPlayers.forEach(player=>batch.update"));
 assert(app.includes("jenkinsPlayers.forEach(player=>batch.update"));
+
+assert(app.includes("const existingGuests=await Promise.all(guests.map"));
+assert(app.includes("existingGuests.filter(Boolean).forEach(guest=>batch.update"));
+assert(!app.includes("portalId).set({expired:true,accessStatus:'removed'"));
