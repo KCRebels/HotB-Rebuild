@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-164';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-165';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2176,10 +2176,13 @@ function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.
  const startedAt=Date.parse(clock.startedAt||''),activatedAt=Date.parse(practice?.activatedAt||'');
  // A clock timestamp from an older practice/test must never drive a newly activated plan.
  if(clock.status!=='running'||!Number.isFinite(startedAt)||!Number.isFinite(activatedAt)||startedAt<activatedAt)return {block:'Not Started',left:'—',transition:false,currentBlock:0};
- const state=window.HotBPracticeSession?.timing(practice,{running:true,startAt:startedAt},now);
+ const timing=window.HotBPracticeSession?.timing;
+ // Missing timing code is a startup/dependency condition, never evidence that
+ // practice finished. Keep the live plan visible while the portal recovers.
+ if(typeof timing!=='function')return {block:'Syncing',left:'—',transition:false,currentBlock:0,ended:false};
+ const state=timing(practice,{running:true,startAt:startedAt},now);
  if(!state){
-  // The player clock is derived locally from the synchronized start time.
-  // Do not leave a finished countdown displayed as a still-active practice.
+  // With the timing engine present, null means the synchronized duration elapsed.
   return {block:'DONE!',left:'0:00',transition:false,currentBlock:10,ended:true};
  }
  const seconds=Math.ceil(state.remaining/1000);
