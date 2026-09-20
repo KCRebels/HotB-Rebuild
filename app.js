@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-212';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-213';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2243,10 +2243,22 @@ function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.
  // activatedAt is identity/version metadata, not a lower bound for the live clock.
  // Comparing the two made a valid newly-started practice appear Not Started when
  // client/server timing crossed by even a few milliseconds.
- const timing=window.HotBPracticeSession?.timing;
- // Missing timing code is a startup/dependency condition, never evidence that
- // practice finished. Keep the live plan visible while the portal recovers.
- if(typeof timing!=='function')return {block:'Syncing',left:'—',transition:false,currentBlock:0,ended:false};
+ let timing=window.HotBPracticeSession?.timing;
+ // The live portal must not become unusable merely because iOS lost the small
+ // shared timing helper after startup. Use the exact same 10-block timing math
+ // locally as a fail-safe so a verified running clock can still render.
+ if(typeof timing!=='function')timing=(plan,liveClock,currentNow)=>{
+  if(!plan||!liveClock?.running||!liveClock.startAt)return null;
+  const blockMs=(Number(plan.blockMinutes)||12)*60000;
+  const transitionMs=Math.min(60000,Math.max(0,blockMs-60000));
+  const workMs=blockMs-transitionMs,totalMs=blockMs*10-transitionMs;
+  const elapsed=Math.max(0,Number(currentNow)-Number(liveClock.startAt));
+  if(elapsed>=totalMs)return null;
+  const block=Math.min(10,Math.floor(elapsed/blockMs)+1),elapsedInBlock=elapsed%blockMs;
+  const transition=block<10&&elapsedInBlock>=workMs;
+  const remaining=block===10?totalMs-elapsed:(transition?blockMs:workMs)-elapsedInBlock;
+  return {block,remaining,transition};
+ };
  const state=timing(practice,{running:true,startAt:startedAt},now);
  if(!state){
   // With the timing engine present, null means the synchronized duration elapsed.
