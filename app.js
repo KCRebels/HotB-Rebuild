@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-170';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-171';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1252,7 +1252,10 @@ async function loadPlayerPortal(){
 }
 async function claimPlayerPortal(pin){
  if(!portalToken||isCoachPortalUser()||portalBusy)return;
- const requestedPortalToken=portalToken;
+ const requestedPortalToken=portalToken,claimGeneration=++portalLoadGeneration;
+ // A PIN claim supersedes any startup loader/listener for this same URL. Without
+ // this, a slower pre-PIN read can repaint the screen while the claim is writing.
+ if(portalUnsubscribe){portalUnsubscribe();portalUnsubscribe=null}
  if(!cloudAuth||!cloudStore){
   portalMessage='HotB is still connecting to the player portal service. Please wait a moment and try again.';
   render();return;
@@ -1265,7 +1268,7 @@ async function claimPlayerPortal(pin){
     // anonymous identity. Wait for the first auth callback before creating one.
     if(!cloudAuthReady){
      const restoredAuthUser=await waitForPortalAuthState();
-     if(portalToken!==requestedPortalToken)return;
+     if(claimGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
      portalAuthUser=restoredAuthUser||cloudAuth.currentUser||null;
     }
     if(!portalAuthUser){
@@ -1295,17 +1298,17 @@ async function claimPlayerPortal(pin){
    if(firstError?.code!=='permission-denied')throw firstError;
    await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
   }
-  if(portalToken!==requestedPortalToken)throw new Error('portal-claim-token-changed');
+  if(claimGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)throw new Error('portal-claim-token-changed');
   // Verify the authorization directly before starting another loader. A concurrent
   // auth-state loader may supersede this call; that must not turn a correct PIN
   // into a false failure or clear a newer successful portal.
   const verified=await portalDoc(requestedPortalToken).get(),remote=verified.exists?verified.data():null,uid=portalAuthUser?.uid;
   if(!remote||!uid||(remote.ownerUid!==uid&&!(Array.isArray(remote.authorizedUids)&&remote.authorizedUids.includes(uid))))throw new Error('portal-claim-verification-failed');
-  if(portalToken!==requestedPortalToken)return;
+  if(claimGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
   portalBusy=false;
   await loadPlayerPortal();
  }catch(error){
-  if(portalToken!==requestedPortalToken)return;
+  if(claimGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
   // If a newer loader already opened this exact portal, do not let this older
   // claim path erase it with a misleading PIN error.
   if(portalData?.id===requestedPortalToken){portalBusy=false;if(route==='portal')render();return}
