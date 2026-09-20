@@ -18,7 +18,7 @@ assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
 assert(app.includes("PORTAL_BUILD_TOKEN='20260919-134'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext10'));
-assert(index.includes('app.js?v=20260919-boot154'));
+assert(index.includes('app.js?v=20260919-boot155'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -223,10 +223,10 @@ assert(app.includes("await finishPracticeClock(true)"));
 
 const pwa=fs.readFileSync('pwa-update.js','utf8');
 const worker=fs.readFileSync('service-worker.js','utf8');
-assert(pwa.includes("BUILD_VERSION = '2026.09.19.154'"));
-assert(worker.includes("BUILD_VERSION = '2026.09.19.154'"));
-assert(index.includes('pwa-update.js?v=20260919-pwa154'));
-assert(index.includes('app.js?v=20260919-boot154'));
+assert(pwa.includes("BUILD_VERSION = '2026.09.19.155'"));
+assert(worker.includes("BUILD_VERSION = '2026.09.19.155'"));
+assert(index.includes('pwa-update.js?v=20260919-pwa155'));
+assert(index.includes('app.js?v=20260919-boot155'));
 assert(worker.includes("url.searchParams.has('portal')"));
 assert(worker.includes("fetch(request, {cache: 'no-store'})"));
 
@@ -263,3 +263,8 @@ assert(!app.includes("if(db.activePortalPractice?.id===state.id)db.activePortalP
 
 assert(app.includes("const activePracticeEnded=!!portalData.activePractice&&portalPracticeClockValues(portalData.activePractice).ended"),'practice-only portal routing must derive expiry from the synchronized clock');
 assert(app.includes("portalData.expired||activePracticeEnded?guestPortalEndedView()"),'guest and Jenkins portal access must end locally without waiting for cloud cleanup');
+
+assert(app.includes("function waitForPortalAuthState(timeout=8000)"),'portal auth restoration must use one timeout-safe helper');
+assert(app.includes("try{unsubscribe()}catch(_){}"),'portal auth restoration listener must always unsubscribe when it settles or times out');
+assert((app.match(/await waitForPortalAuthState\(\)/g)||[]).length===2,'both player load and PIN claim must use the safe auth restoration helper');
+assert(!app.includes("new Promise(resolve=>{const stop=cloudAuth.onAuthStateChanged(user=>{stop();portalAuthUser=user||null;resolve()})})"),'leaking auth restoration listener must not return');
