@@ -1,5 +1,5 @@
 (() => {
-  const BUILD_VERSION = '2026.09.19.200';
+  const BUILD_VERSION = '2026.09.19.201';
   window.HOTB_BUILD_VERSION = BUILD_VERSION;
   // Player portals must always use the current network app. They do not install,
   // update, or re-register the coach PWA service worker.
@@ -15,26 +15,24 @@
     notice.className = 'pwa-update-notice';
     notice.setAttribute('role', 'status');
     notice.innerHTML = '<span>New HotB version available</span><button type="button">UPDATE NOW</button>';
-    notice.querySelector('button').addEventListener('click', async () => {
+    notice.querySelector('button').addEventListener('click', () => {
       const button=notice.querySelector('button');button.disabled=true;button.textContent='UPDATING…';
-      // iOS standalone mode can ignore location replacement during a service-worker
-      // controller transition. Activate the waiting worker, unregister the old
-      // registration, then perform a hard cache-busted navigation. localStorage
-      // and IndexedDB are origin data and are intentionally preserved.
+      // Do not wait on iOS service-worker promises before navigating. A waiting
+      // worker can leave those promises unresolved in standalone mode and the
+      // user sees a dead button. Send activation as best-effort and navigate
+      // synchronously in the tap gesture to a unique network URL.
+      try{
+        navigator.serviceWorker.getRegistration('./').then(registration=>{
+          try{registration?.waiting?.postMessage({type:'SKIP_WAITING'})}catch(_){}
+          try{registration?.update()}catch(_){}
+        }).catch(()=>{});
+      }catch(_){}
       const url=new URL('./',window.location.href);
       url.searchParams.set('source','pwa');
-      url.searchParams.set('launch','200');
+      url.searchParams.set('launch','201');
       url.searchParams.set('hotb-update',version);
       url.searchParams.set('reload',Date.now().toString());
-      try{
-        const registration=await navigator.serviceWorker.getRegistration('./');
-        if(registration?.waiting)registration.waiting.postMessage({type:'SKIP_WAITING'});
-        await new Promise(resolve=>setTimeout(resolve,350));
-        const current=await navigator.serviceWorker.getRegistration('./');
-        if(current)await current.unregister();
-      }catch(_){}
-      window.location.href=url.href;
-      setTimeout(()=>window.location.reload(),1200);
+      window.location.replace(url.href);
     });
     document.body.appendChild(notice);
   }
