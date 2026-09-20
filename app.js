@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-201';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-202';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -903,6 +903,11 @@ if(portalToken){
  db=structuredClone(seed);
 }
 let route = portalToken?'portal':db.route || 'home';
+// Never let a saved secondary page make the entire coach app unlaunchable when
+// one optional feature module failed to load. Start safely at Home, preserve the
+// requested route, and allow the user to enter that feature after startup.
+const startupRequestedRoute=route;
+if(!portalToken&&route==='eval'&&!window.HotBEvaluationStats)route='home';
 let modal = null;
 let reportMode='current', reportSub='spray', reportFilterHitter='All Hitters';
 let reportGameId=null,reportSelectedGameIds=[],reportGroupId=null,reportOpponent='All Opponents',reportHeatResult='ALL',reportHeatDisplay='COUNT';
