@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-173';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-174';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -3897,9 +3897,11 @@ window.HotBPortalShare=async function(name){
 };
 window.HotBPortalText=function(name){
  const player=db.roster.find(item=>item.name===name),url=playerPortalTextUrl(player);
- if(!url){portalMessage=`${practiceFirstName(player?.name||'This player')} does not have a saved cell number.`;render();return}
- // Direct top-level navigation is the most reliable sms: handoff from an iOS Home Screen PWA.
- try{window.location.href=url}catch(_){if(!openSmsComposer(url)){portalMessage='Messages could not be opened from this screen.';render()}}
+ if(!url){portalMessage=(practiceFirstName(player?.name||'This player'))+' does not have a saved cell number.';render();return}
+ // Keep the sms handoff inside the original user gesture. This helper creates and
+ // clicks the external-scheme anchor synchronously, which is more reliable in an
+ // iOS Home Screen PWA than assigning location after other event work has run.
+ if(!openSmsComposer(url)){portalMessage='Messages could not be opened from this screen.';render()}
 };
 function bindPlayerPortal(){
  if(isCoachEvaluation())bindEval();
