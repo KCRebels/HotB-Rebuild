@@ -4294,7 +4294,12 @@ function bindNew(){
  });
  $('#startGame').onclick=()=>{
   const order=sels.map(s=>s.value).filter(Boolean);
-  if(createGame(opponent.value.trim(),pitcherName.value.trim(),pitcherNumber.value.trim(),order))go('live');
+  try{
+   if(createGame(opponent.value.trim(),pitcherName.value.trim(),pitcherNumber.value.trim(),order))go('live');
+  }catch(error){
+   console.error('HotB Start Game failed',error);
+   alert('HotB could not open In Game. Diagnostic: '+String(error?.message||error||'unknown error'));
+  }
  };
 }
 function bindReportsPage(){
