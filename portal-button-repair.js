@@ -10,14 +10,15 @@ document.addEventListener('click',event=>{
  else if(target.id==='shareCoachPortal')action='HotBCoachPortalShare';
  else if(target.id==='textCoachPortal')action='HotBCoachPortalText';
  else return;
- event.__hotbPortalDeliveryHandled=true;event.preventDefault();event.stopImmediatePropagation();
  const fn=window[action];
  if(typeof fn!=='function'){
-  // app.js can finish a fraction after this capture listener on a fresh PWA boot.
-  // Retry inside the same tap turn rather than silently swallowing the button.
-  queueMicrotask(()=>{const retry=window[action];if(typeof retry==='function')try{retry(name)}catch(error){console.error('Portal delivery action failed',error)}});
+  // Do not consume the user's tap when app.js has not installed the authoritative
+  // delivery action yet. Let the normal bubble listener receive this same gesture.
+  // A deferred retry is unreliable for iOS share/sms because it loses user activation.
+  event.__hotbPortalDeliveryHandled=false;
   return;
  }
+ event.__hotbPortalDeliveryHandled=true;event.preventDefault();event.stopImmediatePropagation();
  try{fn(name)}catch(error){console.error('Portal delivery action failed',error)}
 },true);
 })();
