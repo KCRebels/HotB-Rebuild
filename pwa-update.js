@@ -1,5 +1,5 @@
 (() => {
-  const BUILD_VERSION = '2026.09.19.196';
+  const BUILD_VERSION = '2026.09.19.197';
   window.HOTB_BUILD_VERSION = BUILD_VERSION;
   // Player portals must always use the current network app. They do not install,
   // update, or re-register the coach PWA service worker.
@@ -15,27 +15,26 @@
     notice.className = 'pwa-update-notice';
     notice.setAttribute('role', 'status');
     notice.innerHTML = '<span>New HotB version available</span><button type="button">UPDATE NOW</button>';
-    notice.querySelector('button').addEventListener('click', () => {
-      const url = new URL(window.location.href);
-      url.searchParams.set('hotb-update', version);
-      if (url.searchParams.has('portal')) {
-        url.searchParams.set('hotb-portal-refresh', Date.now().toString());
-      }
-      navigator.serviceWorker.getRegistration('./').then(registration => {
-        if (!registration?.waiting) {
-          window.location.assign(url.href);
-          return;
-        }
-        let navigated = false;
-        const navigate = () => {
-          if (navigated) return;
-          navigated = true;
-          window.location.replace(url.href);
-        };
-        navigator.serviceWorker.addEventListener('controllerchange', navigate, {once: true});
-        registration.waiting.postMessage({type: 'SKIP_WAITING'});
-        setTimeout(navigate, 2000);
-      }).catch(() => window.location.assign(url.href));
+    notice.querySelector('button').addEventListener('click', async () => {
+      const button=notice.querySelector('button');button.disabled=true;button.textContent='UPDATING…';
+      // iOS standalone mode can ignore location replacement during a service-worker
+      // controller transition. Activate the waiting worker, unregister the old
+      // registration, then perform a hard cache-busted navigation. localStorage
+      // and IndexedDB are origin data and are intentionally preserved.
+      const url=new URL('./',window.location.href);
+      url.searchParams.set('source','pwa');
+      url.searchParams.set('launch','197');
+      url.searchParams.set('hotb-update',version);
+      url.searchParams.set('reload',Date.now().toString());
+      try{
+        const registration=await navigator.serviceWorker.getRegistration('./');
+        if(registration?.waiting)registration.waiting.postMessage({type:'SKIP_WAITING'});
+        await new Promise(resolve=>setTimeout(resolve,350));
+        const current=await navigator.serviceWorker.getRegistration('./');
+        if(current)await current.unregister();
+      }catch(_){}
+      window.location.href=url.href;
+      setTimeout(()=>window.location.reload(),1200);
     });
     document.body.appendChild(notice);
   }
