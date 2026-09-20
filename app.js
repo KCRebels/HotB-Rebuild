@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-182';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-183';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2457,10 +2457,15 @@ async function clearFinishedOrphanedPractice(state){
   ...(coachId?[{id:coachId,data:{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}]:[]),
   ...[...guestIds].map(id=>({id,data:{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}))
  ];
- const existing=await Promise.all(targets.map(async target=>{const snapshot=await portalDoc(target.id).get();if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==state.id)throw new Error('finished-orphan-newer-practice-conflict');return target})),batch=cloudStore.batch();
- existing.filter(Boolean).forEach(target=>batch.update(portalDoc(target.id),target.data));if(existing.some(Boolean))await batch.commit();
+ const existing=await Promise.all(targets.map(async target=>{const snapshot=await portalDoc(target.id).get();if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==state.id)throw new Error('finished-orphan-newer-practice-conflict');
+  // Recovery cleanup is also idempotent. A portal that no longer contains this
+  // finished orphan is verification-only; never expire/reset it on a late retry.
+  if(!remotePracticeId)return {target,alreadyCleared:true};
+  return {target,alreadyCleared:false};
+ })),batch=cloudStore.batch();
+ existing.filter(item=>item&&!item.alreadyCleared).forEach(item=>batch.update(portalDoc(item.target.id),item.target.data));if(existing.some(item=>item&&!item.alreadyCleared))await batch.commit();
  const verifyIds=[...new Set(targets.map(target=>target.id).filter(Boolean))],verification=await Promise.all(verifyIds.map(async id=>{const snapshot=await portalDoc(id).get();if(!snapshot.exists)return true;const remote=snapshot.data()||{};if(remote.activePractice)return false;if(guestIds.has(id))return remote.expired===true&&remote.accessStatus==='ended';const entry=persisted.find(item=>item.portalId===id),rosterPlayer=db.roster.find(player=>player.portalId===id&&activeNames.has(player.name));if(entry?.isTeamJenkins||rosterPlayer?.isTeamJenkins)return remote.portalType==='jenkinsPlayer'&&remote.accessStatus==='waiting'&&remote.expired===false;return true}));
- if(verification.some(Boolean)===false||verification.some(ok=>!ok))throw new Error('finished-orphan-cleanup-verification-failed');
+ if(!verification.length||verification.some(ok=>!ok))throw new Error('finished-orphan-cleanup-verification-failed');
  // Only discard the local practice session when this exact orphan is still the
  // active portal practice. A late orphan-cleanup result must never erase a newer
  // practice that was created while Firestore verification was in flight.
