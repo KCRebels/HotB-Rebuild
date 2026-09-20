@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-187';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-188';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2559,14 +2559,23 @@ async function recoverOrphanedActivePractice(){
   const recoveredPlayerSchedules={};for(const item of remote.players||[]){const first=practiceFirstName(item.name),source=rosterByFirst.get(first),name=source?.name||activeNameByFirst.get(first)||item.name;recoveredPlayerSchedules[name]=structuredClone(item.schedule)}
   const recoveredPlan={portalDraftId:remote.id,startTime,durationMinutes,blockMinutes,times,players,schedule,blocks,drillStations,liveSessions,machineFocus,frontTossFocus,recoveredCoachSchedule:structuredClone(remote.schedule),recoveredPlayerSchedules,warnings:['Recovered from the activated coach portal without rebuilding the scheduler.']};
   const recoveredChosenDrills=chosenDrills,clock=remote.clock||{},startedAt=Date.parse(clock.startedAt||''),activatedAt=Date.parse(remote.activatedAt||'');
-  // Recovery is only valid for the exact still-active publication. An old/test
-  // clock may never resurrect a completed practice or predate its activation.
+  // Recovery is valid only for this publication, but activation and Start are
+  // independent client timestamps. Do not reject a legitimate live practice
+  // merely because startedAt sorts a few milliseconds before activatedAt.
   if(clock.status==='finished')throw new Error('practice-already-finished');
-  if(clock.status==='running'&&(!Number.isFinite(startedAt)||!Number.isFinite(activatedAt)||startedAt<activatedAt))throw new Error('practice-clock-invalid');
+  if(!['not-started','running'].includes(clock.status||'not-started'))throw new Error('practice-clock-invalid');
+  if(clock.status==='running'&&!Number.isFinite(startedAt))throw new Error('practice-clock-invalid');
+  if(clock.status==='not-started'&&clock.startedAt)throw new Error('practice-clock-invalid');
   const recoveredClock={running:clock.status==='running'&&Number.isFinite(startedAt),finished:clock.status==='finished',endAnnounced:false,startAt:Number.isFinite(startedAt)?startedAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:clock.endedAt||null};
   const recoveredLayout=window.HotBPracticeSession?.layout?.(recoveredPlan),scheduledEnd=Number.isFinite(startedAt)&&recoveredLayout?startedAt+recoveredLayout.totalMs:NaN,expiredByTime=Number.isFinite(scheduledEnd)&&Date.now()>=scheduledEnd;
   if(expiredByTime&&!recoveredClock.finished){recoveredClock.running=false;recoveredClock.finished=true;recoveredClock.completedAt=clock.endedAt||new Date(scheduledEnd).toISOString()}
   else if(recoveredClock.running){const recoveredTiming=window.HotBPracticeSession?.timing(recoveredPlan,recoveredClock,Date.now());if(!recoveredTiming){recoveredClock.running=false;recoveredClock.finished=true;recoveredClock.completedAt=clock.endedAt||new Date(recoveredClock.startAt+window.HotBPracticeSession.layout(recoveredPlan).totalMs).toISOString()}else{recoveredClock.lastBlock=recoveredTiming.block;recoveredClock.lastTwoMinuteBlock=window.HotBPracticeSession?.pendingTwoMinuteWarning(recoveredPlan,{...recoveredClock,lastTwoMinuteBlock:0},Date.now())===recoveredTiming.block?recoveredTiming.block:0;recoveredClock.lastTransitionBlock=recoveredTiming.transition?recoveredTiming.block:Math.max(0,recoveredTiming.block-1)}}
+  // Before installing reconstructed state, prove the coach document did not
+  // change while the larger schedule payload was being validated/rebuilt.
+  const finalSnapshot=await portalDoc(coachId).get(),finalRemote=finalSnapshot.exists?finalSnapshot.data()?.activePractice:null;
+  if(!finalRemote||finalRemote.id!==state.id||finalRemote.activatedAt!==remote.activatedAt)throw new Error('practice-recovery-changed-during-read');
+  const finalClock=finalRemote.clock||{},sameClock=finalClock.status===clock.status&&(finalClock.startedAt||null)===(clock.startedAt||null)&&(finalClock.endedAt||null)===(clock.endedAt||null);
+  if(!sameClock)throw new Error('practice-recovery-clock-changed');
   practicePlan=recoveredPlan;practiceChosenDrills=recoveredChosenDrills;practiceClock=recoveredClock;practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceSection='builder';
   persistPracticeSession();render();if(practiceClock.running)resumeRecoveredPracticeClock();
   alert('The activated practice was recovered from the coach portal. HotB did not rebuild or reactivate it.');
