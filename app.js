@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-185';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-186';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2588,9 +2588,9 @@ async function clearOrphanedActivePractice(){
  try{
   // Orphan cleanup is also update-only. A missing old portal must not be
   // recreated as a partial document while cleaning a stale practice reference.
-  const existingOrphans=await Promise.all(orphanTargets.map(async target=>{const snapshot=await portalDoc(target.id).get();if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==state.id)throw new Error('orphan-cleanup-newer-practice-conflict');return target}));
-  existingOrphans.filter(Boolean).forEach(target=>batch.update(portalDoc(target.id),target.data));
-  if(existingOrphans.some(Boolean))await batch.commit();
+  const existingOrphans=await Promise.all(orphanTargets.map(async target=>{const snapshot=await portalDoc(target.id).get();if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==state.id)throw new Error('orphan-cleanup-newer-practice-conflict');if(!remotePracticeId)return {target,alreadyCleared:true};return {target,alreadyCleared:false}}));
+  existingOrphans.filter(item=>item&&!item.alreadyCleared).forEach(item=>batch.update(portalDoc(item.target.id),item.target.data));
+  if(existingOrphans.some(item=>item&&!item.alreadyCleared))await batch.commit();
   const verifyIds=[...new Set([...persistedPlayerPortals.map(entry=>entry.portalId),...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)).map(player=>player.portalId),state.coachPortalId,...(state.guestPlayerPortalIds||[]),...(state.guestCoachPortalIds||[])].filter(Boolean))];
   const verification=await Promise.all(verifyIds.map(async id=>{const snapshot=await portalDoc(id).get();return !snapshot.exists||!snapshot.data()?.activePractice}));
   if(verification.some(cleared=>!cleared))throw new Error('orphan-cleanup-verification-failed');
@@ -3793,7 +3793,13 @@ function updatePracticeClock(){
   return;
  }
  const {block,remaining,transition}=state,seconds=Math.ceil(remaining/1000);
- if(block>practiceClock.lastBlock){practiceClock.lastBlock=block;speakPracticeClock(`Begin Block ${block}`);persistPracticeSession();syncPlayerPracticeClock()}
+ if(block>practiceClock.lastBlock){
+  practiceClock.lastBlock=block;speakPracticeClock(`Begin Block ${block}`);persistPracticeSession();
+  // The portal derives block/NEXT from the immutable synchronized start time.
+  // Do not fan out redundant clock writes at every block boundary: a transient
+  // network failure here used to create needless partial-write opportunities
+  // even though no clock value had changed.
+ }
  const warningBlock=window.HotBPracticeSession?.pendingTwoMinuteWarning(practicePlan,practiceClock,now);
  if(warningBlock){practiceClock.lastTwoMinuteBlock=warningBlock;speakPracticeClock('Two minutes left');persistPracticeSession()}
  const transitionBlock=window.HotBPracticeSession?.pendingTransitionWarning(practicePlan,practiceClock,now);
