@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-188';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-189';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -3918,9 +3918,21 @@ async function finishPracticeClock(automatic=false){
  if(shouldClearPortals){
   const finishedSynced=await syncPlayerPracticeClock();
   if(finishedSynced!==true){
-   persistPracticeSession();render();
-   alert('Practice is finished, but HotB could not confirm the finished clock on every portal. The active plans were left in place so cleanup can be retried safely with DONE!.');
-   return;
+   // Finish fan-out can partially succeed just like Start. Preserve the exact
+   // completed timestamp and inspect every target. A portal still carrying this
+   // practice may be safely advanced to FINISHED; a different practice is never
+   // touched. This converges a split finish before cleanup is allowed.
+   const activeId=practicePlan.portalDraftId,finishedClock=practiceClockPortalPayload(),ids=[...new Set([
+    ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
+    ...(db.activePortalPractice?.guestPlayerPortalIds||[]),...(db.activePortalPractice?.guestCoachPortalIds||[])
+   ].filter(Boolean))];
+   const repair=await Promise.allSettled(ids.map(async id=>{const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null;if(remote?.id!==activeId)throw new Error('finish-repair-practice-mismatch');const rc=remote.clock||{};if(rc.status==='finished'&&rc.endedAt===finishedClock.endedAt)return true;if(rc.status==='running'&&rc.startedAt===finishedClock.startedAt){await portalDoc(id).update({'activePractice.clock':finishedClock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});return true}throw new Error('finish-repair-clock-conflict')}));
+   const repaired=repair.every(result=>result.status==='fulfilled')&&await verifyPublishedPracticeClock();
+   if(!repaired){
+    persistPracticeSession();render();
+    alert('Practice is finished, but HotB could not safely converge every portal to the same finished clock. The active plans were left in place so cleanup can be retried safely with DONE!.');
+    return;
+   }
   }
  }
  const endingSpeech=practiceEndSpeech;render();
