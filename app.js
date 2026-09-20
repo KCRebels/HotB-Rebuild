@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-213';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-214';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2111,7 +2111,13 @@ function portalPracticeView(){
  const first=portalData?.firstName||practiceFirstName(portalData?.playerName),role=practice?.role;
  const drillAssignments=practice?.drillAssignments||practice?.drills?.map(drill=>({name:drill,location:'Assigned Drill'}))||[];
  const clockReady=!practice||['Not Started','DONE!'].includes(clock.block)||/^\\d+ of 10$/.test(clock.block)||clock.block==='ROTATE';
- if(practice&&!clockReady)return `${portalHeader('My Practice',true)}<main class="portal-page"><section class="portal-empty"><span>MY PRACTICE</span><h2>Syncing Practice</h2><p>HotB is verifying the live practice clock. Your schedule will appear as soon as synchronization is confirmed.</p></section></main>`;
+ if(practice&&!clockReady){
+  const raw=practice?.clock||{};
+  const rawStart=raw.startedAt;
+  const startType=rawStart==null?'null':(rawStart?.toMillis?'timestamp':typeof rawStart);
+  const startValue=typeof rawStart==='string'||typeof rawStart==='number'?String(rawStart).slice(0,48):startType;
+  return `${portalHeader('My Practice',true)}<main class="portal-page"><section class="portal-empty"><span>MY PRACTICE</span><h2>Clock Diagnostic</h2><p>HotB has the correct practice but rejected its live clock.</p><p><strong>P214</strong><br>Status: ${esc(String(raw.status??'missing'))}<br>Start type: ${esc(startType)}<br>Start: ${esc(startValue)}<br>Block minutes: ${esc(String(practice.blockMinutes??'missing'))}</p></section></main>`;
+ }
  return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${Math.max(1,(Number(practice.blockMinutes)||12)-1)} minutes + 1-minute rotate</p></section><section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">${esc(clock.block)}</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">${esc(clock.left)}</b></div></section><section class="portal-practice-next" id="portalPracticeNext" hidden><button id="portalPracticeNextButton" data-portal-practice-drill=""><span id="portalPracticeNextHeading">NEXT</span><strong id="portalPracticeNextDetail"></strong><small>Tap for drill instructions</small></button></section><article class="practice-player-card portal-player-card"><header><h2>${esc(first)}${role?` <small>(${esc(role)})</small>`:''}</h2></header><ol>${(practice.schedule||[]).map(entry=>`<li data-portal-block="${entry.block}"><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>${drillAssignments.length?`<section class="portal-practice-drills"><h3>Assigned Drills</h3>${drillAssignments.map(item=>`<p><button class="portal-practice-drill-link" data-portal-practice-drill="${esc(item.name)}"><span>${esc(item.location)}</span>${esc(item.name)}</button></p>`).join('')}</section>`:''}`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
 }
 function portalFocusBody(focus){
