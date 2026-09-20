@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-184';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-185';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2610,7 +2610,13 @@ async function syncPlayerPracticeClock(){
  practiceGuestCoaches().filter(guest=>guest.portalId).forEach(guest=>queue(guest.portalId));
  if(!updates.length){console.warn('Player portal clock sync had no portal targets');return false}
  const results=await Promise.allSettled(updates),failed=results.filter(result=>result.status==='rejected');
- if(failed.length){console.warn(`Player portal clock sync failed for ${failed.length} of ${updates.length} portal documents`);return false}
+ if(failed.length){console.warn(`Player portal clock sync failed for ${failed.length} of ${updates.length} portal documents`);
+  // A failed clock fan-out can be partial because these writes are independent.
+  // Never leave the caller guessing which portals changed. Read back every target;
+  // callers will then either verify the intended state or run their guarded repair.
+  await Promise.allSettled([...queuedIds].map(id=>portalDoc(id).get()));
+  return false
+ }
  // A fulfilled update is not enough. Read every target back so Start/rollback
  // only succeeds when the exact clock state is visible on every live portal.
  const verification=await Promise.all([...queuedIds].map(async id=>{try{
@@ -3812,14 +3818,20 @@ async function beginPracticeClock(){
  persistPracticeSession();
  const clockSynced=await syncPlayerPracticeClock();
  if(clockSynced!==true){
-  // Roll the remote clock back too. A partial clock sync must never leave some
-  // players counting down while the coach screen correctly reports "not started".
+  // The first fan-out can partially succeed. Repair only portals carrying this
+  // exact attempted start timestamp; never use the normal sync routine after
+  // changing local state because its mismatch guard can strand running players.
+  const failedStartedAt=new Date(practiceClock.startAt).toISOString(),activeId=practicePlan.portalDraftId,resetClock={status:'not-started',startedAt:null,endedAt:null},ids=[...new Set([
+   ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
+   ...(db.activePortalPractice?.guestPlayerPortalIds||[]),...(db.activePortalPractice?.guestCoachPortalIds||[])
+  ].filter(Boolean))];
   practiceClock={running:false,finished:false,endAnnounced:false,startAt:null,lastBlock:0,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
-  const rollbackSynced=await syncPlayerPracticeClock();
+  const repair=await Promise.allSettled(ids.map(async id=>{const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null;if(remote?.id!==activeId)throw new Error('start-repair-practice-mismatch');const rc=remote.clock||{};if(rc.status==='not-started'&&!rc.startedAt)return true;if(rc.status!=='running'||rc.startedAt!==failedStartedAt)throw new Error('start-repair-clock-conflict');await portalDoc(id).update({'activePractice.clock':resetClock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});return true}));
+  const rollbackVerified=repair.every(result=>result.status==='fulfilled')&&await verifyPublishedPracticeClock();
   persistPracticeSession();render();
-  alert(rollbackSynced===true
-   ?'Practice did not start because the live player/coach portal clock could not be confirmed. Check the connection and tap Start again.'
-   :'Practice did not start, and HotB could not confirm every portal was reset. Check the connection before trying Start again.');
+  alert(rollbackVerified
+   ?'Practice did not start because the live portal clock could not be confirmed. Every portal was safely reset to Not Started; check the connection and tap Start again.'
+   :'Practice did not start, and HotB could not safely reset every portal. Do not start practice until the connection is restored and Start succeeds.');
   return;
  }
  // Read every published target back after Start. A successful update call alone is
