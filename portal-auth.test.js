@@ -18,7 +18,7 @@ assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
 assert(app.includes("PORTAL_BUILD_TOKEN='20260919-134'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext10'));
-assert(index.includes('app.js?v=20260919-boot158'));
+assert(index.includes('app.js?v=20260919-boot159'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -223,10 +223,10 @@ assert(app.includes("await finishPracticeClock(true)"));
 
 const pwa=fs.readFileSync('pwa-update.js','utf8');
 const worker=fs.readFileSync('service-worker.js','utf8');
-assert(pwa.includes("BUILD_VERSION = '2026.09.19.158'"));
-assert(worker.includes("BUILD_VERSION = '2026.09.19.158'"));
-assert(index.includes('pwa-update.js?v=20260919-pwa158'));
-assert(index.includes('app.js?v=20260919-boot158'));
+assert(pwa.includes("BUILD_VERSION = '2026.09.19.159'"));
+assert(worker.includes("BUILD_VERSION = '2026.09.19.159'"));
+assert(index.includes('pwa-update.js?v=20260919-pwa159'));
+assert(index.includes('app.js?v=20260919-boot159'));
 assert(worker.includes("url.searchParams.has('portal')"));
 assert(worker.includes("fetch(request, {cache: 'no-store'})"));
 
@@ -275,4 +275,7 @@ assert(index.includes("await loadPortalScript('practice-session.js?v=20260919-se
 assert(app.includes('window.HotBPracticeSession?.timing(practice,{running:true,startAt:startedAt},now)'),'player portal clock must derive block/rotate state from synchronized practice timing engine');
 
 assert(!index.includes('if(new URLSearchParams(location.search).has("portal"))document.write'),'portal bootstrap must never use document.write on a player/coach portal navigation');
-assert(index.includes("await loadPortalScript('app.js?v=20260919-boot158','P29-DOWNLOAD')"),'portal app must load only after its timing dependency resolves');
+assert(index.includes("await loadPortalScript('app.js?v=20260919-boot159','P29-DOWNLOAD')"),'portal app must load only after its timing dependency resolves');
+
+assert(app.includes("if(portalBusy&&!portalData){"),'slow portal startup guard must preserve the in-flight loader state');
+assert(!app.includes("if(portalBusy){\n   portalBusy=false;\n   portalMessage='HotB could not finish opening this player portal."),'startup timeout must never clear portalBusy while secure portal initialization is still progressing');
