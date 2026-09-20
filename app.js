@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-149';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-150';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2051,7 +2051,7 @@ function portalAskView(){
  return `${portalHeader('Ask The Library',true)}<main class="portal-page"><section class="portal-welcome"><span>DRILL FINDER</span><h2>What Do You Want To Work On?</h2><p>Describe what is happening in your swing or the pitch you are struggling to hit. HotB will recommend drills only from the KC Rebels library.</p></section><div class="portal-ask"><textarea class="input" id="portalProblem" rows="4" placeholder="Example: I keep popping up.">${esc(portalDrillQuery)}</textarea><button class="btn black block" id="findPortalDrills">Find My Drills</button></div>${portalDrillResults.length?`<section class="portal-recommendations"><h3>Recommended Drills</h3>${portalDrillResults.map((drill,index)=>`<button data-portal-recommendation="${esc(drill.name)}"><b>${index+1}</b><span><strong>${esc(drill.name)}</strong><small>${esc(drill.bestUsedFor||drill.primaryPurpose)}</small></span></button>`).join('')}</section>`:portalDrillQuery?`<section class="portal-empty compact"><h2>No Strong Match Yet</h2><p>Try describing the result, pitch location, timing problem, or part of the swing you want to improve.</p></section>`:''}</main>`;
 }
 function portalDashboardView(){
- const first=portalData?.firstName||practiceFirstName(portalData?.playerName),active=!!portalData?.activePractice;
+ const first=portalData?.firstName||practiceFirstName(portalData?.playerName),active=!!portalData?.activePractice&&!portalPracticeClockValues(portalData.activePractice).ended;
  return `${portalHeader()}<main class="portal-page"><section class="portal-welcome ${active?'active':''}"><span>${active?'PRACTICE ACTIVE':'PLAYER PORTAL'}</span><h2>Hi, ${esc(first)}</h2><p>${active?'Your current practice plan is ready below.':'Your practice, personal focus and KC Rebels drill library are all in one place.'}</p></section><section class="portal-dashboard"><button class="${active?'active':''}" data-portal-view="practice"><span>PRACTICE</span><h3>My Practice</h3><p>${active?'View your active rotation.':'No practice is active.'}</p></button><button data-portal-view="focus"><span>PLAYER</span><h3>My Focus</h3><p>Your private hitting focus and assigned drills.</p></button><button data-portal-view="library"><span>LIBRARY</span><h3>Drill Library</h3><p>Search every approved KC Rebels hitting drill.</p></button><button data-portal-view="ask"><span>DRILL FINDER</span><h3>Ask The Library</h3><p>Describe a problem and find drills that address it.</p></button></section><p class="portal-private-note">This portal is linked only to ${esc(first)}. It does not provide access to another player’s practice or Player Focus.</p></main>`;
 }
 function playerPortalPage(){
