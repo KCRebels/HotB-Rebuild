@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-160';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-161';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2081,6 +2081,10 @@ function playerPortalPage(){
  if(portalData.portalType==='guestCoach')return portalData.expired||activePracticeEnded?guestPortalEndedView():!portalData.activePractice?guestPortalWaitingView():(portalView==='library'?portalLibraryView():guestCoachPracticeView());
  if(['guestPlayer','jenkinsPlayer'].includes(portalData.portalType))return portalData.expired||activePracticeEnded?guestPortalEndedView():!portalData.activePractice?guestPortalWaitingView():(portalView==='library'?portalLibraryView():portalPracticeView());
  if(portalData.portalType==='coach')return portalView==='evaluation'?coachPortalEvaluationView():coachPortalPracticeView();
+ // Permanent-player practice navigation is valid only while a live synchronized
+ // practice exists. If a stale view survives a snapshot/update, route home
+ // instead of rendering an old/empty practice page.
+ if(portalView==='practice'&&(!portalData.activePractice||activePracticeEnded)){portalView='home';portalSelectedDrill='';portalLibraryReturnView='library'}
  if(portalView==='practice')return portalPracticeView();
  if(portalView==='focus')return portalFocusView();
  if(portalView==='library')return portalLibraryView();
