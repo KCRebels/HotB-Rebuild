@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-199';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-200';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -4617,7 +4617,9 @@ try{render()}
 catch(error){
  console.error('HotB initial render failed',error);
  const app=document.getElementById('app');
- if(app)app.innerHTML=`<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">HotB loaded your saved data but could not draw the opening screen.</p><p style="margin:8px 0 0">Error code: H198-RENDER</p></section></main></div>`;
+ const message=String(error?.message||error||'unknown').slice(0,180);
+ const stack=String(error?.stack||'').split('\n').slice(0,3).join(' | ').slice(0,260);
+ if(app)app.innerHTML=`<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The opening screen hit a specific code error. Your saved data was not erased.</p><p style="margin:8px 0 0"><b>Error code: H200-RENDER</b></p><p style="margin:12px 0 0;font-size:13px;word-break:break-word">Message: ${esc(message)}</p><p style="margin:6px 0 0;font-size:11px;word-break:break-word">Location: ${esc(stack)}</p></section></main></div>`;
 }
 if(portalToken){
  const portalStartupGuard=setTimeout(()=>{
