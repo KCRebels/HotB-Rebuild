@@ -229,3 +229,7 @@ assert(index.includes('pwa-update.js?v=20260919-pwa134'));
 assert(index.includes('app.js?v=20260919-portal174'));
 assert(worker.includes("url.searchParams.has('portal')"));
 assert(worker.includes("fetch(request, {cache: 'no-store'})"));
+
+assert(app.includes("$$('[data-portal-practice-drill]').forEach"),'portal practice drill controls must bind as a collection');
+assert(app.includes("portalPracticeClockValues(portalData?.activePractice)"),'portal live clock must always evaluate the active practice explicitly');
+assert(!app.includes("$('[data-portal-practice-drill]').forEach"),'single-element portal drill selector must never be used with forEach');
