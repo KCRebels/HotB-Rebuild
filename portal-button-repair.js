@@ -10,7 +10,7 @@ document.addEventListener('click',event=>{
  else if(target.id==='shareCoachPortal')action='HotBCoachPortalShare';
  else if(target.id==='textCoachPortal')action='HotBCoachPortalText';
  else return;
- event.preventDefault();event.stopImmediatePropagation();
+ event.__hotbPortalDeliveryHandled=true;event.preventDefault();event.stopImmediatePropagation();
  const fn=window[action];
  if(typeof fn!=='function'){
   // app.js can finish a fraction after this capture listener on a fresh PWA boot.
