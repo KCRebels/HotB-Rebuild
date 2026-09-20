@@ -18,7 +18,7 @@ assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
 assert(app.includes("PORTAL_BUILD_TOKEN='20260919-134'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext10'));
-assert(index.includes('app.js?v=20260919-boot151'));
+assert(index.includes('app.js?v=20260919-boot152'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -223,10 +223,10 @@ assert(app.includes("await finishPracticeClock(true)"));
 
 const pwa=fs.readFileSync('pwa-update.js','utf8');
 const worker=fs.readFileSync('service-worker.js','utf8');
-assert(pwa.includes("BUILD_VERSION = '2026.09.19.151'"));
-assert(worker.includes("BUILD_VERSION = '2026.09.19.151'"));
-assert(index.includes('pwa-update.js?v=20260919-pwa151'));
-assert(index.includes('app.js?v=20260919-boot151'));
+assert(pwa.includes("BUILD_VERSION = '2026.09.19.152'"));
+assert(worker.includes("BUILD_VERSION = '2026.09.19.152'"));
+assert(index.includes('pwa-update.js?v=20260919-pwa152'));
+assert(index.includes('app.js?v=20260919-boot152'));
 assert(worker.includes("url.searchParams.has('portal')"));
 assert(worker.includes("fetch(request, {cache: 'no-store'})"));
 
@@ -254,3 +254,6 @@ assert(!/(^|[^$])\$\('\[data-(?:share-portal|text-portal|portal-practice-drill)\
 assert((portalBind.match(/\$\$\('\[data-(?:share-portal|text-portal|portal-practice-drill)\]'\)\.forEach/g)||[]).length===3,'all three portal collection controls must bind through $$');
 
 assert(app.includes("active=!!portalData?.activePractice&&!portalPracticeClockValues(portalData.activePractice).ended"),'finished practice must not remain active on permanent player dashboard while cleanup is pending');
+
+assert(app.includes("if(portalToken&&!portalBusy&&!portalUnsubscribe)await loadPlayerPortal()"),'auth callback must not launch a competing portal load while the current token is opening or already subscribed');
+assert(!app.includes("if(portalToken)await loadPlayerPortal();"),'unguarded auth callback portal reload must not return');
