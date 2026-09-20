@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-161';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-162';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1958,7 +1958,11 @@ function homeView(){
  </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD <small class="app-version">Version: ${esc(window.HOTB_BUILD_VERSION||'2026.09.14.1')}</small></span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
 }
 function portalHeader(title='Player Portal',showBack=false){
- return `<div class="page-match-head page-head-centered portal-head"><button class="page-head-nav" ${showBack?'id="portalBack"':portalToken?'id="portalDashboard"':'data-go="home"'}>${showBack?'Back':portalToken?'Portal':'Home'}</button><h1>${esc(title)}</h1><span class="page-head-spacer"></span></div>`;
+ const practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType);
+ // Practice-only links do not have a permanent dashboard. Their Back/Portal
+ // control must return to the live practice screen, never the full player hub.
+ const backId=showBack&&practiceOnly?'portalPracticeBack':showBack?'portalBack':portalToken?'portalDashboard':'';
+ return `<div class="page-match-head page-head-centered portal-head"><button class="page-head-nav" ${backId?`id="${backId}"`:'data-go="home"'}>${showBack?'Back':portalToken?'Portal':'Home'}</button><h1>${esc(title)}</h1><span class="page-head-spacer"></span></div>`;
 }
 function portalProblemWords(query){
  const text=String(query||'').toLowerCase(),words=text.match(/[a-z0-9]+/g)||[],expanded=[...words];
@@ -3898,7 +3902,8 @@ function bindPlayerPortal(){
  $('#portalPin')?.addEventListener('keydown',event=>{if(event.key==='Enter')claimPlayerPortal(event.currentTarget.value)});
  $('#portalDashboard')?.addEventListener('click',()=>{portalView='home';portalSelectedDrill='';portalDrillResults=[];render();window.scrollTo(0,0)});
  $('#portalBack')?.addEventListener('click',()=>{portalView='home';portalSelectedDrill='';render();window.scrollTo(0,0)});
- $$('[data-portal-view]').forEach(button=>button.addEventListener('click',()=>{portalView=button.dataset.portalView;portalSelectedDrill='';portalDrillQuery='';portalDrillResults=[];render();window.scrollTo(0,0)}));
+ $('#portalPracticeBack')?.addEventListener('click',()=>{portalView='practice';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';render();window.scrollTo(0,0)});
+ $('[data-portal-view]').forEach(button=>button.addEventListener('click',()=>{portalView=button.dataset.portalView;portalSelectedDrill='';portalDrillQuery='';portalDrillResults=[];render();window.scrollTo(0,0)}));
  $('#portalDrillSearch')?.addEventListener('input',event=>{portalDrillQuery=event.target.value;render();const search=$('#portalDrillSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
  $$('[data-portal-drill]').forEach(button=>button.addEventListener('click',()=>{portalSelectedDrill=button.dataset.portalDrill;render();window.scrollTo(0,0)}));
  $$('[data-portal-practice-drill]').forEach(button=>button.addEventListener('click',()=>{const drill=button.dataset.portalPracticeDrill;if(!drill)return;const practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType);if(practiceOnly&&(portalPracticeClockValues(portalData?.activePractice).block==='DONE!'||!(portalData?.activePractice?.drills||[]).includes(drill)))return;portalLibraryReturnView='practice';portalSelectedDrill=drill;portalView='library';render();window.scrollTo(0,0)}));
