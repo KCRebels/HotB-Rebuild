@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-175';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-176';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1214,7 +1214,7 @@ async function loadPlayerPortal(){
       portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
       if(['guestPlayer','jenkinsPlayer','guestCoach','coach'].includes(portalData.portalType))portalView='home';
       else if(nextPracticeId)portalView='practice';
-      else if(portalView==='practice')portalView='home';
+      else portalView='home';
      }
      if(nextPracticeId&&(previousPracticeId!==nextPracticeId||previousClockStart!==nextClockStart))delete portalData._localPracticeEnded;
      if(route==='portal')render()
@@ -2097,7 +2097,11 @@ function playerPortalPage(){
  // Permanent-player practice navigation is valid only while a live synchronized
  // practice exists. If a stale view survives a snapshot/update, route home
  // instead of rendering an old/empty practice page.
- if(portalView==='practice'&&(!portalData.activePractice||activePracticeEnded)){portalView='home';portalSelectedDrill='';portalLibraryReturnView='library'}
+ if((!portalData.activePractice||activePracticeEnded)&&portalView==='practice'){portalView='home';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library'}
+ // Once practice is removed, no practice-origin drill detail may survive locally.
+ // This prevents an already-open iPhone from continuing to show an ended drill
+ // after the Firestore cleanup snapshot has correctly cleared activePractice.
+ if(!portalData.activePractice&&portalLibraryReturnView==='practice'){portalView='home';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library'}
  if(portalView==='practice')return portalPracticeView();
  if(portalView==='focus')return portalFocusView();
  if(portalView==='library')return portalLibraryView();
