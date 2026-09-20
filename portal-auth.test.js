@@ -252,3 +252,5 @@ assert(!app.includes("$('[data-portal-practice-drill]').forEach"),'portal practi
 const portalBind=app.slice(app.indexOf('function bindPlayerPortal()'),app.indexOf('function storePracticeAccommodation'));
 assert(!/(^|[^$])\$\('\[data-(?:share-portal|text-portal|portal-practice-drill)\]'\)\.forEach/.test(portalBind),'portal collection controls must use querySelectorAll helper');
 assert((portalBind.match(/\$\$\('\[data-(?:share-portal|text-portal|portal-practice-drill)\]'\)\.forEach/g)||[]).length===3,'all three portal collection controls must bind through $$');
+
+assert(app.includes("active=!!portalData?.activePractice&&!portalPracticeClockValues(portalData.activePractice).ended"),'finished practice must not remain active on permanent player dashboard while cleanup is pending');
