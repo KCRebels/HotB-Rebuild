@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-178';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-179';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1192,7 +1192,11 @@ async function loadPlayerPortal(){
     portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
     if(['guestPlayer','jenkinsPlayer','guestCoach','coach'].includes(portalData.portalType)||portalView==='practice')portalView='home';
    }else if(portalPracticeClockValues(portalData.activePractice).ended){
-    portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';portalView='practice';portalData._localPracticeEnded=true;
+    // An expired practice is not active access. Normalize the initial read exactly
+    // like a cleanup snapshot so a reopened permanent-player link cannot revive
+    // the old schedule, and practice-only links go straight to their ended state.
+    portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';portalData._localPracticeEnded=true;
+    portalView=['guestPlayer','jenkinsPlayer','guestCoach'].includes(portalData.portalType)?'home':'home';
    }else if(['guestPlayer','jenkinsPlayer','guestCoach'].includes(portalData.portalType)){
     portalView='home';
    }
@@ -2206,8 +2210,9 @@ function updatePortalPracticeClock(){
  const values=portalPracticeClockValues(portalData?.activePractice),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
  if(values.ended&&!portalData._localPracticeEnded){
   // Render the expired state once so old schedule/drill controls disappear
-  // immediately instead of waiting for the next Firebase snapshot.
-  portalData._localPracticeEnded=true;portalView='practice';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
+  // immediately instead of waiting for the next Firebase snapshot. Permanent
+  // players return home; practice-only links render their dedicated ended view.
+  portalData._localPracticeEnded=true;portalView='home';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
   render();return;
  }
  if(block)block.textContent=values.block;if(left)left.textContent=values.left;
