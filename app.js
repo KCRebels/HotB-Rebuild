@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-208';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-209';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1274,6 +1274,17 @@ async function loadPlayerPortal(){
   }
  }
 }
+window.HotBOpenPlayerPortal=()=>{
+ const input=document.getElementById('portalPin');
+ const pin=input?.value||'';
+ const button=document.getElementById('openPlayerPortal');
+ if(button){button.disabled=true;button.textContent='OPENING…'}
+ Promise.resolve(claimPlayerPortal(pin)).catch(error=>{
+  portalBusy=false;portalData=null;
+  portalMessage='HotB could not complete the PIN connection. Please try again.';
+  render();
+ });
+};
 async function claimPlayerPortal(pin){
  if(!portalToken||isCoachPortalUser())return;
  // A timed-out startup can leave the UI in PIN mode while an obsolete loader still
@@ -2038,7 +2049,7 @@ function portalCoachView(){
  return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>${ready?'Player Portals Are Ready':'Create Private Player Portals'}</h2><p>Each player receives one private link and a six-digit PIN. Her first successful login connects that portal to her device.</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}<section class="portal-coach-setup"><span>ONE COACH</span><h2>${coachReady?'Coach Portal Is Ready':'Create Coach Portal'}</h2><p>This coach receives one private, block-by-block duty plan for each active practice.</p><label class="label" for="coachPortalName">Coach Name</label><input class="input" id="coachPortalName" value="${esc(db.coachPortal?.name||'')}" placeholder="Coach name"><label class="label" for="coachPortalPhone">Cell Number (optional)</label><input class="input" id="coachPortalPhone" inputmode="tel" value="${esc(db.coachPortal?.phone||'')}" placeholder="Cell number"><button class="btn black block" id="setupCoachPortal" ${cloudBusy?'disabled':''}>${coachReady?'Refresh Coach Portal':'Create Coach Portal'}</button>${coachReady?`<div class="portal-coach-ready"><b>${esc(db.coachPortal.name)}</b><span>PIN ${esc(db.coachPortal.portalPin)}</span><div class="portal-player-actions"><button type="button" class="btn" id="shareCoachPortal">Share</button><button type="button" class="btn" id="textCoachPortal" ${db.coachPortal.phone?'':'disabled'}>${db.coachPortal.phone?'Text':'No Cell'}</button><button class="btn" id="resetCoachPortal">Reset</button></div></div>`:''}</section><button class="btn black block portal-setup-button" id="setupPlayerPortals" ${cloudBusy?'disabled':''}>${ready?'Refresh Player Records':'Create Player Portals'}</button>${ready?`<section class="portal-player-list">${players.map(player=>`<article><div><b>${esc(practiceFirstName(player.name))}</b><span>PIN ${esc(player.portalPin)}</span></div><div class="portal-player-actions"><button type="button" class="btn" data-share-portal="${esc(player.name)}">Share</button><button type="button" class="btn" data-text-portal="${esc(player.name)}" ${player.phone?'':'disabled'}>${player.phone?'Text':'No Cell'}</button><button class="btn" data-reset-portal="${esc(player.name)}">Reset</button></div></article>`).join('')}</section><p class="portal-private-note">Text opens an individual message with that player’s private link and PIN. You review it and tap Send. Reset connects the portal to a replacement phone without changing her link or PIN.</p>`:''}</main>`;
 }
 function portalLoginView(){
- return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>PRIVATE ACCESS</span><h2>${portalBusy?'Opening Your Portal':'Enter Your PIN'}</h2><p>${portalBusy?'HotB is checking this private link.':'Use the six-digit PIN provided by the head coach. This portal will then connect to this device.'}</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}${portalBusy?'':`<label class="label" for="portalPin">Portal PIN</label><input class="input portal-pin" id="portalPin" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000"><button class="btn black block" id="openPlayerPortal">Open My Portal</button>`}</main>`;
+ return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>PRIVATE ACCESS</span><h2>${portalBusy?'Opening Your Portal':'Enter Your PIN'}</h2><p>${portalBusy?'HotB is checking this private link.':'Use the six-digit PIN provided by the head coach. This portal will then connect to this device.'}</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}${portalBusy?'':`<label class="label" for="portalPin">Portal PIN</label><input class="input portal-pin" id="portalPin" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000"><button class="btn black block" id="openPlayerPortal" type="button" onclick="window.HotBOpenPlayerPortal&&window.HotBOpenPlayerPortal()">Open My Portal</button>`}</main>`;
 }
 function coachPortalPracticeView(){
  const practice=portalData?.activePractice,name=portalData?.firstName||practiceFirstName(portalData?.coachName)||'Coach',clock=portalPracticeClockValues(practice),current=Number(clock.currentBlock)||0;
