@@ -236,3 +236,6 @@ assert(!app.includes("$('[data-portal-practice-drill]').forEach"),'single-elemen
 
 assert(app.includes("if(!practice)return {block:'Not Started',left:'—',transition:false,currentBlock:0,ended:false}"),'missing active practice must never be interpreted as finished');
 assert(app.includes("const active=!!portalData?.activePractice&&!portalPracticeClockValues(portalData.activePractice).ended;"),'dashboard must not advertise a locally-ended practice as active');
+
+assert(!app.includes("if(typeof cloudAuth.authStateReady==='function'){try{await cloudAuth.authStateReady()}catch(_){}}\n  cloudAuthReady=true"),'portal manager must not mark auth ready before first compat auth callback');
+assert(app.includes("portalAuthUser=user||null;\n   }\n   cloudAuthReady=true;"),'first Firebase auth callback must establish portal manager readiness');
