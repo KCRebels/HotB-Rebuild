@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-143';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-144';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2020,7 +2020,7 @@ function portalFocusView(){
  return `${portalHeader('My Focus',true)}<main class="portal-page">${portalFocusBody(portalData?.focus)}</main>`;
 }
 function portalLibraryView(){
- const allDrills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[],practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType),practiceEnded=practiceOnly&&portalPracticeClockValues().block==='DONE!',allowed=practiceOnly?new Set(practiceEnded?[]:portalData?.activePractice?.drills||[]):null,drills=allowed?allDrills.filter(drill=>allowed.has(drill.name)):allDrills,selected=drills.find(drill=>drill.name===portalSelectedDrill);
+ const allDrills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[],practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType),practiceEnded=practiceOnly&&portalPracticeClockValues(portalData?.activePractice).block==='DONE!',allowed=practiceOnly?new Set(practiceEnded?[]:portalData?.activePractice?.drills||[]):null,drills=allowed?allDrills.filter(drill=>allowed.has(drill.name)):allDrills,selected=drills.find(drill=>drill.name===portalSelectedDrill);
  if(selected){const detail=(title,value)=>value?`<section class="practice-drill-detail-section"><h3>${esc(title)}</h3><p>${esc(value)}</p></section>`:'';return `${portalHeader('Drill Library',true)}<main class="portal-page practice-drill-detail"><button class="practice-library-return" id="portalLibraryBack">‹ ${portalLibraryReturnView==='practice'?'Back To My Practice':'Back To All Drills'}</button><section class="practice-drill-detail-head"><span>${esc(selected.category)}</span><h2>${esc(selected.name)}</h2><p>${esc(selected.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(selected.hittingMethod)}</span>${selected.equipment?`<span>${esc(selected.equipment)}</span>`:''}</div></section>${detail('Best Used For',selected.bestUsedFor)}${detail('How It Works',selected.howItWorks)}${detail('Key Coaching Cues',selected.coachingCues)}${detail('What Success Looks Like',selected.success)}${detail('Space / Setup',selected.spaceSetup)}${selected.mediaLink?`<a class="btn black block" href="${esc(selected.mediaLink)}" target="_blank" rel="noopener">Watch Drill</a>`:''}</main>`}
  const query=portalDrillQuery.trim().toLowerCase(),shown=drills.filter(drill=>!query||Object.values(drill).some(value=>String(value).toLowerCase().includes(query)));
  return `${portalHeader('Drill Library',true)}<main class="portal-page"><div class="practice-library-search"><input class="input" id="portalDrillSearch" type="search" placeholder="Search drills" value="${esc(portalDrillQuery)}" aria-label="Search drills"></div><p class="practice-library-count">${shown.length} ${shown.length===1?'drill':'drills'}</p><section class="practice-drill-list">${shown.map(drill=>`<button class="practice-drill-card" data-portal-drill="${esc(drill.name)}"><span>${esc(drill.category)}</span><h3>${esc(drill.name)}</h3><p>${esc(drill.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(drill.hittingMethod)}</span></div></button>`).join('')}</section></main>`;
@@ -3823,7 +3823,8 @@ window.HotBPortalShare=async function(name){
 window.HotBPortalText=function(name){
  const player=db.roster.find(item=>item.name===name),url=playerPortalTextUrl(player);
  if(!url){portalMessage=`${practiceFirstName(player?.name||'This player')} does not have a saved cell number.`;render();return}
- if(!openSmsComposer(url)){portalMessage='Messages could not be opened from this screen.';render()}
+ // Direct top-level navigation is the most reliable sms: handoff from an iOS Home Screen PWA.
+ try{window.location.href=url}catch(_){if(!openSmsComposer(url)){portalMessage='Messages could not be opened from this screen.';render()}}
 };
 function bindPlayerPortal(){
  if(isCoachEvaluation())bindEval();
