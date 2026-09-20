@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-158';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-159';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -4445,9 +4445,12 @@ function bindRecord(){
 render();
 if(portalToken){
  const portalStartupGuard=setTimeout(()=>{
-  if(portalBusy){
-   portalBusy=false;
-   portalMessage='HotB could not finish opening this player portal. Please close this page and reopen the player link.';
+  // A slow Firebase/CDN startup may still be legitimately progressing. Do not
+  // flip portalBusy false while initCloud/loadPlayerPortal is alive: the auth
+  // callback uses that flag to prevent a competing second loader. Keep the
+  // loading state authoritative and surface a non-destructive status message.
+  if(portalBusy&&!portalData){
+   portalMessage='HotB is still connecting to this private portal. Keeping your link open while the secure connection finishes.';
    render();
   }
  },12000);
