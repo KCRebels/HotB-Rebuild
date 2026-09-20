@@ -18,7 +18,7 @@ assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
 assert(app.includes("PORTAL_BUILD_TOKEN='20260919-134'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext10'));
-assert(index.includes('app.js?v=20260919-boot152'));
+assert(index.includes('app.js?v=20260919-boot153'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -223,10 +223,10 @@ assert(app.includes("await finishPracticeClock(true)"));
 
 const pwa=fs.readFileSync('pwa-update.js','utf8');
 const worker=fs.readFileSync('service-worker.js','utf8');
-assert(pwa.includes("BUILD_VERSION = '2026.09.19.152'"));
-assert(worker.includes("BUILD_VERSION = '2026.09.19.152'"));
-assert(index.includes('pwa-update.js?v=20260919-pwa152'));
-assert(index.includes('app.js?v=20260919-boot152'));
+assert(pwa.includes("BUILD_VERSION = '2026.09.19.153'"));
+assert(worker.includes("BUILD_VERSION = '2026.09.19.153'"));
+assert(index.includes('pwa-update.js?v=20260919-pwa153'));
+assert(index.includes('app.js?v=20260919-boot153'));
 assert(worker.includes("url.searchParams.has('portal')"));
 assert(worker.includes("fetch(request, {cache: 'no-store'})"));
 
@@ -257,3 +257,6 @@ assert(app.includes("active=!!portalData?.activePractice&&!portalPracticeClockVa
 
 assert(app.includes("if(portalToken&&!portalBusy&&!portalUnsubscribe)await loadPlayerPortal()"),'auth callback must not launch a competing portal load while the current token is opening or already subscribed');
 assert(!app.includes("if(portalToken)await loadPlayerPortal();"),'unguarded auth callback portal reload must not return');
+
+assert(app.includes("if(!db.activePracticeSession||db.activePracticeSession?.plan?.portalDraftId===state.id)db.activePracticeSession=null"),'finished orphan cleanup must not erase a newer saved practice session');
+assert(!app.includes("if(db.activePortalPractice?.id===state.id)db.activePortalPractice=null;db.activePracticeSession=null;save();"),'unscoped orphan cleanup must not return');
