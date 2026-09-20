@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-153';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-154';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2060,8 +2060,9 @@ function portalDashboardView(){
 function playerPortalPage(){
  if(!portalToken)return portalCoachView();
  if(!portalData)return portalLoginView();
- if(portalData.portalType==='guestCoach')return portalData.expired?guestPortalEndedView():!portalData.activePractice?guestPortalWaitingView():(portalView==='library'?portalLibraryView():guestCoachPracticeView());
- if(['guestPlayer','jenkinsPlayer'].includes(portalData.portalType))return portalData.expired?guestPortalEndedView():!portalData.activePractice?guestPortalWaitingView():(portalView==='library'?portalLibraryView():portalPracticeView());
+ const activePracticeEnded=!!portalData.activePractice&&portalPracticeClockValues(portalData.activePractice).ended;
+ if(portalData.portalType==='guestCoach')return portalData.expired||activePracticeEnded?guestPortalEndedView():!portalData.activePractice?guestPortalWaitingView():(portalView==='library'?portalLibraryView():guestCoachPracticeView());
+ if(['guestPlayer','jenkinsPlayer'].includes(portalData.portalType))return portalData.expired||activePracticeEnded?guestPortalEndedView():!portalData.activePractice?guestPortalWaitingView():(portalView==='library'?portalLibraryView():portalPracticeView());
  if(portalData.portalType==='coach')return portalView==='evaluation'?coachPortalEvaluationView():coachPortalPracticeView();
  if(portalView==='practice')return portalPracticeView();
  if(portalView==='focus')return portalFocusView();
