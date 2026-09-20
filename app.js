@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-145';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-146';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -970,16 +970,18 @@ async function initCloud(){
   cloudInitStarted=true;clearTimeout(cloudInitRetryTimer);cloudInitRetryTimer=null;
   if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
   cloudAuth=firebase.auth();cloudStore=firebase.firestore();
-  // authStateReady() is the authoritative Firebase persistence-restoration barrier.
-  // iOS can render the portal manager before the first auth callback arrives.
-  if(typeof cloudAuth.authStateReady==='function'){try{await cloudAuth.authStateReady()}catch(_){}}
-  cloudAuthReady=true;
+  // The first onAuthStateChanged callback is the authoritative persistence
+  // restoration barrier in the compat SDK. Do not mark auth ready before it
+  // supplies the restored user (or definitively supplies null).
+  cloudAuthReady=false;
   cloudAuth.onAuthStateChanged(async user=>{
    if(user&&!user.isAnonymous&&String(user.email||'').toLowerCase()!==CLOUD_EMAIL){await cloudAuth.signOut();cloudMessage=`Please sign in with ${CLOUD_EMAIL}.`;cloudUser=null;portalAuthUser=null}
    else{
     cloudUser=user&&!user.isAnonymous?user:null;
     portalAuthUser=user||null;
    }
+   cloudAuthReady=true;
+   if(route==='home'||route==='portal')render();
    if(cloudUser){
     // Publish the authenticated coach state immediately. Cloud status reads can be
     // slow on iOS; portal management must not remain stuck on Reconnect while
