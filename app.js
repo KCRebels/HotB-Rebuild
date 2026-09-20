@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-154';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-155';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1084,6 +1084,21 @@ async function createPendingGuestPortal(guest,type){
  const pinHash=await portalHash(guest.portalId,guest.portalSecret),coach=type==='guestCoach';
  await portalDoc(guest.portalId).set({portalType:type,...(coach?{coachName:guest.name}:{playerName:guest.name}),firstName:practiceFirstName(guest.name),phone:guest.phone,pinHash,ownerUid:null,expired:false,accessStatus:'waiting',activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
 }
+function waitForPortalAuthState(timeout=8000){
+ if(!cloudAuth)return Promise.reject(new Error('portal-auth-unavailable'));
+ if(cloudAuthReady)return Promise.resolve(cloudAuth.currentUser||null);
+ return new Promise((resolve,reject)=>{
+  let settled=false,unsubscribe=()=>{};
+  const finish=(error,user)=>{
+   if(settled)return;settled=true;clearTimeout(timer);
+   try{unsubscribe()}catch(_){}
+   if(error)reject(error);else resolve(user||null);
+  };
+  const timer=setTimeout(()=>finish(new Error('portal-auth-timeout'),null),timeout);
+  try{unsubscribe=cloudAuth.onAuthStateChanged(user=>finish(null,user))}
+  catch(error){finish(error,null)}
+ });
+}
 async function loadPlayerPortal(){
  if(!portalToken)return;
  const requestedPortalToken=portalToken,loadGeneration=++portalLoadGeneration;
@@ -1102,10 +1117,9 @@ async function loadPlayerPortal(){
     // Do not replace a still-restoring persisted player session with a new
     // anonymous identity. Wait for the first auth callback before creating one.
     if(!cloudAuthReady){
-     await Promise.race([
-      new Promise(resolve=>{const stop=cloudAuth.onAuthStateChanged(user=>{stop();portalAuthUser=user||null;resolve()})}),
-      new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
-     ]);
+     const restoredAuthUser=await waitForPortalAuthState();
+     if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
+     portalAuthUser=restoredAuthUser||cloudAuth.currentUser||null;
     }
     if(!portalAuthUser){
      const credential=await Promise.race([
@@ -1244,10 +1258,9 @@ async function claimPlayerPortal(pin){
     // Do not replace a still-restoring persisted player session with a new
     // anonymous identity. Wait for the first auth callback before creating one.
     if(!cloudAuthReady){
-     await Promise.race([
-      new Promise(resolve=>{const stop=cloudAuth.onAuthStateChanged(user=>{stop();portalAuthUser=user||null;resolve()})}),
-      new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
-     ]);
+     const restoredAuthUser=await waitForPortalAuthState();
+     if(portalToken!==requestedPortalToken)return;
+     portalAuthUser=restoredAuthUser||cloudAuth.currentUser||null;
     }
     if(!portalAuthUser){
      const credential=await Promise.race([
