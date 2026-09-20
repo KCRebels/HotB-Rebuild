@@ -18,7 +18,7 @@ assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
 assert(app.includes("PORTAL_BUILD_TOKEN='20260919-134'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext10'));
-assert(index.includes('app.js?v=20260919-boot157'));
+assert(index.includes('app.js?v=20260919-boot158'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -223,10 +223,10 @@ assert(app.includes("await finishPracticeClock(true)"));
 
 const pwa=fs.readFileSync('pwa-update.js','utf8');
 const worker=fs.readFileSync('service-worker.js','utf8');
-assert(pwa.includes("BUILD_VERSION = '2026.09.19.157'"));
-assert(worker.includes("BUILD_VERSION = '2026.09.19.157'"));
-assert(index.includes('pwa-update.js?v=20260919-pwa157'));
-assert(index.includes('app.js?v=20260919-boot157'));
+assert(pwa.includes("BUILD_VERSION = '2026.09.19.158'"));
+assert(worker.includes("BUILD_VERSION = '2026.09.19.158'"));
+assert(index.includes('pwa-update.js?v=20260919-pwa158'));
+assert(index.includes('app.js?v=20260919-boot158'));
 assert(worker.includes("url.searchParams.has('portal')"));
 assert(worker.includes("fetch(request, {cache: 'no-store'})"));
 
@@ -271,5 +271,8 @@ assert(!app.includes("new Promise(resolve=>{const stop=cloudAuth.onAuthStateChan
 
 assert((app.match(/if\(firstError\?\.code!==\'permission-denied\'\)throw firstError/g)||[]).length===2,'player/PIN and guest portal claims must only use authorization fallback for an ownership permission denial');
 
-assert(index.includes('if(new URLSearchParams(location.search).has("portal"))document.write(\'<script src="practice-session.js?v=20260919-session2"'),'player portal shell must load the same practice timing engine used by the coach clock');
+assert(index.includes("await loadPortalScript('practice-session.js?v=20260919-session3','P30-TIMING')"),'player portal shell must load the same practice timing engine before app.js');
 assert(app.includes('window.HotBPracticeSession?.timing(practice,{running:true,startAt:startedAt},now)'),'player portal clock must derive block/rotate state from synchronized practice timing engine');
+
+assert(!index.includes('if(new URLSearchParams(location.search).has("portal"))document.write'),'portal bootstrap must never use document.write on a player/coach portal navigation');
+assert(index.includes("await loadPortalScript('app.js?v=20260919-boot158','P29-DOWNLOAD')"),'portal app must load only after its timing dependency resolves');
