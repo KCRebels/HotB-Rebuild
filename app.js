@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-146';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-147';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1096,11 +1096,21 @@ async function loadPlayerPortal(){
    // runs. Reuse it instead of issuing another anonymous sign-in request.
    portalAuthUser=cloudAuth.currentUser||null;
    if(!portalAuthUser){
-    const credential=await Promise.race([
-     cloudAuth.signInAnonymously(),
-     new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
-    ]);
-    portalAuthUser=credential?.user||cloudAuth.currentUser||null;
+    // Do not replace a still-restoring persisted player session with a new
+    // anonymous identity. Wait for the first auth callback before creating one.
+    if(!cloudAuthReady){
+     await Promise.race([
+      new Promise(resolve=>{const stop=cloudAuth.onAuthStateChanged(user=>{stop();portalAuthUser=user||null;resolve()})}),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
+     ]);
+    }
+    if(!portalAuthUser){
+     const credential=await Promise.race([
+      cloudAuth.signInAnonymously(),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
+     ]);
+     portalAuthUser=credential?.user||cloudAuth.currentUser||null;
+    }
    }
   }catch(error){
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
@@ -1228,11 +1238,21 @@ async function claimPlayerPortal(pin){
   try{
    portalAuthUser=cloudAuth.currentUser||null;
    if(!portalAuthUser){
-    const credential=await Promise.race([
-     cloudAuth.signInAnonymously(),
-     new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
-    ]);
-    portalAuthUser=credential?.user||cloudAuth.currentUser||null;
+    // Do not replace a still-restoring persisted player session with a new
+    // anonymous identity. Wait for the first auth callback before creating one.
+    if(!cloudAuthReady){
+     await Promise.race([
+      new Promise(resolve=>{const stop=cloudAuth.onAuthStateChanged(user=>{stop();portalAuthUser=user||null;resolve()})}),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
+     ]);
+    }
+    if(!portalAuthUser){
+     const credential=await Promise.race([
+      cloudAuth.signInAnonymously(),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
+     ]);
+     portalAuthUser=credential?.user||cloudAuth.currentUser||null;
+    }
    }
   }catch(error){portalMessage='HotB could not connect this device to the player portal. Please reopen the link.';render();return}
  }
