@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-192';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-193';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1213,17 +1213,23 @@ async function loadPlayerPortal(){
      const nextPracticeId=nextData?.activePractice?.id||'';
      const previousClockStart=portalData?.activePractice?.clock?.startedAt||'';
      const nextClockStart=nextData?.activePractice?.clock?.startedAt||'';
+     const previousActivation=portalData?.activePractice?.activatedAt||'';
+     const nextActivation=nextData?.activePractice?.activatedAt||'';
+     // Same practice ID is not enough to establish continuity. If a legacy build
+     // ever republished an ID, activatedAt is its publication generation. Treat
+     // that as a new practice snapshot and discard every local drill/view sentinel.
+     const publicationChanged=previousPracticeId===nextPracticeId&&!!nextPracticeId&&previousActivation!==nextActivation;
      portalData=nextData;portalMessage='';
      // Any new/removed practice must reset all practice subviews. Also clear the
      // local-ended sentinel when the coach starts the same published plan; otherwise
      // an iPhone that previously reached DONE can stay stuck on Practice Complete.
-     if(previousPracticeId!==nextPracticeId){
+     if(previousPracticeId!==nextPracticeId||publicationChanged){
       portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
       if(['guestPlayer','jenkinsPlayer','guestCoach','coach'].includes(portalData.portalType))portalView='home';
       else if(nextPracticeId)portalView='practice';
       else portalView='home';
      }
-     if(nextPracticeId&&(previousPracticeId!==nextPracticeId||previousClockStart!==nextClockStart))delete portalData._localPracticeEnded;
+     if(nextPracticeId&&(previousPracticeId!==nextPracticeId||publicationChanged||previousClockStart!==nextClockStart))delete portalData._localPracticeEnded;
      if(route==='portal')render()
     }else{
      // A deleted portal document must immediately invalidate the open screen.
