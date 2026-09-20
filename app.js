@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-186';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-187';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2583,7 +2583,7 @@ async function clearOrphanedActivePractice(){
   ...persistedPlayerPortals.map(entry=>({id:entry.portalId,data:entry.isTeamJenkins?jenkinsPortalCleanupPayload(db.roster.find(item=>item.name===entry.name),entry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
   ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).map(player=>({id:player.portalId,data:player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
   ...(state.coachPortalId?[{id:state.coachPortalId,data:{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}]:[]),
-  ...[...orphanGuestIds].map(id=>({id,data:{activePractice:null,expired:true,endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}))
+  ...[...orphanGuestIds].map(id=>({id,data:{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}))
  ];
  try{
   // Orphan cleanup is also update-only. A missing old portal must not be
@@ -2592,9 +2592,15 @@ async function clearOrphanedActivePractice(){
   existingOrphans.filter(item=>item&&!item.alreadyCleared).forEach(item=>batch.update(portalDoc(item.target.id),item.target.data));
   if(existingOrphans.some(item=>item&&!item.alreadyCleared))await batch.commit();
   const verifyIds=[...new Set([...persistedPlayerPortals.map(entry=>entry.portalId),...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)).map(player=>player.portalId),state.coachPortalId,...(state.guestPlayerPortalIds||[]),...(state.guestCoachPortalIds||[])].filter(Boolean))];
-  const verification=await Promise.all(verifyIds.map(async id=>{const snapshot=await portalDoc(id).get();return !snapshot.exists||!snapshot.data()?.activePractice}));
+  if(!verifyIds.length)throw new Error('orphan-cleanup-no-targets');
+  const verification=await Promise.all(verifyIds.map(async id=>{const snapshot=await portalDoc(id).get();if(!snapshot.exists)return true;const remote=snapshot.data()||{};if(remote.activePractice)return false;if(orphanGuestIds.has(id))return remote.expired===true;const entry=persistedPlayerPortals.find(item=>item.portalId===id),rosterPlayer=db.roster.find(player=>player.portalId===id&&activeNames.has(player.name));if(entry?.isTeamJenkins||rosterPlayer?.isTeamJenkins)return remote.portalType==='jenkinsPlayer'&&remote.accessStatus==='waiting'&&remote.expired===false;return true}));
   if(verification.some(cleared=>!cleared))throw new Error('orphan-cleanup-verification-failed');
-  db.activePortalPractice=null;db.activePracticeSession=null;save();render();alert('The stale portal practice was removed. You can build a new practice now.');
+  // Clear only the exact stale reference that was verified. A newer local
+  // practice/session created while Firestore cleanup was in flight must survive.
+  if(db.activePortalPractice?.id!==state.id)throw new Error('orphan-cleanup-local-practice-changed');
+  db.activePortalPractice=null;
+  if(!db.activePracticeSession||db.activePracticeSession?.plan?.portalDraftId===state.id)db.activePracticeSession=null;
+  save();render();alert('The stale portal practice was removed. You can build a new practice now.');
  }
  catch(error){alert('The stale portal practice could not be removed or verified. HotB kept the local recovery reference so nothing can be silently lost. Check your connection and try again.')}
 }
