@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-215';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-216';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2224,57 +2224,27 @@ function practiceCoachLabel(label,plan=null,blockIndex=-1){
 }
 function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.now()){
  if(!practice)return {block:'Not Started',left:'—',transition:false,currentBlock:0,ended:false};
- const clock=practice?.clock||{};
- if(clock.status==='finished')return {block:'DONE!',left:'0:00',transition:false,currentBlock:10,ended:true};
- // Firestore may return timestamps as ISO strings, Date-like values, or
- // Timestamp objects depending on whether the value came from a local write,
- // cache, or server snapshot. Normalize all supported forms before validating.
- const rawStartedAt=clock.startedAt;
- const startedAt=typeof rawStartedAt==='number'?rawStartedAt:
-  rawStartedAt?.toMillis?rawStartedAt.toMillis():
-  rawStartedAt?.toDate?rawStartedAt.toDate().getTime():
-  Date.parse(rawStartedAt||'');
- // Fail closed on malformed clock states. A stale/test startedAt attached to a
- // not-started publication must never be interpreted as live, and an unknown
- // status must never expose old assignments as though synchronization succeeded.
- if(clock.status==='not-started')return clock.startedAt?{block:'Syncing',left:'—',transition:false,currentBlock:0,ended:false}:{block:'Not Started',left:'—',transition:false,currentBlock:0,ended:false};
- if(clock.status!=='running'||!Number.isFinite(startedAt))return {block:'Syncing',left:'—',transition:false,currentBlock:0,ended:false};
- // Firestore publication and the coach's Start tap use independent timestamps.
- // activatedAt is identity/version metadata, not a lower bound for the live clock.
- // Comparing the two made a valid newly-started practice appear Not Started when
- // client/server timing crossed by even a few milliseconds.
- let timing=window.HotBPracticeSession?.timing;
- // The live portal must not become unusable merely because iOS lost the small
- // shared timing helper after startup. Use the exact same 10-block timing math
- // locally as a fail-safe so a verified running clock can still render.
- if(typeof timing!=='function')timing=(plan,liveClock,currentNow)=>{
-  if(!plan||!liveClock?.running||!liveClock.startAt)return null;
-  const blockMs=(Number(plan.blockMinutes)||12)*60000;
-  const transitionMs=Math.min(60000,Math.max(0,blockMs-60000));
-  const workMs=blockMs-transitionMs,totalMs=blockMs*10-transitionMs;
-  const elapsed=Math.max(0,Number(currentNow)-Number(liveClock.startAt));
-  if(elapsed>=totalMs)return null;
-  const block=Math.min(10,Math.floor(elapsed/blockMs)+1),elapsedInBlock=elapsed%blockMs;
-  const transition=block<10&&elapsedInBlock>=workMs;
-  const remaining=block===10?totalMs-elapsed:(transition?blockMs:workMs)-elapsedInBlock;
-  return {block,remaining,transition};
- };
- let state=timing(practice,{running:true,startAt:startedAt},now);
- // A running cloud clock is authoritative. If an older/shared timing helper
- // returns null or malformed data, calculate the current block directly rather
- // than misclassifying a valid live practice as DONE/Syncing.
- if(!state||!Number.isFinite(Number(state.block))||!Number.isFinite(Number(state.remaining))){
-  const blockMs=(Number(practice.blockMinutes)||12)*60000;
-  const transitionMs=Math.min(60000,Math.max(0,blockMs-60000)),workMs=blockMs-transitionMs,totalMs=blockMs*10-transitionMs;
-  const elapsed=Math.max(0,Number(now)-startedAt);
-  if(elapsed>=totalMs)return {block:'DONE!',left:'0:00',transition:false,currentBlock:10,ended:true};
-  const liveBlock=Math.min(10,Math.floor(elapsed/blockMs)+1),elapsedInBlock=elapsed%blockMs;
-  const liveTransition=liveBlock<10&&elapsedInBlock>=workMs;
-  const liveRemaining=liveBlock===10?totalMs-elapsed:(liveTransition?blockMs:workMs)-elapsedInBlock;
-  state={block:liveBlock,remaining:liveRemaining,transition:liveTransition};
- }
- const seconds=Math.ceil(state.remaining/1000);
- return {block:state.transition?'ROTATE':`${state.block} of 10`,left:`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`,transition:!!state.transition,currentBlock:state.block};
+ const clock=practice.clock||{},status=String(clock.status||'').toLowerCase();
+ if(status==='finished')return {block:'DONE!',left:'0:00',transition:false,currentBlock:10,ended:true};
+ if(status==='not-started'&&!clock.startedAt)return {block:'Not Started',left:'—',transition:false,currentBlock:0,ended:false};
+ if(status!=='running')return {block:'Syncing',left:'—',transition:false,currentBlock:0,ended:false};
+ const raw=clock.startedAt;
+ let startMs=NaN;
+ if(typeof raw==='number')startMs=raw;
+ else if(typeof raw==='string')startMs=new Date(raw).getTime();
+ else if(raw&&typeof raw.toMillis==='function')startMs=raw.toMillis();
+ else if(raw&&typeof raw.toDate==='function')startMs=raw.toDate().getTime();
+ else if(raw&&Number.isFinite(Number(raw.seconds)))startMs=Number(raw.seconds)*1000+Math.floor(Number(raw.nanoseconds||0)/1000000);
+ if(!Number.isFinite(startMs))return {block:'Syncing',left:'—',transition:false,currentBlock:0,ended:false};
+ const blockMs=(Number(practice.blockMinutes)||12)*60000;
+ const rotateMs=60000,workMs=Math.max(0,blockMs-rotateMs),totalMs=blockMs*10-rotateMs;
+ const elapsed=Math.max(0,Number(now)-startMs);
+ if(elapsed>=totalMs)return {block:'DONE!',left:'0:00',transition:false,currentBlock:10,ended:true};
+ const currentBlock=Math.min(10,Math.floor(elapsed/blockMs)+1),within=elapsed%blockMs;
+ const transition=currentBlock<10&&within>=workMs;
+ const remaining=currentBlock===10?totalMs-elapsed:(transition?blockMs:workMs)-within;
+ const seconds=Math.max(0,Math.ceil(remaining/1000));
+ return {block:transition?'ROTATE':currentBlock+' of 10',left:Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0'),transition,currentBlock};
 }
 function updatePortalPracticeClock(){
  const values=portalPracticeClockValues(portalData?.activePractice),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
