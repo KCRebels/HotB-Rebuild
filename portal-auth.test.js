@@ -248,3 +248,7 @@ assert(app.includes("$$('[data-text-portal]').forEach"),'player Text must have a
 assert(app.includes("$('#shareCoachPortal')?.addEventListener"),'coach Share must have an app.js binding');
 assert(app.includes("$('#textCoachPortal')?.addEventListener"),'coach Text must have an app.js binding');
 assert(!app.includes("$('[data-portal-practice-drill]').forEach"),'portal practice drill binding must never call forEach on querySelector');
+
+const portalBind=app.slice(app.indexOf('function bindPlayerPortal()'),app.indexOf('function storePracticeAccommodation'));
+assert(!/(^|[^$])\$\('\[data-(?:share-portal|text-portal|portal-practice-drill)\]'\)\.forEach/.test(portalBind),'portal collection controls must use querySelectorAll helper');
+assert((portalBind.match(/\$\$\('\[data-(?:share-portal|text-portal|portal-practice-drill)\]'\)\.forEach/g)||[]).length===3,'all three portal collection controls must bind through $$');
