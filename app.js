@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-209';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-210';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1281,7 +1281,9 @@ window.HotBOpenPlayerPortal=()=>{
  if(button){button.disabled=true;button.textContent='OPENING…'}
  Promise.resolve(claimPlayerPortal(pin)).catch(error=>{
   portalBusy=false;portalData=null;
-  portalMessage='HotB could not complete the PIN connection. Please try again.';
+  const code=String(error?.code||'').replace('auth/','').replace('firestore/','')||'no-code';
+  const message=String(error?.message||error||'unknown').slice(0,120);
+  portalMessage=`PIN connection failed [P210-${code}]: ${message}`;
   render();
  });
 };
@@ -1352,7 +1354,9 @@ async function claimPlayerPortal(pin){
   // claim path erase it with a misleading PIN error.
   if(portalData?.id===requestedPortalToken){portalBusy=false;if(route==='portal')render();return}
   portalBusy=false;portalData=null;
-  portalMessage='That PIN did not work, or this device could not confirm the portal connection. Ask your coach to reset the portal if the problem continues.';
+  const failureCode=String(error?.code||'').replace('auth/','').replace('firestore/','')||'no-code';
+  const failureMessage=String(error?.message||error||'unknown').slice(0,120);
+  portalMessage=`PIN connection failed [P210-${failureCode}]: ${failureMessage}`;
   render();
  }
 }
