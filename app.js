@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-181';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-182';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -3839,8 +3839,12 @@ document.addEventListener('visibilitychange',()=>{
 window.addEventListener('pagehide',()=>{if(practicePlan)persistPracticeSession()});
 let practiceCompletionBusy=false;
 async function finishPracticeClock(automatic=false){
- if(practiceCompletionBusy||practiceClock.finished)return;
+ if(practiceCompletionBusy)return;
  if(!practicePlan)return;
+ // A previously finished local clock may still need its remote DONE transaction.
+ // Route that state through the retry path instead of silently returning and
+ // leaving activePractice visible on player phones.
+ if(practiceClock.finished){await endPracticeFromScreen();return}
  practiceCompletionBusy=true;
  try{
  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
@@ -3868,7 +3872,12 @@ async function finishPracticeClock(automatic=false){
  }
  if(shouldClearPortals){
   try{await clearActivePlayerPlans();clearPracticeSession();render()}
-  catch(error){alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap DONE! again.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in through Cloud Backup, then tap DONE! again.')}
+  catch(error){
+   // Keep the completed practice session intact. DONE is a resumable transaction:
+   // the next tap/reopen must still know exactly which published practice to clear.
+   persistPracticeSession();render();
+   alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap DONE! again.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in through Cloud Backup, then tap DONE! again.')
+  }
  }else clearPracticeSession();
  if(!automatic){
   await endingSpeech;
