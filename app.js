@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-183';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-184';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -2671,7 +2671,26 @@ async function activatePlayerPlans(){
    const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data():null,active=remote?.activePractice;
    return !!remote&&active?.id===practicePlan.portalDraftId&&active?.activatedAt===activationTimestamp&&active?.clock?.status==='not-started'&&!active?.clock?.startedAt;
   }));
-  if(verification.some(ok=>!ok))throw new Error('portal-activation-verification-failed');
+  if(verification.some(ok=>!ok)){
+   // Firebase batches are atomic, but a successful commit followed by an
+   // uncertain/stale read must not leave a published practice that the coach
+   // device refuses to remember. Roll back only this exact activation version.
+   const rollback=cloudStore.batch();let rollbackCount=0;
+   const rollbackReads=await Promise.all(verifyIds.map(async id=>({id,snapshot:await portalDoc(id).get()})));
+   for(const {id,snapshot} of rollbackReads){
+    const remote=snapshot.exists?snapshot.data():null,active=remote?.activePractice;
+    if(active?.id!==practicePlan.portalDraftId)continue;
+    if(active?.activatedAt!==activationTimestamp)throw new Error('portal-activation-rollback-conflict');
+    const isGuest=pendingPortalPractice.guestPlayerPortalIds.includes(id)||pendingPortalPractice.guestCoachPortalIds.includes(id);
+    const playerEntry=pendingPortalPractice.playerPortals.find(entry=>entry.portalId===id);
+    const data=isGuest?{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}:playerEntry?.isTeamJenkins?jenkinsPortalCleanupPayload(db.roster.find(item=>item.portalId===id),playerEntry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    rollback.update(portalDoc(id),data);rollbackCount++;
+   }
+   if(rollbackCount)await rollback.commit();
+   const rollbackVerified=await Promise.all(verifyIds.map(async id=>{const snapshot=await portalDoc(id).get();return !snapshot.exists||!snapshot.data()?.activePractice}));
+   if(rollbackVerified.some(ok=>!ok))throw new Error('portal-activation-rollback-verification-failed');
+   throw new Error('portal-activation-verification-failed');
+  }
   db.activePortalPractice=pendingPortalPractice;persistPracticeSession();save();
   render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
  }catch(error){if(button){button.disabled=false;button.textContent='Activate Player Plans'}alert('The player plans could not be activated. Confirm the portal security setup and internet connection.')}
