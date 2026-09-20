@@ -233,3 +233,6 @@ assert(worker.includes("fetch(request, {cache: 'no-store'})"));
 assert(app.includes("$$('[data-portal-practice-drill]').forEach"),'portal practice drill controls must bind as a collection');
 assert(app.includes("portalPracticeClockValues(portalData?.activePractice)"),'portal live clock must always evaluate the active practice explicitly');
 assert(!app.includes("$('[data-portal-practice-drill]').forEach"),'single-element portal drill selector must never be used with forEach');
+
+assert(app.includes("if(!practice)return {block:'Not Started',left:'—',transition:false,currentBlock:0,ended:false}"),'missing active practice must never be interpreted as finished');
+assert(app.includes("const active=!!portalData?.activePractice&&!portalPracticeClockValues(portalData.activePractice).ended;"),'dashboard must not advertise a locally-ended practice as active');
