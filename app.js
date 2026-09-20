@@ -1826,7 +1826,15 @@ function resetLiveCount(g){
 }
 function addManualOut(g){
  const completedInning=g.inning,inningEnded=recordOut(g);
- if(inningEnded){resetLiveCount(g);queueInningObservation(g,completedInning)}
+ if(inningEnded){
+  // A manual third out can be a baserunner out while the hitter is still at bat.
+  // Preserve every logged pitch in game history, but start that same hitter with a
+  // fresh PA/count next inning so the prior inning's pitches do not carry forward.
+  const hitter=currentHitter(g),hasOpenPitches=(g.pitches||[]).some(p=>p.pa===g.paNumber&&p.hitter===hitter?.name);
+  if(hasOpenPitches)g.paNumber+=1;
+  resetLiveCount(g);g.historyTab='LIVE';g.allView='DOTS';g.zoneScope='HITTER';g.zoneFilter='K';g.previewNext=false;g.firstPitchView=false;
+  queueInningObservation(g,completedInning);
+ }
  return inningEnded;
 }
 function subtractManualOut(g){
