@@ -242,3 +242,9 @@ assert(app.includes("portalAuthUser=user||null;\n   }\n   cloudAuthReady=true;")
 
 assert(app.includes("if(!cloudAuthReady){\n     await Promise.race(["),'player portal loader must wait for persisted auth restoration before anonymous fallback');
 assert((app.match(/if\(!cloudAuthReady\)\{\n     await Promise\.race\(\[/g)||[]).length>=2,'both player load and PIN claim must preserve restored auth before anonymous fallback');
+
+assert(app.includes("$$('[data-share-portal]').forEach"),'player Share must have an app.js binding independent of the repair helper');
+assert(app.includes("$$('[data-text-portal]').forEach"),'player Text must have an app.js binding independent of the repair helper');
+assert(app.includes("$('#shareCoachPortal')?.addEventListener"),'coach Share must have an app.js binding');
+assert(app.includes("$('#textCoachPortal')?.addEventListener"),'coach Text must have an app.js binding');
+assert(!app.includes("$('[data-portal-practice-drill]').forEach"),'portal practice drill binding must never call forEach on querySelector');
