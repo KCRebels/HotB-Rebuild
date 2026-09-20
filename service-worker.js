@@ -1,8 +1,8 @@
-const BUILD_VERSION = '2026.09.19.162';
+const BUILD_VERSION = '2026.09.19.163';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
-const CANONICAL_LAUNCH = './?source=pwa&launch=162';
+const CANONICAL_LAUNCH = './?source=pwa&launch=163';
 const LEGACY_SHELL = './hotb-fresh.html';
 const CORE_FILES = ['./index.html', './hotb-fresh.html', './styles.css', './evaluation-cleanup.css', './app.js'];
 const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/, /\/styles\.css(?:\?|$)/, /\/evaluation-cleanup\.css(?:\?|$)/];
