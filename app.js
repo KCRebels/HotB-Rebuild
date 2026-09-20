@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-155';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-156';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1154,7 +1154,7 @@ async function loadPlayerPortal(){
    // Guest/Jenkins links use the same Firestore ownership rules as permanent
    // player portals: claim an unowned link first, then authorize extra devices.
    try{await portalDoc(requestedPortalToken).update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
-   catch(firstError){if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+   catch(firstError){if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;if(firstError?.code!=='permission-denied')throw firstError;await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
   }catch(error){
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
    portalBusy=false;portalData=null;portalMessage='This practice link could not be connected. Ask the coach to send a fresh link.';
@@ -1283,6 +1283,10 @@ async function claimPlayerPortal(pin){
   try{
    await portalDoc(requestedPortalToken).update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
   }catch(firstError){
+   // Only fall back to authorizedUids when the first write was rejected because
+   // the portal is already owned. A wrong PIN or network failure must not trigger
+   // a second write that can mask the real failure mode.
+   if(firstError?.code!=='permission-denied')throw firstError;
    await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
   }
   if(portalToken!==requestedPortalToken)throw new Error('portal-claim-token-changed');
