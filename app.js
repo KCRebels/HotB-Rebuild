@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-204';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-205';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -1014,11 +1014,11 @@ async function initCloud(){
     // failure can pause a perfectly healthy live practice.
     await resumeRecoveredPracticeClock();
    }
-   // The initial portal screen starts busy before Firebase exists. That busy flag
-   // means "show the opening UI"; it must not suppress the FIRST Firestore read.
-   // A real in-flight loader is identified by portalLoadGeneration/listener state.
-   // Once Firebase auth restoration completes, always launch the first token read.
-   if(portalToken&&!portalUnsubscribe&&(portalLoadGeneration===0||!portalBusy))await loadPlayerPortal();
+   // Firebase's first auth callback is the startup barrier for a portal URL.
+   // Start exactly one authoritative portal read here. Do not await it inside the
+   // auth observer: Firestore/Auth can deliver additional state callbacks while
+   // the read is pending, and a second generation would cancel the first loader.
+   if(portalToken&&portalLoadGeneration===0&&!portalUnsubscribe)loadPlayerPortal();
    if(route==='home'||route==='portal')render();
   });
  }catch(error){
