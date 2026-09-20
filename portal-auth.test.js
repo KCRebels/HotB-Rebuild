@@ -239,3 +239,6 @@ assert(app.includes("const active=!!portalData?.activePractice&&!portalPracticeC
 
 assert(!app.includes("if(typeof cloudAuth.authStateReady==='function'){try{await cloudAuth.authStateReady()}catch(_){}}\n  cloudAuthReady=true"),'portal manager must not mark auth ready before first compat auth callback');
 assert(app.includes("portalAuthUser=user||null;\n   }\n   cloudAuthReady=true;"),'first Firebase auth callback must establish portal manager readiness');
+
+assert(app.includes("if(!cloudAuthReady){\n     await Promise.race(["),'player portal loader must wait for persisted auth restoration before anonymous fallback');
+assert((app.match(/if\(!cloudAuthReady\)\{\n     await Promise\.race\(\[/g)||[]).length>=2,'both player load and PIN claim must preserve restored auth before anonymous fallback');
