@@ -1088,15 +1088,21 @@ function waitForPortalAuthState(timeout=8000){
  if(!cloudAuth)return Promise.reject(new Error('portal-auth-unavailable'));
  if(cloudAuthReady)return Promise.resolve(cloudAuth.currentUser||null);
  return new Promise((resolve,reject)=>{
-  let settled=false,unsubscribe=()=>{};
+  let settled=false,unsubscribe=null,timer=null;
+  const cleanup=()=>{
+   if(timer){clearTimeout(timer);timer=null}
+   if(unsubscribe){try{unsubscribe()}catch(_){}unsubscribe=null}
+  };
   const finish=(error,user)=>{
-   if(settled)return;settled=true;clearTimeout(timer);
-   try{unsubscribe()}catch(_){}
+   if(settled)return;settled=true;cleanup();
    if(error)reject(error);else resolve(user||null);
   };
-  const timer=setTimeout(()=>finish(new Error('portal-auth-timeout'),null),timeout);
   try{unsubscribe=cloudAuth.onAuthStateChanged(user=>finish(null,user))}
-  catch(error){finish(error,null)}
+  catch(error){finish(error,null);return}
+  // Defensive against auth implementations that invoke the first callback
+  // synchronously while registering the listener.
+  if(settled){cleanup();return}
+  timer=setTimeout(()=>finish(new Error('portal-auth-timeout'),null),timeout);
  });
 }
 async function loadPlayerPortal(){
