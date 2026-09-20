@@ -803,7 +803,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260919-180';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20260919-181';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -3808,11 +3808,26 @@ async function beginPracticeClock(){
  ].filter(Boolean))];
  const startVerification=await Promise.all(startVerifyIds.map(async id=>{try{const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null;return remote?.id===practicePlan.portalDraftId&&remote?.clock?.status==='running'&&remote?.clock?.startedAt===expectedStartedAt}catch(error){return false}}));
  if(!startVerifyIds.length||startVerification.some(ok=>!ok)){
+  // Preserve the failed start timestamp long enough to repair only portals that
+  // actually accepted this exact start. Never issue a blanket rollback through
+  // syncPlayerPracticeClock(): that routine refuses mismatched targets and can
+  // leave the coach locally Not Started while some players keep counting down.
+  const failedStartedAt=expectedStartedAt,activeId=practicePlan.portalDraftId,resetClock={status:'not-started',startedAt:null,endedAt:null};
   practiceClock={running:false,finished:false,endAnnounced:false,startAt:null,lastBlock:0,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
-  const rollbackSynced=await syncPlayerPracticeClock();persistPracticeSession();render();
-  alert(rollbackSynced===true
-   ?'Practice did not start because HotB could not verify the same live start time on every portal. Every portal was reset to Not Started; check the connection and tap Start again.'
-   :'Practice did not start, and HotB could not confirm every portal was reset after the start verification failed. Do not start practice until the connection is restored and Start succeeds.');
+  const rollbackResults=await Promise.allSettled(startVerifyIds.map(async id=>{
+   const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null;
+   if(remote?.id!==activeId)throw new Error('start-rollback-practice-mismatch');
+   const remoteClock=remote.clock||{};
+   if(remoteClock.status==='not-started'&&!remoteClock.startedAt)return true;
+   if(remoteClock.status!=='running'||remoteClock.startedAt!==failedStartedAt)throw new Error('start-rollback-clock-conflict');
+   await portalDoc(id).update({'activePractice.clock':resetClock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   return true;
+  }));
+  const rollbackVerified=rollbackResults.every(result=>result.status==='fulfilled')&&await verifyPublishedPracticeClock();
+  persistPracticeSession();render();
+  alert(rollbackVerified
+   ?'Practice did not start because HotB could not verify the same live start time on every portal. Every portal was safely reset to Not Started; check the connection and tap Start again.'
+   :'Practice did not start, and HotB could not safely reset every portal after the start verification failed. Do not start practice until the connection is restored and Start succeeds.');
   return;
  }
  speakPracticeClock('Begin Block 1');render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);
