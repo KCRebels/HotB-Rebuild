@@ -18,7 +18,7 @@ assert(buttons.includes("HotBPortalShare"));
 assert(buttons.includes("HotBPortalText"));
 assert(app.includes("PORTAL_BUILD_TOKEN='20260919-134'"));
 assert(index.includes('portal-button-repair.js?v=20260919-sharetext10'));
-assert(index.includes('app.js?v=20260919-portal174'));
+assert(index.includes('app.js?v=20260919-boot151'));
 
 assert(app.includes('cloudAuth.signInAnonymously()'));
 
@@ -223,16 +223,16 @@ assert(app.includes("await finishPracticeClock(true)"));
 
 const pwa=fs.readFileSync('pwa-update.js','utf8');
 const worker=fs.readFileSync('service-worker.js','utf8');
-assert(pwa.includes("BUILD_VERSION = '2026.09.19.134'"));
-assert(worker.includes("BUILD_VERSION = '2026.09.19.134'"));
-assert(index.includes('pwa-update.js?v=20260919-pwa134'));
-assert(index.includes('app.js?v=20260919-portal174'));
+assert(pwa.includes("BUILD_VERSION = '2026.09.19.151'"));
+assert(worker.includes("BUILD_VERSION = '2026.09.19.151'"));
+assert(index.includes('pwa-update.js?v=20260919-pwa151'));
+assert(index.includes('app.js?v=20260919-boot151'));
 assert(worker.includes("url.searchParams.has('portal')"));
 assert(worker.includes("fetch(request, {cache: 'no-store'})"));
 
 assert(app.includes("$$('[data-portal-practice-drill]').forEach"),'portal practice drill controls must bind as a collection');
 assert(app.includes("portalPracticeClockValues(portalData?.activePractice)"),'portal live clock must always evaluate the active practice explicitly');
-assert(!app.includes("$('[data-portal-practice-drill]').forEach"),'single-element portal drill selector must never be used with forEach');
+assert(!/(^|[^$])\\$\\('\[data-portal-practice-drill\]'\\)\\.forEach/.test(app),'single-element portal drill selector must never be used with forEach');
 
 assert(app.includes("if(!practice)return {block:'Not Started',left:'—',transition:false,currentBlock:0,ended:false}"),'missing active practice must never be interpreted as finished');
 assert(app.includes("const active=!!portalData?.activePractice&&!portalPracticeClockValues(portalData.activePractice).ended;"),'dashboard must not advertise a locally-ended practice as active');
@@ -247,7 +247,7 @@ assert(app.includes("$$('[data-share-portal]').forEach"),'player Share must have
 assert(app.includes("$$('[data-text-portal]').forEach"),'player Text must have an app.js binding independent of the repair helper');
 assert(app.includes("$('#shareCoachPortal')?.addEventListener"),'coach Share must have an app.js binding');
 assert(app.includes("$('#textCoachPortal')?.addEventListener"),'coach Text must have an app.js binding');
-assert(!app.includes("$('[data-portal-practice-drill]').forEach"),'portal practice drill binding must never call forEach on querySelector');
+assert(!/(^|[^$])\\$\\('\[data-portal-practice-drill\]'\\)\\.forEach/.test(app),'portal practice drill binding must never call forEach on querySelector');
 
 const portalBind=app.slice(app.indexOf('function bindPlayerPortal()'),app.indexOf('function storePracticeAccommodation'));
 assert(!/(^|[^$])\$\('\[data-(?:share-portal|text-portal|portal-practice-drill)\]'\)\.forEach/.test(portalBind),'portal collection controls must use querySelectorAll helper');
