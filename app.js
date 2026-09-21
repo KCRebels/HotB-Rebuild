@@ -4624,7 +4624,40 @@ function bind(){
     resolution:state.resolution,
     activePracticeSession:state.activePracticeSession
    });
-   return signature===state.rollbackSignature&&state.resolution.signature===practiceResolutionSignature(state.resolution.practicePlayers,state.resolution.startTime,state.resolution.durationMinutes)&&state.resolution.decisionSignature===practiceResolutionDecisionSignature(state.resolution);
+   if(signature!==state.rollbackSignature)return false;
+   const r=state.resolution,setup=state.setupState,players=r.practicePlayers;
+   if(!Array.isArray(players)||!players.length||Number(r.durationMinutes)!==120||Number(setup.durationMinutes)!==120)return false;
+   if(r.signature!==practiceResolutionSignature(players,r.startTime,r.durationMinutes)||r.decisionSignature!==practiceResolutionDecisionSignature(r))return false;
+   // A rollback snapshot is useful only if its setup can recreate the exact failed
+   // practice that produced the verified Resolution. Prove that relationship here
+   // without consulting live/mutable UI state.
+   const names=players.map(player=>player.name),nameSet=new Set(names),selected=Array.isArray(setup.selectedNames)?setup.selectedNames:[];
+   if(names.length!==nameSet.size||selected.length!==names.length||new Set(selected).size!==selected.length||selected.some(name=>!nameSet.has(name)))return false;
+   if(String(setup.startTime||'')!==String(r.startTime||''))return false;
+   const accommodations=setup.accommodations;
+   if(!accommodations||typeof accommodations!=='object'||Array.isArray(accommodations))return false;
+   for(const player of players){
+    const accommodation=accommodations[player.name];
+    if(!accommodation||typeof accommodation!=='object')return false;
+    const arrival=String(accommodation.arrival||''),departure=String(accommodation.departure||''),limitations=String(accommodation.limitations||'');
+    const availability=practiceAvailability(r.startTime,120,arrival,departure);
+    if(Number(availability.availableFromBlock)!==Number(player.availableFromBlock)||Number(availability.availableUntilBlock)!==Number(player.availableUntilBlock))return false;
+    if(String(player.arrivalTime||'')!==String(availability.arrivalTime||'')||String(player.departureTime||'')!==String(availability.departureTime||''))return false;
+    if(String(player.limitations||'')!==limitations)return false;
+    if((accommodation.canPitch===true)!==(player.canPitch===true)||(accommodation.requiresPitchWarmup===true)!==(player.requiresPitchWarmup===true)||(accommodation.canCatch===true)!==(player.canCatch===true)||(accommodation.prePracticeComplete===true)!==(player.prePracticeComplete===true))return false;
+    if(accommodation.canPitch!==true&&accommodation.requiresPitchWarmup===true)return false;
+   }
+   // The saved setup draft, when present, must be the same sealed Resolution source.
+   const saved=state.activePracticeSession;
+   if(saved?.stage==='setup'){
+    if(!saved.setupState||String(saved.setupState.startTime||'')!==String(setup.startTime||'')||Number(saved.setupState.durationMinutes)!==120)return false;
+    const savedNames=Array.isArray(saved.setupState.selectedNames)?saved.setupState.selectedNames:[];
+    if(savedNames.length!==names.length||new Set(savedNames).size!==savedNames.length||savedNames.some(name=>!nameSet.has(name)))return false;
+    if(saved.resolution){
+     if(saved.resolution.signature!==r.signature||saved.resolution.decisionSignature!==r.decisionSignature)return false;
+    }
+   }
+   return true;
   };
   const restoreResolutionRollback=state=>{
    if(!resolutionRollbackStateIsValid(state)){console.error('HotB refused an invalid Practice Resolution rollback snapshot');practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;endResolutionApply();return false}
