@@ -3969,9 +3969,9 @@ function bind(){
   $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{
    const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}
    const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){alert('HotB could not find that pitcher in this practice.');return}
-   const accommodation=practiceAccommodation(roster[index]);accommodation.canPitch=false;accommodation.requiresPitchWarmup=false;practiceSetupState.accommodations[picked]=accommodation;practiceResolution=null;modal=null;render();setTimeout(()=>$('#generatePractice')?.click(),0);
+   const accommodation=practiceAccommodation(roster[index]);accommodation.canPitch=false;accommodation.requiresPitchWarmup=false;practiceSetupState.accommodations[picked]=accommodation;practiceSetupState.selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;practiceResolution=null;modal=null;persistPracticeDraft();render();setTimeout(()=>$('#generatePractice')?.click(),0);
   });
-  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{practiceSetupState.durationMinutes=132;practiceResolution=null;modal=null;render();setTimeout(()=>$('#generatePractice')?.click(),0)});
+  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{practiceSetupState.selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;practiceSetupState.durationMinutes=132;practiceResolution=null;modal=null;persistPracticeDraft();render();setTimeout(()=>$('#generatePractice')?.click(),0)});
   $('#returnPracticeAttendance')?.addEventListener('click',()=>{practiceResolution=null;modal=null;render();window.scrollTo(0,0)});
  }
  $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
