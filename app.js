@@ -5615,6 +5615,10 @@ function bindPractice(){
   // iOS Home Screen Safari can stall when HotB rewrites #app and rebinds every
   // practice control synchronously inside the same tap handler.
   practiceSection='builder';
+  // Automatic Resolution rebuilds are still uncommitted here. The owning
+  // transaction will audit persistence/recovery and then render the final builder
+  // (or roll back). Never expose this transient plan or its notice as interactive UI.
+  if(resolutionApplyBuild)return;
   if(practicePlan.buildNotices?.length){modal='practiceBuildNotice';render();return}
   setTimeout(()=>{
    try{
