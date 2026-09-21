@@ -20,6 +20,9 @@ mustInclude("if(duration!==120)return false;","persisted Resolution snapshots mu
 mustInclude("if(durationMinutes===132&&!practiceResolutionApplyDraftId)","Block 11 must require Resolution authorization");
 mustInclude("HotB ignored a stale Practice Resolution rebuild callback","workspace teardown must make the first deferred Resolution callback harmless");
 mustInclude("HotB Practice Resolution transaction changed during restart-recovery verification","Resolution ownership must be rechecked at the final commit boundary");
+mustInclude("HotB Practice Resolution restart recovery changed the resolved setup identity","Resolution persistence must retain exact resolved setup identity");
+mustInclude("HotB refused a Practice Resolution rollback that changed during cloning","rollback clones must preserve the sealed failed-practice snapshot");
+mustInclude("HotB Practice Resolution rollback failed post-save verification","rollback must remain valid after its recovery save");
 
 const selectorBug="attendees=$('[data-practice-player]:checked').map";
 assert.equal(source.includes(selectorBug),false,'Build Practice attendee collection must use querySelectorAll helper, never the single-element helper');
