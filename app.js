@@ -2278,7 +2278,7 @@ function practicePlayerModel(player,accommodation=null,startTime='18:00',duratio
  const model={name:player.name,isPitcher:isPitcherProfile(player),isCatcher:positions.includes('C'),isGuest:!!player.isPracticeGuest};
  if(!accommodation)return model;
  const arrival=accommodation.arrival||startTime,departure=accommodation.departure||practiceEndValue(startTime,durationMinutes),availability=practiceAvailability(startTime,durationMinutes,arrival,departure);
- return {...model,...availability,arrivalTime:arrival,departureTime:departure,prePracticeComplete:!!(player.isPracticeGuest||player.isTeamJenkins)&&!!accommodation.prePracticeComplete,canPitch:model.isPitcher&&accommodation.canPitch!==false,requiresPitchWarmup:model.isPitcher&&accommodation.canPitch!==false&&accommodation.requiresPitchWarmup!==false,canCatch:model.isCatcher&&accommodation.canCatch!==false};
+ return {...model,...availability,arrivalTime:arrival,departureTime:departure,limitations:String(accommodation.limitations||'').trim(),prePracticeComplete:!!(player.isPracticeGuest||player.isTeamJenkins)&&!!accommodation.prePracticeComplete,canPitch:model.isPitcher&&accommodation.canPitch!==false,requiresPitchWarmup:model.isPitcher&&accommodation.canPitch!==false&&accommodation.requiresPitchWarmup!==false,canCatch:model.isCatcher&&accommodation.canCatch!==false};
 }
 function practiceRole(player){
  const model=practicePlayerModel(player);
@@ -3930,7 +3930,7 @@ function practiceResolutionExtendedPlayers(players,startTime){
 function practiceResolutionSignature(players,startTime,durationMinutes){
  // Canonicalize attendee order so a harmless roster ordering change cannot invalidate
  // a verified resolution, while every scheduling-relevant field still must match.
- const canonicalPlayers=(players||[]).map(player=>({name:String(player.name||'').trim(),isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,isGuest:!!player.isGuest,availableFromBlock:Number(player.availableFromBlock),availableUntilBlock:Number(player.availableUntilBlock),arrivalTime:String(player.arrivalTime||''),departureTime:String(player.departureTime||''),canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true})).sort((a,b)=>a.name.localeCompare(b.name));
+ const canonicalPlayers=(players||[]).map(player=>({name:String(player.name||'').trim(),isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,isGuest:!!player.isGuest,availableFromBlock:Number(player.availableFromBlock),availableUntilBlock:Number(player.availableUntilBlock),arrivalTime:String(player.arrivalTime||''),departureTime:String(player.departureTime||''),limitations:String(player.limitations||''),canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true})).sort((a,b)=>a.name.localeCompare(b.name));
  return JSON.stringify({players:canonicalPlayers,startTime:String(startTime||''),durationMinutes:Number(durationMinutes)});
 }
 function currentPracticeResolutionSignature(){
@@ -3975,7 +3975,7 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
   typeof player.isPitcher==='boolean'&&typeof player.isCatcher==='boolean'&&typeof player.isGuest==='boolean'&&typeof player.prePracticeComplete==='boolean'&&
   Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&
   Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=blockCount&&Number(player.availableFromBlock)<Number(player.availableUntilBlock)&&
-  typeof player.arrivalTime==='string'&&typeof player.departureTime==='string'&&
+  typeof player.arrivalTime==='string'&&typeof player.departureTime==='string'&&typeof player.limitations==='string'&&player.limitations.trim()===player.limitations&&
   clockMinutes(player.arrivalTime)!==null&&clockMinutes(player.departureTime)!==null&&
   typeof player.canPitch==='boolean'&&typeof player.requiresPitchWarmup==='boolean'&&typeof player.canCatch==='boolean'&&
   (!player.isPitcher?!player.canPitch&&!player.requiresPitchWarmup:true)&&(!player.isCatcher?!player.canCatch:true)&&(!player.canPitch?!player.requiresPitchWarmup:true)
@@ -4216,7 +4216,7 @@ function bind(){
    for(const player of practicePlan.players||[]){
     const availability=expected.availability?.[player.name];if(!availability)return false;
     const from=Number(player.availableFromBlock),until=Number(player.availableUntilBlock);
-    if(from!==Number(availability.availableFromBlock)||until!==Number(availability.availableUntilBlock)||String(player.arrivalTime||'')!==String(availability.arrivalTime||'')||String(player.departureTime||'')!==String(availability.departureTime||''))return false;
+    if(from!==Number(availability.availableFromBlock)||until!==Number(availability.availableUntilBlock)||String(player.arrivalTime||'')!==String(availability.arrivalTime||'')||String(player.departureTime||'')!==String(availability.departureTime||'')||String(player.limitations||'')!==String(availability.limitations||''))return false;
     const rows=practicePlan.schedule?.[player.name]||[];
     for(let block=0;block<expectedBlocks;block++){
      const absent=block<from||block>=until;
@@ -4360,7 +4360,7 @@ function bind(){
    const basePlayers=resolutionSnapshot.practicePlayers,durationMinutes=withBlock11?132:Number(resolutionSnapshot.durationMinutes),verifiedStart=String(resolutionSnapshot.startTime||'');
    if((durationMinutes!==120&&durationMinutes!==132)||!verifiedStart)return null;
    const expectedPlayers=withBlock11?practiceResolutionExtendedPlayers(basePlayers,verifiedStart):basePlayers;
-   return {role,name,startTime:verifiedStart,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||''}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
+   return {role,name,startTime:verifiedStart,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||'',limitations:String(player.limitations||'')}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
   };
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
    // This is the mutation boundary for a verified coaching choice. Re-check the
@@ -4410,6 +4410,7 @@ function bind(){
      const accommodation=structuredClone(nextAccommodations[player.name]||practiceAccommodation(rosterPlayer));
      accommodation.arrival=player.arrivalTime||'';
      accommodation.departure=player.departureTime||'';
+     accommodation.limitations=String(player.limitations||'');
      accommodation.canPitch=player.canPitch===true;
      accommodation.requiresPitchWarmup=player.requiresPitchWarmup===true;
      accommodation.canCatch=player.canCatch===true;
