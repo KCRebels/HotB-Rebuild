@@ -4650,10 +4650,25 @@ function bindPractice(){
      return false;
     }
    };
-   const verifyResolutionBuild=(players,duration,label)=>{
+   const verifyResolutionBuild=(players,duration,label,expectedChange=null)=>{
     try{
      const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode:null});
-     return resolutionPlanIsSafe(plan,label);
+     if(!resolutionPlanIsSafe(plan,label))return false;
+     const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
+     if(expectedNames.length!==new Set(expectedNames).size||actualNames.length!==new Set(actualNames).size||expectedNames.length!==actualNames.length||expectedNames.some(name=>!actualNames.includes(name))){resolutionAuditFailures.push(label+' changed the verified attendee set.');return false}
+     if(String(plan.startTime||'')!==String(startTime)||Number(plan.durationMinutes)!==Number(duration)){resolutionAuditFailures.push(label+' changed verified practice timing.');return false}
+     for(const expectedPlayer of players){
+      const actualPlayer=(plan.players||[]).find(player=>player.name===expectedPlayer.name);
+      if(!actualPlayer||Number(actualPlayer.availableFromBlock)!==Number(expectedPlayer.availableFromBlock)||Number(actualPlayer.availableUntilBlock)!==Number(expectedPlayer.availableUntilBlock)){resolutionAuditFailures.push(label+' changed verified player availability.');return false}
+      if(actualPlayer.canPitch!==expectedPlayer.canPitch||actualPlayer.requiresPitchWarmup!==expectedPlayer.requiresPitchWarmup||actualPlayer.canCatch!==expectedPlayer.canCatch){resolutionAuditFailures.push(label+' changed a verified player role.');return false}
+     }
+     if(expectedChange?.role&&expectedChange?.name){
+      const changed=(plan.players||[]).find(player=>player.name===expectedChange.name);
+      if(!changed)return false;
+      if(expectedChange.role==='pitcher'&&(changed.canPitch!==false||changed.requiresPitchWarmup!==false))return false;
+      if(expectedChange.role==='catcher'&&changed.canCatch!==false)return false;
+     }
+     return true;
     }catch(error){
      console.error('HotB Practice Resolution build failed',label,error);
      resolutionAuditFailures.push(label+' could not complete the verification build.');
@@ -4663,13 +4678,13 @@ function bindPractice(){
    // Only offer a pitcher decision after proving that exact one-practice change builds cleanly.
    for(const pitcher of availablePitchers){
     const testPlayers=practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-    if(verifyResolutionBuild(testPlayers,durationMinutes,'Hitting Only: '+pitcher.name))solvingPitchers.push(pitcher.name)
+    if(verifyResolutionBuild(testPlayers,durationMinutes,'Hitting Only: '+pitcher.name,{role:'pitcher',name:pitcher.name}))solvingPitchers.push(pitcher.name)
    }
    let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
    const availableCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
    for(const catcher of availableCatchers){
     const testPlayers=practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-    if(verifyResolutionBuild(testPlayers,durationMinutes,'Not Catching: '+catcher.name))solvingCatchers.push(catcher.name)
+    if(verifyResolutionBuild(testPlayers,durationMinutes,'Not Catching: '+catcher.name,{role:'catcher',name:catcher.name}))solvingCatchers.push(catcher.name)
    }
    if(!identityBlocked&&Number(durationMinutes)===120){
     // Block 11 extends only players who were actually available through the end
@@ -4679,11 +4694,11 @@ function bindPractice(){
     if(!canExtend){
      for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
       const label='Hitting Only + Block 11: '+pitcher.name,testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-      if(verifyResolutionBuild(testPlayers,132,label))combinedPitchers.push(pitcher.name);
+      if(verifyResolutionBuild(testPlayers,132,label,{role:'pitcher',name:pitcher.name}))combinedPitchers.push(pitcher.name);
      }
      for(const catcher of extendedPlayers.filter(player=>player.canCatch)){
       const label='Not Catching + Block 11: '+catcher.name,testPlayers=extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-      if(verifyResolutionBuild(testPlayers,132,label))combinedCatchers.push(catcher.name);
+      if(verifyResolutionBuild(testPlayers,132,label,{role:'catcher',name:catcher.name}))combinedCatchers.push(catcher.name);
      }
     }
    }
