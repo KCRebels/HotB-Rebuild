@@ -4478,7 +4478,12 @@ function bind(){
       // scheduler/build failures that the click handler reports internally instead
       // of throwing back through HTMLElement.click().
       setTimeout(()=>{
-       if(!transactionIsCurrent()){console.warn('HotB ignored a stale Practice Resolution verification callback');return}
+       if(!transactionOwnsToken()){console.warn('HotB ignored a stale Practice Resolution verification callback');return}
+       if(!transactionIsCurrent()){
+        console.error('HotB Practice Resolution rebuild lost its draft authorization');
+        if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+        return;
+       }
        let rebuiltSafe=!!practicePlan&&!practicePlan.feasibilityErrors?.length&&practicePlan.portalDraftId===resolutionDraftId&&resolutionPostcondition(expected);
        if(practicePlan&&practicePlan.portalDraftId!==resolutionDraftId)console.error('HotB Practice Resolution rebuilt plan changed draft identity');
        if(rebuiltSafe){
@@ -5441,17 +5446,10 @@ function bindPractice(){
   // stale authorization before any plan can be committed.
   if(practiceResolutionApplyToken&&(!resolutionBuildDraftId||!practiceResolutionApplyOwnedDraftId||resolutionBuildDraftId!==practiceResolutionApplyOwnedDraftId)){
    console.error('HotB refused mismatched Practice Resolution transaction identities');
-   practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;
+   // Keep transaction ownership intact. The outer verifier owns the immutable
+   // rollback snapshot and must be allowed to restore it atomically.
+   practicePlan=null;
    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Plan'}
-   return;
-  }
-  // A live apply token without its one-use draft authorization is an impossible
-  // transaction state. Refuse to let an ordinary/random draft identity continue
-  // under that stale Resolution token.
-  if(practiceResolutionApplyToken&&!resolutionBuildDraftId){
-   console.error('HotB refused a Practice Resolution rebuild with missing draft authorization');
-   practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;
-   if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
    return;
   }
   practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();
