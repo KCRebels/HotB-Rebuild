@@ -3962,7 +3962,8 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===132?11:duration===120?10:0,names=players.map(player=>player?.name),verifiedNames=new Set(names);
  if(!blockCount||!players.length||names.length!==verifiedNames.size)return false;
  if(typeof r.canExtend!=='boolean')return false;
- if(!/^\\d{2}:\\d{2}$/.test(String(r.startTime||''))||String(r.startTime)!==String(practiceSetupState.startTime||''))return false;
+ const startMatch=String(r.startTime||'').match(/^(\\d{2}):(\\d{2})$/),startHour=Number(startMatch?.[1]),startMinute=Number(startMatch?.[2]);
+ if(!startMatch||startHour>23||startMinute>59||String(r.startTime)!==String(practiceSetupState.startTime||''))return false;
  if(!players.every(player=>
   player&&String(player.name||'').trim()===String(player.name||'')&&String(player.name||'').length>0&&
   Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&
@@ -3973,7 +3974,12 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  if(!arrays.every(key=>r[key]==null||Array.isArray(r[key])))return false;
  if(!['errors','notices','auditFailures'].every(key=>(r[key]||[]).every(value=>typeof value==='string'&&value.trim()===value&&value.length>0)))return false;
  const choiceKeys=['pitchers','catchers','combinedPitchers','combinedCatchers'];
- if(!choiceKeys.every(key=>{const values=r[key]||[];return values.length===new Set(values).size&&values.every(name=>verifiedNames.has(name))}))return false;
+ if(!choiceKeys.every(key=>{const values=r[key]||[];return values.length===new Set(values).size&&values.every(name=>typeof name==='string'&&name.trim()===name&&name.length>0&&verifiedNames.has(name))}))return false;
+ // A Resolution with no verified coaching path is informational only: it may
+ // explain the scheduler conflict and offer attendance changes, but it must not
+ // masquerade as an actionable decision snapshot.
+ const hasVerifiedChoice=(r.pitchers||[]).length||(r.catchers||[]).length||r.canExtend===true||(r.combinedPitchers||[]).length||(r.combinedCatchers||[]).length;
+ if(!hasVerifiedChoice&&!(r.errors||[]).length)return false;
  if((r.combinedPitchers||[]).some(name=>(r.pitchers||[]).includes(name))||(r.combinedCatchers||[]).some(name=>(r.catchers||[]).includes(name)))return false;
  if(r.canExtend===true&&duration!==120)return false;
  if(duration!==120&&((r.combinedPitchers||[]).length||(r.combinedCatchers||[]).length))return false;
