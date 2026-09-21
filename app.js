@@ -4128,7 +4128,16 @@ function bind(){
          rebuiltSafe=false;
         }
        }
-       if(rebuiltSafe)return;
+       if(rebuiltSafe){
+        // Commit the resolved setup only after the rebuilt schedule and full rules
+        // audit both pass. This gives restart recovery the same verified state the
+        // coach is seeing instead of leaving the pre-resolution draft behind.
+        practiceSetupState.selectedNames=(practicePlan.players||[]).map(player=>player.name);
+        practiceSetupState.startTime=practicePlan.startTime;
+        practiceSetupState.durationMinutes=practicePlan.durationMinutes;
+        persistPracticeSession();
+        return;
+       }
        console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
        if(rollbackState){
         practicePlan=null;
