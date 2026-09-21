@@ -136,4 +136,9 @@ mustInclude("const savedDraftBytes=JSON.stringify(db.activePracticeSession);","R
 mustInclude("restored.resolution&&JSON.stringify(restored)!==savedDraftBytes","Resolution resume must reject restore migration or defaults for unresolved decisions");
 mustInclude("HotB refused Practice Resolution resume because live rollback state could not be cloned.","Resolution resume must fail closed if pre-resume live state cannot be captured");
 mustInclude("HotB refused Practice Resolution resume because the restored decision could not be cloned.","Resolution resume must fail closed if the restored decision cannot be isolated");
+mustInclude("verified decision could not be cloned","Resolution draft persistence must fail closed if the verified decision cannot be isolated");
+mustInclude("recovery draft could not be created","Resolution draft persistence must fail closed if createDraft throws");
+mustInclude("Practice Resolution recovery draft restore failed.","Resolution draft preflight restore must fail closed on restore exceptions");
+mustInclude("Practice Resolution saved draft restore failed.","Resolution post-save restore must fail closed on restore exceptions");
+mustInclude("JSON.stringify(persisted)!==serializedDraft","Resolution post-save restore must preserve the complete setup-stage transaction byte-for-byte");
 console.log('practice-resolution static contract tests passed');
