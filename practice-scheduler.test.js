@@ -298,6 +298,34 @@ assert.ok(Object.values(elevenBlockPlan.schedule).every(entries=>entries.length=
 assert.deepEqual(scheduler.validate(elevenBlockPlan),[],'verified eleven-block practice must pass the complete rules audit');
 
 
+const disabledCatcherRoster=scenario(13,5,2).map((player,index)=>index===0&&player.isCatcher?{...player,canCatch:false}:player);
+const disabledCatcher=disabledCatcherRoster.find(player=>player.isCatcher&&player.canCatch===false);
+if(disabledCatcher){
+ const disabledCatcherPlan=scheduler.buildSchedule(disabledCatcherRoster,'18:00',120);
+ if(!disabledCatcherPlan.feasibilityErrors.length){
+  assert.ok(!(disabledCatcherPlan.schedule[disabledCatcher.name]||[]).some(entry=>entry.activity==='Catch Live'||entry.activity==='Catch Warm-Up'),'Not Catching player must remain in practice without catcher work');
+  assert.deepEqual(scheduler.validate(disabledCatcherPlan),[],'Not Catching practice must remain fully auditable');
+ }
+}
+const noWarmupRoster=scenario(13,5,2).map((player,index)=>index===0&&player.isPitcher?{...player,requiresPitchWarmup:false}:player);
+const noWarmupPitcher=noWarmupRoster.find(player=>player.isPitcher&&player.requiresPitchWarmup===false);
+if(noWarmupPitcher){
+ const noWarmupPlan=scheduler.buildSchedule(noWarmupRoster,'18:00',120);
+ if(!noWarmupPlan.feasibilityErrors.length){
+  assert.ok(!(noWarmupPlan.schedule[noWarmupPitcher.name]||[]).some(entry=>entry.activity==='Pitch Warm-Up'),'No Pitch Warm-Up player may still pitch live but must not receive pitching warm-up');
+  assert.deepEqual(scheduler.validate(noWarmupPlan),[],'No Pitch Warm-Up practice must remain fully auditable');
+ }
+}
+const hittingOnlyRoster=scenario(13,5,2).map((player,index)=>index===0&&player.isPitcher?{...player,canPitch:false,requiresPitchWarmup:false}:player);
+const hittingOnlyPitcher=hittingOnlyRoster.find(player=>player.isPitcher&&player.canPitch===false);
+if(hittingOnlyPitcher){
+ const hittingOnlyPlan=scheduler.buildSchedule(hittingOnlyRoster,'18:00',120);
+ if(!hittingOnlyPlan.feasibilityErrors.length){
+  assert.ok(!(hittingOnlyPlan.schedule[hittingOnlyPitcher.name]||[]).some(entry=>entry.activity==='Pitch Live'||entry.activity==='Pitch Warm-Up'),'Hitting Only player must stay in practice without pitching work');
+  assert.deepEqual(scheduler.validate(hittingOnlyPlan),[],'Hitting Only practice must remain fully auditable');
+ }
+}
+
 const resolutionRoleRoster=scenario(13,5,2);
 const resolutionBase=scheduler.buildSchedule(resolutionRoleRoster,'18:00',120);
 if(resolutionBase.feasibilityErrors.length){
