@@ -4870,7 +4870,15 @@ function bind(){
    const verifiedPlayer=verifiedPlayers[0];
    // Preserve the exact availability/limitation state that was audited. Only the
    // coach-approved role flag is allowed to change during resolution.
-   const accommodation=structuredClone(practiceSetupState.accommodations?.[name]||practiceAccommodation(target.roster[target.index]));
+   let accommodation;
+   try{accommodation=structuredClone(practiceSetupState.accommodations?.[name]||practiceAccommodation(target.roster[target.index]))}
+   catch(error){console.error('HotB Practice Resolution accommodation clone failed',error);return false}
+   // The accommodation being mutated must still recreate the exact verified source
+   // player. Otherwise a stale/malformed setup object could receive the approved
+   // role change even though that exact state was never candidate-verified.
+   const sourceModel=practicePlayerModel(target.roster[target.index],accommodation,practiceResolution.startTime,practiceResolution.durationMinutes);
+   const sourceFields=['name','isPitcher','isCatcher','isGuest','availableFromBlock','availableUntilBlock','arrivalTime','departureTime','limitations','prePracticeComplete','canPitch','requiresPitchWarmup','canCatch'];
+   if(sourceFields.some(field=>sourceModel[field]!==verifiedPlayer[field]))return false;
    if(role==='pitcher'){if(!verifiedPlayer.canPitch)return false;accommodation.canPitch=false;accommodation.requiresPitchWarmup=false}
    else if(role==='catcher'){if(!verifiedPlayer.canCatch)return false;accommodation.canCatch=false}
    practiceSetupState.accommodations[name]=accommodation;
