@@ -3941,6 +3941,9 @@ function practiceResolutionDecisionSignature(r){
  const cleanList=value=>(Array.isArray(value)?value:[]).map(item=>String(item||'').trim()).filter(Boolean).slice().sort();
  return JSON.stringify({
   signature:String(r.signature||''),
+  startTime:String(r.startTime||''),
+  durationMinutes:Number(r.durationMinutes),
+  rosterGuidance:String(r.rosterGuidance||''),
   pitchers:cleanList(r.pitchers),
   catchers:cleanList(r.catchers),
   canExtend:r.canExtend===true,
@@ -4010,15 +4013,24 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
   return Number(player.availableFromBlock)!==Number(availability.availableFromBlock)||Number(player.availableUntilBlock)!==Number(availability.availableUntilBlock);
  }))return false;
  const arrays=['pitchers','catchers','combinedPitchers','combinedCatchers','errors','notices','auditFailures'];
- if(!arrays.every(key=>r[key]==null||Array.isArray(r[key])))return false;
+ // Resolution snapshots are canonical persisted transactions, not loose UI data.
+ // Require every collection to exist as an array so older/partial snapshots cannot
+ // silently acquire default empty choices through the ||[] fallbacks below.
+ if(!arrays.every(key=>Array.isArray(r[key])))return false;
+ if(typeof r.rosterGuidance!=='string'||r.rosterGuidance.trim()!==r.rosterGuidance)return false;
  if(!['errors','notices','auditFailures'].every(key=>(r[key]||[]).every(value=>typeof value==='string'&&value.trim()===value&&value.length>0)))return false;
  const choiceKeys=['pitchers','catchers','combinedPitchers','combinedCatchers'];
  if(!choiceKeys.every(key=>{const values=r[key]||[];return values.length===new Set(values).size&&values.every(name=>typeof name==='string'&&name.trim()===name&&name.length>0&&verifiedNames.has(name))}))return false;
  // A Resolution with no verified coaching path is informational only: it may
  // explain the scheduler conflict and offer attendance changes, but it must not
  // masquerade as an actionable decision snapshot.
- const hasVerifiedChoice=(r.pitchers||[]).length||(r.catchers||[]).length||r.canExtend===true||(r.combinedPitchers||[]).length||(r.combinedCatchers||[]).length;
- if(!hasVerifiedChoice&&!(r.errors||[]).length)return false;
+ const hasVerifiedChoice=r.pitchers.length||r.catchers.length||r.canExtend===true||r.combinedPitchers.length||r.combinedCatchers.length;
+ if(!hasVerifiedChoice&&!r.errors.length)return false;
+ // If verified alternatives exist, the original failed build must still carry the
+ // scheduler conflict that justified opening Practice Resolution. Conversely, a
+ // no-choice Resolution must provide guidance back to setup instead of a dead end.
+ if(hasVerifiedChoice&&!r.errors.length)return false;
+ if(!hasVerifiedChoice&&!r.rosterGuidance)return false;
  if((r.combinedPitchers||[]).some(name=>(r.pitchers||[]).includes(name))||(r.combinedCatchers||[]).some(name=>(r.catchers||[]).includes(name)))return false;
  if(r.canExtend===true&&duration!==120)return false;
  if(duration!==120&&((r.combinedPitchers||[]).length||(r.combinedCatchers||[]).length))return false;
