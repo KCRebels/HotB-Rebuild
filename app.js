@@ -3911,10 +3911,13 @@ function practiceBuildNoticeModal(){
  return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE BUILD NOTICE</div><h2>HotB built the practice</h2></div></div><p class="practice-resolution-intro">No coaching decision is required. HotB used the following allowed fallback${notices.length===1?'':'s'} to keep every hard practice rule intact.</p><section class="practice-resolution-notices"><ul>${notices.map(note=>`<li>${esc(note)}</li>`).join('')}</ul></section><button class="btn red block" id="acceptPracticeBuildNotice">Continue to Practice Plan</button></div></div>`;
 }
 function practiceResolutionExtendedPlayers(players,startTime){
- const extendedEnd=practiceEndValue(startTime,132);
+ const extendedEnd=practiceEndValue(startTime,132),originalEnd=practiceEndValue(startTime,120);
  return (players||[]).map(player=>{
-  const savedDeparture=practiceSetupState.accommodations?.[player.name]?.departure||'';
-  const stayedThroughOriginalEnd=player.availableUntilBlock===10&&!savedDeparture;
+  // Extend only an attendee whose verified departure was the original practice end.
+  // Do not consult mutable setup state here: candidate verification, restart recovery,
+  // and final postcondition proof must all derive Block 11 from the same snapshot.
+  const verifiedDeparture=player.departureTime||originalEnd;
+  const stayedThroughOriginalEnd=player.availableUntilBlock===10&&verifiedDeparture===originalEnd;
   return {...player,availableUntilBlock:stayedThroughOriginalEnd?11:player.availableUntilBlock,departureTime:stayedThroughOriginalEnd?extendedEnd:player.departureTime};
  });
 }
