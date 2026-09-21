@@ -3922,8 +3922,11 @@ function practiceResolutionSignature(players,startTime,durationMinutes){
 function currentPracticeResolutionSignature(){
  if(!practiceResolution)return'';
  const roster=practiceAttendanceRoster(),expectedNames=practiceResolution.practicePlayers?.map(player=>player.name)||[],byName=new Map(roster.map(player=>[player.name,player]));
- // Preserve the exact verified attendee order and fail closed if any verified player
- // disappears. Filtering the live roster could otherwise hide a removed guest/player.
+ // The verified attendee set is part of the resolution. Fail closed if someone is
+ // removed OR another player/guest is added before the coaching choice is applied.
+ const selectedNames=Array.isArray(practiceSetupState.selectedNames)?practiceSetupState.selectedNames:[];
+ const expectedSet=new Set(expectedNames),selectedSet=new Set(selectedNames);
+ if(expectedSet.size!==selectedSet.size||expectedNames.some(name=>!selectedSet.has(name)))return'__practice_attendance_changed__';
  if(expectedNames.some(name=>!byName.has(name)))return'__practice_roster_changed__';
  const players=expectedNames.map(name=>{const player=byName.get(name);return practicePlayerModel(player,practiceSetupState.accommodations?.[name]||practiceAccommodation(player),practiceResolution.startTime,practiceResolution.durationMinutes)});
  return practiceResolutionSignature(players,practiceResolution.startTime,practiceResolution.durationMinutes);
