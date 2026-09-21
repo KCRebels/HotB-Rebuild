@@ -184,4 +184,9 @@ mustInclude("could not reconstruct the ordinary setup after rollback failure.","
 mustInclude("db.activePracticeSession=null;","terminal rollback failure must clear restart authority rather than leave a partial Resolution session");
 mustInclude("could not clear failed Practice Resolution recovery authority.","terminal rollback cleanup storage failure must be contained");
 mustInclude("could not clear invalid Practice Resolution rollback recovery.","post-save rollback verification cleanup storage failure must be contained");
+mustInclude("final committed plan render failed","Resolution must retain transaction ownership if the committed builder cannot render");
+mustInclude("transaction changed during final committed render","Resolution must recheck ownership after final committed render");
+const finalRenderIndex=source.indexOf("try{render();window.scrollTo(0,0)}");
+const finalTokenReleaseIndex=source.indexOf("practiceResolutionApplyToken=null;",finalRenderIndex);
+assert.ok(finalRenderIndex>=0&&finalTokenReleaseIndex>finalRenderIndex,"Resolution must not consume its apply token before the committed builder renders");
 console.log('practice-resolution static contract tests passed');
