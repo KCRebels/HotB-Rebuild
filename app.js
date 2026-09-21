@@ -4878,7 +4878,7 @@ function bind(){
    practiceResolution=restoredResolution;
    modal='practiceResolution';
    db.activePracticeSession=restoredSession;
-   try{endResolutionApply();save()}catch(error){releaseFailedRollback('HotB could not save the restored Practice Resolution rollback state');render();return false}
+   try{save()}catch(error){releaseFailedRollback('HotB could not save the restored Practice Resolution rollback state');render();return false}
    // save() must not mutate the rollback object or its persisted recovery record.
    let restoredRollbackSession=null;
    try{restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
@@ -4897,7 +4897,12 @@ function bind(){
     }
     endResolutionApply();render();return false
    }
-   render();return true;
+   // Keep the apply lock through post-save restart verification and rendering.
+   // Releasing it earlier lets another Resolution action begin against state that
+   // has not yet completed rollback recovery.
+   try{render()}
+   catch(error){releaseFailedRollback('HotB could not render the restored Practice Resolution rollback state');return false}
+   endResolutionApply();return true;
   };
   const expectedResolutionState=(role=null,name=null,withBlock11=false,resolutionSnapshot=practiceResolution)=>{
    // Expected postconditions must come from the immutable pre-mutation snapshot.
