@@ -36,6 +36,9 @@ mustInclude("practicePlan.liveHitterRepeats.length!==new Set(practicePlan.liveHi
 mustInclude("HotB refused a Practice Resolution rollback that changed during cloning","rollback clones must preserve the sealed failed-practice snapshot");
 mustInclude("const releaseFailedRollback=message=>","rollback corruption must have one fail-closed transaction release path");
 mustInclude("HotB Practice Resolution rollback clone failed; attempting sealed JSON recovery","rollback clone exceptions must retain deterministic sealed recovery");
+mustInclude("rollback clone equality proof failed.","rollback clone equality serialization failure must be contained");
+mustInclude("rollback whose cloned recovery state could not be sealed","unsealable rollback clones must fail closed");
+mustInclude("could not render after failed Practice Resolution rollback save.","rollback save failure rendering must not escape the recovery boundary");
 mustInclude("if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;","failed rollback recovery must not leave emergency Block 11 duration live");
 mustInclude("HotB Practice Resolution rollback failed post-save verification","rollback must remain valid after its recovery save");
 mustInclude("if(!saved||saved.stage!=='setup'||saved.plan)return false;","Resolution apply must require the exact restart-safe setup draft before mutation");
@@ -137,7 +140,7 @@ mustInclude("HotB could not restore the sealed Practice Resolution Return-to-Set
 mustInclude("HotB could not clear failed Return-to-Setup recovery authority.","failed Return-to-Setup rollback must clear unsafe restart authority fail-closed");
 mustNotInclude("restoreReturnState();save();render();return","Return to Setup must not perform an unverified second save after rollback");
 mustInclude("try{restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}","Resolution rollback must prove the restored failed draft through the actual startup restore path after save with exception containment");
-mustInclude("JSON.stringify(restoredRollbackSession)!==JSON.stringify(restoredSession)","Resolution rollback must reject post-save restart migration or drift");
+mustInclude("rollbackPostSaveExact=!!restoredRollbackSession&&JSON.stringify(db.activePracticeSession)===JSON.stringify(restoredSession)&&JSON.stringify(restoredRollbackSession)===JSON.stringify(restoredSession);","Resolution rollback must reject post-save restart migration or drift inside a contained equality proof");
 mustInclude("if(db.activePracticeSession?.resolution||db.activePracticeSession?.plan){","failed exact Resolution rollback must detect unsafe restart authority");
 mustInclude("try{save()}catch(error){console.error('HotB could not clear invalid Practice Resolution rollback recovery.',error)}","failed exact Resolution rollback cleanup must contain storage failure");
 mustInclude("try{savedDraftBytes=JSON.stringify(db.activePracticeSession);restored=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}","Resolution resume must seal and restore the exact saved setup-stage transaction in one contained recovery boundary");
@@ -159,7 +162,7 @@ mustInclude("const rebuiltPlayer=practicePlayerModel(sourceRoster[0],accommodati
 mustInclude("sourceFields.some(field=>rebuiltPlayer[field]!==player[field])","rollback validation must compare the complete reconstructed source player to verified Resolution state");
 mustInclude("saved recovery record could not be restored.","rollback validation must fail closed if production session restore throws");
 mustInclude("could not save the restored Practice Resolution rollback state","rollback recovery must fail closed if persistence throws");
-mustInclude("rollback post-save restore failed.","rollback post-save restart proof must fail closed if restore throws");
+mustInclude("rollback post-save restore or equality proof failed.","rollback post-save restart proof must contain restore and exact-equality serialization failures");
 mustNotInclude("try{endResolutionApply();save()}","Resolution rollback must not release the apply lock before persistence and restart verification");
 mustInclude("could not render the restored Practice Resolution rollback state","Resolution rollback must retain its apply lock through final recovered-state render");
 mustInclude("Practice Resolution committed session restore failed","resolved commit must fail closed if restart restore throws");
