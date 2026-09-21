@@ -5165,11 +5165,11 @@ function persistPracticeDraft(){
  // and can still be restored as the same setup/Resolution bytes.
  let persistedDraftBytes='';
  try{persistedDraftBytes=JSON.stringify(db.activePracticeSession)}
- catch(error){console.error('HotB Practice Resolution saved setup draft could not be sealed.',error);return false}
+ catch(error){return restorePreviousDraftAfterFailure('HotB Practice Resolution saved setup draft could not be sealed.',error)}
  if(persistedDraftBytes!==serializedDraft)return restorePreviousDraftAfterFailure('HotB Practice Resolution setup draft changed during save.');
  if(resolutionToPersist){
   let persisted;
-  try{persisted=window.HotBPracticeSession.restore?.(db.activePracticeSession)}catch(error){console.error('HotB Practice Resolution saved draft restore failed.',error);return false}
+  try{persisted=window.HotBPracticeSession.restore?.(db.activePracticeSession)}catch(error){return restorePreviousDraftAfterFailure('HotB Practice Resolution saved draft restore failed.',error)}
   if(!persisted||persisted.stage!=='setup'||persisted.plan||JSON.stringify(persisted)!==serializedDraft||JSON.stringify(persisted.setupState)!==JSON.stringify(practiceSetupState)||JSON.stringify(persisted.resolution)!==JSON.stringify(resolutionToPersist))return restorePreviousDraftAfterFailure('HotB Practice Resolution setup draft failed post-save recovery verification.');
  }
  return true;
