@@ -1129,3 +1129,8 @@ html,body,button,a,[role="button"]{touch-action:manipulation}
 
 
 .outs-stepper{position:relative}.outs-force-end{position:absolute;left:50%;bottom:-18px;transform:translateX(-50%);border:0;border-radius:7px;padding:3px 7px;font-size:10px;font-weight:800;white-space:nowrap;background:#222;color:#fff}
+
+/* During the 60-second ROTATE, flash only the TIME LEFT tile red so the player's schedule and NEXT assignment remain visible. */
+.portal-live-clock.is-rotate>div:nth-child(2){transition:background-color .08s linear,color .08s linear,border-color .08s linear}
+.portal-live-clock.is-rotate>div:nth-child(2).rotate-flash{background:#c71920;color:#fff;border-color:#c71920}
+.portal-live-clock.is-rotate>div:nth-child(2).rotate-flash span{color:#fff}
