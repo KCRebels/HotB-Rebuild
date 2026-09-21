@@ -147,23 +147,23 @@ const resolution=resolutionCandidates(resolutionBase);
 assert.ok(resolution.baseErrors.length,'resolution audit needs an actually infeasible starting practice');
 for(const name of resolution.pitchers){
  const changed=resolutionBase.map(player=>player.name===name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
- assert.deepEqual(scheduler.buildSchedule(changed,'18:00',120).feasibilityErrors,[],`displayed Hitting Only choice ${name} must be independently proven`);
+ {const plan=scheduler.buildSchedule(changed,'18:00',120);assert.deepEqual(plan.feasibilityErrors,[],`displayed Hitting Only choice ${name} must be independently proven`);assert.deepEqual(scheduler.validate(plan),[],`displayed Hitting Only choice ${name} must pass the full validator`);}
 }
 for(const name of resolution.catchers){
  const changed=resolutionBase.map(player=>player.name===name?{...player,canCatch:false}:player);
- assert.deepEqual(scheduler.buildSchedule(changed,'18:00',120).feasibilityErrors,[],`displayed Not Catching choice ${name} must be independently proven`);
+ {const plan=scheduler.buildSchedule(changed,'18:00',120);assert.deepEqual(plan.feasibilityErrors,[],`displayed Not Catching choice ${name} must be independently proven`);assert.deepEqual(scheduler.validate(plan),[],`displayed Not Catching choice ${name} must pass the full validator`);}
 }
 if(resolution.canExtend){
  const extended=resolutionBase.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock}));
- assert.deepEqual(scheduler.buildSchedule(extended,'18:00',132).feasibilityErrors,[],'displayed Block 11 choice must be independently proven');
+ {const plan=scheduler.buildSchedule(extended,'18:00',132);assert.deepEqual(plan.feasibilityErrors,[],'displayed Block 11 choice must be independently proven');assert.deepEqual(scheduler.validate(plan),[],'displayed Block 11 choice must pass the full validator');}
 }
 for(const name of resolution.combinedPitchers){
  const changed=resolutionBase.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock})).map(player=>player.name===name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
- assert.deepEqual(scheduler.buildSchedule(changed,'18:00',132).feasibilityErrors,[],`displayed Hitting Only + Block 11 choice ${name} must be independently proven`);
+ {const plan=scheduler.buildSchedule(changed,'18:00',132);assert.deepEqual(plan.feasibilityErrors,[],`displayed Hitting Only + Block 11 choice ${name} must be independently proven`);assert.deepEqual(scheduler.validate(plan),[],`displayed Hitting Only + Block 11 choice ${name} must pass the full validator`);}
 }
 for(const name of resolution.combinedCatchers){
  const changed=resolutionBase.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock})).map(player=>player.name===name?{...player,canCatch:false}:player);
- assert.deepEqual(scheduler.buildSchedule(changed,'18:00',132).feasibilityErrors,[],`displayed Not Catching + Block 11 choice ${name} must be independently proven`);
+ {const plan=scheduler.buildSchedule(changed,'18:00',132);assert.deepEqual(plan.feasibilityErrors,[],`displayed Not Catching + Block 11 choice ${name} must be independently proven`);assert.deepEqual(scheduler.validate(plan),[],`displayed Not Catching + Block 11 choice ${name} must pass the full validator`);}
 }
 
 const catcherDisabled=scenario(9,4,2);
