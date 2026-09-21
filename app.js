@@ -4070,11 +4070,16 @@ function bind(){
     const availability=expected.availability?.[player.name];if(!availability)return false;
     if(Number(player.availableFromBlock)!==Number(availability.availableFromBlock)||Number(player.availableUntilBlock)!==Number(availability.availableUntilBlock))return false;
    }
-   if(expected.role&&expected.name){
-    const player=(practicePlan.players||[]).find(item=>item.name===expected.name);
-    if(!player)return false;
-    if(expected.role==='pitcher'&&(player.canPitch!==false||player.requiresPitchWarmup!==false))return false;
-    if(expected.role==='catcher'&&player.canCatch!==false)return false;
+   for(const player of practicePlan.players||[]){
+    const baseline=expected.baselineRoles?.[player.name];if(!baseline)return false;
+    const approvedTarget=expected.role&&player.name===expected.name;
+    if(!approvedTarget){
+     if(player.canPitch!==baseline.canPitch||player.requiresPitchWarmup!==baseline.requiresPitchWarmup||player.canCatch!==baseline.canCatch)return false;
+    }else if(expected.role==='pitcher'){
+     if(player.canPitch!==false||player.requiresPitchWarmup!==false||player.canCatch!==baseline.canCatch)return false;
+    }else if(expected.role==='catcher'){
+     if(player.canCatch!==false||player.canPitch!==baseline.canPitch||player.requiresPitchWarmup!==baseline.requiresPitchWarmup)return false;
+    }
    }
    return true;
   };
@@ -4139,7 +4144,7 @@ function bind(){
   const expectedResolutionState=(role=null,name=null,withBlock11=false)=>{
    const basePlayers=practiceResolution?.practicePlayers||[],durationMinutes=withBlock11?132:Number(practiceResolution?.durationMinutes||practiceSetupState.durationMinutes);
    const expectedPlayers=withBlock11?practiceResolutionExtendedPlayers(basePlayers,practiceResolution?.startTime||practiceSetupState.startTime):basePlayers;
-   return {role,name,startTime:practiceResolution?.startTime||practiceSetupState.startTime,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock}]))};
+   return {role,name,startTime:practiceResolution?.startTime||practiceSetupState.startTime,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:!!player.canPitch,requiresPitchWarmup:!!player.requiresPitchWarmup,canCatch:!!player.canCatch}]))};
   };
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
    const target=findResolutionRosterIndex(name,role);if(!target)return false;
