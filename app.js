@@ -3982,27 +3982,10 @@ function practiceResolutionModal(){
  const r=practiceResolution;if(!r)return'';
  const currentResolutionSignature=currentPracticeResolutionSignature();
  if(!r.signature||r.signature!==currentResolutionSignature)return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>Practice changed</h2></div></div><p>HotB will not apply a resolution unless its verified safety signature exactly matches the current practice information.</p><button class="btn block" id="returnPracticeAttendance">Return to Practice Setup</button></div></div>`;
- const verifiedNames=new Set((r.practicePlayers||[]).map(player=>player.name));
- const verifiedDuration=Number(r.durationMinutes),verifiedBlockCount=verifiedDuration===132?11:verifiedDuration===120?10:0;
- const verifiedPlayerDataValid=Array.isArray(r.practicePlayers)&&verifiedBlockCount>0&&r.practicePlayers.every(player=>
-  player&&String(player.name||'').trim()===String(player.name||'')&&String(player.name||'').length>0&&
-  Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&
-  Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=verifiedBlockCount&&Number(player.availableFromBlock)<Number(player.availableUntilBlock)&&
-  typeof player.canPitch==='boolean'&&typeof player.requiresPitchWarmup==='boolean'&&typeof player.canCatch==='boolean'&&
-  (!player.canPitch?!player.requiresPitchWarmup:true)
- );
- const choiceArraysValid=['pitchers','catchers','combinedPitchers','combinedCatchers','errors','notices','auditFailures'].every(key=>r[key]==null||Array.isArray(r[key]));
- const uniqueChoiceArrays=['pitchers','catchers','combinedPitchers','combinedCatchers'].every(key=>{const values=r[key]||[];return values.length===new Set(values).size});
- const noRedundantCombined=(r.combinedPitchers||[]).every(name=>!(r.pitchers||[]).includes(name))&&(r.combinedCatchers||[]).every(name=>!(r.catchers||[]).includes(name));
- const choiceDataValid=verifiedPlayerDataValid&&choiceArraysValid&&uniqueChoiceArrays&&noRedundantCombined&&r.practicePlayers.length===verifiedNames.size&&verifiedNames.size>0&&
-  (verifiedDuration===120||verifiedDuration===132)&&(!r.canExtend||Number(r.durationMinutes)===120)&&
-  (!(r.combinedPitchers||[]).length&&!(r.combinedCatchers||[]).length||Number(r.durationMinutes)===120)&&
-  [...(r.pitchers||[]),...(r.catchers||[]),...(r.combinedPitchers||[]),...(r.combinedCatchers||[])].every(name=>verifiedNames.has(name))&&
-  (r.pitchers||[]).every(name=>r.practicePlayers.find(player=>player.name===name)?.canPitch)&&
-  (r.catchers||[]).every(name=>r.practicePlayers.find(player=>player.name===name)?.canCatch)&&
-  (r.combinedPitchers||[]).every(name=>r.practicePlayers.find(player=>player.name===name)?.canPitch)&&
-  (r.combinedCatchers||[]).every(name=>r.practicePlayers.find(player=>player.name===name)?.canCatch);
- if(!choiceDataValid)return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>Verification data changed</h2></div></div><p>HotB will not display or apply coaching choices from incomplete or inconsistent Practice Resolution data.</p><button class="btn block" id="returnPracticeAttendance">Return to Practice Setup</button></div></div>`;
+ // One validator owns the full verified snapshot contract. Keeping modal display
+ // validation on the same path as apply/restore prevents the two safety gates from
+ // drifting apart as Practice Resolution evolves.
+ if(!practiceResolutionSnapshotIsCurrentAndValid(r))return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>Verification data changed</h2></div></div><p>HotB will not display or apply coaching choices from incomplete or inconsistent Practice Resolution data.</p><button class="btn block" id="returnPracticeAttendance">Return to Practice Setup</button></div></div>`;
  const pitchers=(r.pitchers||[]).map(name=>`<label class="practice-resolution-pitcher"><input type="radio" name="practiceResolutionPitcher" value="${esc(name)}"><span><b>${esc(practiceFirstName(name))}</b><small>Hitting Only · this practice only</small></span></label>`).join('');
  const combinedPitchers=(r.combinedPitchers||[]).map(name=>`<label class="practice-resolution-pitcher"><input type="radio" name="practiceResolutionCombinedPitcher" value="${esc(name)}"><span><b>${esc(practiceFirstName(name))}</b><small>Hitting Only + Emergency Block 11</small></span></label>`).join('');
  const catchers=(r.catchers||[]).map(name=>`<label class="practice-resolution-pitcher"><input type="radio" name="practiceResolutionCatcher" value="${esc(name)}"><span><b>${esc(practiceFirstName(name))}</b><small>Not Catching · this practice only</small></span></label>`).join('');
