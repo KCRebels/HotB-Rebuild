@@ -23,6 +23,9 @@ mustInclude("HotB Practice Resolution transaction changed during restart-recover
 mustInclude("HotB Practice Resolution restart recovery changed the resolved setup identity","Resolution persistence must retain exact resolved setup identity");
 mustInclude("HotB refused a Practice Resolution rollback that changed during cloning","rollback clones must preserve the sealed failed-practice snapshot");
 mustInclude("HotB Practice Resolution rollback failed post-save verification","rollback must remain valid after its recovery save");
+mustInclude("HotB ignored Return to Practice Setup while Practice Resolution apply is verifying.","Return to Setup must not race an in-flight Resolution apply");
+mustInclude("HotB refused Return to Practice Setup because the verified failed practice could not be reconstructed.","Return to Setup must reconstruct the exact verified failed practice before discarding its seal");
+mustInclude("HotB could not persist Return to Practice Setup after Practice Resolution.","Return to Setup must prove its ordinary recovery draft was persisted");
 
 const selectorBug="attendees=$('[data-practice-player]:checked').map";
 assert.equal(source.includes(selectorBug),false,'Build Practice attendee collection must use querySelectorAll helper, never the single-element helper');
