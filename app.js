@@ -3968,15 +3968,29 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  if(typeof r.canExtend!=='boolean')return false;
  const startMatch=String(r.startTime||'').match(/^(\\d{2}):(\\d{2})$/),startHour=Number(startMatch?.[1]),startMinute=Number(startMatch?.[2]);
  if(!startMatch||startHour>23||startMinute>59||String(r.startTime)!==String(practiceSetupState.startTime||''))return false;
+ const clockMinutes=value=>{const match=String(value||'').match(/^(\\d{2}):(\\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour<24&&minute<60?hour*60+minute:null};
+ const resolutionStart=clockMinutes(r.startTime),resolutionEnd=resolutionStart===null?null:(resolutionStart+duration)%(24*60);
  if(!players.every(player=>
   player&&String(player.name||'').trim()===String(player.name||'')&&String(player.name||'').length>0&&
   typeof player.isPitcher==='boolean'&&typeof player.isCatcher==='boolean'&&typeof player.isGuest==='boolean'&&typeof player.prePracticeComplete==='boolean'&&
   Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&
   Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=blockCount&&Number(player.availableFromBlock)<Number(player.availableUntilBlock)&&
   typeof player.arrivalTime==='string'&&typeof player.departureTime==='string'&&
+  clockMinutes(player.arrivalTime)!==null&&clockMinutes(player.departureTime)!==null&&
   typeof player.canPitch==='boolean'&&typeof player.requiresPitchWarmup==='boolean'&&typeof player.canCatch==='boolean'&&
   (!player.isPitcher?!player.canPitch&&!player.requiresPitchWarmup:true)&&(!player.isCatcher?!player.canCatch:true)&&(!player.canPitch?!player.requiresPitchWarmup:true)
  ))return false;
+ // Availability blocks and displayed arrival/departure clocks must describe the
+ // same verified interval. This catches corrupted/restored snapshots where the
+ // numeric blocks still look legal but the human-facing times no longer match.
+ if(players.some(player=>{
+  const arrival=clockMinutes(player.arrivalTime),departure=clockMinutes(player.departureTime);
+  if(arrival===null||departure===null||resolutionStart===null||resolutionEnd===null)return true;
+  const relativeArrival=(arrival-resolutionStart+1440)%1440,relativeDeparture=(departure-resolutionStart+1440)%1440;
+  const expectedFrom=Math.min(blockCount,Math.max(0,Math.floor(relativeArrival/12)));
+  const expectedUntil=departure===resolutionEnd?blockCount:Math.min(blockCount,Math.max(0,Math.ceil(relativeDeparture/12)));
+  return Number(player.availableFromBlock)!==expectedFrom||Number(player.availableUntilBlock)!==expectedUntil;
+ }))return false;
  const arrays=['pitchers','catchers','combinedPitchers','combinedCatchers','errors','notices','auditFailures'];
  if(!arrays.every(key=>r[key]==null||Array.isArray(r[key])))return false;
  if(!['errors','notices','auditFailures'].every(key=>(r[key]||[]).every(value=>typeof value==='string'&&value.trim()===value&&value.length>0)))return false;
