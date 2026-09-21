@@ -1525,7 +1525,11 @@ async function backupToCloud(automatic=false){
  try{
   const backupDb=sanitizedBackupDb();
   const json=JSON.stringify(backupDb),chunks=[];for(let i=0;i<json.length;i+=180000)chunks.push(json.slice(i,i+180000));
-  const root=cloudRoot(),dailyRef=root.collection('snapshots').doc(dailySnapshotId()),[old,daily]=await Promise.all([root.collection('chunks').get(),dailyRef.get()]),batch=cloudStore.batch();old.docs.forEach(doc=>batch.delete(doc.ref));
+  const root=cloudRoot(),dailyRef=root.collection('snapshots').doc(dailySnapshotId());
+  // Normal backup does not need to read the entire old chunk collection first.
+  // Write the current chunk set and metadata atomically. Any surplus old chunks
+  // are harmless because restore obeys chunkCount and fetches only that range.
+  const daily=await dailyRef.get(),batch=cloudStore.batch();
   chunks.forEach((data,index)=>batch.set(root.collection('chunks').doc(String(index).padStart(4,'0')),{index,data}));
   batch.set(root,{email:CLOUD_EMAIL,chunkCount:chunks.length,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),formatVersion:1});
   if(!daily.exists){chunks.forEach((data,index)=>batch.set(dailyRef.collection('chunks').doc(String(index).padStart(4,'0')),{index,data}));batch.set(dailyRef,{email:CLOUD_EMAIL,chunkCount:chunks.length,createdAt:firebase.firestore.FieldValue.serverTimestamp(),formatVersion:1})}
@@ -1537,7 +1541,7 @@ async function backupToCloud(automatic=false){
 async function restoreFromCloud(){
  if(!cloudUser||cloudBusy||!confirm('Replace the data on this device with the latest cloud backup? Your current device data will be replaced.'))return;
  cloudBusy=true;cloudMessage='Downloading cloud backup…';render();
- try{const root=cloudRoot(),meta=await root.get();if(!meta.exists)throw new Error('No backup');const snap=await root.collection('chunks').orderBy('index').get(),restored=JSON.parse(snap.docs.map(doc=>doc.data().data).join(''));if(!Array.isArray(restored.roster)||!Array.isArray(restored.savedGames))throw new Error('Invalid backup');const cleanRestored=stripRestoredPortalState(restored);localStorage.setItem(DBKEY,JSON.stringify(cleanRestored));localStorage.setItem(CLOUD_ENABLED_KEY,'true');location.reload()}
+ try{const root=cloudRoot(),meta=await root.get();if(!meta.exists)throw new Error('No backup');const count=Number(meta.data()?.chunkCount||0);if(!count)throw new Error('No backup chunks');const docs=await Promise.all(Array.from({length:count},(_,index)=>root.collection('chunks').doc(String(index).padStart(4,'0')).get()));if(docs.some(doc=>!doc.exists))throw new Error('Incomplete backup');const restored=JSON.parse(docs.map(doc=>doc.data().data).join(''));if(!Array.isArray(restored.roster)||!Array.isArray(restored.savedGames))throw new Error('Invalid backup');const cleanRestored=stripRestoredPortalState(restored);localStorage.setItem(DBKEY,JSON.stringify(cleanRestored));localStorage.setItem(CLOUD_ENABLED_KEY,'true');location.reload()}
  catch(error){cloudBusy=false;cloudMessage='No usable cloud backup was found. Your device data was not changed.';render()}
 }
 async function cloudPasswordAuth(createAccount=false){
