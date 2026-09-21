@@ -22,6 +22,9 @@ mustInclude("HotB ignored a stale Practice Resolution rebuild callback","workspa
 mustInclude("HotB Practice Resolution transaction changed during restart-recovery verification","Resolution ownership must be rechecked at the final commit boundary");
 mustInclude("HotB Practice Resolution restart recovery changed the resolved setup identity","Resolution persistence must retain exact resolved setup identity");
 mustInclude("HotB refused a Practice Resolution rollback that changed during cloning","rollback clones must preserve the sealed failed-practice snapshot");
+mustInclude("const releaseFailedRollback=message=>","rollback corruption must have one fail-closed transaction release path");
+mustInclude("HotB could not clone the Practice Resolution rollback snapshot","rollback clone exceptions must release Resolution ownership safely");
+mustInclude("if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;","failed rollback recovery must not leave emergency Block 11 duration live");
 mustInclude("HotB Practice Resolution rollback failed post-save verification","rollback must remain valid after its recovery save");
 mustInclude("HotB ignored Return to Practice Setup while Practice Resolution apply is verifying.","Return to Setup must not race an in-flight Resolution apply");
 mustInclude("HotB refused Return to Practice Setup because the verified failed practice could not be reconstructed.","Return to Setup must reconstruct the exact verified failed practice before discarding its seal");
