@@ -256,6 +256,16 @@ assert.ok(scheduler.validate(malformedBlockCount).some(error=>error.includes('in
 const unnamedAttendee=structuredClone(block11DeparturePlan);
 unnamedAttendee.players[0].name='';
 assert.ok(scheduler.validate(unnamedAttendee).some(error=>error.includes('Every attending player must have a name')),'full resolution audit must reject an unnamed attendee rather than verifying ambiguous identity');
+const malformedBuildRoster=scenario(13,5,2);
+malformedBuildRoster[0].availableUntilBlock=99;
+const malformedBuildPlan=scheduler.buildSchedule(malformedBuildRoster,'18:00',120);
+assert.ok(malformedBuildPlan.feasibilityErrors.some(error=>error.includes('invalid availability')),'scheduler must reject malformed availability before Practice Resolution searches alternatives');
+
+const unnamedBuildRoster=scenario(13,5,2);
+unnamedBuildRoster[0].name='';
+const unnamedBuildPlan=scheduler.buildSchedule(unnamedBuildRoster,'18:00',120);
+assert.ok(unnamedBuildPlan.feasibilityErrors.some(error=>error.includes('Every attending player must have a name')),'scheduler must reject unnamed attendees before Practice Resolution can silently drop them');
+
 
 
 
