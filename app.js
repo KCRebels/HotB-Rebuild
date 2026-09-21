@@ -3629,7 +3629,14 @@ function setObservationTarget(playerName='',paId=''){
 function openCoachObservation(options={}){
  const g=currentGame();if(!g)return;
  observationMode='game';observationScope=options.scope||'current';observationFromInningPrompt=!!options.fromInningPrompt;
- const target=window.HotBCoachObservations?.targetsForScope(g,observationScope)?.[0];
+ const api=window.HotBCoachObservations;
+ if(!api){
+  observationTargetPlayer=currentHitter(g).name;observationTargetPaId='';
+  const fallback=document.createElement('div');fallback.className='modal-backdrop';fallback.id='coachObservationFallback';
+  fallback.innerHTML='<div class="modal observation-modal"><div class="modal-header"><div><div class="small info-kicker">LIVE OR DUGOUT REVIEW</div><h2>Coach Observation</h2></div><button class="btn" type="button" id="closeObservationFallback">Close</button></div><p class="observation-help">Observation tools are still loading. Close this window and tap OBS again.</p></div>';
+  document.body.appendChild(fallback);fallback.querySelector('#closeObservationFallback').onclick=()=>fallback.remove();return;
+ }
+ const target=api.targetsForScope(g,observationScope)?.[0];
  observationTargetPlayer=target?.playerName||currentHitter(g).name;observationTargetPaId=target?.paId||'';
  modal='coachObservation';render();
 }
