@@ -376,6 +376,8 @@
    if(player.canCatch===false&&entries.some(entry=>entry?.activity==='Catch Live'||entry?.activity==='Catch Warm-Up'))errors.push(`${player.name} is Not Catching but has catching work assigned.`);
    if(entries.filter(entry=>entry?.activity==='Catch Live').length>2)errors.push(`${player.name} catches more than two live blocks.`);
    if(entries.filter(entry=>entry?.activity==='Catch Warm-Up').length>1)errors.push(`${player.name} catches more than one pitching warm-up.`);
+   if(player.isPitcher&&player.canPitch!==false&&player.requiresPitchWarmup===false&&entries.some(entry=>entry?.activity==='Pitch Warm-Up'))errors.push(`${player.name} is marked No Pitch Warm-Up but has pitching warm-up assigned.`);
+   if(player.isCatcher&&player.canCatch===false&&entries.some(entry=>entry?.activity==='Catch Warm-Up'||entry?.activity==='Catch Live'))errors.push(`${player.name} is marked Not Catching but has catcher work assigned.`);
    entries.forEach((entry,block)=>{
     if(entry?.activity==='Pitch Warm-Up'){
      if(!player.isPitcher||player.canPitch===false||player.requiresPitchWarmup===false)errors.push(`${player.name} has Pitch Warm-Up in Block ${block+1} but is not eligible for pitching warm-up.`);
