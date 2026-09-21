@@ -4553,6 +4553,7 @@ function bind(){
       // scheduler/build failures that the click handler reports internally instead
       // of throwing back through HTMLElement.click().
       setTimeout(()=>{
+       try{
        if(!transactionOwnsToken()){console.warn('HotB ignored a stale Practice Resolution verification callback');return}
        if(!transactionIsCurrent()){
         console.error('HotB Practice Resolution rebuild lost its draft authorization');
@@ -4673,6 +4674,10 @@ function bind(){
        }
        console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
        if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+       }catch(error){
+        console.error('HotB Practice Resolution verification callback failed',error);
+        if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+       }
       },0);
      }catch(error){
       console.error('HotB Practice Resolution automatic rebuild failed',error);
