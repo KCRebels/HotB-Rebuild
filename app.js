@@ -4713,9 +4713,13 @@ function bind(){
     if((accommodation.canPitch===true)!==(player.canPitch===true)||(accommodation.requiresPitchWarmup===true)!==(player.requiresPitchWarmup===true)||(accommodation.canCatch===true)!==(player.canCatch===true)||(accommodation.prePracticeComplete===true)!==(player.prePracticeComplete===true))return false;
     if(accommodation.canPitch!==true&&accommodation.requiresPitchWarmup===true)return false;
    }
-   // The saved setup draft, when present, must be the same sealed Resolution source.
+   // The failed Resolution was persisted before its modal was exposed, so rollback
+   // authority must always include that exact setup-stage recovery record. Accepting
+   // null, plan-stage, or unknown session data here would allow an apply to start
+   // without a restart-safe copy of the original failed practice.
    const saved=state.activePracticeSession;
-   if(saved?.stage==='setup'){
+   if(!saved||saved.stage!=='setup'||saved.plan)return false;
+   {
     if(!saved.setupState||String(saved.setupState.startTime||'')!==String(setup.startTime||'')||Number(saved.setupState.durationMinutes)!==120)return false;
     const savedNames=Array.isArray(saved.setupState.selectedNames)?saved.setupState.selectedNames:[];
     if(savedNames.length!==names.length||new Set(savedNames).size!==savedNames.length||savedNames.some((name,index)=>name!==names[index]))return false;
