@@ -118,4 +118,8 @@ mustInclude("JSON.stringify(committedSession.plan)!==JSON.stringify(practicePlan
 mustInclude("const sourceAvailability=practiceAvailability(startTime,120,player.arrivalTime,verifiedDeparture);","Block 11 must verify each source player's normal-practice availability before extension");
 mustInclude("Number(player.availableFromBlock)!==Number(sourceAvailability.availableFromBlock)","Block 11 must fail closed when source availability metadata is inconsistent");
 mustInclude("practiceTimeMinutes(startTime)===null","Block 11 extension must reject an invalid source clock before deriving boundaries");
+mustInclude("generatedResolutionBytes=JSON.stringify(practiceResolution)","generated Resolution must be byte-sealed before publication");
+mustInclude("HotB refused a Practice Resolution that changed before persistence.","generated Resolution must remain byte-identical through pre-persistence validation");
+mustInclude("HotB refused a Practice Resolution that changed during publication.","published Resolution must remain byte-identical in live and saved recovery state");
+mustInclude("JSON.stringify(db.activePracticeSession?.resolution)!==generatedResolutionBytes","published Resolution must verify exact persisted decision bytes before modal display");
 console.log('practice-resolution static contract tests passed');
