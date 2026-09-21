@@ -1606,24 +1606,20 @@ function mergeCoachDirectories(savedCoaches){
  return [...merged.values()];
 }
 function save(){
+ persistDbLocal();
+}
+function persistDbLocal({markCloud=true,scheduleBackup=true}={}){
  db.route=route;
  const json=JSON.stringify(db);
- try{localStorage.setItem(DBKEY,json)}
- catch(error){
-  // iOS/Safari reports local-storage exhaustion as DOMException code 22 /
-  // QuotaExceededError ("The quota has been exceeded"). That is a DEVICE storage
-  // failure, not a Firebase quota. Never let it masquerade as a failed portal
-  // activation after Firebase has already published the practice.
+ try{localStorage.setItem(DBKEY,json)}catch(error){
   const quota=error?.name==='QuotaExceededError'||Number(error?.code)===22||/quota/i.test(String(error?.message||''));
-  if(quota){
-   console.error('HotB device storage quota exceeded',error);
-   throw new Error('device-storage-quota-exceeded');
-  }
+  if(quota){console.error('HotB device storage quota exceeded',error);throw new Error('device-storage-quota-exceeded')}
   throw error;
  }
- if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
- scheduleCloudBackup();
+ if(markCloud&&localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+ if(scheduleBackup)scheduleCloudBackup();
 }
+
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
 function go(r){
  if(route==='practice'&&practicePlan)persistPracticeSession();
@@ -1724,7 +1720,7 @@ function normalizeName(value){return cleanCell(value).toLowerCase().replace(/\s+
 if((db.measurementCleanupVersion||0)<1){
  db.measurements=(db.measurements||[]).filter(measurement=>normalizeName(measurement.player)!=='brynna peter');
  db.measurementCleanupVersion=1;
- localStorage.setItem(DBKEY,JSON.stringify(db));
+ persistDbLocal();
 }
 function positionTokens(player){return cleanCell(player?.positions).split(/\s*[|,\/]\s*/).map(position=>position.toUpperCase()).filter(Boolean)}
 function isPitcherProfile(player){return positionTokens(player).some(position=>['P','RHP','LHP','PITCHER'].includes(position))}
@@ -1797,7 +1793,7 @@ function captureGameUndo(){
  g.undoStack.push(lastRenderedUndoState);
  if(g.undoStack.length>50)g.undoStack=g.undoStack.slice(-50);
  lastRenderedUndoState=current;
- localStorage.setItem(DBKEY,JSON.stringify(db));
+ persistDbLocal();
 }
 function resultGroup(p){return p.result==='KL'?'K':p.result}
 function pitchMarkClass(p){
@@ -1824,7 +1820,7 @@ if((db.executionFormulaVersion||0)<5){
  (db.savedGames||[]).forEach(recalculateGameExecution);
  recalculateGameExecution(db.currentGame);
  db.executionFormulaVersion=5;
- localStorage.setItem(DBKEY,JSON.stringify(db));
+ persistDbLocal();
 }
 function runnersAfterHit(currentRunners,hitType){
  const batterBase=({'1B':1,'2B':2,'3B':3,'HR':4})[hitType];
@@ -3330,7 +3326,7 @@ async function restoreFullBackup(file){
  if(payload?.format!=='HotB Full Backup'||!payload.db||!Array.isArray(payload.db.roster)||!Array.isArray(payload.db.savedGames))throw new Error('This is not a valid HotB full backup file.');
  if(!confirm('Restore this backup? It will replace all HotB information currently saved on this device.'))return;
  db=stripRestoredPortalState(payload.db);db.route='home';
- localStorage.setItem(DBKEY,JSON.stringify(db));
+ persistDbLocal();
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
  alert('HotB backup restored successfully.');
  location.reload();
