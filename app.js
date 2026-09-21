@@ -946,8 +946,12 @@ let observationTargetPaId='',observationTargetPlayer='',observationMode='game',o
 let observationEditId='',observationEditGameId='';
 if(!db.coachPortal||typeof db.coachPortal!=='object')db.coachPortal={name:'',phone:'',portalId:'',portalPin:'',portalPinHash:''};
 const restoredPracticeCandidate=!portalToken&&window.HotBPracticeSession?.restore(db.activePracticeSession);
-const recoveredPracticeSession=restoredPracticeCandidate&&(!db.activePortalPractice?.id||db.activePortalPractice.id===restoredPracticeCandidate.plan?.portalDraftId)?restoredPracticeCandidate:null;
-if(restoredPracticeCandidate&&!recoveredPracticeSession){
+// A setup-stage draft has no generated plan yet. Do not install it into the
+// live practice workspace: doing so makes practicePlan truthy and hides the
+// cloud-publication recovery detector after an activation-local-save failure.
+const restoredGeneratedPractice=restoredPracticeCandidate?.plan?.portalDraftId?restoredPracticeCandidate:null;
+const recoveredPracticeSession=restoredGeneratedPractice&&(!db.activePortalPractice?.id||db.activePortalPractice.id===restoredGeneratedPractice.plan?.portalDraftId)?restoredGeneratedPractice:null;
+if(restoredGeneratedPractice&&!recoveredPracticeSession){
  // Never silently throw away a saved practice just because the local portal pointer
  // belongs to a different publication. Preserve both records and surface recovery;
  // Firebase verification decides which practice is actually live.
@@ -2361,7 +2365,8 @@ function practiceUsageBoxes(name){
 }
 function practiceHub(){
  const hasDraft=db.activePracticeSession?.stage==='setup';
- const lostActivationCandidate=!db.activePortalPractice?.id&&db.activePracticeSession?.plan?.portalDraftId;
+ const savedPublishedId=db.activePracticeSession?.plan?.portalDraftId||practicePlan?.portalDraftId||'';
+ const lostActivationCandidate=!db.activePortalPractice?.id&&!!savedPublishedId;
  const recoveryNeeded=(db.activePortalPractice?.id&&!practicePlan)||lostActivationCandidate;
  return `${practiceHeader()}<main class="practice-hub no-print"><section class="practice-hub-intro"><h2>Plan Your Hitting Practice</h2><p>Build today's schedule, organize your drills, or focus on one player.</p></section>${recoveryNeeded?`<section class="practice-portal-publish"><div><span>RECOVERY NEEDED</span><h2>Check Published Practice</h2><p>HotB has a saved practice whose portal activation may already be published. Verify the coach portal before continuing or activating again.</p></div><button class="btn red" id="recoverPublishedPractice">Recover Practice</button></section>`:''}<section class="practice-hub-actions"><button class="practice-hub-card primary" id="openPracticeBuilder"><span>${hasDraft?'SAVED DRAFT':'PLAN'}</span><h3>${hasDraft?'Continue Practice':'Build Practice'}</h3><p>${hasDraft?'Return to your saved attendance and adjustments.':'Choose attendance, time and create the complete rotation.'}</p></button><button class="practice-hub-card" id="openDrillLibrary"><span>LIBRARY</span><h3>Drill Library</h3><p>Search your hitting drills, setups and coaching purposes.</p></button><button class="practice-hub-card" id="openPlayerFocus"><span>PLAYER</span><h3>Player Focus</h3><p>Combine game data and coach observations into an individual hitting focus.</p></button></section></main>`;
 }
@@ -2589,7 +2594,7 @@ async function clearFinishedOrphanedPractice(state){
 }
 async function recoverPublishedPractice(){
  if(db.activePortalPractice?.id){if(practicePlan)practicePlan=null;return recoverOrphanedActivePractice()}
- const savedPlan=db.activePracticeSession?.plan,savedId=savedPlan?.portalDraftId,coachId=db.coachPortal?.portalId;
+ const savedPlan=db.activePracticeSession?.plan||practicePlan,savedId=savedPlan?.portalDraftId,coachId=db.coachPortal?.portalId;
  if(!savedId||!coachId){alert('HotB does not have enough saved information to identify the published practice safely. Nothing was changed.');return}
  if(!cloudUser||!cloudStore){alert('HotB needs the coach cloud connection before it can verify the already-published practice. Nothing was changed.');return}
  const button=$('#recoverPublishedPractice');if(button){button.disabled=true;button.textContent='Verifying…'}
