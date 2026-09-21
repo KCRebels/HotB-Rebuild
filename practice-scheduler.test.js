@@ -16,7 +16,7 @@ for(const player of plan.players){
 
 const invalid=structuredClone(plan);
 invalid.schedule['Full Player'][5]={activity:'Tee Work'};
-assert.ok(scheduler.validate(invalid).some(error=>error.includes('repeats Tee Work')));
+assert.ok(scheduler.validate(invalid).some(error=>error.includes('Tee Work outside the one required tee block')),'validator must reject any repeated or misplaced Tee Work after the required second attended block');
 
 const standardRoster=Array.from({length:13},(_,index)=>({name:`Player ${index+1}`,isPitcher:index<5,isCatcher:index===5||index===6,canPitch:index<5,requiresPitchWarmup:index<5,canCatch:index===5||index===6,availableFromBlock:0,availableUntilBlock:10}));
 const standardPlan=scheduler.buildSchedule(standardRoster);
