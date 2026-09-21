@@ -1443,7 +1443,7 @@ async function setupPlayerPortals(){
   localStorage.setItem(DBKEY,JSON.stringify(db));
   if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
   portalMessage='Player records refreshed. Existing links and PINs were kept.';
-  scheduleCloudBackup();schedulePlayerEvaluationPortalSync();
+  scheduleCloudBackup();
  }catch(error){originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});portalMessage='Player portals could not be created. Confirm Anonymous Authentication and the Player Portal security rules are active.'}
  cloudBusy=false;render();
 }
@@ -1502,8 +1502,10 @@ async function resetPlayerPortal(player){
 function cloudRoot(){return cloudStore.collection('hotbUsers').doc(cloudUser.uid)}
 async function loadCloudStatus(){
  try{
-  const [snap,history]=await Promise.all([cloudRoot().get(),cloudRoot().collection('snapshots').get()]);
-  cloudLastBackup=snap.exists?snap.data().updatedAt?.toDate?.()||cloudLastBackup:null;cloudSnapshotCount=history.size;
+  // Startup needs the latest-backup timestamp, not a scan of every historical
+  // snapshot. Snapshot count is maintained locally as backups are created/pruned.
+  const snap=await cloudRoot().get();
+  cloudLastBackup=snap.exists?snap.data().updatedAt?.toDate?.()||cloudLastBackup:null;
   if(cloudLastBackup)localStorage.setItem(CLOUD_LAST_SUCCESS_KEY,cloudLastBackup.toISOString());
  }catch(error){}
 }
@@ -1516,8 +1518,14 @@ function scheduleCloudBackup(){
 }
 function dailySnapshotId(date=new Date()){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`}
 async function pruneDailySnapshots(root){
+ // Retention maintenance is bounded to the small overflow beyond 30 snapshots.
+ // Do not read chunk subcollections for retained snapshots.
  const history=await root.collection('snapshots').orderBy(firebase.firestore.FieldPath.documentId(),'desc').get(),expired=history.docs.slice(30);
- for(const snapshot of expired){const chunks=await snapshot.ref.collection('chunks').get(),batch=cloudStore.batch();chunks.docs.forEach(doc=>batch.delete(doc.ref));batch.delete(snapshot.ref);await batch.commit()}
+ for(const snapshot of expired){
+  const count=Number(snapshot.data()?.chunkCount||0),batch=cloudStore.batch();
+  for(let index=0;index<count;index++)batch.delete(snapshot.ref.collection('chunks').doc(String(index).padStart(4,'0')));
+  batch.delete(snapshot.ref);await batch.commit();
+ }
  cloudSnapshotCount=Math.min(history.size,30);
 }
 async function backupToCloud(automatic=false){
