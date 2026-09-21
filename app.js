@@ -4082,7 +4082,9 @@ function bind(){
    if(expectedSet.size!==actualSet.size||expectedNames.some(name=>!actualSet.has(name)))return false;
    const expectedBlocks=Number(expected.durationMinutes)===132?11:10;
    if(!Array.isArray(practicePlan.times)||practicePlan.times.length!==expectedBlocks)return false;
-   if(Object.keys(practicePlan.schedule||{}).length!==expectedSet.size)return false;
+   const scheduleKeys=Object.keys(practicePlan.schedule||{}),scheduleSet=new Set(scheduleKeys);
+   if(scheduleKeys.length!==scheduleSet.size||scheduleSet.size!==expectedSet.size||expectedNames.some(name=>!scheduleSet.has(name)))return false;
+   for(const name of expectedNames)if(!Array.isArray(practicePlan.schedule?.[name])||practicePlan.schedule[name].length!==expectedBlocks)return false;
    for(const player of practicePlan.players||[]){
     const availability=expected.availability?.[player.name];if(!availability)return false;
     if(Number(player.availableFromBlock)!==Number(availability.availableFromBlock)||Number(player.availableUntilBlock)!==Number(availability.availableUntilBlock))return false;
