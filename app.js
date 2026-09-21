@@ -5438,11 +5438,22 @@ function bindPractice(){
    // the Practice Hub. Fresh setup still starts with every current Rebels player.
    const savedSetupDraft=db.activePracticeSession?.stage==='setup'&&!db.activePracticeSession?.plan;
    if(savedSetupDraft){
+    const savedDraftBytes=JSON.stringify(db.activePracticeSession);
     const restored=window.HotBPracticeSession?.restore(db.activePracticeSession);
     if(restored?.stage==='setup'&&!restored.plan){
-     const previousSetup=structuredClone(practiceSetupState),previousResolution=practiceResolution?structuredClone(practiceResolution):null;
+     // Resume may not accept a restore migration/default as authority for an
+     // unresolved Resolution. The exact saved setup-stage transaction must survive
+     // the production restore path byte-for-byte before it can become live state.
+     if(restored.resolution&&JSON.stringify(restored)!==savedDraftBytes){
+      console.error('HotB refused a saved Practice Resolution draft that changed during session restore.');
+      return;
+     }
+     let previousSetup,previousResolution;
+     try{previousSetup=structuredClone(practiceSetupState);previousResolution=practiceResolution?structuredClone(practiceResolution):null}
+     catch(error){console.error('HotB refused Practice Resolution resume because live rollback state could not be cloned.',error);return}
      practiceSetupState={...practiceSetupState,...restored.setupState};
-     practiceResolution=restored.resolution?structuredClone(restored.resolution):null;
+     try{practiceResolution=restored.resolution?structuredClone(restored.resolution):null}
+     catch(error){console.error('HotB refused Practice Resolution resume because the restored decision could not be cloned.',error);practiceSetupState=previousSetup;practiceResolution=previousResolution;return}
      // Resume follows the same invariant as startup: unresolved Resolution state
      // always comes from the failed 120-minute source attempt. Never render a
      // persisted 132-minute setup even briefly.
