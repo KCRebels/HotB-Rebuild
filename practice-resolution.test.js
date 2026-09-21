@@ -110,4 +110,7 @@ mustInclude("HotB Practice Resolution setup draft failed post-save recovery veri
 mustInclude("rollback capture clone failed; attempting JSON capture","Resolution apply must retain rollback capture when structuredClone fails");
 mustInclude("const captured=JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession});","Resolution rollback fallback must seal all three transaction sources together");
 mustInclude("if(JSON.stringify(state)!==captured)return null;","Resolution rollback JSON fallback must round-trip byte exactly before use");
+mustInclude("if(resolutionStart===null||resolutionEnd===null)return false;","Resolution snapshot must reject an invalid derived practice clock boundary");
+mustInclude("const restoredSaved=window.HotBPracticeSession?.restore?.(saved);","Resolution rollback authority must prove the saved draft through the startup restore path");
+mustInclude("JSON.stringify(restoredSaved)!==JSON.stringify(saved)","Resolution rollback authority must reject restore migration or drift before apply");
 console.log('practice-resolution static contract tests passed');
