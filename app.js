@@ -4045,13 +4045,16 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  const candidateNoticeEntries=Object.entries(r.candidateNotices);
  if(candidateNoticeEntries.some(([label,values])=>!allowedCandidateLabels.has(label)||!Array.isArray(values)||values.some(value=>typeof value!=='string'||value.trim()!==value||!value)))return false;
  if([...allowedCandidateLabels].some(label=>!Object.prototype.hasOwnProperty.call(r.candidateNotices,label)))return false;
- if(!['errors','notices','auditFailures'].every(key=>(r[key]||[]).every(value=>typeof value==='string'&&value.trim()===value&&value.length>0)))return false;
+ // Every persisted collection is canonical: unique and sorted exactly as candidate
+ // generation sealed it. The decision signature canonicalizes for hashing, so this
+ // explicit shape check prevents reordered/duplicated unsigned storage from being
+ // accepted as equivalent transaction state.
+ const canonicalStringList=values=>values.length===new Set(values).size&&values.every((value,index)=>typeof value==='string'&&value.trim()===value&&value.length>0&&(index===0||values[index-1].localeCompare(value)<=0));
+ if(!['errors','notices','auditFailures'].every(key=>canonicalStringList(r[key])))return false;
+ if(candidateNoticeEntries.some(([,values])=>!canonicalStringList(values)))return false;
+ if(candidateNoticeEntries.some(([label],index)=>index>0&&candidateNoticeEntries[index-1][0].localeCompare(label)>0))return false;
  const choiceKeys=['pitchers','catchers','combinedPitchers','combinedCatchers'];
- if(!choiceKeys.every(key=>{const values=r[key]||[];return values.length===new Set(values).size&&values.every(name=>typeof name==='string'&&name.trim()===name&&name.length>0&&verifiedNames.has(name))}))return false;
- // Canonical candidate arrays are part of the signed transaction. Candidate
- // generation sorts these lists before sealing them; require that same ordering on
- // restore so semantically equivalent but noncanonical snapshots cannot survive.
- if(!choiceKeys.every(key=>r[key].every((name,index)=>index===0||r[key][index-1].localeCompare(name)<=0)))return false;
+ if(!choiceKeys.every(key=>canonicalStringList(r[key])&&r[key].every(name=>verifiedNames.has(name))))return false;
  // Block 11 is an emergency extension from the normal 120-minute practice only.
  // A Resolution snapshot itself is always the failed base attempt; 132 minutes may
  // exist only after a verified apply has begun, never as a fresh Resolution source.
