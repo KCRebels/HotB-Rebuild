@@ -97,4 +97,7 @@ mustInclude("mutated sealed candidate source data during verification","Resoluti
 mustInclude("mutated sealed candidate source data during safety audit","Resolution candidate safety audit must remain observational");
 mustInclude("changed sealed candidate source data before publication","Resolution candidate evidence must not publish after source-state mutation");
 
+mustInclude("match(/^(\\d{1,2}):(\\d{2})$/)","Resolution clock verification must parse numeric HH:MM values");
+mustNotInclude("match(/^(\\\\d{1,2}):(\\\\d{2})$/)","Resolution clock verification must not look for literal backslash-d text");
+
 console.log('practice-resolution static contract tests passed');
