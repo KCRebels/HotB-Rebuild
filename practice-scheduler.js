@@ -26,6 +26,11 @@
    return {...player,isGuest:!!player.isGuest,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,prePracticeComplete:!!player.prePracticeComplete,canPitch:!!player.isPitcher&&player.canPitch!==false,requiresPitchWarmup:!!player.isPitcher&&player.canPitch!==false&&player.requiresPitchWarmup!==false,canCatch:!!player.isCatcher&&player.canCatch!==false,availableFromBlock:from,availableUntilBlock:until};
   });
   const activeAttendees=attendees.filter(player=>player.availableFromBlock<player.availableUntilBlock);
+  const rawPlayers=Array.isArray(players)?players:[],unnamedCount=rawPlayers.filter(player=>player&&!String(player.name||'').trim()).length;
+  const invalidAvailability=rawPlayers.filter(player=>player&&String(player.name||'').trim()).filter(player=>{
+   const rawFrom=player.availableFromBlock??0,rawUntil=player.availableUntilBlock??BLOCK_COUNT,from=Number(rawFrom),until=Number(rawUntil);
+   return !Number.isInteger(from)||!Number.isInteger(until)||from<0||until<0||from>BLOCK_COUNT||until>BLOCK_COUNT||from>until;
+  }).map(player=>player.name);
   const duplicateNames=[...new Set(attendees.map(player=>player.name).filter((name,index,names)=>names.indexOf(name)!==index))];
   const duration=BLOCK_COUNT*BLOCK_MINUTES,blockMinutes=BLOCK_MINUTES;
   const times=blockTimes(startTime,duration),warnings=[],fallbackWarnings=[];
@@ -42,6 +47,8 @@
   });
   const isOpen=(player,block)=>block>=0&&block<BLOCK_COUNT&&schedule[player.name][block]===null&&block>(teeBlocks[player.name]??-1);
   const feasibilityErrors=[];
+  if(unnamedCount)feasibilityErrors.push('Every attending player must have a name before HotB can build safely.');
+  if(invalidAvailability.length)feasibilityErrors.push(`Practice has invalid availability for: ${[...new Set(invalidAvailability)].join(', ')}. Correct the arrival/departure information before building.`);
   if(duplicateNames.length)feasibilityErrors.push(`Practice has duplicate player names: ${duplicateNames.join(', ')}. Each attendee must be uniquely identified before HotB can build safely.`);
   if(activeAttendees.length===0)feasibilityErrors.push('At least two available players are required to build a practice.');
   else if(activeAttendees.length===1)feasibilityErrors.push('At least two available players are required because every hitting station must have 2–3 players.');
