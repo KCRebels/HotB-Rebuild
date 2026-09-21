@@ -4837,8 +4837,9 @@ function bind(){
    let restoredSaved;
    try{restoredSaved=window.HotBPracticeSession?.restore?.(saved)}
    catch(error){console.error('HotB rejected a Practice Resolution rollback whose saved recovery record could not be restored.',error);return false}
-   if(!restoredSaved||restoredSaved.stage!=='setup'||restoredSaved.plan||JSON.stringify(restoredSaved)!==JSON.stringify(saved))return false;
-   {
+   if(!restoredSaved||restoredSaved.stage!=='setup'||restoredSaved.plan)return false;
+   try{
+    if(JSON.stringify(restoredSaved)!==JSON.stringify(saved))return false;
     if(!saved.setupState||String(saved.setupState.startTime||'')!==String(setup.startTime||'')||Number(saved.setupState.durationMinutes)!==120)return false;
     const savedNames=Array.isArray(saved.setupState.selectedNames)?saved.setupState.selectedNames:[];
     if(savedNames.length!==names.length||new Set(savedNames).size!==savedNames.length||savedNames.some((name,index)=>name!==names[index]))return false;
@@ -4846,6 +4847,9 @@ function bind(){
     // carrying equivalent signatures. Reject restore/default/migration drift here.
     if(!saved.resolution||JSON.stringify(saved.resolution)!==JSON.stringify(r))return false;
     if(JSON.stringify(saved.setupState)!==JSON.stringify(setup))return false;
+   }catch(error){
+    console.error('HotB rejected a Practice Resolution rollback whose recovery equality proof could not be sealed.',error);
+    return false;
    }
    return true;
   };
@@ -5102,11 +5106,19 @@ function persistPracticeSession(){
  // the exact plan owned by that transaction. This prevents unrelated UI work from
  // becoming the restart-recovery session during the commit window.
  if(practiceResolutionApplyToken&&(!practiceResolutionApplyOwnedDraftId||!practicePlan.portalDraftId||practicePlan.portalDraftId!==practiceResolutionApplyOwnedDraftId)){console.error('HotB refused to persist a practice outside the active Resolution transaction');return false}
- const previousActivePracticeSession=db.activePracticeSession;
+ let previousActivePracticeSession=null,previousActivePracticeSessionBytes='';
+ try{
+  previousActivePracticeSessionBytes=JSON.stringify(db.activePracticeSession);
+  previousActivePracticeSession=previousActivePracticeSessionBytes?JSON.parse(previousActivePracticeSessionBytes):null;
+ }catch(error){console.error('HotB refused to replace a practice recovery session whose previous authority could not be sealed.',error);return false}
  const restorePreviousSessionAfterFailure=(message,error=null)=>{
   if(error)console.error(message,error);else console.error(message);
   db.activePracticeSession=previousActivePracticeSession;
-  try{save()}catch(restoreError){console.error('HotB could not restore the previous practice recovery session after resolved-session persistence failure.',restoreError)}
+  try{
+   save();
+   const restoredPreviousBytes=JSON.stringify(db.activePracticeSession);
+   if(restoredPreviousBytes!==previousActivePracticeSessionBytes)throw new Error('resolved-session-rollback-save-drift');
+  }catch(restoreError){console.error('HotB could not restore the previous practice recovery session after resolved-session persistence failure.',restoreError)}
   return false;
  };
  db.activePracticeSession=session;
@@ -5183,11 +5195,19 @@ function persistPracticeDraft(){
  let serializedDraft='';
  try{serializedDraft=JSON.stringify(draft)}catch(error){console.error('HotB refused to persist Practice Resolution because its setup draft could not be sealed.',error);return false}
  if(!serializedDraft)return false;
- const previousActivePracticeSession=db.activePracticeSession;
+ let previousActivePracticeSession=null,previousActivePracticeSessionBytes='';
+ try{
+  previousActivePracticeSessionBytes=JSON.stringify(db.activePracticeSession);
+  previousActivePracticeSession=previousActivePracticeSessionBytes?JSON.parse(previousActivePracticeSessionBytes):null;
+ }catch(error){console.error('HotB refused to replace a setup recovery draft whose previous authority could not be sealed.',error);return false}
  const restorePreviousDraftAfterFailure=(message,error=null)=>{
   if(error)console.error(message,error);else console.error(message);
   db.activePracticeSession=previousActivePracticeSession;
-  try{save()}catch(restoreError){console.error('HotB could not restore the previous practice recovery session after setup-draft persistence failure.',restoreError)}
+  try{
+   save();
+   const restoredPreviousBytes=JSON.stringify(db.activePracticeSession);
+   if(restoredPreviousBytes!==previousActivePracticeSessionBytes)throw new Error('setup-draft-rollback-save-drift');
+  }catch(restoreError){console.error('HotB could not restore the previous practice recovery session after setup-draft persistence failure.',restoreError)}
   return false;
  };
  db.activePracticeSession=draft;
