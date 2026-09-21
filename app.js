@@ -5761,6 +5761,18 @@ function bindPractice(){
    // Resolution cannot add, remove, or swap a coaching choice without invalidating
    // the transaction and forcing a fresh verification build.
    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
+   // Seal the complete generated object before validation/persistence. Signatures
+   // protect the decision fields, but this byte seal also catches any accidental
+   // mutation of practicePlayers or other transaction metadata between generation
+   // and publication.
+   let generatedResolutionBytes='';
+   try{generatedResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not serialize the generated Practice Resolution.',error)}
+   if(!generatedResolutionBytes){
+    practiceResolution=null;practicePlan=null;
+    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Plan'}
+    alert('HotB could not seal the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
+    render();return;
+   }
    // The generated decision object must pass the same complete validator used by
    // display, apply, persistence and resume before it can replace the failed build.
    // This catches candidate-generation drift at its source instead of saving a
@@ -5776,7 +5788,18 @@ function bindPractice(){
     render();return;
    }
 
-   practicePlan=null;if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');practiceResolution=null;modal=null;render();return}modal='practiceResolution';render();return;
+   if(JSON.stringify(practiceResolution)!==generatedResolutionBytes){
+    console.error('HotB refused a Practice Resolution that changed before persistence.');
+    practiceResolution=null;practicePlan=null;persistPracticeDraft();
+    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Plan'}
+    render();return;
+   }
+   practicePlan=null;if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');practiceResolution=null;modal=null;render();return}
+   if(!practiceResolution||JSON.stringify(practiceResolution)!==generatedResolutionBytes||JSON.stringify(db.activePracticeSession?.resolution)!==generatedResolutionBytes){
+    console.error('HotB refused a Practice Resolution that changed during publication.');
+    practiceResolution=null;modal=null;persistPracticeDraft();render();return;
+   }
+   modal='practiceResolution';render();return;
   }
   if(practicePlan.fallbackWarnings?.length){
    practicePlan.buildNotices=practicePlan.fallbackWarnings.slice();
