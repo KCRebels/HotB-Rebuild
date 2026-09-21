@@ -4847,6 +4847,21 @@ function bindPractice(){
   if(!attendees.length){alert('Select at least one player attending practice.');return}
   if(!window.HotBPracticeScheduler){alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
   const startTime=$('#practiceStartTime').value||'18:00',durationMinutes=Number($('#practiceDuration').value)||120;
+  // Emergency Block 11 is a verified Resolution-only state. A normal/manual build
+  // must never inherit 132 minutes from stale DOM, restored form state, or an
+  // interrupted apply transaction.
+  if(durationMinutes===132&&!practiceResolutionApplyDraftId){
+   alert('Block 11 can only be added by Practice Resolution after HotB verifies it for this exact practice.');
+   const durationControl=$('#practiceDuration');if(durationControl)durationControl.value='120';
+   practiceSetupState.durationMinutes=120;
+   persistPracticeDraft();
+   render();
+   return;
+  }
+  if(durationMinutes!==120&&durationMinutes!==132){
+   alert('HotB can only build the normal 120-minute practice or a verified 132-minute Practice Resolution.');
+   return;
+  }
   roster.forEach((player,index)=>storePracticeAccommodation(index));
   const accommodations=structuredClone(practiceSetupState.accommodations||{}),practicePlayers=attendees.map(player=>practicePlayerModel(player,accommodations[player.name]||practiceAccommodation(player),startTime,durationMinutes));
   let noPitchersMode=null;
