@@ -1017,7 +1017,7 @@ async function initCloud(){
     // loadCloudStatus is still waiting on Firestore.
     if(route==='home'||route==='portal')render();
     try{await loadCloudStatus()}catch(_){cloudMessage='Signed in. Cloud status will retry automatically.'}
-    if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();syncPlayerEvaluationPortals().catch(()=>{})
+    if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();
    }
    if(cloudUser&&recoveredPracticeExpired&&practicePlan&&practiceClock.running){
     // Do not merely mark an expired restored clock finished locally. Wait for the
@@ -1594,8 +1594,11 @@ function save(){
  db.route=route;
  localStorage.setItem(DBKEY,JSON.stringify(db));
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+ // Local UI saves happen constantly while building a practice. Keep them local.
+ // Cloud backup remains debounced, but player-portal evaluation data is synced
+ // only by explicit portal/evaluation flows or after a successful backup. This
+ // prevents ordinary taps/navigation from reading and rewriting every portal.
  scheduleCloudBackup();
- schedulePlayerEvaluationPortalSync();
 }
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
 function go(r){
