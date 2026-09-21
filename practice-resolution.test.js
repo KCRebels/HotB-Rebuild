@@ -50,6 +50,9 @@ assert.equal(source.includes(selectorBug),false,'Build Practice attendee collect
 mustInclude("attendees=Array.from(document.querySelectorAll('[data-practice-player]:checked')).map","Build Practice must collect the full checked attendee set");
 mustInclude("if(resolutionApplyBuild)return;\n  if(practicePlan.buildNotices?.length)","automatic Resolution rebuild must not render an uncommitted builder or notice");
 mustInclude("verifiedCandidateNotices[label]=candidateNotices;\n     return true;","candidate notice evidence must publish only after the candidate passes every proof");
+mustInclude("actualNames.some((name,index)=>name!==expectedNames[index])","Resolution candidate verification must preserve exact attendee order before a choice is advertised");
+mustInclude("scheduleKeys.some((name,index)=>name!==planNames[index])","Resolution candidate schedule ownership must preserve exact attendee order");
+mustInclude("HotB Practice Resolution build failed","Resolution candidate verification must fail closed when candidate generation throws");
 mustInclude("HotB refused to publish an internally inconsistent Practice Resolution.","new Resolution decisions must pass the full live snapshot validator before display");
 mustInclude("HotB could not persist the verified Practice Resolution draft.","a verified Resolution must persist successfully before its modal is shown");
 mustInclude("const canonicalStringList=values=>values.length===new Set(values).size","Resolution persisted string collections must be unique and canonical");
