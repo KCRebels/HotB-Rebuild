@@ -219,17 +219,59 @@
   }
   const liveBlocks=new Set(liveSessions.map(session=>session.block));
   const frontTossAssignments=[];
+  // Assign fixed hitting stations greedily. With the normal Rebels roster all
+  // players share the same availability after Warm-Up/Tee, so recursive search
+  // adds exponential work without improving the result.
+  function assignStationGroups(playersToAssign,slots,eligible){
+   const assignments=Array.from({length:slots.length},()=>[]);
+   const remaining=playersToAssign.slice().sort((a,b)=>{
+    const count=player=>slots.filter((slot,index)=>eligible(player,slot,index,assignments[index])).length;
+    return count(a)-count(b)||a.name.localeCompare(b.name);
+   });
+   while(remaining.length){
+    let placed=false;
+    for(let ri=0;ri<remaining.length&&!placed;ri++){
+     const player=remaining[ri];
+     const candidates=slots.map((slot,index)=>({slot,index,count:assignments[index].length}))
+      .filter(item=>item.count<3&&eligible(player,item.slot,item.index,assignments[item.index]))
+      .sort((a,b)=>{
+       const priority=count=>count===1?0:count===2?1:2;
+       return priority(a.count)-priority(b.count)||a.index-b.index;
+      });
+     for(const candidate of candidates){
+      const openAfter=remaining.length-1;
+      if(candidate.count===0&&openAfter===0)continue;
+      assignments[candidate.index].push(player.name);
+      remaining.splice(ri,1);
+      placed=true;
+      break;
+     }
+    }
+    if(!placed)return null;
+   }
+   const singles=assignments.map((group,index)=>({group,index})).filter(item=>item.group.length===1);
+   for(const single of singles){
+    const name=single.group[0],player=playersToAssign.find(item=>item.name===name);
+    const donor=assignments.map((group,index)=>({group,index}))
+     .find(item=>item.group.length===3&&item.index!==single.index&&eligible(player,slots[item.index],item.index,item.group));
+    if(donor){single.group.push(donor.group.pop());continue}
+    const target=assignments.map((group,index)=>({group,index}))
+     .find(item=>item.group.length===2&&item.index!==single.index&&eligible(player,slots[item.index],item.index,item.group));
+    if(target){target.group.push(name);single.group.length=0}
+   }
+   return assignments.every(group=>group.length===0||group.length===2||group.length===3)?assignments:null;
+  }
   const prePracticePlayers=activeAttendees.filter(player=>player.prePracticeComplete),reserveEarlyFront=prePracticePlayers.length>=2&&prePracticePlayers.length<=12;
   const frontTossCandidates=[0,1,2,3,4,5,6,7,8,9].filter(block=>!liveBlocks.has(block));
   const orderedFrontBlocks=frontTossCandidates.slice().sort((a,b)=>(a>=8?0:1)-(b>=8?0:1)||a-b),frontSlots=orderedFrontBlocks.flatMap(block=>[{block,lane:1},{block,lane:2}]);
   if(!feasibilityErrors.length){
-   const frontGroups=groupedAssignment(activeAttendees,frontSlots,(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2)));
+   const frontGroups=assignStationGroups(activeAttendees,frontSlots,(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2)));
    if(!frontGroups)feasibilityErrors.push('Front toss cannot be scheduled exactly once per player in groups of 2–3 with the selected attendance and availability.');
    else frontGroups.forEach((names,index)=>names.forEach(name=>{const {block,lane}=frontSlots[index];schedule[name][block]={activity:`Front Toss Lane ${lane}`};frontTossAssignments.push({player:name,block,lane})}));
   }
   const frontTossBlocks=[...new Set(frontTossAssignments.map(item=>item.block))].sort((a,b)=>a-b);
   if(!feasibilityErrors.length){
-   const machineSlots=[0,1,2,3,4,5,6,7,8,9].map(block=>({block})),machineGroups=groupedAssignment(activeAttendees,machineSlots,(player,slot)=>isOpen(player,slot.block));
+   const machineSlots=[0,1,2,3,4,5,6,7,8,9].map(block=>({block})),machineGroups=assignStationGroups(activeAttendees,machineSlots,(player,slot)=>isOpen(player,slot.block));
    if(!machineGroups)feasibilityErrors.push('Machine cannot be scheduled exactly once per player in groups of 2–3 with the selected attendance and availability.');
    else machineGroups.forEach((names,index)=>names.forEach(name=>{schedule[name][machineSlots[index].block]={activity:'Machine'}}));
   }
