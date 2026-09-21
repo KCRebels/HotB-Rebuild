@@ -4148,8 +4148,11 @@ function bind(){
   };
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
    const target=findResolutionRosterIndex(name,role);if(!target)return false;
-   const verifiedPlayer=practiceResolution?.practicePlayers?.find(player=>player.name===name);
-   if(!verifiedPlayer)return false;
+   const verifiedPlayers=(practiceResolution?.practicePlayers||[]).filter(player=>player.name===name);
+   if(verifiedPlayers.length!==1)return false;
+   const verifiedPlayer=verifiedPlayers[0];
+   const currentSignature=currentPracticeResolutionSignature();
+   if(!practiceResolution?.signature||currentSignature!==practiceResolution.signature)return false;
    // Preserve the exact availability/limitation state that was audited. Only the
    // coach-approved role flag is allowed to change during resolution.
    const accommodation=structuredClone(practiceSetupState.accommodations?.[name]||practiceAccommodation(target.roster[target.index]));
