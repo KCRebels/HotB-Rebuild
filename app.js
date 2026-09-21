@@ -2381,7 +2381,11 @@ function practiceUsageBoxes(name){
 }
 function practiceHub(){
  const hasDraft=db.activePracticeSession?.stage==='setup';
- const hasResolutionDraft=hasDraft&&!!db.activePracticeSession?.resolution;
+ // Hub copy must not advertise a stale/corrupt Resolution as resumable. Full
+ // validation still happens after restore, but legacy snapshots without the
+ // current decision seal are presented simply as a saved setup draft.
+ const savedResolution=db.activePracticeSession?.resolution;
+ const hasResolutionDraft=hasDraft&&!!savedResolution&&typeof savedResolution.decisionSignature==='string'&&!!savedResolution.decisionSignature;
  const savedPublishedId=db.activePracticeSession?.plan?.portalDraftId||practicePlan?.portalDraftId||'';
  const lostActivationCandidate=!db.activePortalPractice?.id&&!!savedPublishedId;
  const recoveryNeeded=(db.activePortalPractice?.id&&!practicePlan)||lostActivationCandidate;
@@ -4067,6 +4071,9 @@ function modalView(){
   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
    console.warn('Saved Practice Resolution failed display validation; returning to setup.');
    practiceResolution=null;modal=null;
+   // Never let a rejected emergency Resolution strand setup at 132 minutes.
+   // Block 11 exists only while backed by a currently verified Resolution.
+   if(Number(practiceSetupState.durationMinutes)===132)practiceSetupState.durationMinutes=120;
    if(!practicePlan&&!db.activePortalPractice?.id&&window.HotBPracticeSession?.createDraft){
     db.activePracticeSession=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:null});
     save();
@@ -4616,7 +4623,8 @@ function persistPracticeDraft(){
  }
  const draftDuration=Number(practiceSetupState.durationMinutes);
  if(draftDuration!==120&&!(draftDuration===132&&practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)))practiceSetupState.durationMinutes=120;
- db.activePracticeSession=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:practiceResolution});save();
+ const resolutionToPersist=practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)?structuredClone(practiceResolution):null;
+ db.activePracticeSession=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:resolutionToPersist});save();
 }
 function clearPracticeSession(){
  if(db.activePracticeSession==null)return;
