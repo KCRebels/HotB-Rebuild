@@ -3894,6 +3894,10 @@ function focusPublishPreviewModal(){
  if(!focus)return'';
  return `<div class="modal-backdrop"><div class="modal focus-publish-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER PORTAL PREVIEW</div><h2>${esc(first)}’s My Focus</h2></div><button class="btn" data-close>Close</button></div><p class="focus-publish-help">This is exactly what ${esc(first)} will see after you publish it.</p><div class="focus-preview-shell"><div class="focus-preview-header"><span>Back</span><b>My Focus</b><i></i></div><div class="focus-portal-preview">${portalFocusBody(focus)}</div></div><div class="focus-publish-actions"><button class="btn" data-close>Cancel</button><button class="btn red" id="confirmPublishPlayerFocus">Publish to ${esc(first)}</button></div></div></div>`;
 }
+function practiceBuildNoticeModal(){
+ const notices=practicePlan?.buildNotices||[];if(!notices.length)return'';
+ return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE BUILD NOTICE</div><h2>HotB built the practice</h2></div></div><p class="practice-resolution-intro">No coaching decision is required. HotB used the following allowed fallback${notices.length===1?'':'s'} to keep every hard practice rule intact.</p><section class="practice-resolution-notices"><ul>${notices.map(note=>`<li>${esc(note)}</li>`).join('')}</ul></section><button class="btn red block" id="acceptPracticeBuildNotice">Continue to Practice Plan</button></div></div>`;
+}
 function practiceResolutionModal(){
  const r=practiceResolution;if(!r)return'';
  const pitchers=(r.pitchers||[]).map(name=>`<label class="practice-resolution-pitcher"><input type="radio" name="practiceResolutionPitcher" value="${esc(name)}"><span><b>${esc(practiceFirstName(name))}</b><small>Not Pitching Live · this practice only</small></span></label>`).join('');
@@ -3901,6 +3905,7 @@ function practiceResolutionModal(){
  return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>HotB needs a coaching decision</h2></div></div><p class="practice-resolution-intro">HotB tried the normal rotation first, including aggressive rearranging, the one allowed 4-player Front Toss block, and 9-Square when needed.</p><section class="practice-resolution-problem"><b>What is preventing the build</b><ul>${(r.errors||[]).map(error=>`<li>${esc(error)}</li>`).join('')}</ul></section>${notices?`<section class="practice-resolution-notices"><b>Automatic equipment / capacity notices</b><ul>${notices}</ul></section>`:''}${pitchers?`<section class="practice-resolution-choice"><h3>Make one pitcher Hitting Only</h3><p>Choose any attending pitcher currently available to pitch. She stays in the full practice as a hitter, does not warm up pitching, and does not pitch Live.</p><div class="practice-resolution-pitchers">${pitchers}</div><button class="btn red block" id="applyPracticePitcherResolution">Apply & Build Practice</button></section>`:''}${r.canExtend?`<section class="practice-resolution-choice"><h3>Add Block 11</h3><p>Extend this practice by 12 minutes, from 120 to 132 minutes. HotB will use this only as an emergency solution and will not add a 12th block.</p><button class="btn black block" id="applyPracticeExtensionResolution">Add Block 11 & Build Practice</button></section>`:''}<section class="practice-resolution-last"><h3>Change Attendance / Availability</h3><p>${esc(r.rosterGuidance||'HotB could not find another rule-safe solution. Change attendance or player availability, then build again.')}</p><button class="btn block" id="returnPracticeAttendance">Change Attendance / Availability</button></section></div></div>`;
 }
 function modalView(){
+ if(modal==='practiceBuildNotice')return practiceBuildNoticeModal();
  if(modal==='practiceResolution')return practiceResolutionModal();
  if(modal==='recoveryGuide')return recoveryGuideModal();
  if(modal==='cloudBackup')return cloudBackupModal();
@@ -3955,6 +3960,9 @@ function bind(){
  if(modal==='manageFocusDrills')bindManageFocusDrills();
  if(modal==='focusPublishPreview')bindFocusPublishPreview();
  if(modal==='cloudBackup')bindCloudBackup();
+ if(modal==='practiceBuildNotice'){
+  $('#acceptPracticeBuildNotice')?.addEventListener('click',()=>{modal=null;render();window.scrollTo(0,0)});
+ }
  if(modal==='practiceResolution'){
   $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{
    const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}
@@ -4437,6 +4445,7 @@ function bindPractice(){
   // iOS Home Screen Safari can stall when HotB rewrites #app and rebinds every
   // practice control synchronously inside the same tap handler.
   practiceSection='builder';
+  if(practicePlan.buildNotices?.length){modal='practiceBuildNotice';render();return}
   setTimeout(()=>{
    try{
     render();
