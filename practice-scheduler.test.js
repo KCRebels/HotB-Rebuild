@@ -142,6 +142,12 @@ function resolutionCandidates(players,duration=120){
  return result;
 }
 
+const duplicateResolutionRoster=scenario(9,4,2);
+duplicateResolutionRoster[8]={...duplicateResolutionRoster[8],name:duplicateResolutionRoster[0].name};
+const duplicateResolutionPlan=scheduler.buildSchedule(duplicateResolutionRoster);
+assert.ok(duplicateResolutionPlan.feasibilityErrors.some(error=>error.includes('duplicate player names')),'scheduler must stop before resolving a practice with ambiguous duplicate attendee names');
+assert.ok(scheduler.validate(duplicateResolutionPlan).some(error=>error.includes('duplicate player names')),'full resolution audit must reject duplicate attendee identities');
+
 const resolutionBase=scenario(13,2,2);
 const resolution=resolutionCandidates(resolutionBase);
 assert.ok(resolution.baseErrors.length,'resolution audit needs an actually infeasible starting practice');
