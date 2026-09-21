@@ -1158,3 +1158,17 @@ html,body,button,a,[role="button"]{touch-action:manipulation}
  border-color:#c71920;
 }
 .portal-live-clock.is-rotate>div:nth-child(2).rotate-flash span{color:#fff}
+
+/* Practice Resolution */
+.practice-resolution-modal{max-width:620px;max-height:88vh;overflow:auto}
+.practice-resolution-intro{margin:4px 0 16px;color:#475467;line-height:1.45}
+.practice-resolution-problem,.practice-resolution-notices,.practice-resolution-choice,.practice-resolution-last{border:1px solid #d0d5dd;border-radius:14px;padding:14px;margin:12px 0;background:#fff}
+.practice-resolution-problem{border-color:#f0a3a6;background:#fff7f7}
+.practice-resolution-problem ul,.practice-resolution-notices ul{margin:8px 0 0;padding-left:20px}
+.practice-resolution-choice h3,.practice-resolution-last h3{margin:0 0 5px}
+.practice-resolution-choice p,.practice-resolution-last p{margin:0 0 12px;color:#475467;line-height:1.4}
+.practice-resolution-pitchers{display:grid;gap:8px;margin:10px 0 14px}
+.practice-resolution-pitcher{display:flex;align-items:center;gap:10px;border:1px solid #d0d5dd;border-radius:12px;padding:11px;cursor:pointer}
+.practice-resolution-pitcher input{width:20px;height:20px}
+.practice-resolution-pitcher span{display:flex;flex-direction:column;gap:2px}
+.practice-resolution-pitcher small{color:#667085}
