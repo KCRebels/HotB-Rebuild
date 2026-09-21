@@ -4891,7 +4891,13 @@ function bind(){
    }
    // Validate the clones that will actually become live state. A rollback is atomic
    // only if cloning itself preserves the sealed failed-practice snapshot.
-   if(JSON.stringify(restoredSetup)!==JSON.stringify(state.setupState)||JSON.stringify(restoredResolution)!==JSON.stringify(state.resolution)||JSON.stringify(restoredSession)!==JSON.stringify(state.activePracticeSession)){releaseFailedRollback('HotB refused a Practice Resolution rollback that changed during cloning');return false}
+   try{
+    if(JSON.stringify(restoredSetup)!==JSON.stringify(state.setupState)||JSON.stringify(restoredResolution)!==JSON.stringify(state.resolution)||JSON.stringify(restoredSession)!==JSON.stringify(state.activePracticeSession)){releaseFailedRollback('HotB refused a Practice Resolution rollback that changed during cloning');return false}
+   }catch(error){
+    console.error('HotB Practice Resolution rollback clone equality proof failed.',error);
+    releaseFailedRollback('HotB refused a Practice Resolution rollback whose cloned recovery state could not be sealed');
+    return false;
+   }
    practiceResolutionApplyDraftId=null;
    practiceResolutionApplyOwnedDraftId=null;
    practiceResolutionApplyToken=null;
@@ -4900,12 +4906,18 @@ function bind(){
    practiceResolution=restoredResolution;
    modal='practiceResolution';
    db.activePracticeSession=restoredSession;
-   try{save()}catch(error){releaseFailedRollback('HotB could not save the restored Practice Resolution rollback state');render();return false}
+   try{save()}catch(error){
+    releaseFailedRollback('HotB could not save the restored Practice Resolution rollback state');
+    try{render()}catch(renderError){console.error('HotB could not render after failed Practice Resolution rollback save.',renderError)}
+    return false;
+   }
    // save() must not mutate the rollback object or its persisted recovery record.
-   let restoredRollbackSession=null;
-   try{restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
-   catch(error){console.error('HotB Practice Resolution rollback post-save restore failed.',error)}
-   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)||JSON.stringify(db.activePracticeSession)!==JSON.stringify(restoredSession)||!restoredRollbackSession||JSON.stringify(restoredRollbackSession)!==JSON.stringify(restoredSession)){
+   let restoredRollbackSession=null,rollbackPostSaveExact=false;
+   try{
+    restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
+    rollbackPostSaveExact=!!restoredRollbackSession&&JSON.stringify(db.activePracticeSession)===JSON.stringify(restoredSession)&&JSON.stringify(restoredRollbackSession)===JSON.stringify(restoredSession);
+   }catch(error){console.error('HotB Practice Resolution rollback post-save restore or equality proof failed.',error)}
+   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)||!rollbackPostSaveExact){
     console.error('HotB Practice Resolution rollback failed post-save verification');
     // Do not keep displaying a Resolution whose recovery record no longer proves
     // the same transaction. Normalize the live setup before releasing control.
