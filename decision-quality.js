@@ -44,13 +44,8 @@
   function currentPendingDecision(){const db=readDb(),g=db.currentGame;if(!g)return null;return{db,g}}
   function pendingDecisionGrade(g){return String(g?.pendingDecisionOverride||'').toUpperCase()}
   function decisionNeedsJudgment(g,db){
-    if(!g?.pendingZone)return false;
-    const strikes=Number(g.strikes)||0,plan=String(g.plan||'').toUpperCase();
-    if(strikes>=2)return true;
-    const hitter=(db.roster||[]).find(player=>player.name===(g.battingOrder||[])[g.currentIdx])||{};
-    const probe={zone:g.pendingZone,plan,hitterStyle:hitter.side||'R'};
-    if(['IN','OUT'].includes(plan)&&!inPlan(probe,hitter))return true;
-    if(plan==='CH'&&String(g.pitchType||'FB').toUpperCase()!=='CH')return true;
+    // Selecting a pitch location alone never asks the coach to grade the decision.
+    // Judgment is tied to the completed pitch/result, not merely where the pitch was.
     return false;
   }
   function displayedDecision(g,db){
