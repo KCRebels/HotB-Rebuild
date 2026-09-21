@@ -129,4 +129,7 @@ mustInclude("originalReturnBytes=JSON.stringify({setupState:practiceSetupState,r
 mustInclude("return-state-post-save-drift","Return to Setup rollback must verify the sealed transaction after save");
 mustInclude("HotB could not restore the sealed Practice Resolution Return-to-Setup state.","Return to Setup rollback must fail closed when exact recovery is impossible");
 mustNotInclude("restoreReturnState();save();render();return","Return to Setup must not perform an unverified second save after rollback");
+mustInclude("const restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession);","Resolution rollback must prove the restored failed draft through the actual startup restore path after save");
+mustInclude("JSON.stringify(restoredRollbackSession)!==JSON.stringify(restoredSession)","Resolution rollback must reject post-save restart migration or drift");
+mustInclude("if(db.activePracticeSession?.resolution||db.activePracticeSession?.plan){db.activePracticeSession=null;save()}","failed exact Resolution rollback must not leave unsafe restart authority persisted");
 console.log('practice-resolution static contract tests passed');
