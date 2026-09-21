@@ -4762,7 +4762,9 @@ function bind(){
    // Validate the persisted recovery record through the same restore path startup
    // will actually use. Raw object equality alone is not enough if restore rejects
    // or migrates the session.
-   const restoredSaved=window.HotBPracticeSession?.restore?.(saved);
+   let restoredSaved;
+   try{restoredSaved=window.HotBPracticeSession?.restore?.(saved)}
+   catch(error){console.error('HotB rejected a Practice Resolution rollback whose saved recovery record could not be restored.',error);return false}
    if(!restoredSaved||restoredSaved.stage!=='setup'||restoredSaved.plan||JSON.stringify(restoredSaved)!==JSON.stringify(saved))return false;
    {
     if(!saved.setupState||String(saved.setupState.startTime||'')!==String(setup.startTime||'')||Number(saved.setupState.durationMinutes)!==120)return false;
@@ -4817,9 +4819,11 @@ function bind(){
    practiceResolution=restoredResolution;
    modal='practiceResolution';
    db.activePracticeSession=restoredSession;
-   endResolutionApply();save();
+   try{endResolutionApply();save()}catch(error){releaseFailedRollback('HotB could not save the restored Practice Resolution rollback state');render();return false}
    // save() must not mutate the rollback object or its persisted recovery record.
-   const restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
+   let restoredRollbackSession=null;
+   try{restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
+   catch(error){console.error('HotB Practice Resolution rollback post-save restore failed.',error)}
    if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)||JSON.stringify(db.activePracticeSession)!==JSON.stringify(restoredSession)||!restoredRollbackSession||JSON.stringify(restoredRollbackSession)!==JSON.stringify(restoredSession)){
     console.error('HotB Practice Resolution rollback failed post-save verification');
     // Do not keep displaying a Resolution whose recovery record no longer proves
