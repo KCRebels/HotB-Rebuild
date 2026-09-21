@@ -3994,7 +3994,7 @@ function currentPracticeResolutionSignature(){
  if(expectedNames.length!==expectedSet.size)return'__practice_duplicate_verified_name__';
  if(selectedNames.some(name=>!String(name||'').trim()||String(name)!==String(name).trim()))return'__practice_invalid_selected_name__';
  if(selectedNames.length!==selectedSet.size)return'__practice_duplicate_selected_name__';
- if(expectedSet.size!==selectedSet.size||expectedNames.some(name=>!selectedSet.has(name)))return'__practice_attendance_changed__';
+ if(expectedNames.length!==selectedNames.length||selectedNames.some((name,index)=>name!==expectedNames[index]))return'__practice_attendance_changed__';
  if(expectedNames.some(name=>!byName.has(name)))return'__practice_roster_changed__';
  if(expectedNames.some(name=>!String(name||'').trim()))return'__practice_invalid_verified_name__';
  if(expectedNames.some(name=>String(name)!==String(name).trim()))return'__practice_noncanonical_verified_name__';
@@ -4017,6 +4017,9 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  if(!startMatch||startHour>23||startMinute>59||String(r.startTime)!==String(practiceSetupState.startTime||''))return false;
  const clockMinutes=value=>{const match=String(value||'').match(/^(\\d{2}):(\\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour<24&&minute<60?hour*60+minute:null};
  const resolutionStart=clockMinutes(r.startTime),resolutionEnd=resolutionStart===null?null:(resolutionStart+duration)%(24*60);
+ // A persisted Resolution is always the failed normal practice. Emergency Block 11
+ // exists only inside an apply candidate and must never become the source snapshot.
+ if(duration!==120)return false;
  if(!players.every(player=>
   player&&String(player.name||'').trim()===String(player.name||'')&&String(player.name||'').length>0&&
   typeof player.isPitcher==='boolean'&&typeof player.isCatcher==='boolean'&&typeof player.isGuest==='boolean'&&typeof player.prePracticeComplete==='boolean'&&
@@ -4041,7 +4044,8 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  // Require every collection to exist as an array so older/partial snapshots cannot
  // silently acquire default empty choices through the ||[] fallbacks below.
  if(!arrays.every(key=>Array.isArray(r[key])))return false;
- if(typeof r.rosterGuidance!=='string'||r.rosterGuidance.trim()!==r.rosterGuidance)return false;
+ if(typeof r.rosterGuidance!=='string'||r.rosterGuidance.trim()!==r.rosterGuidance||!r.rosterGuidance)return false;
+ if(!r.errors.length)return false;
  if(!r.candidateNotices||typeof r.candidateNotices!=='object'||Array.isArray(r.candidateNotices))return false;
  const allowedCandidateLabels=new Set([
   ...r.pitchers.map(name=>'Hitting Only: '+name),
