@@ -2266,6 +2266,9 @@ function updatePortalPracticeClock(){
   render();return;
  }
  if(block)block.textContent=values.block;if(left)left.textContent=values.left;
+ const clockShell=left?.closest('.portal-live-clock'),timeTile=left?.parentElement;
+ if(clockShell)clockShell.classList.toggle('is-rotate',!!values.transition);
+ if(timeTile){timeTile.classList.toggle('rotate-flash',!!values.transition&&Math.floor(Date.now()/1000)%2===0);timeTile.setAttribute('aria-label',values.transition?`Rotate — ${values.left} remaining`:`Time left — ${values.left}`)}
  const nextPanel=$('#portalPracticeNext'),nextButton=$('#portalPracticeNextButton'),nextHeading=$('#portalPracticeNextHeading'),nextDetail=$('#portalPracticeNextDetail');
  if(values.ended){
   // The coach cleanup write may arrive a moment later; stop presenting live
