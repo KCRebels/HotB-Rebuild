@@ -201,4 +201,7 @@ mustInclude("could not clear stale Practice Resolution recovery authority.","fai
 mustInclude("saved setup recovery could not be restored.","Practice Resolution resume must contain saved-draft serialization/restore failures");
 mustInclude("could not persist the clean setup after rejecting a stale resumed Practice Resolution.","stale resumed Resolution cleanup must not silently continue when persistence fails");
 mustInclude("resumed decision could not be sealed.","resumed Resolution byte comparison must fail closed if serialization fails");
+mustInclude("could not restore the saved practice session during startup.","startup recovery must contain production session restore failures");
+mustInclude("could not be isolated during startup recovery.","startup Resolution recovery must contain clone failures");
+mustInclude("could not be sealed during startup recovery.","startup Resolution recovery must contain serialization failures");
 console.log('practice-resolution static contract tests passed');
