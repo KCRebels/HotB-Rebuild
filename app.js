@@ -4413,10 +4413,10 @@ function bindPractice(){
   roster.forEach((player,index)=>storePracticeAccommodation(index));
   const accommodations=structuredClone(practiceSetupState.accommodations||{}),practicePlayers=attendees.map(player=>practicePlayerModel(player,accommodations[player.name]||practiceAccommodation(player),startTime,durationMinutes));
   let noPitchersMode=null;
-  if(!practicePlayers.some(player=>player.canPitch)){
-   if(!confirm('No pitchers are available to pitch.\n\nPress OK to use Coach Pitch for live at-bats.\nPress Cancel to return to attendance.'))return;
-   noPitchersMode='coach';
-  }
+  // Live requires a real attending pitcher. Coach Pitch is front toss, not Live.
+  // Let the scheduler return a feasibility error so Practice Resolution can
+  // explain the problem instead of silently changing the station type.
+  if(!practicePlayers.some(player=>player.canPitch))noPitchersMode=null;
   stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
   const buildButton=$('#generatePractice');if(buildButton){buildButton.disabled=true;buildButton.textContent='Building Practice…'}
   try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){console.error('HotB practice scheduler failed',error);practicePlan=null;if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));return}
@@ -4425,11 +4425,11 @@ function bindPractice(){
    // Only offer a pitcher decision after proving that exact one-practice change builds cleanly.
    for(const pitcher of availablePitchers){
     const testPlayers=practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-    try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:testPlayers.some(player=>player.canPitch)?null:'coach'});if(!testPlan.feasibilityErrors?.length)solvingPitchers.push(pitcher.name)}catch(_){}
+    try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(!testPlan.feasibilityErrors?.length)solvingPitchers.push(pitcher.name)}catch(_){}
    }
    let canExtend=false;
    if(Number(durationMinutes)===120){
-    try{const extendedPlayers=selectedPlayers.map(player=>practicePlayerModel(player,practiceAccommodation(player),startTime,132)),extendedMode=extendedPlayers.some(player=>player.canPitch)?null:'coach',extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:extendedMode});canExtend=!extendedPlan.feasibilityErrors?.length}catch(_){}
+    try{const extendedPlayers=selectedPlayers.map(player=>practicePlayerModel(player,practiceAccommodation(player),startTime,132)),extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=!extendedPlan.feasibilityErrors?.length}catch(_){}
    }
    const rosterGuidance=availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    practiceResolution={errors,pitchers:solvingPitchers,canExtend,rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,notices:practicePlan.fallbackWarnings||[]};
