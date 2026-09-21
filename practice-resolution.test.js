@@ -29,6 +29,9 @@ mustInclude("const releaseFailedRollback=message=>","rollback corruption must ha
 mustInclude("HotB could not clone the Practice Resolution rollback snapshot","rollback clone exceptions must release Resolution ownership safely");
 mustInclude("if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;","failed rollback recovery must not leave emergency Block 11 duration live");
 mustInclude("HotB Practice Resolution rollback failed post-save verification","rollback must remain valid after its recovery save");
+mustInclude("selected.some((name,index)=>name!==names[index])","Resolution rollback setup must preserve exact verified attendee order");
+mustInclude("!saved.resolution||JSON.stringify(saved.resolution)!==JSON.stringify(r)","Resolution rollback must be byte-identical to its persisted decision object");
+mustInclude("JSON.stringify(saved.setupState)!==JSON.stringify(setup)","Resolution rollback must be byte-identical to its persisted failed setup");
 mustInclude("HotB ignored Return to Practice Setup while Practice Resolution apply is verifying.","Return to Setup must not race an in-flight Resolution apply");
 mustInclude("HotB refused Return to Practice Setup because the verified failed practice could not be reconstructed.","Return to Setup must reconstruct the exact verified failed practice before discarding its seal");
 mustInclude("HotB could not persist Return to Practice Setup after Practice Resolution.","Return to Setup must prove its ordinary recovery draft was persisted");
