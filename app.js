@@ -4169,7 +4169,7 @@ function refreshPracticeAccommodationDefaults(){
 function bindPractice(){
  $('#practiceMachineFocus')?.addEventListener('change',event=>{practicePlan.machineFocus=event.target.value||'Standard';persistPracticeSession();render()});
  $('#practiceFrontTossFocus')?.addEventListener('change',event=>{practicePlan.frontTossFocus=event.target.value||'Standard';persistPracticeSession();render()});
- $('#choosePracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice(0,practicePlan.drillStations);practiceDrillPickerOpen=true;practicePickerQuery='';practicePickerCategory='All Drills';persistPracticeSession();render();window.scrollTo(0,0)});
+ $('#choosePracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice(0,practicePlan.drillStations);practiceDrillPickerOpen=true;practicePickerQuery='';practicePickerCategory='All Drills';render();window.scrollTo(0,0)});
  $('#cancelPracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=[];practiceDrillPickerOpen=false;persistPracticeSession();render();window.scrollTo(0,0)});
  $('#practicePickerSearch')?.addEventListener('input',event=>{practicePickerQuery=event.target.value;render();const search=$('#practicePickerSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
  $$('[data-picker-category]').forEach(button=>button.addEventListener('click',()=>{practicePickerCategory=button.dataset.pickerCategory;render();window.scrollTo(0,0)}));
