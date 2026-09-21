@@ -363,6 +363,25 @@
    if(player.canCatch===false&&entries.some(entry=>entry?.activity==='Catch Live'||entry?.activity==='Catch Warm-Up'))errors.push(`${player.name} is Not Catching but has catching work assigned.`);
    if(entries.filter(entry=>entry?.activity==='Catch Live').length>2)errors.push(`${player.name} catches more than two live blocks.`);
    if(entries.filter(entry=>entry?.activity==='Catch Warm-Up').length>1)errors.push(`${player.name} catches more than one pitching warm-up.`);
+   entries.forEach((entry,block)=>{
+    if(entry?.activity==='Pitch Warm-Up'){
+     if(!player.isPitcher||player.canPitch===false||player.requiresPitchWarmup===false)errors.push(`${player.name} has Pitch Warm-Up in Block ${block+1} but is not eligible for pitching warm-up.`);
+     if(block<(player.availableFromBlock??0)||block>=(player.availableUntilBlock??BLOCK_COUNT))errors.push(`${player.name} has Pitch Warm-Up in Block ${block+1} while unavailable.`);
+     if(!entry.partner)errors.push(`${player.name}'s Pitch Warm-Up in Block ${block+1} is missing a catcher/coach partner.`);
+     else if(entry.partner!=='Coach'){
+      const partner=plan.players.find(item=>item.name===entry.partner),partnerEntry=plan.schedule?.[entry.partner]?.[block];
+      if(!partner||!partner.isCatcher||partner.canCatch===false)errors.push(`${player.name}'s Pitch Warm-Up in Block ${block+1} uses an ineligible catcher.`);
+      if(partnerEntry?.activity!=='Catch Warm-Up'||partnerEntry?.partner!==player.name)errors.push(`${player.name}'s Pitch Warm-Up in Block ${block+1} does not match the catcher's warm-up assignment.`);
+     }
+    }
+    if(entry?.activity==='Catch Warm-Up'){
+     if(!player.isCatcher||player.canCatch===false)errors.push(`${player.name} has Catch Warm-Up in Block ${block+1} but is not eligible to catch.`);
+     if(block<(player.availableFromBlock??0)||block>=(player.availableUntilBlock??BLOCK_COUNT))errors.push(`${player.name} has Catch Warm-Up in Block ${block+1} while unavailable.`);
+     const pitcher=plan.players.find(item=>item.name===entry.partner),pitcherEntry=plan.schedule?.[entry.partner]?.[block];
+     if(!pitcher||!pitcher.isPitcher||pitcher.canPitch===false||pitcher.requiresPitchWarmup===false)errors.push(`${player.name}'s Catch Warm-Up in Block ${block+1} is not paired with an eligible pitcher.`);
+     if(pitcherEntry?.activity!=='Pitch Warm-Up'||pitcherEntry?.partner!==player.name)errors.push(`${player.name}'s Catch Warm-Up in Block ${block+1} does not match the pitcher's warm-up assignment.`);
+    }
+   });
    if(player.requiresPitchWarmup&&plan.liveSessions?.some(session=>session.pitcher===player.name)){
     const warm=entries.findIndex(entry=>entry?.activity==='Pitch Warm-Up'),live=entries.findIndex(entry=>entry?.activity==='Pitch Live');
     if(warm<0||live<0||warm>=live||live-warm>2)errors.push(`${player.name}'s pitching warm-up is not within two blocks before live.`);
