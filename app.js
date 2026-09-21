@@ -4722,7 +4722,8 @@ function bindPractice(){
     if(!Array.isArray(plan.players)||!plan.schedule||!Array.isArray(plan.times)){resolutionAuditFailures.push(label+' returned incomplete schedule data.');return false}
     const planNames=plan.players.map(player=>player.name),planNameSet=new Set(planNames),scheduleKeys=Object.keys(plan.schedule||{}),scheduleKeySet=new Set(scheduleKeys),expectedBlocks=Number(plan.durationMinutes)===132?11:10;
     if(planNames.length!==planNameSet.size||scheduleKeys.length!==scheduleKeySet.size||planNameSet.size!==scheduleKeySet.size||planNames.some(name=>!scheduleKeySet.has(name))){resolutionAuditFailures.push(label+' returned inconsistent attendee schedule ownership.');return false}
-    if(Number(plan.times.length)!==expectedBlocks&&plan.durationMinutes!=null){resolutionAuditFailures.push(label+' returned schedule timing that does not match its duration.');return false}
+    if(Number(plan.durationMinutes)!==120&&Number(plan.durationMinutes)!==132){resolutionAuditFailures.push(label+' returned an unsupported practice duration.');return false}
+    if(Number(plan.times.length)!==expectedBlocks){resolutionAuditFailures.push(label+' returned schedule timing that does not match its duration.');return false}
     if(planNames.some(name=>!Array.isArray(plan.schedule[name])||plan.schedule[name].length!==expectedBlocks)){resolutionAuditFailures.push(label+' returned incomplete player block coverage.');return false}
     try{
      const audit=window.HotBPracticeScheduler.validate(plan);
@@ -4739,6 +4740,7 @@ function bindPractice(){
      const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode:null});
      if(!resolutionPlanIsSafe(plan,label))return false;
      const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
+     if(!Array.isArray(players)||!players.length||!players.every(player=>player&&String(player.name||'').trim()===String(player.name||'')&&String(player.name||'').length>0&&Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=(Number(duration)===132?11:10)&&Number(player.availableFromBlock)<Number(player.availableUntilBlock)&&typeof player.canPitch==='boolean'&&typeof player.requiresPitchWarmup==='boolean'&&typeof player.canCatch==='boolean'&&(!player.canPitch?!player.requiresPitchWarmup:true))){resolutionAuditFailures.push(label+' received malformed candidate player data.');return false}
      if(expectedNames.length!==new Set(expectedNames).size||actualNames.length!==new Set(actualNames).size||expectedNames.length!==actualNames.length||expectedNames.some(name=>!actualNames.includes(name))){resolutionAuditFailures.push(label+' changed the verified attendee set.');return false}
      if(String(plan.startTime||'')!==String(startTime)||Number(plan.durationMinutes)!==Number(duration)){resolutionAuditFailures.push(label+' changed verified practice timing.');return false}
      for(const expectedPlayer of players){
