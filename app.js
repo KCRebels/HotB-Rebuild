@@ -5151,25 +5151,26 @@ function persistPracticeDraft(){
  let serializedDraft='';
  try{serializedDraft=JSON.stringify(draft)}catch(error){console.error('HotB refused to persist Practice Resolution because its setup draft could not be sealed.',error);return false}
  if(!serializedDraft)return false;
+ const previousActivePracticeSession=db.activePracticeSession;
+ const restorePreviousDraftAfterFailure=(message,error=null)=>{
+  if(error)console.error(message,error);else console.error(message);
+  db.activePracticeSession=previousActivePracticeSession;
+  try{save()}catch(restoreError){console.error('HotB could not restore the previous practice recovery session after setup-draft persistence failure.',restoreError)}
+  return false;
+ };
  db.activePracticeSession=draft;
- try{save()}catch(error){console.error('HotB Practice Resolution setup draft save failed.',error);return false}
+ try{save()}catch(error){return restorePreviousDraftAfterFailure('HotB Practice Resolution setup draft save failed.',error)}
  // save() is part of the Resolution recovery transaction. Do not report success
  // unless the exact draft that was preflight-verified is still present afterward
  // and can still be restored as the same setup/Resolution bytes.
  let persistedDraftBytes='';
  try{persistedDraftBytes=JSON.stringify(db.activePracticeSession)}
  catch(error){console.error('HotB Practice Resolution saved setup draft could not be sealed.',error);return false}
- if(persistedDraftBytes!==serializedDraft){
-  console.error('HotB Practice Resolution setup draft changed during save.');
-  return false;
- }
+ if(persistedDraftBytes!==serializedDraft)return restorePreviousDraftAfterFailure('HotB Practice Resolution setup draft changed during save.');
  if(resolutionToPersist){
   let persisted;
   try{persisted=window.HotBPracticeSession.restore?.(db.activePracticeSession)}catch(error){console.error('HotB Practice Resolution saved draft restore failed.',error);return false}
-  if(!persisted||persisted.stage!=='setup'||persisted.plan||JSON.stringify(persisted)!==serializedDraft||JSON.stringify(persisted.setupState)!==JSON.stringify(practiceSetupState)||JSON.stringify(persisted.resolution)!==JSON.stringify(resolutionToPersist)){
-   console.error('HotB Practice Resolution setup draft failed post-save recovery verification.');
-   return false;
-  }
+  if(!persisted||persisted.stage!=='setup'||persisted.plan||JSON.stringify(persisted)!==serializedDraft||JSON.stringify(persisted.setupState)!==JSON.stringify(practiceSetupState)||JSON.stringify(persisted.resolution)!==JSON.stringify(resolutionToPersist))return restorePreviousDraftAfterFailure('HotB Practice Resolution setup draft failed post-save recovery verification.');
  }
  return true;
 }
