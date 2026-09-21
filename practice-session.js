@@ -20,21 +20,21 @@
   session.portalState=session.portalState&&typeof session.portalState==='object'?session.portalState:null;
   session.clock={running:!!clock.running,finished:!!clock.finished,endAnnounced:!!clock.endAnnounced,startAt:Number(clock.startAt)||0,lastBlock:Number(clock.lastBlock)||1,lastTwoMinuteBlock:Number(clock.lastTwoMinuteBlock)||0,lastTransitionBlock:Number(clock.lastTransitionBlock)||0,completedAt:clock.completedAt||null};
   if(session.plan&&session.clock.running&&session.clock.startAt){
-   const blockMs=(Number(session.plan.blockMinutes)||12)*60000,elapsed=Math.max(0,Number(now)-session.clock.startAt),recoveredBlock=Math.max(1,Math.min(10,Math.floor(elapsed/blockMs)+1));
+   const blockMs=(Number(session.plan.blockMinutes)||12)*60000,elapsed=Math.max(0,Number(now)-session.clock.startAt),recoveredBlock=Math.max(1,Math.min(Number(session.plan?.times?.length)||10,Math.floor(elapsed/blockMs)+1));
    session.clock.lastBlock=Math.max(Number(session.clock.lastBlock)||1,recoveredBlock);
   }
   return session;
  }
  function layout(plan){
   const blockMs=(Number(plan?.blockMinutes)||12)*60000,transitionMs=Math.min(60000,Math.max(0,blockMs-60000)),workMs=blockMs-transitionMs;
-  return{blockMs,transitionMs,workMs,totalMs:blockMs*10-transitionMs};
+  const blockCount=Number(plan?.times?.length)||10;return{blockMs,transitionMs,workMs,blockCount,totalMs:blockMs*blockCount-transitionMs};
  }
  function timing(plan,clock,now=Date.now()){
   if(!plan||!clock?.running||!clock.startAt)return null;
-  const {blockMs,workMs,totalMs}=layout(plan),elapsed=Math.max(0,Number(now)-Number(clock.startAt));
+  const {blockMs,workMs,totalMs,blockCount}=layout(plan),elapsed=Math.max(0,Number(now)-Number(clock.startAt));
   if(elapsed>=totalMs)return null;
-  const block=Math.min(10,Math.floor(elapsed/blockMs)+1),elapsedInBlock=elapsed%blockMs,transition=block<10&&elapsedInBlock>=workMs;
-  const remaining=block===10?totalMs-elapsed:(transition?blockMs:workMs)-elapsedInBlock;
+  const block=Math.min(blockCount,Math.floor(elapsed/blockMs)+1),elapsedInBlock=elapsed%blockMs,transition=block<blockCount&&elapsedInBlock>=workMs;
+  const remaining=block===blockCount?totalMs-elapsed:(transition?blockMs:workMs)-elapsedInBlock;
   return{block,remaining,transition};
  }
  function pendingTwoMinuteWarning(plan,clock,now=Date.now()){
