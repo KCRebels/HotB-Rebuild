@@ -4446,27 +4446,34 @@ function bindPractice(){
   try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){console.error('HotB practice scheduler failed',error);practicePlan=null;if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));return}
   if(practicePlan.feasibilityErrors?.length){
    const errors=practicePlan.feasibilityErrors.slice(),availablePitchers=practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
+   // Practice Resolution is intentionally stricter than the normal build path. It is rare,
+   // so every choice shown to the coach must pass both scheduler feasibility and the full
+   // rules validator before HotB is allowed to call that choice a verified solution.
+   const resolutionPlanIsSafe=plan=>{
+    if(!plan||plan.feasibilityErrors?.length)return false;
+    try{return !window.HotBPracticeScheduler.validate(plan).length}catch(_){return false}
+   };
    // Only offer a pitcher decision after proving that exact one-practice change builds cleanly.
    for(const pitcher of availablePitchers){
     const testPlayers=practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-    try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(!testPlan.feasibilityErrors?.length)solvingPitchers.push(pitcher.name)}catch(_){}
+    try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan))solvingPitchers.push(pitcher.name)}catch(_){}
    }
    let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
    const availableCatchers=practicePlayers.filter(player=>player.canCatch);
    for(const catcher of availableCatchers){
     const testPlayers=practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-    try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(!testPlan.feasibilityErrors?.length)solvingCatchers.push(catcher.name)}catch(_){}
+    try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan))solvingCatchers.push(catcher.name)}catch(_){}
    }
    if(Number(durationMinutes)===120){
-    try{const extendedPlayers=attendees.map(player=>practicePlayerModel(player,accommodations[player.name]||practiceAccommodation(player),startTime,132)),extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=!extendedPlan.feasibilityErrors?.length;
+    try{const extendedPlayers=attendees.map(player=>practicePlayerModel(player,accommodations[player.name]||practiceAccommodation(player),startTime,132)),extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=resolutionPlanIsSafe(extendedPlan);
      if(!canExtend){
       for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
        const testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(!testPlan.feasibilityErrors?.length)combinedPitchers.push(pitcher.name)}catch(_){}
+       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan))combinedPitchers.push(pitcher.name)}catch(_){}
       }
       for(const catcher of extendedPlayers.filter(player=>player.canCatch)){
        const testPlayers=extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(!testPlan.feasibilityErrors?.length)combinedCatchers.push(catcher.name)}catch(_){}
+       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan))combinedCatchers.push(catcher.name)}catch(_){}
       }
      }
     }catch(_){}
