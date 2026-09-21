@@ -835,6 +835,19 @@ if(!Array.isArray(db.gameGroups))db.gameGroups=[];
 if(!Array.isArray(db.practiceHistory))db.practiceHistory=[];
 if(!Array.isArray(db.coachObservations))db.coachObservations=[];
 if(!db.playerFocusDrillOverrides||typeof db.playerFocusDrillOverrides!=='object')db.playerFocusDrillOverrides={};
+// Team Jenkins is temporarily parked outside the active HotB app while the original
+// KC Rebels practice system is re-verified. Keep no Jenkins players in the live DB.
+const parkedJenkinsNames=new Set((db.roster||[]).filter(player=>player.isTeamJenkins||player.teamName==='Team Jenkins').map(player=>player.name));
+if(parkedJenkinsNames.size){
+ db.roster=(db.roster||[]).filter(player=>!parkedJenkinsNames.has(player.name));
+ db.measurements=(db.measurements||[]).filter(item=>!parkedJenkinsNames.has(item.player));
+ db.coachObservations=(db.coachObservations||[]).filter(item=>!parkedJenkinsNames.has(item.playerName));
+ (db.savedGames||[]).forEach(game=>{game.battingOrder=(game.battingOrder||[]).filter(name=>!parkedJenkinsNames.has(name));game.hittersUsed=(game.hittersUsed||[]).filter(name=>!parkedJenkinsNames.has(name));game.pitches=(game.pitches||[]).filter(item=>!parkedJenkinsNames.has(item.hitter));game.plateAppearances=(game.plateAppearances||[]).filter(item=>!parkedJenkinsNames.has(item.hitter));game.observations=(game.observations||[]).filter(item=>!parkedJenkinsNames.has(item.playerName))});
+ if(db.currentGame){db.currentGame.battingOrder=(db.currentGame.battingOrder||[]).filter(name=>!parkedJenkinsNames.has(name));db.currentGame.hittersUsed=(db.currentGame.hittersUsed||[]).filter(name=>!parkedJenkinsNames.has(name));db.currentGame.pitches=(db.currentGame.pitches||[]).filter(item=>!parkedJenkinsNames.has(item.hitter));db.currentGame.plateAppearances=(db.currentGame.plateAppearances||[]).filter(item=>!parkedJenkinsNames.has(item.hitter));db.currentGame.observations=(db.currentGame.observations||[]).filter(item=>!parkedJenkinsNames.has(item.playerName))}
+ (db.practiceHistory||[]).forEach(record=>{if(Array.isArray(record.attendees))record.attendees=record.attendees.filter(name=>!parkedJenkinsNames.has(name));if(Array.isArray(record.rosterPlayers))record.rosterPlayers=record.rosterPlayers.filter(name=>!parkedJenkinsNames.has(name))});
+ db.teamJenkinsParked=true;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+}
 // Team Jenkins is practice-only. Purge any legacy performance/history data that may
 // have been saved before practice-only isolation was enforced.
 if((db.teamJenkinsDataCleanupVersion||0)<5){
