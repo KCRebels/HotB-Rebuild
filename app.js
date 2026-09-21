@@ -2306,15 +2306,15 @@ function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.
  else if(raw&&typeof raw.toDate==='function')startMs=raw.toDate().getTime();
  else if(raw&&Number.isFinite(Number(raw.seconds)))startMs=Number(raw.seconds)*1000+Math.floor(Number(raw.nanoseconds||0)/1000000);
  if(!Number.isFinite(startMs))return {block:'Syncing',left:'—',transition:false,currentBlock:0,ended:false};
- const blockMs=(Number(practice.blockMinutes)||12)*60000;
- const rotateMs=60000,workMs=Math.max(0,blockMs-rotateMs),totalMs=blockMs*10-rotateMs;
+ const blockMs=(Number(practice.blockMinutes)||12)*60000,blockCount=Number(practice.blockCount)||Number(practice.schedule?.length)||10;
+ const rotateMs=60000,workMs=Math.max(0,blockMs-rotateMs),totalMs=blockMs*blockCount-rotateMs;
  const elapsed=Math.max(0,Number(now)-startMs);
- if(elapsed>=totalMs)return {block:'DONE!',left:'0:00',transition:false,currentBlock:10,ended:true};
- const currentBlock=Math.min(10,Math.floor(elapsed/blockMs)+1),within=elapsed%blockMs;
- const transition=currentBlock<10&&within>=workMs;
- const remaining=currentBlock===10?totalMs-elapsed:(transition?blockMs:workMs)-within;
+ if(elapsed>=totalMs)return {block:'DONE!',left:'0:00',transition:false,currentBlock:blockCount,ended:true};
+ const currentBlock=Math.min(blockCount,Math.floor(elapsed/blockMs)+1),within=elapsed%blockMs;
+ const transition=currentBlock<blockCount&&within>=workMs;
+ const remaining=currentBlock===blockCount?totalMs-elapsed:(transition?blockMs:workMs)-within;
  const seconds=Math.max(0,Math.ceil(remaining/1000));
- return {block:transition?'ROTATE':currentBlock+' of 10',left:Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0'),transition,currentBlock};
+ return {block:transition?'ROTATE':currentBlock+' of '+blockCount,left:Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0'),transition,currentBlock};
 }
 function updatePortalPracticeClock(){
  const values=portalPracticeClockValues(portalData?.activePractice),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
