@@ -8,7 +8,7 @@
   if(!plan||!plan.portalDraftId)return null;
   return{version:4,stage:equipmentSetupOpen?'equipment':'schedule',savedAt:new Date().toISOString(),plan:clone(plan),chosenDrills:clone(chosenDrills),draftDrills:clone(draftDrills),drillPickerOpen:!!drillPickerOpen,equipmentSetupOpen:!!equipmentSetupOpen,setupState:clone(setupState),portalState:clone(portalState),clock:{running:!!clock.running,finished:!!clock.finished,endAnnounced:!!clock.endAnnounced,startAt:Number(clock.startAt)||0,lastBlock:Number(clock.lastBlock)||1,lastTwoMinuteBlock:Number(clock.lastTwoMinuteBlock)||0,lastTransitionBlock:Number(clock.lastTransitionBlock)||0,completedAt:clock.completedAt||null}};
  }
- function createDraft({setupState={}}={}){return{version:4,stage:'setup',savedAt:new Date().toISOString(),plan:null,chosenDrills:[],setupState:clone(setupState),portalState:null,clock:{running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null}}}
+ function createDraft({setupState={},resolution=null}={}){return{version:5,stage:'setup',savedAt:new Date().toISOString(),plan:null,chosenDrills:[],setupState:clone(setupState),resolution:clone(resolution),portalState:null,clock:{running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null}}}
  function restore(saved,now=Date.now()){
   if(!saved||(!saved?.plan?.portalDraftId&&saved.stage!=='setup'))return null;
   const session=clone(saved),clock=session.clock||{};
@@ -17,6 +17,7 @@
   session.drillPickerOpen=!!session.drillPickerOpen;
   session.equipmentSetupOpen=!!session.equipmentSetupOpen||session.stage==='equipment';
   session.setupState=session.setupState&&typeof session.setupState==='object'?session.setupState:{};
+  session.resolution=session.resolution&&typeof session.resolution==='object'?session.resolution:null;
   session.portalState=session.portalState&&typeof session.portalState==='object'?session.portalState:null;
   session.clock={running:!!clock.running,finished:!!clock.finished,endAnnounced:!!clock.endAnnounced,startAt:Number(clock.startAt)||0,lastBlock:Number(clock.lastBlock)||1,lastTwoMinuteBlock:Number(clock.lastTwoMinuteBlock)||0,lastTransitionBlock:Number(clock.lastTransitionBlock)||0,completedAt:clock.completedAt||null};
   if(session.plan&&session.clock.running&&session.clock.startAt){
