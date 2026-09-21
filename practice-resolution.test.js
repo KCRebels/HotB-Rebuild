@@ -198,4 +198,7 @@ mustInclude("invalid-cleaned-resolution-draft","stale Resolution display cleanup
 mustInclude("cleaned-resolution-draft-save-drift","stale Resolution display cleanup must verify persistence did not rewrite the replacement draft");
 mustInclude("could not persist a verified clean setup after rejecting stale Practice Resolution.","stale Resolution display cleanup must contain recovery creation/save failures");
 mustInclude("could not clear stale Practice Resolution recovery authority.","failed stale Resolution cleanup must clear restart authority fail-closed");
+mustInclude("saved setup recovery could not be restored.","Practice Resolution resume must contain saved-draft serialization/restore failures");
+mustInclude("could not persist the clean setup after rejecting a stale resumed Practice Resolution.","stale resumed Resolution cleanup must not silently continue when persistence fails");
+mustInclude("resumed decision could not be sealed.","resumed Resolution byte comparison must fail closed if serialization fails");
 console.log('practice-resolution static contract tests passed');
