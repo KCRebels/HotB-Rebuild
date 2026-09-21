@@ -4708,11 +4708,26 @@ function bind(){
    return true;
   };
   const restoreResolutionRollback=state=>{
-   if(!resolutionRollbackStateIsValid(state)){console.error('HotB refused an invalid Practice Resolution rollback snapshot');practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;endResolutionApply();return false}
-   const restoredSetup=structuredClone(state.setupState),restoredResolution=structuredClone(state.resolution),restoredSession=structuredClone(state.activePracticeSession);
+   const releaseFailedRollback=message=>{
+    console.error(message);
+    // A rollback failure must never strand the app inside the apply lock or leave
+    // an uncommitted 132-minute/role-mutated plan live. Fail closed to ordinary
+    // 120-minute setup when the sealed snapshot itself cannot be trusted.
+    practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;
+    endResolutionApply();
+   };
+   if(!resolutionRollbackStateIsValid(state)){releaseFailedRollback('HotB refused an invalid Practice Resolution rollback snapshot');return false}
+   let restoredSetup,restoredResolution,restoredSession;
+   try{
+    restoredSetup=structuredClone(state.setupState);restoredResolution=structuredClone(state.resolution);restoredSession=structuredClone(state.activePracticeSession);
+   }catch(error){
+    console.error('HotB Practice Resolution rollback clone failed',error);
+    releaseFailedRollback('HotB could not clone the Practice Resolution rollback snapshot');
+    return false;
+   }
    // Validate the clones that will actually become live state. A rollback is atomic
    // only if cloning itself preserves the sealed failed-practice snapshot.
-   if(JSON.stringify(restoredSetup)!==JSON.stringify(state.setupState)||JSON.stringify(restoredResolution)!==JSON.stringify(state.resolution)||JSON.stringify(restoredSession)!==JSON.stringify(state.activePracticeSession)){console.error('HotB refused a Practice Resolution rollback that changed during cloning');return false}
+   if(JSON.stringify(restoredSetup)!==JSON.stringify(state.setupState)||JSON.stringify(restoredResolution)!==JSON.stringify(state.resolution)||JSON.stringify(restoredSession)!==JSON.stringify(state.activePracticeSession)){releaseFailedRollback('HotB refused a Practice Resolution rollback that changed during cloning');return false}
    practiceResolutionApplyDraftId=null;
    practiceResolutionApplyOwnedDraftId=null;
    practiceResolutionApplyToken=null;
@@ -4723,7 +4738,14 @@ function bind(){
    db.activePracticeSession=restoredSession;
    endResolutionApply();save();
    // save() must not mutate the rollback object or its persisted recovery record.
-   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)||JSON.stringify(db.activePracticeSession)!==JSON.stringify(restoredSession)){console.error('HotB Practice Resolution rollback failed post-save verification');practiceResolution=null;modal=null;render();return false}
+   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)||JSON.stringify(db.activePracticeSession)!==JSON.stringify(restoredSession)){
+    console.error('HotB Practice Resolution rollback failed post-save verification');
+    // Do not keep displaying a Resolution whose recovery record no longer proves
+    // the same transaction. Normalize the live setup before releasing control.
+    practiceResolution=null;modal=null;practicePlan=null;
+    if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
+    endResolutionApply();render();return false
+   }
    render();return true;
   };
   const expectedResolutionState=(role=null,name=null,withBlock11=false,resolutionSnapshot=practiceResolution)=>{
