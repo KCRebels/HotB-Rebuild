@@ -3967,6 +3967,7 @@ function practiceResolutionDecisionSignature(r){
   errors:cleanList(r.errors),
   notices:cleanList(r.notices),
   auditFailures:cleanList(r.auditFailures),
+  candidateNotices:Object.fromEntries(Object.entries(r.candidateNotices&&typeof r.candidateNotices==='object'&&!Array.isArray(r.candidateNotices)?r.candidateNotices:{}).sort(([a],[b])=>a.localeCompare(b)).map(([key,value])=>[key,cleanList(value)])),
   noPitchersMode:r.noPitchersMode===null?null:String(r.noPitchersMode)
  });
 }
@@ -4033,6 +4034,17 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  // silently acquire default empty choices through the ||[] fallbacks below.
  if(!arrays.every(key=>Array.isArray(r[key])))return false;
  if(typeof r.rosterGuidance!=='string'||r.rosterGuidance.trim()!==r.rosterGuidance)return false;
+ if(!r.candidateNotices||typeof r.candidateNotices!=='object'||Array.isArray(r.candidateNotices))return false;
+ const allowedCandidateLabels=new Set([
+  ...r.pitchers.map(name=>'Hitting Only: '+name),
+  ...r.catchers.map(name=>'Not Catching: '+name),
+  ...(r.canExtend?['Block 11']:[]),
+  ...r.combinedPitchers.map(name=>'Hitting Only + Block 11: '+name),
+  ...r.combinedCatchers.map(name=>'Not Catching + Block 11: '+name)
+ ]);
+ const candidateNoticeEntries=Object.entries(r.candidateNotices);
+ if(candidateNoticeEntries.some(([label,values])=>!allowedCandidateLabels.has(label)||!Array.isArray(values)||values.some(value=>typeof value!=='string'||value.trim()!==value||!value)))return false;
+ if([...allowedCandidateLabels].some(label=>!Object.prototype.hasOwnProperty.call(r.candidateNotices,label)))return false;
  if(!['errors','notices','auditFailures'].every(key=>(r[key]||[]).every(value=>typeof value==='string'&&value.trim()===value&&value.length>0)))return false;
  const choiceKeys=['pitchers','catchers','combinedPitchers','combinedCatchers'];
  if(!choiceKeys.every(key=>{const values=r[key]||[];return values.length===new Set(values).size&&values.every(name=>typeof name==='string'&&name.trim()===name&&name.length>0&&verifiedNames.has(name))}))return false;
@@ -5342,10 +5354,12 @@ function bindPractice(){
      return false;
     }
    };
+   const verifiedCandidateNotices={};
    const verifyResolutionBuild=(players,duration,label,expectedChange=null)=>{
     try{
      const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode:null});
      if(!resolutionPlanIsSafe(plan,label))return false;
+     verifiedCandidateNotices[label]=[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort();
      const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
      const candidateBlockCount=Number(duration)===132?11:Number(duration)===120?10:0;
      // Combined role + Block 11 candidates must be compared with the already
@@ -5474,6 +5488,7 @@ function bindPractice(){
     practicePlayers,startTime,durationMinutes,noPitchersMode,
     notices:cleanResolutionList(practicePlan.fallbackWarnings),
     auditFailures:cleanResolutionList(resolutionAuditFailures),
+    candidateNotices:Object.fromEntries(Object.entries(verifiedCandidateNotices).sort(([a],[b])=>a.localeCompare(b)).map(([key,value])=>[key,cleanResolutionList(value)])),
     signature:resolutionSignature,
     decisionSignature:''
    };
