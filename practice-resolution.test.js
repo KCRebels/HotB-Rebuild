@@ -18,6 +18,8 @@ mustInclude("JSON.stringify(savedResolution)!==JSON.stringify(practiceResolution
 mustInclude("Number(r.durationMinutes)!==120||Number(setup.durationMinutes)!==120","rollback snapshot must be bound to the failed 120-minute setup");
 mustInclude("if(duration!==120)return false;","persisted Resolution snapshots must always describe the failed 120-minute source");
 mustInclude("if(durationMinutes===132&&!practiceResolutionApplyDraftId)","Block 11 must require Resolution authorization");
+mustInclude("HotB ignored a stale Practice Resolution rebuild callback","workspace teardown must make the first deferred Resolution callback harmless");
+mustInclude("HotB Practice Resolution transaction changed during restart-recovery verification","Resolution ownership must be rechecked at the final commit boundary");
 
 const selectorBug="attendees=$('[data-practice-player]:checked').map";
 assert.equal(source.includes(selectorBug),false,'Build Practice attendee collection must use querySelectorAll helper, never the single-element helper');
