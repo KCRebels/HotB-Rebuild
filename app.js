@@ -4573,15 +4573,15 @@ function bindPractice(){
      const extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=resolutionPlanIsSafe(extendedPlan,'Block 11');
      if(!canExtend){
       for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
-       const testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan,'Hitting Only + Block 11: '+pitcher.name))combinedPitchers.push(pitcher.name)}catch(_){}
+       const label='Hitting Only + Block 11: '+pitcher.name,testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
+       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan,label))combinedPitchers.push(pitcher.name)}catch(error){console.error('HotB Practice Resolution build failed',label,error);resolutionAuditFailures.push(label+' could not complete the verification build.')}
       }
       for(const catcher of extendedPlayers.filter(player=>player.canCatch)){
-       const testPlayers=extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan,'Not Catching + Block 11: '+catcher.name))combinedCatchers.push(catcher.name)}catch(_){}
+       const label='Not Catching + Block 11: '+catcher.name,testPlayers=extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
+       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan,label))combinedCatchers.push(catcher.name)}catch(error){console.error('HotB Practice Resolution build failed',label,error);resolutionAuditFailures.push(label+' could not complete the verification build.')}
       }
      }
-    }catch(_){}
+    }catch(error){console.error('HotB Practice Resolution Block 11 verification failed',error);resolutionAuditFailures.push('Block 11 verification could not complete.')} 
    }
    const rosterGuidance=identityBlocked?'HotB found duplicate attendee names. Fix the duplicate roster/guest entry before building again; HotB will not guess which player a resolution belongs to.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
