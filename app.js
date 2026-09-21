@@ -4170,6 +4170,17 @@ function bind(){
      if(hitters.some(name=>practicePlan.schedule?.[name]?.[block]?.activity!=='Hit Live'))return false;
     }
    }
+   // Prove the inverse mapping too: every schedule-side live assignment must be
+   // represented by exactly one live-session record for that block.
+   for(let block=0;block<expectedBlocks;block++){
+    const sessions=practicePlan.liveSessions.filter(session=>Number(session.block)===block);
+    for(const name of expectedNames){
+     const activity=practicePlan.schedule?.[name]?.[block]?.activity;
+     if(activity==='Pitch Live'&&sessions.filter(session=>session.pitcher===name).length!==1)return false;
+     if(activity==='Catch Live'&&sessions.filter(session=>session.catcher===name).length!==1)return false;
+     if(activity==='Hit Live'&&sessions.filter(session=>Array.isArray(session.hitters)&&session.hitters.includes(name)).length!==1)return false;
+    }
+   }
    for(const player of practicePlan.players||[]){
     const availability=expected.availability?.[player.name];if(!availability)return false;
     const from=Number(player.availableFromBlock),until=Number(player.availableUntilBlock);
