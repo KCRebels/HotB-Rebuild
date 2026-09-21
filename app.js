@@ -4248,9 +4248,21 @@ function bindPractice(){
   // Validation remains available for audits, but do not run the full synchronous
   // validator on the iPhone build path. The scheduler already enforces these
   // constraints while constructing the plan, and this second pass can stall the UI.
-  // Render the completed plan first. Persisting the large session object is deferred
-  // until after the screen transition so storage work cannot strand the UI on Building Practice.
-  render();window.scrollTo(0,0);setTimeout(()=>persistPracticeSession(),0);
+  // The schedule is complete. Move to the plan screen immediately.
+  // Do not persist from the build click path; persistence is handled by the normal
+  // practice workflow after the completed screen is visible.
+  try{
+   const app=document.getElementById('app');
+   if(app){
+    app.innerHTML=`<div class="app practice-app">${practicePage()}</div>${modal?modalView():''}`;
+    bind();
+   }else render();
+   window.scrollTo(0,0);
+  }catch(error){
+   console.error('HotB practice plan screen failed',error);
+   if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
+   alert('The schedule was built, but HotB could not open the practice-plan screen: '+String(error?.message||error||'unknown'));
+  }
  });
  $('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',limitations:practiceSetupState.accommodations?.[player.name]?.limitations||'',prePracticeComplete:!!player.prePracticeComplete,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={...practiceSetupState,selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;practiceSection='setup';persistPracticeDraft();render();window.scrollTo(0,0)});
  $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;if(practiceCoachOpen)practiceCardsOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
