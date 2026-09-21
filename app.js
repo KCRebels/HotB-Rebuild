@@ -965,14 +965,12 @@ if(restoredPracticeCandidate?.stage==='setup'&&!restoredPracticeCandidate.plan&&
  if(!Array.isArray(practiceSetupState.selectedNames))practiceSetupState.selectedNames=db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name);
  practiceResolution=restoredPracticeCandidate.resolution?structuredClone(restoredPracticeCandidate.resolution):null;
  practiceSection='setup';
- // Do not reopen an untrusted/corrupt saved Resolution as though it were a verified
- // coaching decision. Keep the setup draft intact and make the coach rebuild it.
- if(practiceResolution&&!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
-  console.warn('Saved Practice Resolution failed restore validation; returning to setup.');
-  practiceResolution=null;
-  db.activePracticeSession=window.HotBPracticeSession?.createDraft?.({setupState:practiceSetupState,resolution:null})||db.activePracticeSession;
-  save();
- }else if(practiceResolution)modal='practiceResolution';
+ // Full Resolution validation depends on roster/model helpers declared later in this
+ // script, so startup only restores the snapshot here. The first normal render/bind
+ // pass performs the authoritative validation before the modal can be displayed or
+ // any coaching choice can be applied. This avoids calling lexical helpers in their
+ // temporal-dead-zone during initial script evaluation.
+ if(practiceResolution)modal='practiceResolution';
 }
 if(recoveredPracticeSession){
  practicePlan=recoveredPracticeSession.plan;
