@@ -4191,6 +4191,32 @@ function bind(){
     const rows=practicePlan.schedule[name];
     if(rows.some((row,index)=>!row||typeof row!=='object'||typeof row.activity!=='string'||!row.activity.trim()||row.activity.trim()!==row.activity||(row.block!=null&&Number(row.block)!==index+1)||(row.partner!=null&&(typeof row.partner!=='string'||!row.partner.trim()||row.partner.trim()!==row.partner))))return false;
    }
+   // A resolved practice must also be collision-free at the block level. The
+   // scheduler audit remains authoritative for station-specific capacities, but
+   // this transaction proof independently rejects duplicate player assignments,
+   // illegal solo stations, and oversized ordinary hitting groups.
+   for(let block=0;block<expectedBlocks;block++){
+    const presentNames=expectedNames.filter(name=>{
+     const availability=expected.availability?.[name];
+     return availability&&block>=Number(availability.availableFromBlock)&&block<Number(availability.availableUntilBlock);
+    });
+    const assignmentCount=new Map();
+    for(const name of presentNames){
+     const row=practicePlan.schedule?.[name]?.[block];
+     if(!row||row.activity==='Not Present')return false;
+     assignmentCount.set(name,(assignmentCount.get(name)||0)+1);
+    }
+    if([...assignmentCount.values()].some(count=>count!==1))return false;
+    const ordinaryGroups=new Map();
+    for(const name of presentNames){
+     const row=practicePlan.schedule[name][block],activity=row.activity;
+     if(['Pitch Live','Catch Live','Hit Live','Pitch Warm-Up','Catch Warm-Up','Warm-Up','Tee Work'].includes(activity))continue;
+     const key=activity+'|'+String(row.station??row.stationNumber??'');
+     if(!ordinaryGroups.has(key))ordinaryGroups.set(key,[]);
+     ordinaryGroups.get(key).push(name);
+    }
+    for(const names of ordinaryGroups.values())if(names.length===1||names.length>3)return false;
+   }
    if(!Array.isArray(practicePlan.liveSessions))return false;
    {
     const liveKeys=new Set(),liveRoleKeys=new Set();
@@ -4314,6 +4340,12 @@ function bind(){
        let rebuiltSafe=!!practicePlan&&!practicePlan.feasibilityErrors?.length&&practicePlan.portalDraftId===resolutionDraftId&&resolutionPostcondition(expected);
        if(practicePlan&&practicePlan.portalDraftId!==resolutionDraftId)console.error('HotB Practice Resolution rebuilt plan changed draft identity');
        if(rebuiltSafe){
+        // Re-run the immutable postcondition immediately before the authoritative
+        // scheduler audit. This catches any synchronous mutation between the first
+        // proof and commit preparation instead of relying on the earlier result.
+        rebuiltSafe=resolutionPostcondition(expected);
+       }
+       if(rebuiltSafe){
         try{
          const audit=window.HotBPracticeScheduler?.validate?.(practicePlan);
          rebuiltSafe=Array.isArray(audit)&&audit.length===0;
@@ -4322,6 +4354,11 @@ function bind(){
          console.error('HotB Practice Resolution rebuilt plan final audit failed',error);
          rebuiltSafe=false;
         }
+       }
+       if(rebuiltSafe){
+        // One final proof at the commit boundary: no render/bind/audit side effect
+        // is allowed to change the resolved schedule after it was verified.
+        rebuiltSafe=resolutionPostcondition(expected);
        }
        if(rebuiltSafe){
         // The apply transaction is complete. Release the in-memory guard before
