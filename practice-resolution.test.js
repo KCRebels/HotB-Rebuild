@@ -223,4 +223,9 @@ mustInclude("saved setup draft could not be sealed.","Resolution setup-draft per
 mustInclude("could not clear the saved practice session.","practice workspace teardown must contain recovery-session clear save failures");
 mustInclude("saved practice session remained after clear.","practice workspace teardown must verify recovery authority is actually cleared");
 mustInclude("refused to close the practice workspace because recovery state could not be cleared.","Practice Resolution workspace teardown must fail closed before discarding live state");
+mustInclude("HotB Practice Resolution rollback preparation failed","Resolution apply must contain rollback preparation exceptions before acquiring the apply lock");
+mustInclude("HotB Practice Resolution rollback signature sealing failed","rollback capture must contain signature serialization failure");
+mustInclude("rejected a Practice Resolution rollback snapshot that could not be sealed.","rollback validation must fail closed instead of throwing on signature serialization");
+mustInclude("refused to clear a practice recovery session that could not be sealed.","practice-session clear must seal its rollback authority before mutation");
+mustInclude("could not restore the previous practice recovery session after clear failure.","practice-session clear failure must restore and persist the previous recovery authority");
 console.log('practice-resolution static contract tests passed');
