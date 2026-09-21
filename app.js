@@ -4809,18 +4809,21 @@ function bind(){
    // Return to setup is a destructive exit from the verified decision context.
    // It must never race an apply that already owns rollback/commit state.
    if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){console.warn('HotB ignored Return to Practice Setup while Practice Resolution apply is verifying.');return}
-   // Return to setup from the exact verified snapshot. This button is also the
-   // escape hatch for stale/corrupt resolutions, so do not carry mutated role or
-   // availability data forward from whatever currently happens to be in memory.
-   const verifiedPlayers=practiceResolutionSnapshotIsCurrentAndValid()?practiceResolution.practicePlayers:[];
-   if(verifiedPlayers.length){
-    const verifiedResolution=practiceResolution;
-    practiceSetupState.selectedNames=verifiedPlayers.map(player=>player.name);
-    practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;
-    practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;
-    const roster=practiceAttendanceRoster(),nextAccommodations={...practiceSetupState.accommodations};
-    verifiedPlayers.forEach(player=>{
-     const rosterPlayer=roster.find(item=>item.name===player.name);if(!rosterPlayer)return;
+   const originalSetup=structuredClone(practiceSetupState),originalResolution=practiceResolution?structuredClone(practiceResolution):null,originalSession=structuredClone(db.activePracticeSession),originalModal=modal;
+   const restoreReturnState=()=>{
+    practiceSetupState=structuredClone(originalSetup);practiceResolution=originalResolution?structuredClone(originalResolution):null;db.activePracticeSession=structuredClone(originalSession);modal=originalModal;
+   };
+   // Build the ordinary setup locally. Nothing live changes until the failed
+   // practice has been reconstructed and its safety signature matches exactly.
+   const verifiedResolution=practiceResolutionSnapshotIsCurrentAndValid()?practiceResolution:null;
+   if(verifiedResolution){
+    const verifiedPlayers=verifiedResolution.practicePlayers,roster=practiceAttendanceRoster(),nextSetup=structuredClone(practiceSetupState),nextAccommodations=structuredClone(nextSetup.accommodations||{});
+    nextSetup.selectedNames=verifiedPlayers.map(player=>player.name);
+    nextSetup.startTime=verifiedResolution.startTime;
+    nextSetup.durationMinutes=verifiedResolution.durationMinutes;
+    for(const player of verifiedPlayers){
+     const rosterPlayer=roster.find(item=>item.name===player.name);
+     if(!rosterPlayer){console.error('HotB refused Return to Practice Setup because a verified player is no longer in the attendance roster.');return}
      const accommodation=structuredClone(nextAccommodations[player.name]||practiceAccommodation(rosterPlayer));
      accommodation.arrival=player.arrivalTime||'';
      accommodation.departure=player.departureTime||'';
@@ -4830,23 +4833,33 @@ function bind(){
      accommodation.canCatch=player.canCatch===true;
      accommodation.prePracticeComplete=player.prePracticeComplete===true;
      nextAccommodations[player.name]=accommodation;
-    });
-    practiceSetupState.accommodations=nextAccommodations;
-    // Prove the reconstructed setup is exactly the failed practice before throwing
-    // away its Resolution seal. This catches time/default conversion drift at the
-    // Return-to-Setup boundary.
+    }
+    nextSetup.accommodations=nextAccommodations;
     const reconstructed=verifiedPlayers.map(player=>{
      const rosterPlayer=roster.find(item=>item.name===player.name);
-     return rosterPlayer?practicePlayerModel(rosterPlayer,practiceSetupState.accommodations[player.name]||practiceAccommodation(rosterPlayer),verifiedResolution.startTime,verifiedResolution.durationMinutes):null;
+     return rosterPlayer?practicePlayerModel(rosterPlayer,nextAccommodations[player.name]||practiceAccommodation(rosterPlayer),verifiedResolution.startTime,verifiedResolution.durationMinutes):null;
     });
     if(reconstructed.some(player=>!player)||practiceResolutionSignature(reconstructed,verifiedResolution.startTime,verifiedResolution.durationMinutes)!==verifiedResolution.signature){
      console.error('HotB refused Return to Practice Setup because the verified failed practice could not be reconstructed.');
-     practiceSetupState=structuredClone(resolutionRollbackState()?.setupState||practiceSetupState);
-     render();return;
+     return;
     }
+    practiceSetupState=nextSetup;
+   }else if(Number(practiceSetupState.durationMinutes)===132){
+    // A corrupt/stale Resolution is not authority for emergency Block 11.
+    practiceSetupState=structuredClone(practiceSetupState);practiceSetupState.durationMinutes=120;
    }
    practiceResolution=null;modal=null;
-   if(persistPracticeDraft()!==true){console.error('HotB could not persist Return to Practice Setup after Practice Resolution.');render();return}
+   if(persistPracticeDraft()!==true){
+    console.error('HotB could not persist Return to Practice Setup after Practice Resolution.');
+    restoreReturnState();render();return
+   }
+   // Prove persistence did not rewrite the ordinary setup. If it did, restore the
+   // exact pre-exit Resolution transaction instead of silently losing recovery.
+   const restoredExit=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
+   if(!restoredExit||restoredExit.stage!=='setup'||restoredExit.plan||restoredExit.resolution||JSON.stringify(restoredExit.setupState)!==JSON.stringify(practiceSetupState)){
+    console.error('HotB rolled back Return to Practice Setup because recovery changed the ordinary setup.');
+    restoreReturnState();save();render();return
+   }
    render();window.scrollTo(0,0);
   });
  }
