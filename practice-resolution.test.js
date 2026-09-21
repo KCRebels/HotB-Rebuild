@@ -18,7 +18,7 @@ mustInclude("HotB ignored End Draft while Practice Resolution apply is verifying
 mustInclude("HotB Practice Resolution rebuild lost its draft authorization","owned rebuilds that lose authorization must roll back");
 mustInclude("practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practiceResolution=null;","practice workspace teardown must clear every Resolution identity");
 mustInclude("HotB refused to persist a Practice Resolution draft that did not survive recovery serialization.","Resolution drafts must prove create/restore recovery");
-mustInclude("JSON.stringify(savedResolution)!==JSON.stringify(practiceResolution)","resumed Resolution must exactly match its saved object");
+mustInclude("savedResolutionBytes!==liveResolutionBytes","resumed Resolution must exactly match its saved object");
 mustInclude("Number(r.durationMinutes)!==120||Number(setup.durationMinutes)!==120","rollback snapshot must be bound to the failed 120-minute setup");
 mustInclude("if(duration!==120)return false;","persisted Resolution snapshots must always describe the failed 120-minute source");
 mustInclude("if(durationMinutes===132&&!practiceResolutionApplyDraftId)","Block 11 must require Resolution authorization");
@@ -35,7 +35,7 @@ mustInclude("practicePlan.pitcherRepeats.length!==new Set(practicePlan.pitcherRe
 mustInclude("practicePlan.liveHitterRepeats.length!==new Set(practicePlan.liveHitterRepeats).size","Resolution hitter repeat metadata must reject duplicate identities");
 mustInclude("HotB refused a Practice Resolution rollback that changed during cloning","rollback clones must preserve the sealed failed-practice snapshot");
 mustInclude("const releaseFailedRollback=message=>","rollback corruption must have one fail-closed transaction release path");
-mustInclude("HotB could not clone the Practice Resolution rollback snapshot","rollback clone exceptions must release Resolution ownership safely");
+mustInclude("HotB Practice Resolution rollback clone failed; attempting sealed JSON recovery","rollback clone exceptions must retain deterministic sealed recovery");
 mustInclude("if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;","failed rollback recovery must not leave emergency Block 11 duration live");
 mustInclude("HotB Practice Resolution rollback failed post-save verification","rollback must remain valid after its recovery save");
 mustInclude("if(!saved||saved.stage!=='setup'||saved.plan)return false;","Resolution apply must require the exact restart-safe setup draft before mutation");
@@ -54,7 +54,7 @@ const selectorBug="attendees=$('[data-practice-player]:checked').map";
 assert.equal(source.includes(selectorBug),false,'Build Practice attendee collection must use querySelectorAll helper, never the single-element helper');
 mustInclude("attendees=Array.from(document.querySelectorAll('[data-practice-player]:checked')).map","Build Practice must collect the full checked attendee set");
 mustInclude("if(resolutionApplyBuild)return;\n  if(practicePlan.buildNotices?.length)","automatic Resolution rebuild must not render an uncommitted builder or notice");
-mustInclude("verifiedCandidateNotices[label]=candidateNotices;\n     return true;","candidate notice evidence must publish only after the candidate passes every proof");
+mustInclude("verifiedCandidateNotices[label]=candidateNotices;\n     if(JSON.stringify(verifiedCandidateNotices[label])!==candidateEvidence","candidate notice evidence must be sealed and reverified after publication");
 mustInclude("actualNames.some((name,index)=>name!==expectedNames[index])","Resolution candidate verification must preserve exact attendee order before a choice is advertised");
 mustInclude("scheduleKeys.some((name,index)=>name!==planNames[index])","Resolution candidate schedule ownership must preserve exact attendee order");
 mustInclude("HotB Practice Resolution build failed","Resolution candidate verification must fail closed when candidate generation throws");
@@ -77,7 +77,7 @@ mustInclude("if(!r.errors.length)return false;","Resolution snapshots must retai
 
 mustInclude("const choiceAuthorized=role==='pitcher'","Resolution expected-state construction must authorize against the sealed final choice arrays");
 mustInclude("Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,'Block 11')","Block 11 apply authorization must retain its sealed candidate evidence");
-mustInclude("if(!label||!Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,label))return false;","role apply authorization must require its exact sealed candidate evidence");
+mustInclude("if(!label||!Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,label)||!Array.isArray(practiceResolution.candidateNotices[label]))return false;","role apply authorization must require its exact sealed candidate evidence array");
 
 mustInclude("practiceResolution=null;modal=null;","failed Resolution rollback must not leave an untrusted Resolution modal live");
 mustInclude("if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;","failed Resolution rollback must remove transient Block 11 duration");
@@ -92,7 +92,7 @@ mustInclude("const candidatePrototype=Object.getPrototypeOf(r.candidateNotices);
 mustInclude("if(candidateNoticeEntries.length!==allowedCandidateLabels.size)return false;","Resolution candidate evidence cardinality must exactly match final choices");
 mustInclude("const hasVerifiedChoice=!!(r.pitchers.length||r.catchers.length||r.canExtend||r.combinedPitchers.length||r.combinedCatchers.length);","Resolution modal actionability must come from verified choice data rather than rendered HTML");
 
-mustInclude("const sourceBefore=JSON.stringify({practicePlayers,players});","Resolution candidate verification must seal its source player state before scheduler execution");
+mustInclude("try{sourceBefore=JSON.stringify({practicePlayers,players})}catch(error)","Resolution candidate verification must seal its source player state before scheduler execution and contain sealing failure");
 mustInclude("const buildPlayers=structuredClone(players);","Resolution candidate verification must give the scheduler an isolated player copy");
 mustInclude("mutated sealed candidate source data during verification","Resolution candidate verification must reject scheduler mutation of its source state");
 mustInclude("mutated sealed candidate source data during safety audit","Resolution candidate safety audit must remain observational");
@@ -115,7 +115,7 @@ mustInclude("rollback capture clone failed; attempting JSON capture","Resolution
 mustInclude("const captured=JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession});","Resolution rollback fallback must seal all three transaction sources together");
 mustInclude("if(JSON.stringify(state)!==captured)return null;","Resolution rollback JSON fallback must round-trip byte exactly before use");
 mustInclude("if(resolutionStart===null||resolutionEnd===null)return false;","Resolution snapshot must reject an invalid derived practice clock boundary");
-mustInclude("const restoredSaved=window.HotBPracticeSession?.restore?.(saved);","Resolution rollback authority must prove the saved draft through the startup restore path");
+mustInclude("try{restoredSaved=window.HotBPracticeSession?.restore?.(saved)}","Resolution rollback authority must prove the saved draft through the startup restore path with exception containment");
 mustInclude("JSON.stringify(restoredSaved)!==JSON.stringify(saved)","Resolution rollback authority must reject restore migration or drift before apply");
 mustInclude("HotB Practice Resolution live plan changed after restart-recovery verification","Resolution commit must prove the live plan still matches the exact persisted recovery plan");
 mustInclude("JSON.stringify(committedSession.plan)!==JSON.stringify(practicePlan)","Resolution commit must compare live and persisted plan bytes before releasing ownership");
@@ -125,7 +125,7 @@ mustInclude("practiceTimeMinutes(startTime)===null","Block 11 extension must rej
 mustInclude("generatedResolutionBytes=JSON.stringify(practiceResolution)","generated Resolution must be byte-sealed before publication");
 mustInclude("HotB refused a Practice Resolution that changed before persistence.","generated Resolution must remain byte-identical through pre-persistence validation");
 mustInclude("HotB refused a Practice Resolution that changed during publication.","published Resolution must remain byte-identical in live and saved recovery state");
-mustInclude("JSON.stringify(db.activePracticeSession?.resolution)!==generatedResolutionBytes","published Resolution must verify exact persisted decision bytes before modal display");
+mustInclude("publishedResolutionBytes!==generatedResolutionBytes","published Resolution must verify exact persisted decision bytes before modal display");
 mustInclude("HotB Practice Resolution accommodation clone failed","Resolution role mutation must fail closed if its source accommodation cannot be cloned");
 mustInclude("const sourceModel=practicePlayerModel(target.roster[target.index],accommodation,practiceResolution.startTime,practiceResolution.durationMinutes);","Resolution role mutation must reconstruct its exact verified source player before changing a role");
 mustInclude("sourceFields.some(field=>sourceModel[field]!==verifiedPlayer[field])","Resolution role mutation must reject stale or malformed source accommodations");
@@ -134,11 +134,11 @@ mustInclude("return-state-post-save-drift","Return to Setup rollback must verify
 mustInclude("HotB could not restore the sealed Practice Resolution Return-to-Setup state.","Return to Setup rollback must fail closed when exact recovery is impossible");
 mustInclude("HotB could not clear failed Return-to-Setup recovery authority.","failed Return-to-Setup rollback must clear unsafe restart authority fail-closed");
 mustNotInclude("restoreReturnState();save();render();return","Return to Setup must not perform an unverified second save after rollback");
-mustInclude("const restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession);","Resolution rollback must prove the restored failed draft through the actual startup restore path after save");
+mustInclude("try{restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}","Resolution rollback must prove the restored failed draft through the actual startup restore path after save with exception containment");
 mustInclude("JSON.stringify(restoredRollbackSession)!==JSON.stringify(restoredSession)","Resolution rollback must reject post-save restart migration or drift");
 mustInclude("if(db.activePracticeSession?.resolution||db.activePracticeSession?.plan){","failed exact Resolution rollback must detect unsafe restart authority");
 mustInclude("try{save()}catch(error){console.error('HotB could not clear invalid Practice Resolution rollback recovery.',error)}","failed exact Resolution rollback cleanup must contain storage failure");
-mustInclude("const savedDraftBytes=JSON.stringify(db.activePracticeSession);","Resolution resume must seal the exact saved setup-stage transaction before restore");
+mustInclude("try{savedDraftBytes=JSON.stringify(db.activePracticeSession);restored=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}","Resolution resume must seal and restore the exact saved setup-stage transaction in one contained recovery boundary");
 mustInclude("restored.resolution&&JSON.stringify(restored)!==savedDraftBytes","Resolution resume must reject restore migration or defaults for unresolved decisions");
 mustInclude("HotB refused Practice Resolution resume because live rollback state could not be cloned.","Resolution resume must fail closed if pre-resume live state cannot be captured");
 mustInclude("HotB refused Practice Resolution resume because the restored decision could not be cloned.","Resolution resume must fail closed if the restored decision cannot be isolated");
@@ -152,7 +152,7 @@ mustInclude("duration<=0?'':practiceTimeValue(start+duration)","practice end der
 mustInclude("availableFromBlock:-1,availableUntilBlock:-1","practice availability must expose invalid time data as impossible availability");
 mustInclude("if(minutes===null)return '—';","invalid practice clocks must not render as a plausible time label");
 mustInclude("throw new Error('invalid-practice-start-time')","practice publication must reject an invalid start clock instead of deriving block times");
-mustNotInclude("String(availability.arrivalTime||'')","rollback validation must not read arrival/departure fields that practiceAvailability does not return");
+mustNotInclude("String(sourceAvailability.arrivalTime||'')","rollback validation must not read arrival/departure fields from practiceAvailability results");
 mustInclude("const rebuiltPlayer=practicePlayerModel(sourceRoster[0],accommodation,r.startTime,120);","rollback validation must reconstruct the source player through the production player model");
 mustInclude("sourceFields.some(field=>rebuiltPlayer[field]!==player[field])","rollback validation must compare the complete reconstructed source player to verified Resolution state");
 mustInclude("saved recovery record could not be restored.","rollback validation must fail closed if production session restore throws");
