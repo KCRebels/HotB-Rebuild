@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const source=fs.readFileSync('./app.js','utf8');
 
 function mustInclude(fragment,message){assert.ok(source.includes(fragment),message)}
+function mustNotInclude(fragment,message){assert.equal(source.includes(fragment),false,message)}
 
 mustInclude("candidateNotices:Object.fromEntries","Practice Resolution decisions must seal candidate fallback notices");
 mustInclude("const survivingCandidateLabels=new Set([","Resolution must derive candidate evidence from the final filtered coaching choices");
