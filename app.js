@@ -4146,6 +4146,8 @@ function bind(){
    if(Number(practicePlan.durationMinutes)!==Number(expected.durationMinutes))return false;
    const expectedNames=expected.playerNames||[],actualNames=(practicePlan.players||[]).map(player=>player.name);
    const expectedSet=new Set(expectedNames),actualSet=new Set(actualNames);
+   if(!Array.isArray(expected.playerNames)||!expectedNames.length||expectedNames.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return false;
+   if(actualNames.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return false;
    if(expectedNames.length!==expectedSet.size||actualNames.length!==actualSet.size)return false;
    if(expectedSet.size!==actualSet.size||expectedNames.some(name=>!actualSet.has(name)))return false;
    const expectedBlocks=Number(expected.durationMinutes)===132?11:10;
@@ -4167,14 +4169,15 @@ function bind(){
    }))return false;
    for(const name of expectedNames){
     const rows=practicePlan.schedule[name];
-    if(rows.some((row,index)=>!row||typeof row!=='object'||typeof row.activity!=='string'||!row.activity.trim()||(row.block!=null&&Number(row.block)!==index+1)))return false;
+    if(rows.some((row,index)=>!row||typeof row!=='object'||typeof row.activity!=='string'||!row.activity.trim()||row.activity.trim()!==row.activity||(row.block!=null&&Number(row.block)!==index+1)||(row.partner!=null&&(typeof row.partner!=='string'||!row.partner.trim()||row.partner.trim()!==row.partner))))return false;
    }
    if(!Array.isArray(practicePlan.liveSessions))return false;
    {
     const liveKeys=new Set(),liveRoleKeys=new Set();
     for(const live of practicePlan.liveSessions){
      const block=Number(live?.block),pitcher=String(live?.pitcher||''),catcher=String(live?.catcher||''),hitters=Array.isArray(live?.hitters)?live.hitters:[];
-     if(!Number.isInteger(block)||block<0||block>=expectedBlocks||!pitcher||!expectedSet.has(pitcher)||!catcher||hitters.length<2||hitters.length>3)return false;
+     if(!Number.isInteger(block)||block<0||block>=expectedBlocks||!pitcher||pitcher.trim()!==pitcher||!expectedSet.has(pitcher)||!catcher||catcher.trim()!==catcher||hitters.length<2||hitters.length>3)return false;
+     if(hitters.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return false;
      const liveKey=block+'|'+pitcher;
      if(liveKeys.has(liveKey))return false;
      liveKeys.add(liveKey);
