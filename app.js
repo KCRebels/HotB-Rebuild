@@ -4733,6 +4733,10 @@ function persistPracticeSession(){
 }
 function persistPracticeDraft(){
  if(practicePlan||db.activePortalPractice?.id||!window.HotBPracticeSession?.createDraft)return;
+ // An apply transaction owns persistence until it either commits the verified plan
+ // or restores the original failed draft. Never serialize its temporary 132-minute
+ // duration/role mutation as an ordinary setup draft from an unrelated render path.
+ if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){console.warn('HotB deferred setup-draft persistence during Practice Resolution apply.');return false}
  const checkboxes=$$('[data-practice-player]');
  if(checkboxes.length){const roster=practiceAttendanceRoster();practiceSetupState.selectedNames=checkboxes.filter(input=>input.checked).map(input=>roster[Number(input.dataset.practicePlayer)]?.name).filter(Boolean)}
  const start=$('#practiceStartTime')?.value;if(start)practiceSetupState.startTime=start;
@@ -4982,7 +4986,12 @@ async function finishPracticeClock(automatic=false){
  }finally{practiceCompletionBusy=false}
 }
 function closePracticeWorkspace(){
- clearPracticeSession();stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name),startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';render();window.scrollTo(0,0);
+ // Workspace teardown is also a hard Practice Resolution transaction boundary.
+ // No apply identity or failed-build Resolution may survive into the next practice.
+ // This prevents a delayed callback from an old workspace from owning, rebuilding,
+ // or rolling back state after the coach has intentionally ended/discarded it.
+ practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practiceResolution=null;
+ clearPracticeSession();stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name),startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';modal=null;render();window.scrollTo(0,0);
 }
 async function endPracticeFromScreen(){
  if(practiceCompletionBusy)return;
