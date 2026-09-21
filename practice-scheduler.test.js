@@ -180,6 +180,14 @@ assert.ok(!pitcherDisabledPlan.liveSessions.some(session=>session.pitcher===pitc
 assert.ok(!pitcherDisabledPlan.schedule[pitcherDisabled[0].name].some(entry=>entry.activity==='Pitch Live'||entry.activity==='Pitch Warm-Up'),'Hitting Only pitcher must never receive pitching work');
 assert.ok(pitcherDisabledPlan.schedule[pitcherDisabled[0].name].some(entry=>entry.activity==='Hit Live'),'Hitting Only pitcher must remain in the hitting rotation');
 
+const invalidCatcherResolution=structuredClone(catcherDisabledPlan);
+invalidCatcherResolution.schedule[catcherDisabled[4].name][2]={activity:'Catch Warm-Up',partner:'Scenario 9-1'};
+assert.ok(scheduler.validate(invalidCatcherResolution).some(error=>error.includes('Not Catching but has catching work assigned')),'full resolution audit must reject catching work assigned to a Not Catching player');
+
+const invalidPitcherResolution=structuredClone(pitcherDisabledPlan);
+invalidPitcherResolution.schedule[pitcherDisabled[0].name][2]={activity:'Pitch Warm-Up',partner:'Coach'};
+assert.ok(scheduler.validate(invalidPitcherResolution).some(error=>error.includes('Hitting Only but has pitching work assigned')),'full resolution audit must reject pitching work assigned to a Hitting Only player');
+
 const elevenBlockRoster=scenario(13,5,2).map(player=>({...player,availableUntilBlock:11}));
 const elevenBlockPlan=scheduler.buildSchedule(elevenBlockRoster,'18:00',132);
 assert.equal(elevenBlockPlan.blocks.length,11,'132-minute emergency practice must contain exactly eleven blocks');
