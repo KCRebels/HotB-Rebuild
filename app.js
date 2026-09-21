@@ -4744,9 +4744,11 @@ function bind(){
     const accommodation=accommodations[player.name];
     if(!accommodation||typeof accommodation!=='object')return false;
     const arrival=String(accommodation.arrival||''),departure=String(accommodation.departure||''),limitations=String(accommodation.limitations||'');
-    const availability=practiceAvailability(r.startTime,120,arrival,departure);
-    if(Number(availability.availableFromBlock)!==Number(player.availableFromBlock)||Number(availability.availableUntilBlock)!==Number(player.availableUntilBlock))return false;
-    if(String(player.arrivalTime||'')!==String(availability.arrivalTime||'')||String(player.departureTime||'')!==String(availability.departureTime||''))return false;
+    const sourceRoster=practiceAttendanceRoster().filter(item=>item.name===player.name);
+    if(sourceRoster.length!==1)return false;
+    const rebuiltPlayer=practicePlayerModel(sourceRoster[0],accommodation,r.startTime,120);
+    const sourceFields=['name','isPitcher','isCatcher','isGuest','availableFromBlock','availableUntilBlock','arrivalTime','departureTime','limitations','prePracticeComplete','canPitch','requiresPitchWarmup','canCatch'];
+    if(sourceFields.some(field=>rebuiltPlayer[field]!==player[field]))return false;
     if(String(player.limitations||'')!==limitations)return false;
     if((accommodation.canPitch===true)!==(player.canPitch===true)||(accommodation.requiresPitchWarmup===true)!==(player.requiresPitchWarmup===true)||(accommodation.canCatch===true)!==(player.canCatch===true)||(accommodation.prePracticeComplete===true)!==(player.prePracticeComplete===true))return false;
     if(accommodation.canPitch!==true&&accommodation.requiresPitchWarmup===true)return false;
