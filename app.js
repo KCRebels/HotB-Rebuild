@@ -4243,8 +4243,12 @@ function bind(){
     // modal. The Build handler consumes it exactly once; rollback clears it.
     const resolutionDraftId=crypto.randomUUID();
     practiceResolutionApplyDraftId=resolutionDraftId;
-    const selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
-    const startTime=rollbackState?.resolution?.startTime||practiceSetupState.startTime;
+    const verifiedResolution=rollbackState?.resolution;
+    if(!verifiedResolution||!expected||!Array.isArray(verifiedResolution.practicePlayers)||!verifiedResolution.practicePlayers.length)throw new Error('Verified Practice Resolution snapshot was not available for rebuild.');
+    const selectedNames=verifiedResolution.practicePlayers.map(player=>player.name);
+    const startTime=verifiedResolution.startTime;
+    // The automatic rebuild is driven only by the captured verified transaction.
+    // Never fall back to mutable setup state after the coach has approved a change.
     practiceSetupState.selectedNames=selectedNames;practiceSetupState.startTime=startTime;
     practiceResolution=null;modal=null;
     // Do not persist this transient state. Until the resolved schedule has passed
@@ -4327,9 +4331,11 @@ function bind(){
    // In particular, role accommodations and Block 11 duration are changed before
    // rebuild starts; deriving expectations from mutable setup after that point can
    // accidentally bless state that was never part of the verified Resolution.
-   const basePlayers=resolutionSnapshot?.practicePlayers||[],durationMinutes=withBlock11?132:Number(resolutionSnapshot?.durationMinutes||120);
-   const expectedPlayers=withBlock11?practiceResolutionExtendedPlayers(basePlayers,resolutionSnapshot?.startTime||practiceSetupState.startTime):basePlayers;
-   return {role,name,startTime:resolutionSnapshot?.startTime||practiceSetupState.startTime,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||''}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
+   if(!resolutionSnapshot||!Array.isArray(resolutionSnapshot.practicePlayers)||!resolutionSnapshot.practicePlayers.length)return null;
+   const basePlayers=resolutionSnapshot.practicePlayers,durationMinutes=withBlock11?132:Number(resolutionSnapshot.durationMinutes),verifiedStart=String(resolutionSnapshot.startTime||'');
+   if((durationMinutes!==120&&durationMinutes!==132)||!verifiedStart)return null;
+   const expectedPlayers=withBlock11?practiceResolutionExtendedPlayers(basePlayers,verifiedStart):basePlayers;
+   return {role,name,startTime:verifiedStart,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||''}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
   };
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
    // This is the mutation boundary for a verified coaching choice. Re-check the
