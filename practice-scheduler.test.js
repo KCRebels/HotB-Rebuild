@@ -227,6 +227,13 @@ const overlappingLive=structuredClone(block11DeparturePlan);
 const sourceLive=overlappingLive.liveSessions[0];
 overlappingLive.liveSessions.push({...structuredClone(sourceLive)});
 assert.ok(scheduler.validate(overlappingLive).some(error=>error.includes('assigned to more than one live role/session')),'full resolution audit must reject overlapping live sessions that reuse a player in the same block');
+const orphanedScheduleLive=structuredClone(block11DeparturePlan);
+const orphanSource=orphanedScheduleLive.liveSessions[0];
+orphanedScheduleLive.liveSessions=orphanedScheduleLive.liveSessions.filter(session=>session!==orphanSource);
+const orphanErrors=scheduler.validate(orphanedScheduleLive);
+assert.ok(orphanErrors.some(error=>error.includes('Pitch Live')&&error.includes('without a matching live-session record')),'full resolution audit must reject scheduled live pitching with missing live-session metadata');
+assert.ok(orphanErrors.some(error=>error.includes('Hit Live')&&error.includes('without a matching live-session record')),'full resolution audit must reject scheduled live hitting with missing live-session metadata');
+
 
 
 
