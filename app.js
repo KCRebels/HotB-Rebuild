@@ -4902,9 +4902,22 @@ function bind(){
    // Return to setup is a destructive exit from the verified decision context.
    // It must never race an apply that already owns rollback/commit state.
    if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){console.warn('HotB ignored Return to Practice Setup while Practice Resolution apply is verifying.');return}
-   const originalSetup=structuredClone(practiceSetupState),originalResolution=practiceResolution?structuredClone(practiceResolution):null,originalSession=structuredClone(db.activePracticeSession),originalModal=modal;
+   let originalSetup,originalResolution,originalSession,originalModal=modal,originalReturnBytes='';
+   try{
+    originalReturnBytes=JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession});
+    const sealed=JSON.parse(originalReturnBytes);
+    if(JSON.stringify(sealed)!==originalReturnBytes)throw new Error('return-state-roundtrip-failed');
+    originalSetup=sealed.setupState;originalResolution=sealed.resolution;originalSession=sealed.activePracticeSession;
+   }catch(error){console.error('HotB refused Return to Practice Setup because its rollback state could not be sealed.',error);return}
    const restoreReturnState=()=>{
-    practiceSetupState=structuredClone(originalSetup);practiceResolution=originalResolution?structuredClone(originalResolution):null;db.activePracticeSession=structuredClone(originalSession);modal=originalModal;
+    try{
+     const sealed=JSON.parse(originalReturnBytes);
+     if(JSON.stringify(sealed)!==originalReturnBytes)throw new Error('return-state-restore-roundtrip-failed');
+     practiceSetupState=sealed.setupState;practiceResolution=sealed.resolution;db.activePracticeSession=sealed.activePracticeSession;modal=originalModal;
+     save();
+     if(JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession})!==originalReturnBytes||JSON.stringify(db.activePracticeSession)!==JSON.stringify(originalSession))throw new Error('return-state-post-save-drift');
+     return true;
+    }catch(error){console.error('HotB could not restore the sealed Practice Resolution Return-to-Setup state.',error);practiceResolution=null;modal=null;practicePlan=null;if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;return false}
    };
    // Build the ordinary setup locally. Nothing live changes until the failed
    // practice has been reconstructed and its safety signature matches exactly.
@@ -4951,7 +4964,7 @@ function bind(){
    const restoredExit=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
    if(!restoredExit||restoredExit.stage!=='setup'||restoredExit.plan||restoredExit.resolution||JSON.stringify(restoredExit.setupState)!==JSON.stringify(practiceSetupState)){
     console.error('HotB rolled back Return to Practice Setup because recovery changed the ordinary setup.');
-    restoreReturnState();save();render();return
+    restoreReturnState();render();return
    }
    render();window.scrollTo(0,0);
   });
