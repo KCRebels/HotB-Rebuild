@@ -5143,15 +5143,23 @@ function persistPracticeDraft(){
    console.error('HotB refused to persist a Practice Resolution draft that did not survive recovery serialization.');
    return false;
   }
-  const source=JSON.stringify(resolutionToPersist),roundTrip=JSON.stringify(savedResolution);
+  let source='',roundTrip='';
+  try{source=JSON.stringify(resolutionToPersist);roundTrip=JSON.stringify(savedResolution)}
+  catch(error){console.error('HotB refused to persist Practice Resolution because its recovery decision could not be sealed.',error);return false}
   if(source!==roundTrip){console.error('HotB refused to persist a Practice Resolution draft that changed during recovery serialization.');return false}
  }
- const serializedDraft=JSON.stringify(draft);
- db.activePracticeSession=draft;save();
+ let serializedDraft='';
+ try{serializedDraft=JSON.stringify(draft)}catch(error){console.error('HotB refused to persist Practice Resolution because its setup draft could not be sealed.',error);return false}
+ if(!serializedDraft)return false;
+ db.activePracticeSession=draft;
+ try{save()}catch(error){console.error('HotB Practice Resolution setup draft save failed.',error);return false}
  // save() is part of the Resolution recovery transaction. Do not report success
  // unless the exact draft that was preflight-verified is still present afterward
  // and can still be restored as the same setup/Resolution bytes.
- if(JSON.stringify(db.activePracticeSession)!==serializedDraft){
+ let persistedDraftBytes='';
+ try{persistedDraftBytes=JSON.stringify(db.activePracticeSession)}
+ catch(error){console.error('HotB Practice Resolution saved setup draft could not be sealed.',error);return false}
+ if(persistedDraftBytes!==serializedDraft){
   console.error('HotB Practice Resolution setup draft changed during save.');
   return false;
  }
