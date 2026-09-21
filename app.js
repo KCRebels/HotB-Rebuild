@@ -3990,7 +3990,12 @@ function bind(){
    const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){alert('HotB could not find that catcher in this practice.');return}
    const accommodation=practiceAccommodation(roster[index]);accommodation.canCatch=false;practiceSetupState.accommodations[picked]=accommodation;practiceSetupState.selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;practiceSetupState.durationMinutes=132;practiceResolution=null;modal=null;persistPracticeDraft();render();setTimeout(()=>$('#generatePractice')?.click(),0);
   });
-  $('#returnPracticeAttendance')?.addEventListener('click',()=>{practiceResolution=null;modal=null;render();window.scrollTo(0,0)});
+  $('#returnPracticeAttendance')?.addEventListener('click',()=>{
+   practiceSetupState.selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
+   practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;
+   practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;
+   practiceResolution=null;modal=null;persistPracticeDraft();render();window.scrollTo(0,0);
+  });
  }
  $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
  $('#openRecoveryGuide')?.addEventListener('click',()=>{modal='recoveryGuide';render()});
@@ -4468,7 +4473,10 @@ function bindPractice(){
    }
    const rosterGuidance=availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    practiceResolution={errors,pitchers:solvingPitchers,catchers:solvingCatchers,canExtend,combinedPitchers,combinedCatchers,rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,notices:practicePlan.fallbackWarnings||[]};
-   practicePlan=null;modal='practiceResolution';render();return;
+   practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
+   practiceSetupState.startTime=startTime;
+   practiceSetupState.durationMinutes=durationMinutes;
+   practicePlan=null;persistPracticeDraft();modal='practiceResolution';render();return;
   }
   if(practicePlan.fallbackWarnings?.length){
    practicePlan.buildNotices=practicePlan.fallbackWarnings.slice();
