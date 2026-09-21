@@ -170,6 +170,10 @@ mustInclude("could not create the practice recovery session.","resolved session 
 mustInclude("could not seal the practice recovery session.","resolved session persistence must fail closed if session serialization throws");
 mustInclude("could not save the practice recovery session.","resolved session persistence must fail closed if storage save throws");
 mustInclude("could not restore the exact practice session it just persisted","resolved session persistence must require exact complete restart recovery bytes");
+mustInclude("const previousActivePracticeSession=db.activePracticeSession;","resolved session persistence must retain the previous restart authority until verification completes");
+mustInclude("const restorePreviousSessionAfterFailure=(message,error=null)=>","resolved session persistence failures must use one transactional rollback path");
+mustInclude("could not restore the previous practice recovery session after resolved-session persistence failure.","resolved session persistence rollback failure must be contained");
+mustInclude("could not seal the saved practice recovery session.","resolved session persistence must contain post-save serialization failure");
 mustInclude("returned schedule data that could not be sealed.","candidate safety verification must reject an unserializable schedule");
 mustInclude("const finishSafety=result=>","candidate safety verification must seal the schedule around the scheduler audit");
 mustInclude("changed during its safety audit.","candidate safety verification must reject validator mutation of the schedule");
