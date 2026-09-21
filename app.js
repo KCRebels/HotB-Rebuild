@@ -3953,7 +3953,9 @@ function practiceResolutionModal(){
  if(!r.signature||r.signature!==currentResolutionSignature)return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>Practice changed</h2></div></div><p>HotB will not apply a resolution unless its verified safety signature exactly matches the current practice information.</p><button class="btn block" id="returnPracticeAttendance">Return to Practice Setup</button></div></div>`;
  const verifiedNames=new Set((r.practicePlayers||[]).map(player=>player.name));
  const choiceArraysValid=['pitchers','catchers','combinedPitchers','combinedCatchers','errors','notices','auditFailures'].every(key=>r[key]==null||Array.isArray(r[key]));
- const choiceDataValid=choiceArraysValid&&Array.isArray(r.practicePlayers)&&r.practicePlayers.length===verifiedNames.size&&verifiedNames.size>0&&
+ const uniqueChoiceArrays=['pitchers','catchers','combinedPitchers','combinedCatchers'].every(key=>{const values=r[key]||[];return values.length===new Set(values).size});
+ const noRedundantCombined=(r.combinedPitchers||[]).every(name=>!(r.pitchers||[]).includes(name))&&(r.combinedCatchers||[]).every(name=>!(r.catchers||[]).includes(name));
+ const choiceDataValid=choiceArraysValid&&uniqueChoiceArrays&&noRedundantCombined&&Array.isArray(r.practicePlayers)&&r.practicePlayers.length===verifiedNames.size&&verifiedNames.size>0&&
   Number(r.durationMinutes)>0&&Number(r.durationMinutes)<=132&&(!r.canExtend||Number(r.durationMinutes)===120)&&
   (!(r.combinedPitchers||[]).length&&!(r.combinedCatchers||[]).length||Number(r.durationMinutes)===120)&&
   [...(r.pitchers||[]),...(r.catchers||[]),...(r.combinedPitchers||[]),...(r.combinedCatchers||[])].every(name=>verifiedNames.has(name))&&
