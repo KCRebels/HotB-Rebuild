@@ -32,6 +32,10 @@ mustInclude("HotB Practice Resolution rollback failed post-save verification","r
 mustInclude("HotB ignored Return to Practice Setup while Practice Resolution apply is verifying.","Return to Setup must not race an in-flight Resolution apply");
 mustInclude("HotB refused Return to Practice Setup because the verified failed practice could not be reconstructed.","Return to Setup must reconstruct the exact verified failed practice before discarding its seal");
 mustInclude("HotB could not persist Return to Practice Setup after Practice Resolution.","Return to Setup must prove its ordinary recovery draft was persisted");
+mustInclude("const originalSetup=structuredClone(practiceSetupState),originalResolution=practiceResolution?structuredClone(practiceResolution):null,originalSession=structuredClone(db.activePracticeSession),originalModal=modal;","Return to Setup must snapshot the complete pre-exit Resolution recovery state");
+mustInclude("const verifiedResolution=practiceResolutionSnapshotIsCurrentAndValid()?practiceResolution:null;","Return to Setup reconstruction must be driven only by a currently valid Resolution");
+mustInclude("HotB refused Return to Practice Setup because a verified player is no longer in the attendance roster.","Return to Setup must fail closed when verified roster identity cannot be reconstructed");
+mustInclude("HotB rolled back Return to Practice Setup because recovery changed the ordinary setup.","Return to Setup must restore the sealed Resolution if ordinary recovery serialization drifts");
 
 const selectorBug="attendees=$('[data-practice-player]:checked').map";
 assert.equal(source.includes(selectorBug),false,'Build Practice attendee collection must use querySelectorAll helper, never the single-element helper');
