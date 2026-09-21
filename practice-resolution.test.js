@@ -115,4 +115,7 @@ mustInclude("const restoredSaved=window.HotBPracticeSession?.restore?.(saved);",
 mustInclude("JSON.stringify(restoredSaved)!==JSON.stringify(saved)","Resolution rollback authority must reject restore migration or drift before apply");
 mustInclude("HotB Practice Resolution live plan changed after restart-recovery verification","Resolution commit must prove the live plan still matches the exact persisted recovery plan");
 mustInclude("JSON.stringify(committedSession.plan)!==JSON.stringify(practicePlan)","Resolution commit must compare live and persisted plan bytes before releasing ownership");
+mustInclude("const sourceAvailability=practiceAvailability(startTime,120,player.arrivalTime,verifiedDeparture);","Block 11 must verify each source player's normal-practice availability before extension");
+mustInclude("Number(player.availableFromBlock)!==Number(sourceAvailability.availableFromBlock)","Block 11 must fail closed when source availability metadata is inconsistent");
+mustInclude("practiceTimeMinutes(startTime)===null","Block 11 extension must reject an invalid source clock before deriving boundaries");
 console.log('practice-resolution static contract tests passed');
