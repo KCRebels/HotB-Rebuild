@@ -4400,7 +4400,14 @@ function bind(){
     const resolutionApplyToken=crypto.randomUUID();
     practiceResolutionApplyDraftId=resolutionDraftId;
     practiceResolutionApplyToken=resolutionApplyToken;
-    const transactionIsCurrent=()=>practiceResolutionApplyToken===resolutionApplyToken&&(practiceResolutionApplyDraftId===resolutionDraftId||practicePlan?.portalDraftId===resolutionDraftId);
+    const transactionOwnsToken=()=>practiceResolutionApplyToken===resolutionApplyToken;
+    const transactionIsCurrent=()=>transactionOwnsToken()&&(practiceResolutionApplyDraftId===resolutionDraftId||practicePlan?.portalDraftId===resolutionDraftId);
+    const rollbackIfOwned=()=>{
+     // Only the transaction that still owns the live token may restore its snapshot.
+     // A stale queued callback must never overwrite a newer Resolution/apply.
+     if(!transactionOwnsToken())return false;
+     return restoreResolutionRollback(rollbackState);
+    };
     const verifiedResolution=rollbackState?.resolution;
     if(!resolutionRollbackStateIsValid(rollbackState)||!verifiedResolution||!expected||!Array.isArray(verifiedResolution.practicePlayers)||!verifiedResolution.practicePlayers.length)throw new Error('Verified Practice Resolution snapshot was not available for rebuild.');
     const selectedNames=verifiedResolution.practicePlayers.map(player=>player.name);
@@ -4486,20 +4493,16 @@ function bind(){
         }
        }
        console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
-       if(rollbackState)restoreResolutionRollback(rollbackState);
-       alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+       if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
       },0);
      }catch(error){
       console.error('HotB Practice Resolution automatic rebuild failed',error);
-      if(rollbackState)restoreResolutionRollback(rollbackState);
-      alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+      if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
      }
     },0);
    }catch(error){
     console.error('HotB Practice Resolution apply failed',error);
-    if(rollbackState)restoreResolutionRollback(rollbackState);
-    else endResolutionApply();
-    alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
+    if(rollbackIfOwned())alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
    }
   };
   const startVerifiedResolutionApply=(expectedFactory,mutate)=>{
@@ -4539,8 +4542,7 @@ function bind(){
    const state={setupState:structuredClone(practiceSetupState),resolution:structuredClone(practiceResolution),activePracticeSession:structuredClone(db.activePracticeSession)};
    state.rollbackSignature=JSON.stringify({
     setupState:state.setupState,
-    resolutionSignature:String(state.resolution?.signature||''),
-    decisionSignature:String(state.resolution?.decisionSignature||''),
+    resolution:state.resolution,
     activePracticeSession:state.activePracticeSession
    });
    return state;
@@ -4549,8 +4551,7 @@ function bind(){
    if(!state||!state.setupState||!state.resolution||typeof state.rollbackSignature!=='string'||!state.rollbackSignature)return false;
    const signature=JSON.stringify({
     setupState:state.setupState,
-    resolutionSignature:String(state.resolution?.signature||''),
-    decisionSignature:String(state.resolution?.decisionSignature||''),
+    resolution:state.resolution,
     activePracticeSession:state.activePracticeSession
    });
    return signature===state.rollbackSignature&&state.resolution.signature===practiceResolutionSignature(state.resolution.practicePlayers,state.resolution.startTime,state.resolution.durationMinutes)&&state.resolution.decisionSignature===practiceResolutionDecisionSignature(state.resolution);
