@@ -4200,7 +4200,15 @@ function bindPractice(){
  $('#completePracticeSetup')?.addEventListener('click',()=>{practiceEquipmentSetupOpen=false;practiceDraftDrills=[];render();window.scrollTo(0,0);setTimeout(()=>persistPracticeSession(),0)});
  $('#practiceHubBack')?.addEventListener('click',()=>{if(practiceSection==='setup')persistPracticeDraft();practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)});
  $('#recoverOrphanedPractice')?.addEventListener('click',recoverOrphanedActivePractice);
- $('#openPracticeBuilder')?.addEventListener('click',()=>{if(db.activePortalPractice?.id&&!practicePlan){alert('A practice is still active on the player and coach portals. Resume and finish that practice before building a new one.');return}practiceSection='setup';render();window.scrollTo(0,0)});
+ $('#openPracticeBuilder')?.addEventListener('click',()=>{if(db.activePortalPractice?.id&&!practicePlan){alert('A practice is still active on the player and coach portals. Resume and finish that practice before building a new one.');return}
+  // A new visit to Build Practice starts with every current player attending.
+  // Do not let a stale draft attendance array make the coach re-check the roster.
+  if(!practicePlan){
+   const allPlayers=practiceAttendanceRoster().map(player=>player.name);
+   practiceSetupState.selectedNames=allPlayers;
+   if(db.activePracticeSession?.draft&&db.activePracticeSession.setupState)db.activePracticeSession.setupState.selectedNames=allPlayers;
+  }
+  practiceSection='setup';persistPracticeDraft();render();window.scrollTo(0,0)});
  $('#openDrillLibrary')?.addEventListener('click',()=>{practiceSection='library';render();window.scrollTo(0,0)});
  $('#practiceDrillSearch')?.addEventListener('input',event=>{practiceDrillQuery=event.target.value;render();const search=$('#practiceDrillSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
  $$('[data-drill-category]').forEach(button=>button.addEventListener('click',()=>{practiceDrillCategory=button.dataset.drillCategory;render();window.scrollTo(0,0)}));
