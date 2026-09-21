@@ -960,6 +960,9 @@ if(recoveredPracticeSession){
  practiceDrillPickerOpen=!!recoveredPracticeSession.drillPickerOpen;
  practiceEquipmentSetupOpen=!!recoveredPracticeSession.equipmentSetupOpen;
  practiceSetupState={...practiceSetupState,...recoveredPracticeSession.setupState};
+ // An empty saved attendance list is a stale/failed draft, not an intentional default.
+ // Fresh/recovered practice setup should start with the full active Rebels roster checked.
+ if(!Array.isArray(practiceSetupState.selectedNames)||practiceSetupState.selectedNames.length===0)practiceSetupState.selectedNames=db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name);
  practiceClock=recoveredPracticeSession.clock;
  if(recoveredPracticeSession.portalState&&(!db.activePortalPractice||db.activePortalPractice.id===recoveredPracticeSession.portalState.id))db.activePortalPractice=recoveredPracticeSession.portalState;
  if(practicePlan)practiceSection='builder';
