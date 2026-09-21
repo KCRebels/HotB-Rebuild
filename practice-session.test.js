@@ -9,6 +9,13 @@ assert.equal(draft.stage,'setup');
 assert.equal(draft.plan,null);
 assert.deepEqual(session.restore(draft).setupState.selectedNames,['Aniesa'],'an unfinished attendance draft must restore before a schedule exists');
 assert.equal(session.restore(draft).setupState.guestPlayers[0].phone,'9135551212','guest contact information must survive draft recovery');
+const resolutionDraft=session.createDraft({setupState:{selectedNames:['Brooklyn','Lydia'],startTime:'18:00',durationMinutes:132,accommodations:{Brooklyn:{canPitch:false,requiresPitchWarmup:false,canCatch:false},Lydia:{canPitch:false,requiresPitchWarmup:false,canCatch:false}}}});
+const restoredResolutionDraft=session.restore(resolutionDraft);
+assert.equal(restoredResolutionDraft.setupState.durationMinutes,132,'Practice Resolution Block 11 must survive setup-draft recovery');
+assert.deepEqual(restoredResolutionDraft.setupState.selectedNames,['Brooklyn','Lydia'],'Practice Resolution attendance must survive setup-draft recovery');
+assert.equal(restoredResolutionDraft.setupState.accommodations.Brooklyn.canPitch,false,'Hitting Only resolution must survive setup-draft recovery');
+assert.equal(restoredResolutionDraft.setupState.accommodations.Brooklyn.requiresPitchWarmup,false,'Hitting Only resolution must not restore a pitching warm-up');
+assert.equal(restoredResolutionDraft.setupState.accommodations.Lydia.canCatch,false,'Not Catching resolution must survive setup-draft recovery');
 
 const source={plan:{portalDraftId:'practice-1',blockMinutes:12,machineFocus:'High Tee Machine',frontTossFocus:'Opposite Field Toss',players:[{name:'Aniesa'}],schedule:{Aniesa:[{block:1,activity:'Machine'}]},liveSessions:[{block:4,pitcher:'Aniesa',catcher:'Tayte'}]},chosenDrills:[{name:'Two Tee'}],draftDrills:[{name:'Connection Ball'}],drillPickerOpen:false,equipmentSetupOpen:true,setupState:{selectedNames:['Aniesa'],guestPlayers:[{name:'Guest Ava',phone:'9135550000'}]},portalState:{active:true,id:'practice-1',players:['Aniesa','Guest Ava']},clock:{running:true,finished:false,startAt:1000,lastBlock:1,lastTwoMinuteBlock:1}};
 const saved=session.create(source);
