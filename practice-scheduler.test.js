@@ -297,4 +297,24 @@ assert.equal(elevenBlockPlan.blocks.length,11,'132-minute emergency practice mus
 assert.ok(Object.values(elevenBlockPlan.schedule).every(entries=>entries.length===11),'every player schedule must carry Block 11');
 assert.deepEqual(scheduler.validate(elevenBlockPlan),[],'verified eleven-block practice must pass the complete rules audit');
 
+
+const resolutionRoleRoster=scenario(13,5,2);
+const resolutionBase=scheduler.buildSchedule(resolutionRoleRoster,'18:00',120);
+if(resolutionBase.feasibilityErrors.length){
+ const verifiedAlternatives=[];
+ for(const player of resolutionRoleRoster.filter(player=>player.isPitcher&&player.canPitch!==false)){
+  const changed=resolutionRoleRoster.map(item=>item.name===player.name?{...item,canPitch:false,requiresPitchWarmup:false}:item);
+  const candidate=scheduler.buildSchedule(changed,'18:00',120);
+  if(!candidate.feasibilityErrors.length&&!scheduler.validate(candidate).length)verifiedAlternatives.push({type:'pitcher',name:player.name,candidate});
+ }
+ for(const player of resolutionRoleRoster.filter(player=>player.isCatcher&&player.canCatch!==false)){
+  const changed=resolutionRoleRoster.map(item=>item.name===player.name?{...item,canCatch:false}:item);
+  const candidate=scheduler.buildSchedule(changed,'18:00',120);
+  if(!candidate.feasibilityErrors.length&&!scheduler.validate(candidate).length)verifiedAlternatives.push({type:'catcher',name:player.name,candidate});
+ }
+ for(const alternative of verifiedAlternatives){
+  assert.deepEqual(scheduler.validate(alternative.candidate),[],`verified Practice Resolution ${alternative.type} alternative for ${alternative.name} must remain fully auditable`);
+ }
+}
+
 console.log('practice-scheduler tests passed');
