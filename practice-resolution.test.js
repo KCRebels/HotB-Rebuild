@@ -204,4 +204,8 @@ mustInclude("resumed decision could not be sealed.","resumed Resolution byte com
 mustInclude("could not restore the saved practice session during startup.","startup recovery must contain production session restore failures");
 mustInclude("could not be isolated during startup recovery.","startup Resolution recovery must contain clone failures");
 mustInclude("could not be sealed during startup recovery.","startup Resolution recovery must contain serialization failures");
+mustInclude("recovery decision could not be sealed.","Resolution setup-draft persistence must contain decision serialization failures");
+mustInclude("setup draft could not be sealed.","Resolution setup-draft persistence must contain draft serialization failures");
+mustInclude("setup draft save failed.","Resolution setup-draft persistence must contain storage save failures");
+mustInclude("saved setup draft could not be sealed.","Resolution setup-draft persistence must contain post-save serialization failures");
 console.log('practice-resolution static contract tests passed');
