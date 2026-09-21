@@ -4427,8 +4427,8 @@ function bind(){
     practiceResolutionApplyDraftId=resolutionDraftId;
     practiceResolutionApplyOwnedDraftId=resolutionDraftId;
     practiceResolutionApplyToken=resolutionApplyToken;
-    const transactionOwnsToken=()=>practiceResolutionApplyToken===resolutionApplyToken;
-    const transactionIsCurrent=()=>transactionOwnsToken()&&practiceResolutionApplyOwnedDraftId===resolutionDraftId&&(practiceResolutionApplyDraftId===resolutionDraftId||practicePlan?.portalDraftId===resolutionDraftId);
+    const transactionOwnsToken=()=>practiceResolutionApplyToken===resolutionApplyToken&&practiceResolutionApplyOwnedDraftId===resolutionDraftId;
+    const transactionIsCurrent=()=>transactionOwnsToken()&&(practiceResolutionApplyDraftId===resolutionDraftId||practicePlan?.portalDraftId===resolutionDraftId);
     const rollbackIfOwned=()=>{
      // Only the transaction that still owns the live token may restore its snapshot.
      // A stale queued callback must never overwrite a newer Resolution/apply.
@@ -4719,8 +4719,9 @@ function persistPracticeDraft(){
   practiceResolution=null;
   if(modal==='practiceResolution')modal=null;
  }
- const draftDuration=Number(practiceSetupState.durationMinutes);
- if(draftDuration!==120&&!(draftDuration===132&&practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)))practiceSetupState.durationMinutes=120;
+ // Setup drafts never persist the temporary 132-minute apply state. A verified
+ // Resolution snapshot itself is also defined as the failed 120-minute source.
+ if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
  const resolutionToPersist=practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)?structuredClone(practiceResolution):null;
  db.activePracticeSession=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:resolutionToPersist});save();
 }
@@ -5088,6 +5089,10 @@ function bindPractice(){
     if(restored?.stage==='setup'&&!restored.plan){
      practiceSetupState={...practiceSetupState,...restored.setupState};
      practiceResolution=restored.resolution?structuredClone(restored.resolution):null;
+     // Resume follows the same invariant as startup: unresolved Resolution state
+     // always comes from the failed 120-minute source attempt. Never render a
+     // persisted 132-minute setup even briefly.
+     if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
      practiceSection='setup';
      if(practiceResolution&&!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
       console.warn('Saved Practice Resolution failed resume validation; returning to setup.');
