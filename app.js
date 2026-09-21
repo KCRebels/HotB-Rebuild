@@ -5624,6 +5624,23 @@ function bindPractice(){
    // the original 10-block practice by itself.
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
+   // Candidate notice evidence is transaction data. Once final option filtering
+   // removes a redundant combined choice, remove its verification residue too.
+   // Conversely every surviving choice must still have exactly one evidence entry.
+   const survivingCandidateLabels=new Set([
+    ...solvingPitchers.map(name=>'Hitting Only: '+name),
+    ...solvingCatchers.map(name=>'Not Catching: '+name),
+    ...(canExtend?['Block 11']:[]),
+    ...combinedPitchers.map(name=>'Hitting Only + Block 11: '+name),
+    ...combinedCatchers.map(name=>'Not Catching + Block 11: '+name)
+   ]);
+   for(const label of Object.keys(verifiedCandidateNotices)){if(!survivingCandidateLabels.has(label))delete verifiedCandidateNotices[label]}
+   const candidateEvidenceComplete=[...survivingCandidateLabels].every(label=>Object.prototype.hasOwnProperty.call(verifiedCandidateNotices,label))&&Object.keys(verifiedCandidateNotices).length===survivingCandidateLabels.size;
+   if(!candidateEvidenceComplete){
+    resolutionAuditFailures.push('Practice Resolution candidate evidence did not match the final verified choices.');
+    solvingPitchers=[];solvingCatchers=[];canExtend=false;combinedPitchers=[];combinedCatchers=[];
+    for(const label of Object.keys(verifiedCandidateNotices))delete verifiedCandidateNotices[label];
+   }
    const hasVerifiedResolution=!!(solvingPitchers.length||solvingCatchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
    const rosterGuidance=identityBlocked?'HotB found attendee identity or availability information that must be corrected before resolution. Fix the roster/guest or arrival/departure entry and build again; HotB will not guess or silently normalize it.':resolutionAuditFailures.length&&!hasVerifiedResolution?'HotB could not verify a safe automatic resolution because one or more verification builds/audits did not complete. Change attendance or availability, or build again after correcting the reported verification problem.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
