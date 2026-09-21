@@ -4866,12 +4866,14 @@ function persistPracticeSession(){
  // root pointer and older sessions with portalState remain backward compatible.
  const session=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,draftDrills:practiceDraftDrills,drillPickerOpen:practiceDrillPickerOpen,equipmentSetupOpen:practiceEquipmentSetupOpen,setupState:practiceSetupState,clock:practiceClock,portalState:null});
  if(!session?.plan?.portalDraftId||session.plan.portalDraftId!==practicePlan.portalDraftId){console.error('HotB refused to persist an incomplete practice session');return false}
+ const serializedSession=JSON.stringify(session);
  // Persisting while a Resolution transaction is still open is allowed only for
  // the exact plan owned by that transaction. This prevents unrelated UI work from
  // becoming the restart-recovery session during the commit window.
  if(practiceResolutionApplyToken&&(!practiceResolutionApplyOwnedDraftId||!practicePlan.portalDraftId||practicePlan.portalDraftId!==practiceResolutionApplyOwnedDraftId)){console.error('HotB refused to persist a practice outside the active Resolution transaction');return false}
  db.activePracticeSession=session;
  save();
+ if(JSON.stringify(db.activePracticeSession)!==serializedSession){console.error('HotB practice persistence changed the session during save');return false}
  // Persistence success means the exact serialized session is immediately
  // restorable, not merely that an object was assigned to db.
  const restored=window.HotBPracticeSession.restore?.(db.activePracticeSession);
@@ -4882,10 +4884,11 @@ function persistPracticeSession(){
  // after this function returns.
  if(practiceResolutionApplyToken){
   const restoredSetup=restored.setupState||{},liveNames=(practicePlan.players||[]).map(player=>player.name),savedNames=Array.isArray(restoredSetup.selectedNames)?restoredSetup.selectedNames:[];
-  if(String(restoredSetup.startTime||'')!==String(practicePlan.startTime||'')||Number(restoredSetup.durationMinutes)!==Number(practicePlan.durationMinutes)||savedNames.length!==liveNames.length||new Set(savedNames).size!==savedNames.length||savedNames.some(name=>!liveNames.includes(name))){
+  if(String(restoredSetup.startTime||'')!==String(practicePlan.startTime||'')||Number(restoredSetup.durationMinutes)!==Number(practicePlan.durationMinutes)||savedNames.length!==liveNames.length||new Set(savedNames).size!==savedNames.length||savedNames.some((name,index)=>name!==liveNames[index])){
    console.error('HotB Practice Resolution restart recovery changed the resolved setup identity');
    return false;
   }
+  if(JSON.stringify(restored.plan)!==JSON.stringify(practicePlan)){console.error('HotB Practice Resolution restart recovery changed the resolved plan bytes');return false}
  }
  return true;
 }
