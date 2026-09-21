@@ -4870,8 +4870,8 @@ function bindPractice(){
  $('#endPracticeDraft')?.addEventListener('click',endPracticeDraft);
  $('#generatePractice')?.addEventListener('click',()=>{
   const roster=practiceAttendanceRoster(),attendees=$$('[data-practice-player]:checked').map(input=>roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
-  if(!attendees.length){alert('Select at least one player attending practice.');return}
-  if(!window.HotBPracticeScheduler){alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
+  if(!attendees.length){if(practiceResolutionApplyDraftId)practiceResolutionApplyDraftId=null;alert('Select at least one player attending practice.');return}
+  if(!window.HotBPracticeScheduler){if(practiceResolutionApplyDraftId)practiceResolutionApplyDraftId=null;alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
   const startTime=$('#practiceStartTime').value||'18:00',durationMinutes=Number($('#practiceDuration').value)||120;
   // Emergency Block 11 is a verified Resolution-only state. A normal/manual build
   // must never inherit 132 minutes from stale DOM, restored form state, or an
@@ -4885,6 +4885,7 @@ function bindPractice(){
    return;
   }
   if(durationMinutes!==120&&durationMinutes!==132){
+   if(practiceResolutionApplyDraftId)practiceResolutionApplyDraftId=null;
    alert('HotB can only build the normal 120-minute practice or a verified 132-minute Practice Resolution.');
    return;
   }
@@ -4897,7 +4898,16 @@ function bindPractice(){
   if(!practicePlayers.some(player=>player.canPitch))noPitchersMode=null;
   stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
   const buildButton=$('#generatePractice');if(buildButton){buildButton.disabled=true;buildButton.textContent='Building Practice…'}
-  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){console.error('HotB practice scheduler failed',error);practicePlan=null;if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));return}
+  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){
+   console.error('HotB practice scheduler failed',error);practicePlan=null;
+   // A Resolution apply token is single-use authorization for this automatic
+   // rebuild only. If scheduler construction throws before the normal consume
+   // point, revoke it immediately so no later/manual build can inherit Block 11
+   // permission or the verified draft identity.
+   if(practiceResolutionApplyDraftId)practiceResolutionApplyDraftId=null;
+   if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
+   alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));return
+  }
   if(practicePlan.feasibilityErrors?.length){
    const errors=practicePlan.feasibilityErrors.slice(),identityBlocked=errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(error)),availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
    // Practice Resolution is intentionally stricter than the normal build path. It is rare,
