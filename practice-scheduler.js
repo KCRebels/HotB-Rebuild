@@ -45,8 +45,11 @@
    const keyFor=player=>player.assignmentKey||player.name;
    const assignments=Array(slots.length).fill(null).map(()=>[]),remaining=new Set(playersToAssign.map(keyFor));
    const byName=Object.fromEntries(playersToAssign.map(player=>[keyFor(player),player]));
+   const failedStates=new Set();
    function solve(){
     if(!remaining.size)return assignments.every(group=>(!requireAllSlots&&group.length===0)||group.length===2||group.length===3);
+    const stateKey=[...remaining].sort().join(',')+'|'+assignments.map(group=>group.slice().sort().join(',')).join(';');
+    if(failedStates.has(stateKey))return false;
     const openNames=[...remaining],name=openNames.sort((a,b)=>{
      const options=playerName=>slots.filter((slot,index)=>assignments[index].length<3&&eligible(byName[playerName],slot,index,assignments[index])).length;
      return options(a)-options(b)||a.localeCompare(b);
@@ -68,6 +71,7 @@
      if(minimumNeeded<=remaining.size&&capacity>=remaining.size&&solve())return true;
      remaining.add(name);assignments[candidate.index].pop();
     }
+    failedStates.add(stateKey);
     return false;
    }
    return solve()?assignments:null;
