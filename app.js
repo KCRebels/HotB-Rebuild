@@ -4196,6 +4196,14 @@ function bind(){
   };
   const resolutionPostcondition=(expected)=>{
    if(!expected||!practicePlan)return false;
+   // This verifier is intentionally read-only. Capture the plan's serialized shape
+   // so any accidental future mutation inside the proof fails the transaction.
+   let proofBefore='';
+   try{proofBefore=JSON.stringify(practicePlan)}catch(_){return false}
+   const finishProof=result=>{
+    if(!result)return false;
+    try{return JSON.stringify(practicePlan)===proofBefore}catch(_){return false}
+   };
    if(String(practicePlan.startTime||'')!==String(expected.startTime||''))return false;
    if(Number(practicePlan.durationMinutes)!==Number(expected.durationMinutes))return false;
    const expectedNames=expected.playerNames||[],actualNames=(practicePlan.players||[]).map(player=>player.name);
@@ -4413,7 +4421,7 @@ function bind(){
    const repeatedHitters=[...liveHitCounts.entries()].filter(([,count])=>count>1).map(([name])=>name).sort();
    const persistedHitterRepeats=[...new Set(practicePlan.liveHitterRepeats)].sort();
    if(repeatedHitters.length!==persistedHitterRepeats.length||repeatedHitters.some((name,index)=>name!==persistedHitterRepeats[index]))return false;
-   return true;
+   return finishProof(true);
   };
   const rebuildResolvedPractice=(rollbackState,expected)=>{
    try{
@@ -4502,9 +4510,15 @@ function bind(){
           console.error('HotB Practice Resolution restart recovery did not retain the resolved draft identity');
          }else{
           const livePlan=practicePlan;
-          practicePlan=committedPlan;
-          const committedSafe=resolutionPostcondition(expected);
-          practicePlan=livePlan;
+          let committedSafe=false;
+          try{
+           // Verify the serialized/restored copy without allowing an exception to
+           // strand the global practicePlan on the recovery copy.
+           practicePlan=committedPlan;
+           committedSafe=resolutionPostcondition(expected);
+          }finally{
+           practicePlan=livePlan;
+          }
           if(!committedSafe){
            rebuiltSafe=false;
            console.error('HotB Practice Resolution restart recovery failed the resolved postcondition');
