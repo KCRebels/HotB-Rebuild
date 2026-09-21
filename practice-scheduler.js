@@ -405,7 +405,16 @@
      if(block<(catcher.availableFromBlock??0)||block>=(catcher.availableUntilBlock??BLOCK_COUNT))errors.push(`${catcher.name} catches live in Block ${block+1} while unavailable.`);
     }
    }
-   hitters.forEach(name=>{const hitter=plan.players.find(player=>player.name===name);if(!hitter)errors.push(`Block ${block+1} uses live hitter ${name} who is not attending.`);else if(block<(hitter.availableFromBlock??0)||block>=(hitter.availableUntilBlock??BLOCK_COUNT))errors.push(`${name} hits live in Block ${block+1} while unavailable.`)});
+   const uniqueHitters=new Set(hitters);
+   if(uniqueHitters.size!==hitters.length)errors.push(`Block ${block+1} repeats the same hitter in one live session.`);
+   hitters.forEach(name=>{
+    const hitter=plan.players.find(player=>player.name===name);
+    if(name===session.pitcher)errors.push(`${name} cannot pitch and hit in the same live session in Block ${block+1}.`);
+    if(name===session.catcher)errors.push(`${name} cannot catch and hit in the same live session in Block ${block+1}.`);
+    if(!hitter)errors.push(`Block ${block+1} uses live hitter ${name} who is not attending.`);
+    else if(block<(hitter.availableFromBlock??0)||block>=(hitter.availableUntilBlock??BLOCK_COUNT))errors.push(`${name} hits live in Block ${block+1} while unavailable.`);
+   });
+   if(session.pitcher&&session.catcher&&session.pitcher===session.catcher)errors.push(`${session.pitcher} cannot pitch and catch in the same live session in Block ${block+1}.`);
   });
   const pitcherBlockCounts={};
   (plan?.liveSessions||[]).filter(session=>session.pitcher&&session.pitcher!=='Coach').forEach(session=>pitcherBlockCounts[session.pitcher]=(pitcherBlockCounts[session.pitcher]||0)+1);
