@@ -5,6 +5,11 @@ on:
     paths:
       - 'app.js'
       - 'practice-resolution.test.js'
+      - 'practice-scheduler.js'
+      - 'practice-scheduler.test.js'
+      - 'practice-session.js'
+      - 'practice-session.test.js'
+      - 'app-persistence.test.js'
       - '.github/workflows/practice-resolution.yml'
   workflow_dispatch:
 jobs:
@@ -15,7 +20,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Check app syntax
-        run: node --check app.js
+      - name: Check production JavaScript syntax
+        run: |
+          node --check app.js
+          node --check practice-scheduler.js
+          node --check practice-session.js
       - name: Run Practice Resolution contracts
         run: node practice-resolution.test.js
+      - name: Run practice scheduler tests
+        run: node practice-scheduler.test.js
+      - name: Run practice session tests
+        run: node practice-session.test.js
+      - name: Run app persistence tests
+        run: node app-persistence.test.js
