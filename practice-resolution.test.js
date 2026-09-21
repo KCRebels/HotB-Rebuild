@@ -172,4 +172,7 @@ mustInclude("notice evidence could not be sealed.","candidate publication must f
 mustInclude("delete verifiedCandidateNotices[label]","candidate publication must remove evidence if publication verification fails");
 mustInclude("changed while publishing verified candidate evidence.","candidate publication must prove evidence and source remain unchanged");
 mustInclude("candidate evidence could not be sealed after final filtering.","final candidate evidence set must be serializable before Resolution publication");
+mustInclude("could not verify the published Practice Resolution recovery session.","Resolution modal publication must fail closed if production recovery restore throws");
+mustInclude("JSON.stringify(publishedRestored)!==publishedSessionBytes","Resolution modal publication must require exact complete persisted-session restart recovery");
+mustInclude("stale at modal publication.","Resolution modal publication must revalidate the live decision snapshot after persistence");
 console.log('practice-resolution static contract tests passed');
