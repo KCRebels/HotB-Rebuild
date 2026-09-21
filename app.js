@@ -5523,8 +5523,9 @@ function bindPractice(){
    // the Practice Hub. Fresh setup still starts with every current Rebels player.
    const savedSetupDraft=db.activePracticeSession?.stage==='setup'&&!db.activePracticeSession?.plan;
    if(savedSetupDraft){
-    const savedDraftBytes=JSON.stringify(db.activePracticeSession);
-    const restored=window.HotBPracticeSession?.restore(db.activePracticeSession);
+    let savedDraftBytes='',restored=null;
+    try{savedDraftBytes=JSON.stringify(db.activePracticeSession);restored=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
+    catch(error){console.error('HotB refused Practice Resolution resume because the saved setup recovery could not be restored.',error);return}
     if(restored?.stage==='setup'&&!restored.plan){
      // Resume may not accept a restore migration/default as authority for an
      // unresolved Resolution. The exact saved setup-stage transaction must survive
@@ -5550,13 +5551,19 @@ function bindPractice(){
       // A rejected emergency Resolution cannot leave its 132-minute duration
       // behind when the coach resumes the draft.
       if(Number(practiceSetupState.durationMinutes)===132)practiceSetupState.durationMinutes=120;
-      persistPracticeDraft();
+      if(persistPracticeDraft()!==true){
+       console.error('HotB could not persist the clean setup after rejecting a stale resumed Practice Resolution.');
+       practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='hub';modal=null;render();window.scrollTo(0,0);return;
+      }
      }else if(practiceResolution){
       // The restored object must be byte-for-byte the sealed object in the saved
       // draft. This catches restore migrations/defaults that might otherwise keep
       // valid signatures while changing recovery metadata.
       const savedResolution=db.activePracticeSession?.resolution;
-      if(!savedResolution||JSON.stringify(savedResolution)!==JSON.stringify(practiceResolution)){
+      let savedResolutionBytes='',liveResolutionBytes='';
+      try{savedResolutionBytes=JSON.stringify(savedResolution);liveResolutionBytes=JSON.stringify(practiceResolution)}
+      catch(error){console.error('HotB refused a Practice Resolution whose resumed decision could not be sealed.',error);practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='hub';modal=null;render();window.scrollTo(0,0);return}
+      if(!savedResolution||savedResolutionBytes!==liveResolutionBytes){
        console.error('HotB refused a Practice Resolution that changed while restoring the saved draft.');
        practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='hub';modal=null;render();window.scrollTo(0,0);return;
       }
