@@ -4331,7 +4331,7 @@ function bind(){
     const resolutionApplyToken=crypto.randomUUID();
     practiceResolutionApplyDraftId=resolutionDraftId;
     practiceResolutionApplyToken=resolutionApplyToken;
-    const transactionIsCurrent=()=>practiceResolutionApplyDraftId===resolutionDraftId&&practiceResolutionApplyToken===resolutionApplyToken;
+    const transactionIsCurrent=()=>practiceResolutionApplyToken===resolutionApplyToken&&(practiceResolutionApplyDraftId===resolutionDraftId||practicePlan?.portalDraftId===resolutionDraftId);
     const verifiedResolution=rollbackState?.resolution;
     if(!resolutionRollbackStateIsValid(rollbackState)||!verifiedResolution||!expected||!Array.isArray(verifiedResolution.practicePlayers)||!verifiedResolution.practicePlayers.length)throw new Error('Verified Practice Resolution snapshot was not available for rebuild.');
     const selectedNames=verifiedResolution.practicePlayers.map(player=>player.name);
@@ -5070,7 +5070,7 @@ function bindPractice(){
    // rebuild only. If scheduler construction throws before the normal consume
    // point, revoke it immediately so no later/manual build can inherit Block 11
    // permission or the verified draft identity.
-   if(practiceResolutionApplyDraftId)practiceResolutionApplyDraftId=null;
+   if(practiceResolutionApplyDraftId){practiceResolutionApplyDraftId=null;practiceResolutionApplyToken=null}
    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
    alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));return
   }
@@ -5078,7 +5078,7 @@ function bindPractice(){
    // If this failed build was itself an automatic Resolution rebuild, revoke its
    // one-use authorization before doing any secondary candidate work. The outer
    // transaction will inspect the failed result and restore the original snapshot.
-   if(practiceResolutionApplyDraftId)practiceResolutionApplyDraftId=null;
+   if(practiceResolutionApplyDraftId){practiceResolutionApplyDraftId=null;practiceResolutionApplyToken=null}
    const errors=practicePlan.feasibilityErrors.slice(),identityBlocked=errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(error)),availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
    // Practice Resolution is intentionally stricter than the normal build path. It is rare,
    // so every choice shown to the coach must pass both scheduler feasibility and the full
@@ -5241,7 +5241,10 @@ function bindPractice(){
   // A rebuilt Resolution must retain the same draft identity for the entire
   // apply transaction. Ordinary builds get a fresh identity; Resolution rebuilds
   // reuse the verified expected identity assigned before the automatic Build click.
-  practicePlan.portalDraftId=practiceResolutionApplyDraftId||crypto.randomUUID();
+  const resolutionBuildDraftId=practiceResolutionApplyDraftId;
+  practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();
+  // The build authorization is consumed here, but the transaction token remains
+  // alive until the outer Resolution verifier commits or rolls back this exact plan.
   practiceResolutionApplyDraftId=null;
   practicePlan.machineFocus='Standard';practicePlan.frontTossFocus='Standard';
   // Validation remains available for audits, but do not run the full synchronous
