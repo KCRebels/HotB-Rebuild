@@ -3918,7 +3918,7 @@ function practiceResolutionExtendedPlayers(players,startTime){
   // Do not consult mutable setup state here: candidate verification, restart recovery,
   // and final postcondition proof must all derive Block 11 from the same snapshot.
   const verifiedDeparture=player.departureTime||originalEnd;
-  const stayedThroughOriginalEnd=player.availableUntilBlock===10&&verifiedDeparture===originalEnd;
+  const stayedThroughOriginalEnd=Number(player.availableUntilBlock)===10&&verifiedDeparture===originalEnd;
   return {...player,availableUntilBlock:stayedThroughOriginalEnd?11:player.availableUntilBlock,departureTime:stayedThroughOriginalEnd?extendedEnd:player.departureTime};
  });
 }
@@ -3926,7 +3926,7 @@ function practiceResolutionSignature(players,startTime,durationMinutes){
  // Canonicalize attendee order so a harmless roster ordering change cannot invalidate
  // a verified resolution, while every scheduling-relevant field still must match.
  const canonicalPlayers=(players||[]).map(player=>({name:String(player.name||'').trim(),isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,isGuest:!!player.isGuest,availableFromBlock:Number(player.availableFromBlock),availableUntilBlock:Number(player.availableUntilBlock),arrivalTime:String(player.arrivalTime||''),departureTime:String(player.departureTime||''),canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true})).sort((a,b)=>a.name.localeCompare(b.name));
- return JSON.stringify({players:canonicalPlayers,startTime,durationMinutes});
+ return JSON.stringify({players:canonicalPlayers,startTime:String(startTime||''),durationMinutes:Number(durationMinutes)});
 }
 function currentPracticeResolutionSignature(){
  if(!practiceResolution)return'';
