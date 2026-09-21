@@ -4244,7 +4244,7 @@ function bind(){
     const resolutionDraftId=crypto.randomUUID();
     practiceResolutionApplyDraftId=resolutionDraftId;
     const selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
-    const startTime=practiceResolution?.startTime||practiceSetupState.startTime;
+    const startTime=resolutionSnapshot?.startTime||practiceSetupState.startTime;
     practiceSetupState.selectedNames=selectedNames;practiceSetupState.startTime=startTime;
     practiceResolution=null;modal=null;
     // Do not persist this transient state. Until the resolved schedule has passed
@@ -4322,10 +4322,14 @@ function bind(){
    }
   };
   const resolutionRollbackState=()=>({setupState:structuredClone(practiceSetupState),resolution:structuredClone(practiceResolution),activePracticeSession:structuredClone(db.activePracticeSession)});
-  const expectedResolutionState=(role=null,name=null,withBlock11=false)=>{
-   const basePlayers=practiceResolution?.practicePlayers||[],durationMinutes=withBlock11?132:Number(practiceResolution?.durationMinutes||practiceSetupState.durationMinutes);
-   const expectedPlayers=withBlock11?practiceResolutionExtendedPlayers(basePlayers,practiceResolution?.startTime||practiceSetupState.startTime):basePlayers;
-   return {role,name,startTime:practiceResolution?.startTime||practiceSetupState.startTime,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||''}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
+  const expectedResolutionState=(role=null,name=null,withBlock11=false,resolutionSnapshot=practiceResolution)=>{
+   // Expected postconditions must come from the immutable pre-mutation snapshot.
+   // In particular, role accommodations and Block 11 duration are changed before
+   // rebuild starts; deriving expectations from mutable setup after that point can
+   // accidentally bless state that was never part of the verified Resolution.
+   const basePlayers=resolutionSnapshot?.practicePlayers||[],durationMinutes=withBlock11?132:Number(resolutionSnapshot?.durationMinutes||120);
+   const expectedPlayers=withBlock11?practiceResolutionExtendedPlayers(basePlayers,resolutionSnapshot?.startTime||practiceSetupState.startTime):basePlayers;
+   return {role,name,startTime:resolutionSnapshot?.startTime||practiceSetupState.startTime,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||''}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
   };
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
    // This is the mutation boundary for a verified coaching choice. Re-check the
@@ -4348,17 +4352,17 @@ function bind(){
    return true;
   };
   $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('pitcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'pitcher')){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('pitcher',picked,false));
+   const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('pitcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'pitcher')){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('pitcher',picked,false,rollbackState.resolution));
   });
   $('#applyPracticeCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('catcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'catcher')){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('catcher',picked,false));
+   const picked=$('input[name="practiceResolutionCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('catcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'catcher')){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('catcher',picked,false,rollbackState.resolution));
   });
-  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;if(!verifiedResolutionChoice('extension')){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!practiceResolutionSnapshotIsCurrentAndValid()||Number(practiceResolution.durationMinutes)!==120||practiceResolution.canExtend!==true){endResolutionApply();rejectUnverifiedResolution();return}practiceSetupState.durationMinutes=132;rebuildResolvedPractice(rollbackState,expectedResolutionState(null,null,true))});
+  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;if(!verifiedResolutionChoice('extension')){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!practiceResolutionSnapshotIsCurrentAndValid()||Number(practiceResolution.durationMinutes)!==120||practiceResolution.canExtend!==true){endResolutionApply();rejectUnverifiedResolution();return}practiceSetupState.durationMinutes=132;rebuildResolvedPractice(rollbackState,expectedResolutionState(null,null,true,rollbackState.resolution))});
   $('#applyPracticeCombinedResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionCombinedPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('combinedPitcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'pitcher',true)){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('pitcher',picked,true));
+   const picked=$('input[name="practiceResolutionCombinedPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('combinedPitcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'pitcher',true)){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('pitcher',picked,true,rollbackState.resolution));
   });
   $('#applyPracticeCombinedCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('combinedCatcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'catcher',true)){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('catcher',picked,true));
+   const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('combinedCatcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'catcher',true)){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('catcher',picked,true,rollbackState.resolution));
   });
   $('#returnPracticeAttendance')?.addEventListener('click',()=>{
    // Return to setup from the exact verified snapshot. This button is also the
@@ -4367,7 +4371,7 @@ function bind(){
    const verifiedPlayers=practiceResolutionSnapshotIsCurrentAndValid()?practiceResolution.practicePlayers:[];
    if(verifiedPlayers.length){
     practiceSetupState.selectedNames=verifiedPlayers.map(player=>player.name);
-    practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;
+    practiceSetupState.startTime=resolutionSnapshot?.startTime||practiceSetupState.startTime;
     practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;
     const roster=practiceAttendanceRoster(),nextAccommodations={...practiceSetupState.accommodations};
     verifiedPlayers.forEach(player=>{
