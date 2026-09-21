@@ -146,4 +146,7 @@ mustInclude("duration<=0?'':practiceTimeValue(start+duration)","practice end der
 mustInclude("availableFromBlock:-1,availableUntilBlock:-1","practice availability must expose invalid time data as impossible availability");
 mustInclude("if(minutes===null)return '—';","invalid practice clocks must not render as a plausible time label");
 mustInclude("throw new Error('invalid-practice-start-time')","practice publication must reject an invalid start clock instead of deriving block times");
+mustNotInclude("String(availability.arrivalTime||'')","rollback validation must not read arrival/departure fields that practiceAvailability does not return");
+mustInclude("const rebuiltPlayer=practicePlayerModel(sourceRoster[0],accommodation,r.startTime,120);","rollback validation must reconstruct the source player through the production player model");
+mustInclude("sourceFields.some(field=>rebuiltPlayer[field]!==player[field])","rollback validation must compare the complete reconstructed source player to verified Resolution state");
 console.log('practice-resolution static contract tests passed');
