@@ -4101,10 +4101,11 @@ function bind(){
    for(const name of expectedNames)if(!Array.isArray(practicePlan.schedule?.[name])||practicePlan.schedule[name].length!==expectedBlocks)return false;
    for(const player of practicePlan.players||[]){
     const availability=expected.availability?.[player.name];if(!availability)return false;
-    if(Number(player.availableFromBlock)!==Number(availability.availableFromBlock)||Number(player.availableUntilBlock)!==Number(availability.availableUntilBlock))return false;
+    if(Number(player.availableFromBlock)!==Number(availability.availableFromBlock)||Number(player.availableUntilBlock)!==Number(availability.availableUntilBlock)||String(player.arrivalTime||'')!==String(availability.arrivalTime||'')||String(player.departureTime||'')!==String(availability.departureTime||''))return false;
    }
    for(const player of practicePlan.players||[]){
     const baseline=expected.baselineRoles?.[player.name];if(!baseline)return false;
+    if((player.prePracticeComplete===true)!==baseline.prePracticeComplete||(player.isPitcher===true)!==baseline.isPitcher||(player.isCatcher===true)!==baseline.isCatcher||(player.isGuest===true)!==baseline.isGuest)return false;
     const approvedTarget=expected.role&&player.name===expected.name;
     if(!approvedTarget){
      if(player.canPitch!==baseline.canPitch||player.requiresPitchWarmup!==baseline.requiresPitchWarmup||player.canCatch!==baseline.canCatch)return false;
@@ -4186,7 +4187,7 @@ function bind(){
   const expectedResolutionState=(role=null,name=null,withBlock11=false)=>{
    const basePlayers=practiceResolution?.practicePlayers||[],durationMinutes=withBlock11?132:Number(practiceResolution?.durationMinutes||practiceSetupState.durationMinutes);
    const expectedPlayers=withBlock11?practiceResolutionExtendedPlayers(basePlayers,practiceResolution?.startTime||practiceSetupState.startTime):basePlayers;
-   return {role,name,startTime:practiceResolution?.startTime||practiceSetupState.startTime,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:!!player.canPitch,requiresPitchWarmup:!!player.requiresPitchWarmup,canCatch:!!player.canCatch}]))};
+   return {role,name,startTime:practiceResolution?.startTime||practiceSetupState.startTime,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||''}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
   };
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
    const target=findResolutionRosterIndex(name,role);if(!target)return false;
