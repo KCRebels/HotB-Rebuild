@@ -4274,7 +4274,7 @@ function bind(){
    // row must be the exact 12-minute sequence implied by the verified start time.
    // This catches shifted, duplicated, skipped, or malformed block clocks before
    // a resolved practice can be committed to restart recovery or player portals.
-   const clockMinutes=value=>{const match=String(value||'').trim().match(/^(\\d{1,2}):(\\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null};
+   const clockMinutes=value=>{const match=String(value||'').trim().match(/^(\d{1,2}):(\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null};
    const verifiedStart=clockMinutes(expected.startTime);
    if(verifiedStart===null)return false;
    if(!practicePlan.times.every((time,index)=>{
@@ -5515,7 +5515,7 @@ function bindPractice(){
     // Candidate verification must prove the same exact clock contract as final
     // Resolution commit; otherwise an option could be advertised as verified and
     // only fail later when the coach applies it.
-    const clockMinutes=value=>{const match=String(value||'').trim().match(/^(\\d{1,2}):(\\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null};
+    const clockMinutes=value=>{const match=String(value||'').trim().match(/^(\d{1,2}):(\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null};
     const verifiedStart=clockMinutes(plan.startTime);
     if(verifiedStart===null||!plan.times.every((time,index)=>time&&Number(time.block)===index+1&&clockMinutes(time.start)===(verifiedStart+index*12)%(24*60)&&clockMinutes(time.end)===(verifiedStart+(index+1)*12)%(24*60))){resolutionAuditFailures.push(label+' returned an invalid block clock.');return false}
     try{
