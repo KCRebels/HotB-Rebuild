@@ -1658,6 +1658,10 @@ function compactReconstructableLocalCaches(){
 
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
 function go(r){
+ // A Resolution apply is an atomic practice transaction. Generic navigation must
+ // not render another surface, save transient role/Block 11 state, or invalidate
+ // controls while its queued verifier still owns the rollback snapshot.
+ if(route==='practice'&&r!=='practice'&&(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId)){console.warn('HotB deferred navigation during Practice Resolution verification.');return}
  if(route==='practice'&&practicePlan)persistPracticeSession();
  if(r==='practice'&&route!=='practice')practiceSection='hub';
  // A private portal URL is a dedicated surface. Do not let generic app
@@ -4167,7 +4171,10 @@ function bind(){
   };
   let resolutionApplying=false;
   const beginResolutionApply=()=>{
-   if(resolutionApplying)return false;
+   // The local flag is recreated on every render/bind, so the global transaction
+   // identities are the durable lock. Never permit a second coaching choice while
+   // an earlier Resolution apply is between mutation, rebuild, audit, and commit.
+   if(resolutionApplying||practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId)return false;
    resolutionApplying=true;
    document.querySelectorAll('.practice-resolution-modal button').forEach(button=>button.disabled=true);
    document.querySelectorAll('.practice-resolution-modal input').forEach(input=>input.disabled=true);
@@ -4810,6 +4817,7 @@ function clearPracticeSession(){
  db.activePracticeSession=null;save();
 }
 async function endPracticeDraft(){
+ if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){console.warn('HotB ignored End Draft while Practice Resolution apply is verifying.');return}
  if(db.activePortalPractice?.id){alert(db.activePortalPractice.id===practicePlan?.portalDraftId?'This practice is active on the player and coach portals. Deactivate the portal plans before ending the draft.':'Another practice is still active on the player and coach portals. Finish that active practice before discarding this draft.');return}
  if(!confirm('End this unfinished practice? All attendance, adjustments and guest information will be cleared, and every guest link will expire.'))return;
  const guests=[...practiceGuestPlayers(),...practiceGuestCoaches()].filter(guest=>guest.portalId);
