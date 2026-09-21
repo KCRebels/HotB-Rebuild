@@ -4120,6 +4120,9 @@ function bind(){
   };
   const rebuildResolvedPractice=(rollbackState,expected)=>{
    try{
+    // Allocate the resolved draft identity before leaving the verified Resolution
+    // modal. The Build handler consumes it exactly once; rollback clears it.
+    practiceResolutionApplyDraftId=crypto.randomUUID();
     const selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
     const startTime=practiceResolution?.startTime||practiceSetupState.startTime;
     practiceSetupState.selectedNames=selectedNames;practiceSetupState.startTime=startTime;
@@ -4165,6 +4168,7 @@ function bind(){
        console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
        if(rollbackState){
         practicePlan=null;
+        practiceResolutionApplyDraftId=null;
         practiceSetupState=structuredClone(rollbackState.setupState);
         practiceResolution=structuredClone(rollbackState.resolution);
         modal='practiceResolution';
@@ -4185,7 +4189,7 @@ function bind(){
     },0);
    }catch(error){
     console.error('HotB Practice Resolution apply failed',error);
-    if(rollbackState){practiceSetupState=structuredClone(rollbackState.setupState);practiceResolution=structuredClone(rollbackState.resolution);modal='practiceResolution';db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);endResolutionApply();save();render()}
+    if(rollbackState){practiceResolutionApplyDraftId=null;practiceSetupState=structuredClone(rollbackState.setupState);practiceResolution=structuredClone(rollbackState.resolution);modal='practiceResolution';db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);endResolutionApply();save();render()}
     else endResolutionApply();
     alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
    }
@@ -4300,6 +4304,7 @@ async function endPracticeDraft(){
  }
  closePracticeWorkspace();
 }
+let practiceResolutionApplyDraftId=null;
 let practiceResumeVerificationBusy=false;
 async function resumeRecoveredPracticeClock(){
  if(practiceResumeVerificationBusy||!practicePlan||!practiceClock.running)return;
@@ -4810,7 +4815,11 @@ function bindPractice(){
   if(practicePlan.fallbackWarnings?.length){
    practicePlan.buildNotices=practicePlan.fallbackWarnings.slice();
   }
-  practicePlan.portalDraftId=crypto.randomUUID();
+  // A rebuilt Resolution must retain the same draft identity for the entire
+  // apply transaction. Ordinary builds get a fresh identity; Resolution rebuilds
+  // reuse the verified expected identity assigned before the automatic Build click.
+  practicePlan.portalDraftId=practiceResolutionApplyDraftId||crypto.randomUUID();
+  practiceResolutionApplyDraftId=null;
   practicePlan.machineFocus='Standard';practicePlan.frontTossFocus='Standard';
   // Validation remains available for audits, but do not run the full synchronous
   // validator on the iPhone build path. The scheduler already enforces these
