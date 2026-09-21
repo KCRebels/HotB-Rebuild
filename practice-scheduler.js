@@ -382,8 +382,18 @@
   const totalFrontFours=Array.from({length:BLOCK_COUNT},(_,block)=>{const counts={};Object.values(plan.schedule||{}).map(items=>items[block]).filter(entry=>entry?.activity?.startsWith('Front Toss Lane')).forEach(entry=>counts[entry.activity]=(counts[entry.activity]||0)+1);return Object.values(counts).filter(count=>count===4).length}).reduce((a,b)=>a+b,0);
   if(totalFrontFours>1)errors.push('Practice uses more than one 4-player Front Toss block.');
   (plan?.liveSessions||[]).forEach(session=>{
-   if(session.hitters.length<2||session.hitters.length>3)errors.push(`Block ${session.block+1} must have 2–3 live hitters.`);
-   if(session.catcher==='Coach')errors.push(`Block ${session.block+1} assigns Coach as the live catcher.`);
+   const block=Number(session.block),pitcher=plan.players.find(player=>player.name===session.pitcher),catcher=plan.players.find(player=>player.name===session.catcher);
+   if(session.hitters.length<2||session.hitters.length>3)errors.push(`Block ${block+1} must have 2–3 live hitters.`);
+   if(session.catcher==='Coach')errors.push(`Block ${block+1} assigns Coach as the live catcher.`);
+   if(session.pitcher&&session.pitcher!=='Coach'){
+    if(!pitcher)errors.push(`Block ${block+1} uses a live pitcher who is not attending.`);
+    else if(block<(pitcher.availableFromBlock??0)||block>=(pitcher.availableUntilBlock??BLOCK_COUNT))errors.push(`${pitcher.name} pitches live in Block ${block+1} while unavailable.`);
+   }
+   if(session.catcher&&session.catcher!=='9Square'&&session.catcher!=='Coach'){
+    if(!catcher)errors.push(`Block ${block+1} uses a live catcher who is not attending.`);
+    else if(block<(catcher.availableFromBlock??0)||block>=(catcher.availableUntilBlock??BLOCK_COUNT))errors.push(`${catcher.name} catches live in Block ${block+1} while unavailable.`);
+   }
+   (session.hitters||[]).forEach(name=>{const hitter=plan.players.find(player=>player.name===name);if(!hitter)errors.push(`Block ${block+1} uses live hitter ${name} who is not attending.`);else if(block<(hitter.availableFromBlock??0)||block>=(hitter.availableUntilBlock??BLOCK_COUNT))errors.push(`${name} hits live in Block ${block+1} while unavailable.`)});
   });
   const pitcherBlockCounts={};
   (plan?.liveSessions||[]).filter(session=>session.pitcher&&session.pitcher!=='Coach').forEach(session=>pitcherBlockCounts[session.pitcher]=(pitcherBlockCounts[session.pitcher]||0)+1);
