@@ -4148,7 +4148,7 @@ function bind(){
    }))return false;
    for(const name of expectedNames){
     const rows=practicePlan.schedule[name];
-    if(rows.some(row=>!row||typeof row!=='object'||typeof row.activity!=='string'||!row.activity.trim()))return false;
+    if(rows.some((row,index)=>!row||typeof row!=='object'||typeof row.activity!=='string'||!row.activity.trim()||(row.block!=null&&Number(row.block)!==index+1)))return false;
    }
    if(!Array.isArray(practicePlan.liveSessions))return false;
    {
@@ -4203,6 +4203,8 @@ function bind(){
    }
    for(const player of practicePlan.players||[]){
     const baseline=expected.baselineRoles?.[player.name];if(!baseline)return false;
+    if(typeof player.canPitch!=='boolean'||typeof player.requiresPitchWarmup!=='boolean'||typeof player.canCatch!=='boolean'||typeof player.prePracticeComplete!=='boolean'||typeof player.isPitcher!=='boolean'||typeof player.isCatcher!=='boolean'||typeof player.isGuest!=='boolean')return false;
+    if(!player.canPitch&&player.requiresPitchWarmup)return false;
     if((player.prePracticeComplete===true)!==baseline.prePracticeComplete||(player.isPitcher===true)!==baseline.isPitcher||(player.isCatcher===true)!==baseline.isCatcher||(player.isGuest===true)!==baseline.isGuest)return false;
     const approvedTarget=expected.role&&player.name===expected.name;
     if(!approvedTarget){
