@@ -6,6 +6,9 @@ const source=fs.readFileSync('./app.js','utf8');
 function mustInclude(fragment,message){assert.ok(source.includes(fragment),message)}
 
 mustInclude("candidateNotices:Object.fromEntries","Practice Resolution decisions must seal candidate fallback notices");
+mustInclude("const survivingCandidateLabels=new Set([","Resolution must derive candidate evidence from the final filtered coaching choices");
+mustInclude("if(!survivingCandidateLabels.has(label))delete verifiedCandidateNotices[label]","filtered Resolution choices must not leave stale candidate evidence");
+mustInclude("Practice Resolution candidate evidence did not match the final verified choices.","Resolution must fail closed when final choices and candidate evidence diverge");
 mustInclude("JSON.stringify(actualNotices)!==JSON.stringify(expectedNotices)","Resolution apply must reject changed fallback notices");
 mustInclude("if(resolutionApplying||practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId)return false","Resolution apply lock must survive rerenders");
 mustInclude("HotB deferred setup-draft persistence during Practice Resolution apply.","temporary Resolution mutations must not persist as ordinary drafts");
