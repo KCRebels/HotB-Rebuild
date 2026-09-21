@@ -4135,7 +4135,7 @@ function bind(){
         practiceSetupState=structuredClone(rollbackState.setupState);
         practiceResolution=structuredClone(rollbackState.resolution);
         modal='practiceResolution';
-        persistPracticeDraft();render();
+        db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);save();render();
        }
        alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
       },0);
@@ -4145,19 +4145,19 @@ function bind(){
        practiceSetupState=structuredClone(rollbackState.setupState);
        practiceResolution=structuredClone(rollbackState.resolution);
        modal='practiceResolution';
-       persistPracticeDraft();render();
+       db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);save();render();
       }
       alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
      }
     },0);
    }catch(error){
     console.error('HotB Practice Resolution apply failed',error);
-    if(rollbackState){practiceSetupState=structuredClone(rollbackState.setupState);practiceResolution=structuredClone(rollbackState.resolution);modal='practiceResolution';persistPracticeDraft();render()}
+    if(rollbackState){practiceSetupState=structuredClone(rollbackState.setupState);practiceResolution=structuredClone(rollbackState.resolution);modal='practiceResolution';db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);save();render()}
     else endResolutionApply();
     alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
    }
   };
-  const resolutionRollbackState=()=>({setupState:structuredClone(practiceSetupState),resolution:structuredClone(practiceResolution)});
+  const resolutionRollbackState=()=>({setupState:structuredClone(practiceSetupState),resolution:structuredClone(practiceResolution),activePracticeSession:structuredClone(db.activePracticeSession)});
   const expectedResolutionState=(role=null,name=null,withBlock11=false)=>{
    const basePlayers=practiceResolution?.practicePlayers||[],durationMinutes=withBlock11?132:Number(practiceResolution?.durationMinutes||practiceSetupState.durationMinutes);
    const expectedPlayers=withBlock11?practiceResolutionExtendedPlayers(basePlayers,practiceResolution?.startTime||practiceSetupState.startTime):basePlayers;
