@@ -964,6 +964,8 @@ if(restoredPracticeCandidate?.stage==='setup'&&!restoredPracticeCandidate.plan&&
  // refresh cannot silently replace the coach's unresolved practice.
  if(!Array.isArray(practiceSetupState.selectedNames))practiceSetupState.selectedNames=db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name);
  practiceResolution=restoredPracticeCandidate.resolution?structuredClone(restoredPracticeCandidate.resolution):null;
+ // Resolution snapshots restore from the failed 120-minute source attempt. Block 11 is apply-transaction-only.
+ if(Number(practiceSetupState.durationMinutes)!==120){console.warn('HotB normalized restored setup duration before Practice Resolution validation.');practiceSetupState.durationMinutes=120}
  practiceSection='setup';
  // Full Resolution validation depends on roster/model helpers declared later in this
  // script, so startup only restores the snapshot here. The first normal render/bind
@@ -5395,7 +5397,7 @@ function bindPractice(){
   // under that stale Resolution token.
   if(practiceResolutionApplyToken&&!resolutionBuildDraftId){
    console.error('HotB refused a Practice Resolution rebuild with missing draft authorization');
-   practiceResolutionApplyToken=null;practicePlan=null;
+   practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;
    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
    return;
   }
