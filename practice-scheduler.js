@@ -184,22 +184,30 @@
    const preferredRepeatOrder=activeAttendees.slice().sort((a,b)=>roleWeight(a)-roleWeight(b)||a.name.localeCompare(b.name));
    const rotateBy=preferredRepeatOrder.length?((weekNumber%preferredRepeatOrder.length)+preferredRepeatOrder.length)%preferredRepeatOrder.length:0;
    const repeatOrder=preferredRepeatOrder.slice(rotateBy).concat(preferredRepeatOrder.slice(0,rotateBy)).sort((a,b)=>roleWeight(a)-roleWeight(b));
-   function combinations(items,count,start=0,picked=[]){
-    if(picked.length===count)return [picked.slice()];
-    const result=[];
-    for(let index=start;index<=items.length-(count-picked.length);index++)result.push(...combinations(items,count,index+1,[...picked,items[index]]));
-    return result;
-   }
-   const repeatChoices=repeatHittersNeeded?combinations(repeatOrder,repeatHittersNeeded):[[]];
    let liveGroups=null,chosenRepeats=[];
-   for(const repeats of repeatChoices){
+   function tryLiveGroups(repeats){
     const tokens=[...activeAttendees,...repeats.map((player,index)=>({...player,originalName:player.name,assignmentKey:`${player.name}::live-repeat-${index}`}))];
     const byKey=Object.fromEntries(tokens.map(player=>[player.assignmentKey||player.name,player]));
     const groups=groupedAssignment(tokens,liveSessions,(player,session,_index,currentKeys)=>{
      const name=player.originalName||player.name;
      return session.pitcher!==name&&session.catcher!==name&&isOpen(activeAttendees.find(item=>item.name===name),session.block)&&!currentKeys.some(key=>(byKey[key].originalName||byKey[key].name)===name);
     },true);
-    if(groups){liveGroups=groups;chosenRepeats=repeats;break}
+    if(groups){liveGroups=groups;chosenRepeats=repeats;return true}
+    return false;
+   }
+   if(!repeatHittersNeeded)tryLiveGroups([]);
+   else{
+    const picked=[];
+    function chooseRepeats(start){
+     if(picked.length===repeatHittersNeeded)return tryLiveGroups(picked.slice());
+     for(let index=start;index<=repeatOrder.length-(repeatHittersNeeded-picked.length);index++){
+      picked.push(repeatOrder[index]);
+      if(chooseRepeats(index+1))return true;
+      picked.pop();
+     }
+     return false;
+    }
+    chooseRepeats(0);
    }
    if(!liveGroups)feasibilityErrors.push(`The selected pitchers, catchers, arrival times and departure times cannot provide 2–3 hitters in every live block, even with ${repeatHittersNeeded} second live-hitting assignment${repeatHittersNeeded===1?'':'s'}. Adjust availability or mark a pitcher Hitting Only and build again.`);
    else{
