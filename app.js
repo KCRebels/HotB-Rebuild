@@ -4127,7 +4127,11 @@ function bind(){
     const selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
     const startTime=practiceResolution?.startTime||practiceSetupState.startTime;
     practiceSetupState.selectedNames=selectedNames;practiceSetupState.startTime=startTime;
-    practiceResolution=null;modal=null;persistPracticeDraft();render();
+    practiceResolution=null;modal=null;
+    // Do not persist this transient state. Until the resolved schedule has passed
+    // its postcondition/rules audit and is committed, restart recovery must retain
+    // the original verified Resolution transaction.
+    render();
     setTimeout(()=>{
      try{
       const generate=$('#generatePractice');
@@ -4193,7 +4197,7 @@ function bind(){
     },0);
    }catch(error){
     console.error('HotB Practice Resolution apply failed',error);
-    if(rollbackState){practiceResolutionApplyDraftId=null;practiceSetupState=structuredClone(rollbackState.setupState);practiceResolution=structuredClone(rollbackState.resolution);modal='practiceResolution';db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);endResolutionApply();save();render()}
+    if(rollbackState){practiceResolutionApplyDraftId=null;practicePlan=null;practiceSetupState=structuredClone(rollbackState.setupState);practiceResolution=structuredClone(rollbackState.resolution);modal='practiceResolution';db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);endResolutionApply();save();render()}
     else endResolutionApply();
     alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
    }
