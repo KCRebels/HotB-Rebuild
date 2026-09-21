@@ -5532,8 +5532,15 @@ function bindPractice(){
    const verifiedCandidateNotices={};
    const verifyResolutionBuild=(players,duration,label,expectedChange=null)=>{
     try{
-     const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode:null});
+     // Candidate verification must be observational. The production scheduler may
+     // evolve, so never let a verification build mutate the sealed failed-practice
+     // player objects that later candidates, rollback, and signatures depend on.
+     const sourceBefore=JSON.stringify({practicePlayers,players});
+     const buildPlayers=structuredClone(players);
+     const plan=window.HotBPracticeScheduler.buildSchedule(buildPlayers,startTime,duration,{noPitchersMode:null});
+     if(JSON.stringify({practicePlayers,players})!==sourceBefore){resolutionAuditFailures.push(label+' mutated sealed candidate source data during verification.');return false}
      if(!resolutionPlanIsSafe(plan,label))return false;
+     if(JSON.stringify({practicePlayers,players})!==sourceBefore){resolutionAuditFailures.push(label+' mutated sealed candidate source data during safety audit.');return false}
      const candidateNotices=[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort();
      const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
      const candidateBlockCount=Number(duration)===132?11:Number(duration)===120?10:0;
@@ -5612,6 +5619,7 @@ function bindPractice(){
      // Publish candidate metadata only after every identity/availability/role proof
      // above succeeds. A failed candidate must leave no residue that can later be
      // mistaken for a verified coaching choice.
+     if(JSON.stringify({practicePlayers,players})!==sourceBefore){resolutionAuditFailures.push(label+' changed sealed candidate source data before publication.');return false}
      verifiedCandidateNotices[label]=candidateNotices;
      return true;
     }catch(error){
