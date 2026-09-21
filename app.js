@@ -3999,7 +3999,22 @@ function practiceResolutionModal(){
 }
 function modalView(){
  if(modal==='practiceBuildNotice')return practiceBuildNoticeModal();
- if(modal==='practiceResolution')return practiceResolutionModal();
+ if(modal==='practiceResolution'){
+  // Startup may restore an unresolved snapshot before the Resolution helpers have
+  // been exercised. Validate at the actual display boundary: corrupt/stale data is
+  // discarded before any coaching choice is rendered, and the cleaned setup draft
+  // is persisted so the same bad snapshot cannot reopen on the next launch.
+  if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
+   console.warn('Saved Practice Resolution failed display validation; returning to setup.');
+   practiceResolution=null;modal=null;
+   if(!practicePlan&&!db.activePortalPractice?.id&&window.HotBPracticeSession?.createDraft){
+    db.activePracticeSession=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:null});
+    save();
+   }
+   return'';
+  }
+  return practiceResolutionModal();
+ }
  if(modal==='recoveryGuide')return recoveryGuideModal();
  if(modal==='cloudBackup')return cloudBackupModal();
  if(modal==='changePitcher')return pitcherChangeModal();
