@@ -4055,8 +4055,26 @@ function bind(){
     setTimeout(()=>{
      try{
       const generate=$('#generatePractice');
-      if(generate)generate.click();
-      else throw new Error('Generate Practice control was not found after resolution apply.');
+      if(!generate)throw new Error('Generate Practice control was not found after resolution apply.');
+      generate.click();
+      // The Build handler is synchronous through scheduler construction. A verified
+      // Practice Resolution is not committed merely because the click dispatched:
+      // prove that the rebuilt plan actually exists and is feasible. This catches
+      // scheduler/build failures that the click handler reports internally instead
+      // of throwing back through HTMLElement.click().
+      setTimeout(()=>{
+       const rebuiltSafe=!!practicePlan&&!practicePlan.feasibilityErrors?.length;
+       if(rebuiltSafe)return;
+       console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
+       if(rollbackState){
+        practicePlan=null;
+        practiceSetupState=structuredClone(rollbackState.setupState);
+        practiceResolution=rollbackState.resolution;
+        modal='practiceResolution';
+        persistPracticeDraft();render();
+       }
+       alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+      },0);
      }catch(error){
       console.error('HotB Practice Resolution automatic rebuild failed',error);
       if(rollbackState){
