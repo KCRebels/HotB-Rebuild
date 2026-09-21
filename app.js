@@ -4273,6 +4273,14 @@ function bind(){
       if(liveRoleKeys.has(roleKey))return false;
       liveRoleKeys.add(roleKey);
      }
+     // Every player live role must occur inside the exact verified availability
+     // interval. Do not rely only on the schedule row: liveSessions is persisted
+     // separately and must independently agree with the Resolution snapshot.
+     const livePlayerNames=[pitcher,...(catcher==='9Square'?[]:[catcher]),...hitters];
+     if(livePlayerNames.some(name=>{
+      const availability=expected.availability?.[name];
+      return !availability||block<Number(availability.availableFromBlock)||block>=Number(availability.availableUntilBlock);
+     }))return false;
      if(catcher!=='9Square'&&!expectedSet.has(catcher))return false;
      if(catcher==='9Square'&&expectedSet.has(catcher))return false;
      if(catcher===pitcher)return false;
@@ -4281,6 +4289,19 @@ function bind(){
      const catcherPlayer=catcher==='9Square'?null:(practicePlan.players||[]).find(player=>player.name===catcher);
      if(!pitcherPlayer||pitcherPlayer.isPitcher!==true||pitcherPlayer.canPitch!==true)return false;
      if(catcherPlayer&&(catcherPlayer.isCatcher!==true||catcherPlayer.canCatch!==true))return false;
+     // 9Square is a bounded fallback, never a shortcut while an eligible catcher
+     // is actually open in that block. This preserves the scheduler's catcher-first
+     // rule after a Hitting Only / Not Catching / Block 11 Resolution rebuild.
+     if(catcher==='9Square'){
+      const eligibleOpenCatcher=(practicePlan.players||[]).some(player=>{
+       if(player.isCatcher!==true||player.canCatch!==true||player.name===pitcher)return false;
+       const availability=expected.availability?.[player.name];
+       if(!availability||block<Number(availability.availableFromBlock)||block>=Number(availability.availableUntilBlock))return false;
+       const activity=practicePlan.schedule?.[player.name]?.[block]?.activity;
+       return activity!=='Catch Live'&&activity!=='Catch Warm-Up';
+      });
+      if(eligibleOpenCatcher)return false;
+     }
      if(practicePlan.schedule?.[pitcher]?.[block]?.activity!=='Pitch Live')return false;
      if(catcher!=='9Square'&&practicePlan.schedule?.[catcher]?.[block]?.activity!=='Catch Live')return false;
      if(hitters.some(name=>practicePlan.schedule?.[name]?.[block]?.activity!=='Hit Live'))return false;
@@ -4344,6 +4365,15 @@ function bind(){
     });
     if(warmupInvalid)return false
    }
+   // Match the production workload ceilings at the transaction boundary too.
+   // A resolved plan must not pass merely because its individual role records are
+   // internally consistent while overloading one pitcher or catcher.
+   const livePitcherLoads=new Map(),liveCatcherLoads=new Map();
+   for(const session of practicePlan.liveSessions){
+    livePitcherLoads.set(session.pitcher,(livePitcherLoads.get(session.pitcher)||0)+1);
+    if(session.catcher!=='9Square')liveCatcherLoads.set(session.catcher,(liveCatcherLoads.get(session.catcher)||0)+1);
+   }
+   if([...livePitcherLoads.values()].some(count=>count>2)||[...liveCatcherLoads.values()].some(count=>count>2))return false;
    return true;
   };
   const rebuildResolvedPractice=(rollbackState,expected)=>{
