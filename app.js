@@ -1380,9 +1380,11 @@ function schedulePlayerEvaluationPortalSync(delay=2200){
  if(!cloudUser||!cloudStore||portalToken)return;
  clearTimeout(playerEvalSyncTimer);
  playerEvalSyncTimer=setTimeout(async()=>{
-  if(cloudBusy){schedulePlayerEvaluationPortalSync(900);return}
-  const ok=await syncPlayerEvaluationPortals();
-  if(!ok&&cloudUser&&cloudStore&&!portalToken)schedulePlayerEvaluationPortalSync(1800);
+  if(cloudBusy){schedulePlayerEvaluationPortalSync(5000);return}
+  // Evaluation sync is background convenience data. Never create an aggressive
+  // retry loop when Firestore rejects a request (including daily quota limits).
+  // The next normal save/backup will schedule another attempt.
+  await syncPlayerEvaluationPortals();
  },delay);
 }
 async function syncPlayerEvaluationPortals(){
@@ -2833,6 +2835,8 @@ async function activatePlayerPlans(){
   console.error('HotB player-plan activation failed',error);
   if(code.includes('portal-activation-existing-publication')||code.includes('portal-activation-partial-existing-publication')){
    alert('HotB found this exact practice already published in the cloud. It was not overwritten or reset. Return to Practice Home and use Recover Practice so the existing live state can be verified.');
+  }else if(/quota|resource-exhausted/i.test(code)){
+   alert('Firebase has reached its current usage quota, so HotB cannot publish the player plans right now. Your practice plan is still saved on this phone. HotB has stopped automatic portal retry traffic; try Activate Player Plans again after Firebase allows requests.');
   }else{
    alert('The player plans could not be activated.\n\nActivation error: '+code);
   }
