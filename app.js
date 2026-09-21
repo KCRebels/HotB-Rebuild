@@ -4702,6 +4702,10 @@ function bindPractice(){
      }
     }
    }
+   solvingPitchers=[...new Set(solvingPitchers)].sort();
+   solvingCatchers=[...new Set(solvingCatchers)].sort();
+   combinedPitchers=[...new Set(combinedPitchers)].sort();
+   combinedCatchers=[...new Set(combinedCatchers)].sort();
    const hasVerifiedResolution=!!(solvingPitchers.length||solvingCatchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
    const rosterGuidance=identityBlocked?'HotB found attendee identity or availability information that must be corrected before resolution. Fix the roster/guest or arrival/departure entry and build again; HotB will not guess or silently normalize it.':resolutionAuditFailures.length&&!hasVerifiedResolution?'HotB could not verify a safe automatic resolution because one or more verification builds/audits did not complete. Change attendance or availability, or build again after correcting the reported verification problem.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
