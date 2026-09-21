@@ -2253,9 +2253,9 @@ function playerPortalPage(){
  if(portalView==='ask')return portalAskView();
  return portalDashboardView();
 }
-function practiceTimeMinutes(value){const [hour,minute]=String(value||'00:00').split(':').map(Number);return (Number(hour)||0)*60+(Number(minute)||0)}
+function practiceTimeMinutes(value){const match=String(value||'').match(/^(\d{2}):(\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null}
 function practiceTimeValue(minutes){const normalized=(Math.round(minutes)+1440)%1440;return `${String(Math.floor(normalized/60)).padStart(2,'0')}:${String(normalized%60).padStart(2,'0')}`}
-function practiceEndValue(startTime,durationMinutes){return practiceTimeValue(practiceTimeMinutes(startTime)+(Number(durationMinutes)||120))}
+function practiceEndValue(startTime,durationMinutes){const start=practiceTimeMinutes(startTime),duration=Number(durationMinutes);return start===null||!Number.isFinite(duration)||duration<=0?'':practiceTimeValue(start+duration)}
 function practiceTimeLabel(value){const minutes=practiceTimeMinutes(value),hour=Math.floor(minutes/60);return `${hour%12||12}:${String(minutes%60).padStart(2,'0')}${hour<12?'a':'p'}`}
 function practiceAccommodation(player){
  const saved=practiceSetupState.accommodations?.[player.name]||{};
@@ -2279,12 +2279,15 @@ function practiceAttendanceRoster(){return [...db.roster,...practiceGuestPlayers
 function guestRolePosition(role){return role==='Pitcher'?'P':role==='Catcher'?'C':'UT'}
 function practicePlayerByName(name){return practiceAttendanceRoster().find(player=>player.name===name)}
 function practiceAvailability(startTime,durationMinutes,arrival,departure){
- const start=practiceTimeMinutes(startTime),blockCount=Number(durationMinutes)===132?11:10,blockMinutes=12,end=start+blockCount*blockMinutes;
- let arrive=practiceTimeMinutes(arrival||startTime),leave=practiceTimeMinutes(departure||practiceEndValue(startTime,durationMinutes));
+ const start=practiceTimeMinutes(startTime),blockCount=Number(durationMinutes)===132?11:Number(durationMinutes)===120?10:0,blockMinutes=12;
+ const arrive=practiceTimeMinutes(arrival||startTime),leave=practiceTimeMinutes(departure||practiceEndValue(startTime,durationMinutes));
+ if(start===null||!blockCount||arrive===null||leave===null)return {availableFromBlock:-1,availableUntilBlock:-1};
+ const end=start+blockCount*blockMinutes;
+ let adjustedArrive=arrive,adjustedLeave=leave;
  const crossesMidnight=end>1440,midnightEnd=crossesMidnight?end-1440:0;
- if(arrive<start)arrive=crossesMidnight&&arrive<=midnightEnd?arrive+1440:start;
- if(leave<start)leave=crossesMidnight&&leave<=midnightEnd?leave+1440:leave;
- const availableFromBlock=Math.max(0,Math.min(blockCount,Math.ceil((arrive-start)/blockMinutes-1e-9))),availableUntilBlock=Math.max(0,Math.min(blockCount,Math.floor((Math.min(leave,end)-start)/blockMinutes+1e-9)));
+ if(adjustedArrive<start)adjustedArrive=crossesMidnight&&adjustedArrive<=midnightEnd?adjustedArrive+1440:start;
+ if(adjustedLeave<start)adjustedLeave=crossesMidnight&&adjustedLeave<=midnightEnd?adjustedLeave+1440:adjustedLeave;
+ const availableFromBlock=Math.max(0,Math.min(blockCount,Math.ceil((adjustedArrive-start)/blockMinutes-1e-9))),availableUntilBlock=Math.max(0,Math.min(blockCount,Math.floor((Math.min(adjustedLeave,end)-start)/blockMinutes+1e-9)));
  return {availableFromBlock,availableUntilBlock:Math.max(availableFromBlock,availableUntilBlock)};
 }
 function practicePlayerModel(player,accommodation=null,startTime='18:00',durationMinutes=120){
