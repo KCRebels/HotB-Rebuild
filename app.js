@@ -1848,6 +1848,8 @@ function addPitch(result,extra={}){
   zone:g.pendingZone||'',pitchType:g.pitchType,plan:g.plan,result,pitcherName:g.pitcherName||'',pitcherNumber:g.pitcherNumber||'',
   opponent:g.opponent||'',gameId:g.id,hitterStyle:h.side||'R',runnersBefore:[...g.runners],outsBefore:g.outs,ts:Date.now(),...extra
  };
+ if(g.pendingDecisionOverride)pitch.decisionOverride=g.pendingDecisionOverride;
+ g.pendingDecisionOverride='';
  g.pitches.push(pitch);
  let end=null;
  if(result==='B'){g.balls++;if(g.balls>=4) end='BB'}
