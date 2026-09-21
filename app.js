@@ -957,6 +957,14 @@ if(restoredGeneratedPractice&&!recoveredPracticeSession){
  // Firebase verification decides which practice is actually live.
  console.warn('Saved practice and portal publication differ; preserving recovery state.');
 }
+if(restoredPracticeCandidate?.stage==='setup'&&!restoredPracticeCandidate.plan&&!db.activePortalPractice?.id){
+ practiceSetupState={...practiceSetupState,...restoredPracticeCandidate.setupState};
+ // Setup drafts are the safety net for Practice Resolution. Restore the exact
+ // attendance/accommodations/duration that produced the unresolved practice so
+ // an app refresh cannot silently replace the coach's decision context.
+ if(!Array.isArray(practiceSetupState.selectedNames))practiceSetupState.selectedNames=db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name);
+ practiceSection='setup';
+}
 if(recoveredPracticeSession){
  practicePlan=recoveredPracticeSession.plan;
  practiceChosenDrills=recoveredPracticeSession.chosenDrills;
