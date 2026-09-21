@@ -3942,6 +3942,8 @@ function currentPracticeResolutionSignature(){
  if(selectedNames.length!==selectedSet.size)return'__practice_duplicate_selected_name__';
  if(expectedSet.size!==selectedSet.size||expectedNames.some(name=>!selectedSet.has(name)))return'__practice_attendance_changed__';
  if(expectedNames.some(name=>!byName.has(name)))return'__practice_roster_changed__';
+ if(expectedNames.some(name=>!String(name||'').trim()))return'__practice_invalid_verified_name__';
+ if(expectedNames.some(name=>String(name)!==String(name).trim()))return'__practice_noncanonical_verified_name__';
  if(String(practiceSetupState.startTime||'')!==String(practiceResolution.startTime||''))return'__practice_start_changed__';
  if(Number(practiceSetupState.durationMinutes)!==Number(practiceResolution.durationMinutes))return'__practice_duration_changed__';
  const players=expectedNames.map(name=>{const player=byName.get(name);return practicePlayerModel(player,practiceSetupState.accommodations?.[name]||practiceAccommodation(player),practiceResolution.startTime,practiceResolution.durationMinutes)});
