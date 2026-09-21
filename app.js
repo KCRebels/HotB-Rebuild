@@ -3917,7 +3917,7 @@ function practiceResolutionExtendedPlayers(players,startTime){
  });
 }
 function practiceResolutionSignature(players,startTime,durationMinutes){
- return JSON.stringify({players:(players||[]).map(player=>({name:player.name,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||'',canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime,durationMinutes});
+ return JSON.stringify({players:(players||[]).map(player=>({name:player.name,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,isGuest:!!player.isGuest,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||'',canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime,durationMinutes});
 }
 function currentPracticeResolutionSignature(){
  if(!practiceResolution)return'';
@@ -3926,6 +3926,8 @@ function currentPracticeResolutionSignature(){
  // removed OR another player/guest is added before the coaching choice is applied.
  const selectedNames=Array.isArray(practiceSetupState.selectedNames)?practiceSetupState.selectedNames:[];
  const expectedSet=new Set(expectedNames),selectedSet=new Set(selectedNames);
+ if(expectedNames.length!==expectedSet.size)return'__practice_duplicate_verified_name__';
+ if(selectedNames.length!==selectedSet.size)return'__practice_duplicate_selected_name__';
  if(expectedSet.size!==selectedSet.size||expectedNames.some(name=>!selectedSet.has(name)))return'__practice_attendance_changed__';
  if(expectedNames.some(name=>!byName.has(name)))return'__practice_roster_changed__';
  if(String(practiceSetupState.startTime||'')!==String(practiceResolution.startTime||''))return'__practice_start_changed__';
