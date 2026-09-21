@@ -965,7 +965,14 @@ if(restoredPracticeCandidate?.stage==='setup'&&!restoredPracticeCandidate.plan&&
  if(!Array.isArray(practiceSetupState.selectedNames))practiceSetupState.selectedNames=db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name);
  practiceResolution=restoredPracticeCandidate.resolution?structuredClone(restoredPracticeCandidate.resolution):null;
  practiceSection='setup';
- if(practiceResolution)modal='practiceResolution';
+ // Do not reopen an untrusted/corrupt saved Resolution as though it were a verified
+ // coaching decision. Keep the setup draft intact and make the coach rebuild it.
+ if(practiceResolution&&!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
+  console.warn('Saved Practice Resolution failed restore validation; returning to setup.');
+  practiceResolution=null;
+  db.activePracticeSession=window.HotBPracticeSession?.createDraft?.({setupState:practiceSetupState,resolution:null})||db.activePracticeSession;
+  save();
+ }else if(practiceResolution)modal='practiceResolution';
 }
 if(recoveredPracticeSession){
  practicePlan=recoveredPracticeSession.plan;
@@ -4675,7 +4682,11 @@ function bindPractice(){
      practiceSetupState={...practiceSetupState,...restored.setupState};
      practiceResolution=restored.resolution?structuredClone(restored.resolution):null;
      practiceSection='setup';
-     if(practiceResolution)modal='practiceResolution';
+     if(practiceResolution&&!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
+      console.warn('Saved Practice Resolution failed resume validation; returning to setup.');
+      practiceResolution=null;
+      persistPracticeDraft();
+     }else if(practiceResolution)modal='practiceResolution';
      render();window.scrollTo(0,0);return;
     }
    }
