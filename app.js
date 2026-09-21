@@ -4224,9 +4224,28 @@ function bind(){
    const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('combinedCatcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'catcher',true)){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('catcher',picked,true));
   });
   $('#returnPracticeAttendance')?.addEventListener('click',()=>{
-   practiceSetupState.selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
-   practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;
-   practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;
+   // Return to setup from the exact verified snapshot. This button is also the
+   // escape hatch for stale/corrupt resolutions, so do not carry mutated role or
+   // availability data forward from whatever currently happens to be in memory.
+   const verifiedPlayers=Array.isArray(practiceResolution?.practicePlayers)?practiceResolution.practicePlayers:[];
+   if(verifiedPlayers.length){
+    practiceSetupState.selectedNames=verifiedPlayers.map(player=>player.name);
+    practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;
+    practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;
+    const roster=practiceAttendanceRoster(),nextAccommodations={...practiceSetupState.accommodations};
+    verifiedPlayers.forEach(player=>{
+     const rosterPlayer=roster.find(item=>item.name===player.name);if(!rosterPlayer)return;
+     const accommodation=structuredClone(nextAccommodations[player.name]||practiceAccommodation(rosterPlayer));
+     accommodation.arrivalTime=player.arrivalTime||'';
+     accommodation.departureTime=player.departureTime||'';
+     accommodation.canPitch=player.canPitch===true;
+     accommodation.requiresPitchWarmup=player.requiresPitchWarmup===true;
+     accommodation.canCatch=player.canCatch===true;
+     accommodation.prePracticeComplete=player.prePracticeComplete===true;
+     nextAccommodations[player.name]=accommodation;
+    });
+    practiceSetupState.accommodations=nextAccommodations;
+   }
    practiceResolution=null;modal=null;persistPracticeDraft();render();window.scrollTo(0,0);
   });
  }
