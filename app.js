@@ -4058,9 +4058,8 @@ function bind(){
  if(modal==='practiceResolution'){
   const resolutionStillCurrent=()=>{
    if(!practiceResolution?.signature){alert('HotB cannot verify this Practice Resolution because its safety signature is missing. Return to Practice Setup and build again.');return false}
-   const signature=currentPracticeResolutionSignature();
-   if(signature===practiceResolution.signature)return true;
-   alert('This practice changed after HotB verified the resolution. Return to Practice Setup and build again so HotB can verify the current practice.');return false;
+   if(practiceResolutionSnapshotIsCurrentAndValid())return true;
+   alert('This practice changed or its verified Resolution data is no longer valid. Return to Practice Setup and build again so HotB can verify the current practice.');return false;
   };
   let resolutionApplying=false;
   const beginResolutionApply=()=>{
@@ -4071,7 +4070,7 @@ function bind(){
    return true;
   };
   const verifiedResolutionChoice=(type,name=null)=>{
-   if(!practiceResolution?.signature||currentPracticeResolutionSignature()!==practiceResolution.signature)return false;
+   if(!practiceResolutionSnapshotIsCurrentAndValid())return false;
    const verifiedPlayers=practiceResolution.practicePlayers||[],matches=name==null?[]:verifiedPlayers.filter(player=>player.name===name);
    if(type==='extension')return practiceResolution.canExtend===true&&Number(practiceResolution.durationMinutes)===120;
    if(matches.length!==1)return false;
