@@ -2754,7 +2754,29 @@ async function activatePlayerPlans(){
   ];
   const activationDocs=await Promise.all(activationTargets.map(async target=>({target,snapshot:await portalDoc(target.id).get()})));
   const sameIdActive=activationDocs.filter(({snapshot})=>snapshot.exists&&snapshot.data()?.activePractice?.id===practicePlan.portalDraftId);
-  for(const {target,snapshot} of activationDocs){const remote=snapshot.exists?snapshot.data():null;if(!remote||remote.portalType!==target.type)throw new Error('portal-activation-target-missing');if(['player','jenkinsPlayer','guestPlayer'].includes(target.type)&&remote.playerName!==target.name)throw new Error('portal-activation-player-mismatch');if(['coach','guestCoach'].includes(target.type)&&target.name&&remote.coachName!==target.name)throw new Error('portal-activation-coach-mismatch');if(remote.activePractice?.id&&remote.activePractice.id!==practicePlan.portalDraftId)throw new Error('portal-activation-live-practice-conflict')}
+  const conflicting=activationDocs.filter(({snapshot})=>{const remote=snapshot.exists?snapshot.data():null;return !!(remote?.activePractice?.id&&remote.activePractice.id!==practicePlan.portalDraftId)});
+  for(const {target,snapshot} of activationDocs){const remote=snapshot.exists?snapshot.data():null;if(!remote||remote.portalType!==target.type)throw new Error('portal-activation-target-missing');if(['player','jenkinsPlayer','guestPlayer'].includes(target.type)&&remote.playerName!==target.name)throw new Error('portal-activation-player-mismatch');if(['coach','guestCoach'].includes(target.type)&&target.name&&remote.coachName!==target.name)throw new Error('portal-activation-coach-mismatch')}
+  // A previous failed/test activation can leave an old NOT-STARTED practice on
+  // portal documents even though the coach device has no active-practice pointer.
+  // That stale publication must not permanently block the next real practice.
+  // Clear it only when every conflicting portal agrees on the same old practice
+  // ID and its clock never started; anything running/finished/mixed remains a
+  // hard conflict and is never overwritten.
+  if(conflicting.length){
+   const conflictIds=[...new Set(conflicting.map(({snapshot})=>snapshot.data()?.activePractice?.id).filter(Boolean))];
+   const safeStale=conflictIds.length===1&&conflicting.every(({snapshot})=>{const active=snapshot.data()?.activePractice,clock=active?.clock||{};return active&&(!clock.status||clock.status==='not-started')&&!clock.startedAt&&!clock.endedAt});
+   if(!safeStale)throw new Error('portal-activation-live-practice-conflict');
+   const staleId=conflictIds[0],staleBatch=cloudStore.batch();
+   for(const {target,snapshot} of activationDocs){
+    const remote=snapshot.exists?snapshot.data():null;
+    if(remote?.activePractice?.id!==staleId)continue;
+    const data=target.type==='jenkinsPlayer'?jenkinsPortalCleanupPayload(db.roster.find(item=>item.portalId===target.id),{name:target.name,portalId:target.id,isTeamJenkins:true}):['guestPlayer','guestCoach'].includes(target.type)?{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}:{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    staleBatch.update(portalDoc(target.id),data);
+   }
+   await staleBatch.commit();
+   const staleVerify=await Promise.all(conflicting.map(async ({target})=>{const snap=await portalDoc(target.id).get();return !snap.exists||snap.data()?.activePractice?.id!==staleId}));
+   if(staleVerify.some(ok=>!ok))throw new Error('portal-activation-stale-cleanup-failed');
+  }
   // A matching practice ID already in Firebase is not permission to overwrite it.
   // This is the signature of an activation whose local acknowledgement was lost
   // (or an older partial state). Republishing would reset its live clock to
