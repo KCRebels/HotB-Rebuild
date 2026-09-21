@@ -4152,7 +4152,14 @@ function bind(){
    }
    for(const player of practicePlan.players||[]){
     const availability=expected.availability?.[player.name];if(!availability)return false;
-    if(Number(player.availableFromBlock)!==Number(availability.availableFromBlock)||Number(player.availableUntilBlock)!==Number(availability.availableUntilBlock)||String(player.arrivalTime||'')!==String(availability.arrivalTime||'')||String(player.departureTime||'')!==String(availability.departureTime||''))return false;
+    const from=Number(player.availableFromBlock),until=Number(player.availableUntilBlock);
+    if(from!==Number(availability.availableFromBlock)||until!==Number(availability.availableUntilBlock)||String(player.arrivalTime||'')!==String(availability.arrivalTime||'')||String(player.departureTime||'')!==String(availability.departureTime||''))return false;
+    const rows=practicePlan.schedule?.[player.name]||[];
+    for(let block=0;block<expectedBlocks;block++){
+     const absent=block<from||block>=until;
+     if(absent&&rows[block]?.activity!=='Not Present')return false;
+     if(!absent&&rows[block]?.activity==='Not Present')return false;
+    }
    }
    for(const player of practicePlan.players||[]){
     const baseline=expected.baselineRoles?.[player.name];if(!baseline)return false;
@@ -4165,6 +4172,10 @@ function bind(){
     }else if(expected.role==='catcher'){
      if(player.canCatch!==false||player.canPitch!==baseline.canPitch||player.requiresPitchWarmup!==baseline.requiresPitchWarmup)return false;
     }
+    const rows=practicePlan.schedule?.[player.name]||[];
+    if(player.canPitch===false&&rows.some(row=>row?.activity==='Pitch Live'||row?.activity==='Pitch Warm-Up'))return false;
+    if(player.requiresPitchWarmup===false&&rows.some(row=>row?.activity==='Pitch Warm-Up'))return false;
+    if(player.canCatch===false&&rows.some(row=>row?.activity==='Catch Live'||row?.activity==='Catch Warm-Up'))return false;
    }
    return true;
   };
