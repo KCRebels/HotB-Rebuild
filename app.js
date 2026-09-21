@@ -3629,17 +3629,27 @@ function setObservationTarget(playerName='',paId=''){
 function openCoachObservation(options={}){
  const g=currentGame();if(!g)return;
  observationMode='game';observationScope=options.scope||'current';observationFromInningPrompt=!!options.fromInningPrompt;
- const api=window.HotBCoachObservations;
- if(!api){
-  observationTargetPlayer=currentHitter(g).name;observationTargetPaId='';
-  const fallback=document.createElement('div');fallback.className='modal-backdrop';fallback.id='coachObservationFallback';
-  fallback.innerHTML='<div class="modal observation-modal"><div class="modal-header"><div><div class="small info-kicker">LIVE OR DUGOUT REVIEW</div><h2>Coach Observation</h2></div><button class="btn" type="button" id="closeObservationFallback">Close</button></div><p class="observation-help">Observation tools are still loading. Close this window and tap OBS again.</p></div>';
-  document.body.appendChild(fallback);fallback.querySelector('#closeObservationFallback').onclick=()=>fallback.remove();return;
- }
+ let api=window.HotBCoachObservations;
+ if(!api&&window.HotBEmbeddedCoachObservations){window.HotBCoachObservations=window.HotBEmbeddedCoachObservations;api=window.HotBCoachObservations}
+ if(!api){alert('Coach Observation could not initialize in this build.');return}
  const target=api.targetsForScope(g,observationScope)?.[0];
  observationTargetPlayer=target?.playerName||currentHitter(g).name;observationTargetPaId=target?.paId||'';
  modal='coachObservation';render();
 }
+window.HotBEmbeddedCoachObservations=window.HotBEmbeddedCoachObservations||(()=>{
+ const CATEGORIES=[
+  {name:'Approach',options:['Poor pitch selection','Too passive / hesitant','Chasing','Not attacking hittable pitches','Guessing','Poor two-strike approach','Taking too many strikes','Expanding the zone early']},
+  {name:'Timing',options:['Early','Late','Lunging / drifting forward','Off-balance','Not getting foot down','Rushing','Commitment too early','Not adjusting to off-speed']},
+  {name:'Mechanics',options:['Flying open','Rolling over','Dropping hands','Casting','Pulling off the ball','Poor outside-pitch approach','Under the ball / excessive pop-ups','Down-up swing path','Poor extension','Losing posture','Collapsing back side','Long swing path']},
+  {name:'Mental / Competitive',options:['Tentative','Pressing','Lack of confidence','Poor adjustment','Repeating same mistake','At-bat carried into next at-bat','Lost plan / approach']}
+ ];
+ const observations=game=>{if(!game)return[];if(!Array.isArray(game.observations))game.observations=[];return game.observations};
+ const observationFor=(game,paId,playerName)=>observations(game).find(item=>paId?item.paId===paId:!item.paId&&item.playerName===playerName)||null;
+ const targetsForScope=(game,scope='current')=>{if(!game)return[];const current=currentHitter(game).name,pas=game.plateAppearances||[],inning=Number(game.inning)||1;let rows=scope==='previous'?pas.filter(pa=>Number(pa.inning)===inning-1):scope==='lineup'?pas:pas.filter(pa=>Number(pa.inning)===inning);const seen=new Set(),out=[];[...rows].reverse().forEach(pa=>{if(pa?.hitter&&!seen.has(pa.hitter)){seen.add(pa.hitter);const existing=observationFor(game,pa.id,pa.hitter);out.push({playerName:pa.hitter,paId:pa.id,inning:pa.inning,pa:pa.pa,observed:!!existing,tagCount:existing?.tags?.length||0})}});if(scope!=='previous'&&!seen.has(current))out.unshift({playerName:current,paId:'',current:true});if(scope==='lineup')(game.battingOrder||[]).forEach(name=>{if(name&&!seen.has(name)){seen.add(name);out.push({playerName:name,paId:'',current:name===current})}});return out};
+ const saveObservation=(game,{playerName,paId='',tags=[],note=''})=>{const cleanTags=[...new Set(tags)].slice(0,3),cleanNote=String(note||'').trim().slice(0,160);if(!playerName||(!cleanTags.length&&!cleanNote))throw new Error('Choose an observation or enter a note.');const rows=observations(game),existing=observationFor(game,paId,playerName),pa=(game.plateAppearances||[]).find(item=>item.id===paId),record={id:existing?.id||('obs-'+Date.now()+'-'+Math.random()),playerName,paId,inning:pa?.inning??existing?.inning??null,pa:pa?.pa??existing?.pa??null,tags:cleanTags,note:cleanNote,createdAt:existing?.createdAt||Date.now(),updatedAt:Date.now()};if(existing)Object.assign(existing,record);else rows.push(record);return record};
+ const tagUsage=(games,standalone=[])=>{const counts={};(games||[]).forEach(game=>observations(game).forEach(item=>(item.tags||[]).forEach(tag=>counts[tag]=(counts[tag]||0)+1)));(standalone||[]).forEach(item=>(item.tags||[]).forEach(tag=>counts[tag]=(counts[tag]||0)+1));return counts};
+ return{CATEGORIES,observations,observationFor,targetsForScope,saveObservation,tagUsage};
+})();
 window.HotBOpenCoachObservation=()=>openCoachObservation();
 function openFocusObservation(){
  const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===practiceFocusPlayer);if(!selected)return;
