@@ -168,4 +168,8 @@ mustInclude("returned schedule data that could not be sealed.","candidate safety
 mustInclude("const finishSafety=result=>","candidate safety verification must seal the schedule around the scheduler audit");
 mustInclude("changed during its safety audit.","candidate safety verification must reject validator mutation of the schedule");
 mustInclude("source data could not be sealed before verification.","candidate verification must fail closed if its source snapshot cannot be serialized");
+mustInclude("notice evidence could not be sealed.","candidate publication must fail closed if fallback notice evidence cannot be serialized");
+mustInclude("delete verifiedCandidateNotices[label]","candidate publication must remove evidence if publication verification fails");
+mustInclude("changed while publishing verified candidate evidence.","candidate publication must prove evidence and source remain unchanged");
+mustInclude("candidate evidence could not be sealed after final filtering.","final candidate evidence set must be serializable before Resolution publication");
 console.log('practice-resolution static contract tests passed');
