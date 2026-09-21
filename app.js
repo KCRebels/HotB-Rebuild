@@ -4497,7 +4497,14 @@ function bind(){
     render();
     setTimeout(()=>{
      try{
-      if(!transactionIsCurrent())throw new Error('Practice Resolution apply transaction expired before rebuild.');
+      // Workspace teardown deliberately clears the global identities. A callback
+      // that runs afterward is stale and must never resurrect the closed draft.
+      if(!transactionOwnsToken()){console.warn('HotB ignored a stale Practice Resolution rebuild callback');return}
+      if(!transactionIsCurrent()){
+       console.error('HotB Practice Resolution apply lost draft authorization before rebuild');
+       if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+       return;
+      }
       const generate=$('#generatePractice');
       if(!generate)throw new Error('Generate Practice control was not found after resolution apply.');
       generate.click();
@@ -4569,6 +4576,13 @@ function bind(){
            console.error('HotB Practice Resolution restart recovery failed the resolved postcondition');
           }
          }
+        }
+        // Persistence/restore verification can invoke application code. Re-check
+        // ownership at the actual commit boundary so teardown or invalidation that
+        // happens during recovery proof cannot be mistaken for a successful apply.
+        if(rebuiltSafe&&!transactionIsCurrent()){
+         rebuiltSafe=false;
+         console.error('HotB Practice Resolution transaction changed during restart-recovery verification');
         }
         if(rebuiltSafe){
          // Consume the transaction identity before unlocking the UI. No queued
