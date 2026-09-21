@@ -86,4 +86,8 @@ mustInclude("HotB could not recover the sealed Practice Resolution rollback snap
 mustInclude("const orderedPlayers=(players||[]).map","Practice Resolution source signature must preserve verified attendee order");
 mustNotInclude("})).sort((a,b)=>a.name.localeCompare(b.name));","Practice Resolution source signature must not sort away attendee-order changes");
 
+mustInclude("const candidatePrototype=Object.getPrototypeOf(r.candidateNotices);","Resolution candidate evidence must be a plain persisted data object");
+mustInclude("if(candidateNoticeEntries.length!==allowedCandidateLabels.size)return false;","Resolution candidate evidence cardinality must exactly match final choices");
+mustInclude("const hasVerifiedChoice=!!(r.pitchers.length||r.catchers.length||r.canExtend||r.combinedPitchers.length||r.combinedCatchers.length);","Resolution modal actionability must come from verified choice data rather than rendered HTML");
+
 console.log('practice-resolution static contract tests passed');
