@@ -4430,7 +4430,7 @@ function bindPractice(){
    }
    let canExtend=false;
    if(Number(durationMinutes)===120){
-    try{const extendedPlayers=selectedPlayers.map(player=>practicePlayerModel(player,practiceAccommodation(player),startTime,132)),extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=!extendedPlan.feasibilityErrors?.length}catch(_){}
+    try{const extendedPlayers=attendees.map(player=>practicePlayerModel(player,accommodations[player.name]||practiceAccommodation(player),startTime,132)),extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=!extendedPlan.feasibilityErrors?.length}catch(_){}
    }
    const rosterGuidance=availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    practiceResolution={errors,pitchers:solvingPitchers,canExtend,rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,notices:practicePlan.fallbackWarnings||[]};
