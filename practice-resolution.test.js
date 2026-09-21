@@ -125,4 +125,8 @@ mustInclude("JSON.stringify(db.activePracticeSession?.resolution)!==generatedRes
 mustInclude("HotB Practice Resolution accommodation clone failed","Resolution role mutation must fail closed if its source accommodation cannot be cloned");
 mustInclude("const sourceModel=practicePlayerModel(target.roster[target.index],accommodation,practiceResolution.startTime,practiceResolution.durationMinutes);","Resolution role mutation must reconstruct its exact verified source player before changing a role");
 mustInclude("sourceFields.some(field=>sourceModel[field]!==verifiedPlayer[field])","Resolution role mutation must reject stale or malformed source accommodations");
+mustInclude("originalReturnBytes=JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession})","Return to Setup must seal its entire pre-exit Resolution transaction");
+mustInclude("return-state-post-save-drift","Return to Setup rollback must verify the sealed transaction after save");
+mustInclude("HotB could not restore the sealed Practice Resolution Return-to-Setup state.","Return to Setup rollback must fail closed when exact recovery is impossible");
+mustNotInclude("restoreReturnState();save();render();return","Return to Setup must not perform an unverified second save after rollback");
 console.log('practice-resolution static contract tests passed');
