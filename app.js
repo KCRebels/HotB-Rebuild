@@ -3917,7 +3917,7 @@ function practiceResolutionExtendedPlayers(players,startTime){
  });
 }
 function practiceResolutionSignature(players,startTime,durationMinutes){
- return JSON.stringify({players:(players||[]).map(player=>({name:player.name,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime,durationMinutes});
+ return JSON.stringify({players:(players||[]).map(player=>({name:player.name,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||'',canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime,durationMinutes});
 }
 function currentPracticeResolutionSignature(){
  if(!practiceResolution)return'';
@@ -3928,6 +3928,8 @@ function currentPracticeResolutionSignature(){
  const expectedSet=new Set(expectedNames),selectedSet=new Set(selectedNames);
  if(expectedSet.size!==selectedSet.size||expectedNames.some(name=>!selectedSet.has(name)))return'__practice_attendance_changed__';
  if(expectedNames.some(name=>!byName.has(name)))return'__practice_roster_changed__';
+ if(String(practiceSetupState.startTime||'')!==String(practiceResolution.startTime||''))return'__practice_start_changed__';
+ if(Number(practiceSetupState.durationMinutes)!==Number(practiceResolution.durationMinutes))return'__practice_duration_changed__';
  const players=expectedNames.map(name=>{const player=byName.get(name);return practicePlayerModel(player,practiceSetupState.accommodations?.[name]||practiceAccommodation(player),practiceResolution.startTime,practiceResolution.durationMinutes)});
  return practiceResolutionSignature(players,practiceResolution.startTime,practiceResolution.durationMinutes);
 }
