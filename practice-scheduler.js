@@ -54,7 +54,7 @@
      const options=playerName=>slots.filter((slot,index)=>assignments[index].length<3&&eligible(byName[playerName],slot,index,assignments[index])).length;
      return options(a)-options(b)||a.localeCompare(b);
     })[0],player=byName[name];
-    const candidates=slots.map((slot,index)=>({slot,index,count:assignments[index].length})).filter(item=>item.count<(allowOneFrontTossFour?4:3)&&eligible(player,item.slot,item.index,assignments[item.index])&&(item.count<3||!assignments.some(group=>group.length===4))).sort((a,b)=>{
+    const candidates=slots.map((slot,index)=>({slot,index,count:assignments[index].length})).filter(item=>item.count<3&&eligible(player,item.slot,item.index,assignments[item.index])).sort((a,b)=>{
      const priority=count=>count===1?0:count===2?1:2;
      return priority(a.count)-priority(b.count)||a.index-b.index;
     });
@@ -224,7 +224,7 @@
     for(let ri=0;ri<remaining.length&&!placed;ri++){
      const player=remaining[ri];
      const candidates=slots.map((slot,index)=>({slot,index,count:assignments[index].length}))
-      .filter(item=>item.count<3&&eligible(player,item.slot,item.index,assignments[item.index]))
+      .filter(item=>item.count<(allowOneFrontTossFour?4:3)&&eligible(player,item.slot,item.index,assignments[item.index])&&(item.count<3||!assignments.some(group=>group.length===4)))
       .sort((a,b)=>{
        const priority=count=>count===1?0:count===2?1:2;
        return priority(a.count)-priority(b.count)||a.index-b.index;
