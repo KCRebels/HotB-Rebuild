@@ -44,42 +44,53 @@ function candidates(source){
  return result;
 }
 
-const source=roster(13,2,2);
-const failed=scheduler.buildSchedule(source,'18:00',120);
-assert.ok(failed.feasibilityErrors.length,'fixture must begin as a genuinely unresolved 120-minute practice');
+const fixtures=[];
+for(let count=6;count<=15;count++){
+ for(let pitchers=1;pitchers<=Math.min(6,count-1);pitchers++){
+  for(let catchers=1;catchers<=Math.min(3,count-pitchers);catchers++){
+   const source=roster(count,pitchers,catchers);
+   const failed=scheduler.buildSchedule(source,'18:00',120);
+   if(!failed.feasibilityErrors.length)continue;
+   const verified=candidates(source);
+   if(verified.length)fixtures.push({source,failed,verified,count,pitchers,catchers});
+  }
+ }
+}
+assert.ok(fixtures.length,'there must be at least one real scheduler state where Practice Resolution converts a failed 120-minute practice into a verified safe alternative');
 
-const verified=candidates(source);
-assert.ok(verified.length,'Practice Resolution must discover at least one independently safe alternative for the regression fixture');
-for(const choice of verified){
- assert.deepEqual(choice.plan.feasibilityErrors,[],`${choice.kind} must have no feasibility errors`);
- assert.deepEqual(scheduler.validate(choice.plan),[],`${choice.kind} must pass the full scheduler validator`);
- if(choice.kind.includes('hitting-only')){
-  const p=choice.players.find(x=>x.name===choice.name);
-  assert.equal(p.canPitch,false);assert.equal(p.requiresPitchWarmup,false);
-  assert.ok(!(choice.plan.schedule[choice.name]||[]).some(e=>e.activity==='Pitch Live'||e.activity==='Pitch Warm-Up'),'Hitting Only must retain the player without pitching work');
- }
- if(choice.kind.includes('not-catching')){
-  const p=choice.players.find(x=>x.name===choice.name);
-  assert.equal(p.canCatch,false);
-  assert.ok(!(choice.plan.schedule[choice.name]||[]).some(e=>e.activity==='Catch Live'||e.activity==='Catch Warm-Up'),'Not Catching must retain the player without catching work');
- }
- if(choice.kind.includes('block-11')){
-  assert.equal(choice.plan.times.length,11,'Block 11 choices must create exactly eleven blocks');
-  assert.equal(choice.plan.durationMinutes,132,'Block 11 choices must be exactly 132 minutes');
+const exercised=new Set();
+for(const fixture of fixtures){
+ for(const choice of fixture.verified){
+  exercised.add(choice.kind);
+  assert.deepEqual(choice.plan.feasibilityErrors,[],`${choice.kind} must have no feasibility errors`);
+  assert.deepEqual(scheduler.validate(choice.plan),[],`${choice.kind} must pass the full scheduler validator`);
+  if(choice.kind.includes('hitting-only')){
+   const p=choice.players.find(x=>x.name===choice.name);
+   assert.equal(p.canPitch,false);assert.equal(p.requiresPitchWarmup,false);
+   assert.ok(!(choice.plan.schedule[choice.name]||[]).some(e=>e.activity==='Pitch Live'||e.activity==='Pitch Warm-Up'),'Hitting Only must retain the player without pitching work');
+  }
+  if(choice.kind.includes('not-catching')){
+   const p=choice.players.find(x=>x.name===choice.name);
+   assert.equal(p.canCatch,false);
+   assert.ok(!(choice.plan.schedule[choice.name]||[]).some(e=>e.activity==='Catch Live'||e.activity==='Catch Warm-Up'),'Not Catching must retain the player without catching work');
+  }
+  if(choice.kind.includes('block-11')){
+   assert.equal(choice.plan.times.length,11,'Block 11 choices must create exactly eleven blocks');
+   assert.equal(choice.plan.durationMinutes,132,'Block 11 choices must be exactly 132 minutes');
+  }
  }
 }
 
-const kinds=new Set(verified.map(x=>x.kind));
-assert.ok([...kinds].some(k=>k==='hitting-only'||k==='not-catching'||k==='block-11'||k.includes('+block-11')),'verified alternatives must be one of the supported Resolution decisions');
-
-const selected=verified[0],setupState={selectedNames:selected.players.map(p=>p.name),startTime:'18:00',durationMinutes:selected.plan.durationMinutes,accommodations:Object.fromEntries(selected.players.map(p=>[p.name,{canPitch:p.canPitch,requiresPitchWarmup:p.requiresPitchWarmup,canCatch:p.canCatch,prePracticeComplete:p.prePracticeComplete}]))};
+const fixture=fixtures[0],selected=fixture.verified[0],source=fixture.source,failed=fixture.failed;
+const setupState={selectedNames:selected.players.map(p=>p.name),startTime:'18:00',durationMinutes:selected.plan.durationMinutes,accommodations:Object.fromEntries(selected.players.map(p=>[p.name,{canPitch:p.canPitch,requiresPitchWarmup:p.requiresPitchWarmup,canCatch:p.canCatch,prePracticeComplete:p.prePracticeComplete}]))};
 const persisted=session.create({plan:{...selected.plan,portalDraftId:'resolution-runtime-proof'},setupState,clock:{running:false}});
 assert.ok(persisted,'resolved practice must create a recovery session');
 const restored=session.restore(persisted);
 assert.deepEqual(restored.plan,persisted.plan,'resolved plan must survive restart recovery byte-for-byte');
 assert.deepEqual(restored.setupState,persisted.setupState,'resolved setup identity must survive restart recovery byte-for-byte');
 
-const decision={errors:failed.feasibilityErrors,pitchers:verified.filter(x=>x.kind==='hitting-only').map(x=>x.name),catchers:verified.filter(x=>x.kind==='not-catching').map(x=>x.name),canExtend:kinds.has('block-11'),combinedPitchers:verified.filter(x=>x.kind==='hitting-only+block-11').map(x=>x.name),combinedCatchers:verified.filter(x=>x.kind==='not-catching+block-11').map(x=>x.name),practicePlayers:source,startTime:'18:00',durationMinutes:120,signature:'runtime-proof',decisionSignature:'runtime-proof-decision'};
+const kinds=new Set(fixture.verified.map(x=>x.kind));
+const decision={errors:failed.feasibilityErrors,pitchers:fixture.verified.filter(x=>x.kind==='hitting-only').map(x=>x.name),catchers:fixture.verified.filter(x=>x.kind==='not-catching').map(x=>x.name),canExtend:kinds.has('block-11'),combinedPitchers:fixture.verified.filter(x=>x.kind==='hitting-only+block-11').map(x=>x.name),combinedCatchers:fixture.verified.filter(x=>x.kind==='not-catching+block-11').map(x=>x.name),practicePlayers:source,startTime:'18:00',durationMinutes:120,signature:'runtime-proof',decisionSignature:'runtime-proof-decision'};
 const unresolved=session.createDraft({setupState:{selectedNames:source.map(p=>p.name),startTime:'18:00',durationMinutes:120},resolution:decision});
 const restoredDraft=session.restore(unresolved);
 assert.deepEqual(restoredDraft.resolution,unresolved.resolution,'unresolved verified Resolution choices must survive restart recovery exactly');
