@@ -4127,6 +4127,21 @@ function bind(){
    const scheduleKeys=Object.keys(practicePlan.schedule||{}),scheduleSet=new Set(scheduleKeys);
    if(scheduleKeys.length!==scheduleSet.size||scheduleSet.size!==expectedSet.size||expectedNames.some(name=>!scheduleSet.has(name)))return false;
    for(const name of expectedNames)if(!Array.isArray(practicePlan.schedule?.[name])||practicePlan.schedule[name].length!==expectedBlocks)return false;
+   // The rebuilt plan must not merely have the right number of blocks. Every time
+   // row and every assignment must be structurally usable before Resolution commits.
+   if(!practicePlan.times.every((time,index)=>time&&Number(time.block)===index+1&&String(time.start||'').length>0&&String(time.end||'').length>0))return false;
+   for(const name of expectedNames){
+    const rows=practicePlan.schedule[name];
+    if(rows.some(row=>!row||typeof row!=='object'||typeof row.activity!=='string'||!row.activity.trim()))return false;
+   }
+   if(Array.isArray(practicePlan.liveSessions)){
+    for(const live of practicePlan.liveSessions){
+     const block=Number(live?.block),pitcher=String(live?.pitcher||''),catcher=String(live?.catcher||''),hitters=Array.isArray(live?.hitters)?live.hitters:[];
+     if(!Number.isInteger(block)||block<0||block>=expectedBlocks||!pitcher||!expectedSet.has(pitcher)||!catcher||!hitters.length)return false;
+     if(catcher!=='9Square'&&!expectedSet.has(catcher))return false;
+     if(hitters.length!==new Set(hitters).size||hitters.some(name=>!expectedSet.has(name)||name===pitcher||name===catcher))return false;
+    }
+   }
    for(const player of practicePlan.players||[]){
     const availability=expected.availability?.[player.name];if(!availability)return false;
     if(Number(player.availableFromBlock)!==Number(availability.availableFromBlock)||Number(player.availableUntilBlock)!==Number(availability.availableUntilBlock)||String(player.arrivalTime||'')!==String(availability.arrivalTime||'')||String(player.departureTime||'')!==String(availability.departureTime||''))return false;
