@@ -5187,7 +5187,12 @@ function bindPractice(){
      if(!resolutionPlanIsSafe(plan,label))return false;
      const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
      const candidateBlockCount=Number(duration)===132?11:Number(duration)===120?10:0;
-     const baselineByName=new Map(practicePlayers.map(player=>[player.name,player]));
+     // Combined role + Block 11 candidates must be compared with the already
+     // verified 132-minute availability extension. Otherwise every player whose
+     // availability legitimately reaches Block 11 is falsely counted as a role
+     // mutation and the combined solution can never verify.
+     const comparisonPlayers=expectedChange&&Number(duration)===132&&Number(durationMinutes)===120?practiceResolutionExtendedPlayers(practicePlayers,startTime):practicePlayers;
+     const baselineByName=new Map(comparisonPlayers.map(player=>[player.name,player]));
      const changedNames=players.filter(player=>{
       const base=baselineByName.get(player.name);
       return !base||player.canPitch!==base.canPitch||player.requiresPitchWarmup!==base.requiresPitchWarmup||player.canCatch!==base.canCatch||
@@ -5216,11 +5221,15 @@ function bindPractice(){
      }
      if(expectedChange?.role&&expectedChange?.name){
       // A role Resolution may alter exactly one verified player and exactly the
-      // approved role fields. This proves the candidate builder did not solve the
-      // practice by carrying an unrelated accommodation/state mutation with it.
+      // approved role fields. For combined Block 11 options the comparison baseline
+      // already includes only the legitimate availability extension above.
       if(changedNames.length!==1||changedNames[0]!==expectedChange.name){resolutionAuditFailures.push(label+' changed state outside the approved player.');return false}
       const changed=(plan.players||[]).find(player=>player.name===expectedChange.name),base=baselineByName.get(expectedChange.name);
       if(!changed||!base)return false;
+      // The generated plan must preserve the candidate input exactly; role proof is
+      // against the correct 10- or 11-block baseline, never against mutable setup.
+      const candidate=players.find(player=>player.name===expectedChange.name);
+      if(!candidate||changed.canPitch!==candidate.canPitch||changed.requiresPitchWarmup!==candidate.requiresPitchWarmup||changed.canCatch!==candidate.canCatch)return false;
       if(expectedChange.role==='pitcher'){
        if(base.canPitch!==true||changed.canPitch!==false||changed.requiresPitchWarmup!==false||changed.canCatch!==base.canCatch)return false;
       }else if(expectedChange.role==='catcher'){
