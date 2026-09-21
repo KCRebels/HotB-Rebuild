@@ -4063,7 +4063,17 @@ function bind(){
       // scheduler/build failures that the click handler reports internally instead
       // of throwing back through HTMLElement.click().
       setTimeout(()=>{
-       const rebuiltSafe=!!practicePlan&&!practicePlan.feasibilityErrors?.length;
+       let rebuiltSafe=!!practicePlan&&!practicePlan.feasibilityErrors?.length;
+       if(rebuiltSafe){
+        try{
+         const audit=window.HotBPracticeScheduler?.validate?.(practicePlan);
+         rebuiltSafe=Array.isArray(audit)&&audit.length===0;
+         if(!rebuiltSafe)console.error('HotB Practice Resolution rebuilt plan failed final rules audit',audit);
+        }catch(error){
+         console.error('HotB Practice Resolution rebuilt plan final audit failed',error);
+         rebuiltSafe=false;
+        }
+       }
        if(rebuiltSafe)return;
        console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
        if(rollbackState){
