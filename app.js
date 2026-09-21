@@ -4092,7 +4092,7 @@ async function endPracticeFromScreen(){
  const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
  if(shouldClearPortals){
   try{await clearActivePlayerPlans()}
-  catch(error){practiceCompletionBusy=false;alert(cloudUser&&cloudStore?'The plan could not be discarded because the player plans are still active. Check your connection, then tap DONE! again.':'The player plans are still active. Sign in through Cloud Backup, then tap DONE! again.');return}
+  catch(error){practiceCompletionBusy=false;const code=String(error?.code||error?.message||error||'unknown');console.error('HotB discard portal cleanup failed',error);alert(cloudUser&&cloudStore?'The plan could not be discarded because the player plans are still active.\n\nCleanup error: '+code:'The player plans are still active. Sign in through Cloud Backup, then tap DONE! again.');return}
  }
  practiceCompletionBusy=false;closePracticeWorkspace();
 }
