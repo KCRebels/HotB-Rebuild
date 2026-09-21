@@ -114,27 +114,28 @@ for(const session of earlyGuestPlan.liveSessions.filter(session=>session.pitcher
 
 function resolutionCandidates(players,duration=120){
  const base=scheduler.buildSchedule(players,'18:00',duration);
+ const safe=plan=>!(plan.feasibilityErrors||[]).length&&!scheduler.validate(plan).length;
  const result={baseErrors:base.feasibilityErrors||[],pitchers:[],catchers:[],canExtend:false,combinedPitchers:[],combinedCatchers:[]};
  if(!result.baseErrors.length)return result;
  for(const player of players.filter(item=>item.canPitch)){
   const changed=players.map(item=>item.name===player.name?{...item,canPitch:false,requiresPitchWarmup:false}:item);
-  if(!(scheduler.buildSchedule(changed,'18:00',duration).feasibilityErrors||[]).length)result.pitchers.push(player.name);
+  if(safe(scheduler.buildSchedule(changed,'18:00',duration)))result.pitchers.push(player.name);
  }
  for(const player of players.filter(item=>item.canCatch)){
   const changed=players.map(item=>item.name===player.name?{...item,canCatch:false}:item);
-  if(!(scheduler.buildSchedule(changed,'18:00',duration).feasibilityErrors||[]).length)result.catchers.push(player.name);
+  if(safe(scheduler.buildSchedule(changed,'18:00',duration)))result.catchers.push(player.name);
  }
  if(duration===120){
   const extended=players.map(item=>({...item,availableUntilBlock:item.availableUntilBlock===10?11:item.availableUntilBlock}));
-  result.canExtend=!(scheduler.buildSchedule(extended,'18:00',132).feasibilityErrors||[]).length;
+  result.canExtend=safe(scheduler.buildSchedule(extended,'18:00',132));
   if(!result.canExtend){
    for(const player of extended.filter(item=>item.canPitch)){
     const changed=extended.map(item=>item.name===player.name?{...item,canPitch:false,requiresPitchWarmup:false}:item);
-    if(!(scheduler.buildSchedule(changed,'18:00',132).feasibilityErrors||[]).length)result.combinedPitchers.push(player.name);
+    if(safe(scheduler.buildSchedule(changed,'18:00',132)))result.combinedPitchers.push(player.name);
    }
    for(const player of extended.filter(item=>item.canCatch)){
     const changed=extended.map(item=>item.name===player.name?{...item,canCatch:false}:item);
-    if(!(scheduler.buildSchedule(changed,'18:00',132).feasibilityErrors||[]).length)result.combinedCatchers.push(player.name);
+    if(safe(scheduler.buildSchedule(changed,'18:00',132)))result.combinedCatchers.push(player.name);
    }
   }
  }
