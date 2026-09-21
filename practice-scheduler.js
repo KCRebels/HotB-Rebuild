@@ -54,7 +54,7 @@
      const options=playerName=>slots.filter((slot,index)=>assignments[index].length<3&&eligible(byName[playerName],slot,index,assignments[index])).length;
      return options(a)-options(b)||a.localeCompare(b);
     })[0],player=byName[name];
-    const candidates=slots.map((slot,index)=>({slot,index,count:assignments[index].length})).filter(item=>item.count<3&&eligible(player,item.slot,item.index,assignments[item.index])).sort((a,b)=>{
+    const candidates=slots.map((slot,index)=>({slot,index,count:assignments[index].length})).filter(item=>item.count<(allowOneFrontTossFour?4:3)&&eligible(player,item.slot,item.index,assignments[item.index])&&(item.count<3||!assignments.some(group=>group.length===4))).sort((a,b)=>{
      const priority=count=>count===1?0:count===2?1:2;
      return priority(a.count)-priority(b.count)||a.index-b.index;
     });
@@ -213,7 +213,7 @@
   // Assign fixed hitting stations greedily. With the normal Rebels roster all
   // players share the same availability after Warm-Up/Tee, so recursive search
   // adds exponential work without improving the result.
-  function assignStationGroups(playersToAssign,slots,eligible){
+  function assignStationGroups(playersToAssign,slots,eligible,allowOneFrontTossFour=false){
    const assignments=Array.from({length:slots.length},()=>[]);
    const remaining=playersToAssign.slice().sort((a,b)=>{
     const count=player=>slots.filter((slot,index)=>eligible(player,slot,index,assignments[index])).length;
@@ -250,15 +250,20 @@
      .find(item=>item.group.length===2&&item.index!==single.index&&eligible(player,slots[item.index],item.index,item.group));
     if(target){target.group.push(name);single.group.length=0}
    }
-   return assignments.every(group=>group.length===0||group.length===2||group.length===3)?assignments:null;
+   return assignments.every(group=>group.length===0||group.length===2||group.length===3||(allowOneFrontTossFour&&group.length===4))?assignments:null;
   }
   const prePracticePlayers=activeAttendees.filter(player=>player.prePracticeComplete),reserveEarlyFront=prePracticePlayers.length>=2&&prePracticePlayers.length<=12;
   const frontTossCandidates=[0,1,2,3,4,5,6,7,8,9].filter(block=>!liveBlocks.has(block));
   const orderedFrontBlocks=frontTossCandidates.slice().sort((a,b)=>(a>=8?0:1)-(b>=8?0:1)||a-b),frontSlots=orderedFrontBlocks.flatMap(block=>[{block,lane:1},{block,lane:2}]);
   if(!feasibilityErrors.length){
-   const frontGroups=assignStationGroups(activeAttendees,frontSlots,(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2)));
-   if(!frontGroups)feasibilityErrors.push('Front toss cannot be scheduled exactly once per player in groups of 2–3 with the selected attendance and availability.');
-   else frontGroups.forEach((names,index)=>names.forEach(name=>{const {block,lane}=frontSlots[index];schedule[name][block]={activity:`Front Toss Lane ${lane}`};frontTossAssignments.push({player:name,block,lane})}));
+   let frontGroups=assignStationGroups(activeAttendees,frontSlots,(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2)));
+   if(!frontGroups)frontGroups=assignStationGroups(activeAttendees,frontSlots,(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2)),true);
+   if(!frontGroups)feasibilityErrors.push('Front toss cannot be scheduled exactly once per player while keeping at least 2 players at every station, even after using the one allowed 4-player Front Toss block.');
+   else{
+    const fourIndex=frontGroups.findIndex(names=>names.length===4);
+    if(fourIndex>=0){const slot=frontSlots[fourIndex];fallbackWarnings.push(`Block ${slot.block+1} uses 4 players at Front Toss Lane ${slot.lane}. This is the one automatic 4-player Front Toss block allowed for this practice.`)}
+    frontGroups.forEach((names,index)=>names.forEach(name=>{const {block,lane}=frontSlots[index];schedule[name][block]={activity:`Front Toss Lane ${lane}`};frontTossAssignments.push({player:name,block,lane})}));
+   }
   }
   const frontTossBlocks=[...new Set(frontTossAssignments.map(item=>item.block))].sort((a,b)=>a-b);
   if(!feasibilityErrors.length){
@@ -366,12 +371,15 @@
    const machineCount=entries.filter(entry=>entry?.activity==='Machine').length;
    if(machineCount!==0&&(machineCount<2||machineCount>3))errors.push(`Block ${block+1} Machine must have 2–3 players.`);
    const frontCounts={};entries.filter(entry=>entry?.activity.startsWith('Front Toss Lane')).forEach(entry=>frontCounts[entry.activity]=(frontCounts[entry.activity]||0)+1);
-   if(Object.values(frontCounts).some(count=>count<2||count>3))errors.push(`Block ${block+1} each Front Toss lane must have 2–3 players.`);
+   const frontFours=Object.values(frontCounts).filter(count=>count===4).length;
+   if(Object.values(frontCounts).some(count=>count<2||count>4)||frontFours>1)errors.push(`Block ${block+1} each Front Toss lane must have 2–3 players, with at most one 4-player Front Toss lane allowed in the practice.`);
    if(plan.liveSessions?.some(session=>session.block===block)&&entries.some(entry=>entry?.activity.startsWith('Front Toss')))errors.push(`Block ${block+1} has Front Toss while live pitching is active.`);
    const drillCounts={};entries.filter(entry=>entry?.activity.startsWith('Drill #')).forEach(entry=>drillCounts[entry.activity]=(drillCounts[entry.activity]||0)+1);
    if(Object.values(drillCounts).some(count=>count>3||(count<2&&availablePlayers.length>1)))errors.push(`Block ${block+1} has a drill station without 2–3 players.`);
    if(Object.values(drillCounts).includes(1)&&Object.values(drillCounts).includes(3))errors.push(`Block ${block+1} must rebalance one- and three-player drill groups into two-player groups.`);
   }
+  const totalFrontFours=Array.from({length:BLOCK_COUNT},(_,block)=>{const counts={};Object.values(plan.schedule||{}).map(items=>items[block]).filter(entry=>entry?.activity?.startsWith('Front Toss Lane')).forEach(entry=>counts[entry.activity]=(counts[entry.activity]||0)+1);return Object.values(counts).filter(count=>count===4).length}).reduce((a,b)=>a+b,0);
+  if(totalFrontFours>1)errors.push('Practice uses more than one 4-player Front Toss block.');
   (plan?.liveSessions||[]).forEach(session=>{
    if(session.hitters.length<2||session.hitters.length>3)errors.push(`Block ${session.block+1} must have 2–3 live hitters.`);
    if(session.catcher==='Coach')errors.push(`Block ${session.block+1} assigns Coach as the live catcher.`);
