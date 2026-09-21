@@ -4219,16 +4219,35 @@ function bind(){
      assignmentCount.set(name,(assignmentCount.get(name)||0)+1);
     }
     if([...assignmentCount.values()].some(count=>count!==1))return false;
-    const ordinaryGroups=new Map();
+    const stationGroups=new Map();
     for(const name of presentNames){
      const row=practicePlan.schedule[name][block],activity=row.activity;
-     if(['Pitch Live','Catch Live','Hit Live','Pitch Warm-Up','Catch Warm-Up','Warm-Up','Tee Work'].includes(activity))continue;
-     const key=activity+'|'+String(row.station??row.stationNumber??'');
-     if(!ordinaryGroups.has(key))ordinaryGroups.set(key,[]);
-     ordinaryGroups.get(key).push(name);
+     // Only true player-group stations belong in this independent capacity proof.
+     // Support/reset roles are intentionally solo, while Stretch/Tee and live roles
+     // have their own scheduler/postcondition contracts.
+     const stationKey=activity==='Machine'?'Machine':activity.startsWith('Front Toss Lane ')?activity:activity.startsWith('Drill #')?activity:null;
+     if(!stationKey)continue;
+     if(!stationGroups.has(stationKey))stationGroups.set(stationKey,[]);
+     stationGroups.get(stationKey).push(name);
     }
-    for(const names of ordinaryGroups.values())if(names.length===1||names.length>3)return false;
+    let frontFourCount=0;
+    for(const [station,names] of stationGroups){
+     if(station.startsWith('Front Toss Lane ')&&names.length===4){frontFourCount++;continue}
+     if(names.length<2||names.length>3)return false;
+    }
+    if(frontFourCount>1)return false;
    }
+   // The four-player Front Toss exception is practice-wide, not per block.
+   let totalFrontFours=0;
+   for(let block=0;block<expectedBlocks;block++){
+    const counts=new Map();
+    for(const name of expectedNames){
+     const activity=practicePlan.schedule?.[name]?.[block]?.activity;
+     if(typeof activity==='string'&&activity.startsWith('Front Toss Lane '))counts.set(activity,(counts.get(activity)||0)+1);
+    }
+    totalFrontFours+=[...counts.values()].filter(count=>count===4).length;
+   }
+   if(totalFrontFours>1)return false;
    if(!Array.isArray(practicePlan.liveSessions))return false;
    {
     const liveKeys=new Set(),liveRoleKeys=new Set();
