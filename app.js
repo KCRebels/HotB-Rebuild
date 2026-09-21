@@ -4066,6 +4066,10 @@ function bind(){
    const expectedBlocks=Number(expected.durationMinutes)===132?11:10;
    if(!Array.isArray(practicePlan.times)||practicePlan.times.length!==expectedBlocks)return false;
    if(Object.keys(practicePlan.schedule||{}).length!==expectedSet.size)return false;
+   for(const player of practicePlan.players||[]){
+    const availability=expected.availability?.[player.name];if(!availability)return false;
+    if(Number(player.availableFromBlock)!==Number(availability.availableFromBlock)||Number(player.availableUntilBlock)!==Number(availability.availableUntilBlock))return false;
+   }
    if(expected.role&&expected.name){
     const player=(practicePlan.players||[]).find(item=>item.name===expected.name);
     if(!player)return false;
@@ -4132,7 +4136,11 @@ function bind(){
    }
   };
   const resolutionRollbackState=()=>({setupState:structuredClone(practiceSetupState),resolution:structuredClone(practiceResolution)});
-  const expectedResolutionState=(role=null,name=null,withBlock11=false)=>({role,name,startTime:practiceResolution?.startTime||practiceSetupState.startTime,durationMinutes:withBlock11?132:Number(practiceResolution?.durationMinutes||practiceSetupState.durationMinutes),playerNames:(practiceResolution?.practicePlayers||[]).map(player=>player.name)});
+  const expectedResolutionState=(role=null,name=null,withBlock11=false)=>{
+   const basePlayers=practiceResolution?.practicePlayers||[],durationMinutes=withBlock11?132:Number(practiceResolution?.durationMinutes||practiceSetupState.durationMinutes);
+   const expectedPlayers=withBlock11?practiceResolutionExtendedPlayers(basePlayers,practiceResolution?.startTime||practiceSetupState.startTime):basePlayers;
+   return {role,name,startTime:practiceResolution?.startTime||practiceSetupState.startTime,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock}]))};
+  };
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
    const target=findResolutionRosterIndex(name,role);if(!target)return false;
    const verifiedPlayer=practiceResolution?.practicePlayers?.find(player=>player.name===name);
