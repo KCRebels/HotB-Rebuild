@@ -1607,12 +1607,21 @@ function mergeCoachDirectories(savedCoaches){
 }
 function save(){
  db.route=route;
- localStorage.setItem(DBKEY,JSON.stringify(db));
+ const json=JSON.stringify(db);
+ try{localStorage.setItem(DBKEY,json)}
+ catch(error){
+  // iOS/Safari reports local-storage exhaustion as DOMException code 22 /
+  // QuotaExceededError ("The quota has been exceeded"). That is a DEVICE storage
+  // failure, not a Firebase quota. Never let it masquerade as a failed portal
+  // activation after Firebase has already published the practice.
+  const quota=error?.name==='QuotaExceededError'||Number(error?.code)===22||/quota/i.test(String(error?.message||''));
+  if(quota){
+   console.error('HotB device storage quota exceeded',error);
+   throw new Error('device-storage-quota-exceeded');
+  }
+  throw error;
+ }
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
- // Local UI saves happen constantly while building a practice. Keep them local.
- // Cloud backup remains debounced, but player-portal evaluation data is synced
- // only by explicit portal/evaluation flows or after a successful backup. This
- // prevents ordinary taps/navigation from reading and rewriting every portal.
  scheduleCloudBackup();
 }
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
@@ -2843,8 +2852,10 @@ async function activatePlayerPlans(){
   console.error('HotB player-plan activation failed',error);
   if(code.includes('portal-activation-existing-publication')||code.includes('portal-activation-partial-existing-publication')){
    alert('HotB found this exact practice already published in the cloud. It was not overwritten or reset. Return to Practice Home and use Recover Practice so the existing live state can be verified.');
-  }else if(/quota|resource-exhausted/i.test(code)){
-   alert('Firebase has reached its current usage quota, so HotB cannot publish the player plans right now. Your practice plan is still saved on this phone. HotB has stopped automatic portal retry traffic; try Activate Player Plans again after Firebase allows requests.');
+  }else if(code.includes('device-storage-quota-exceeded')){
+   alert('HotB published the portal work but this iPhone could not save the updated practice locally because its HotB browser storage is full. Do not activate again. Return to Practice Home and use Recover Practice so HotB can verify the already-published practice.');
+  }else if(/resource-exhausted|firestore.*quota/i.test(code)){
+   alert('Firebase is temporarily refusing portal requests because its service quota is exhausted. Your practice plan is still on this phone. Do not repeatedly retry activation.');
   }else{
    alert('The player plans could not be activated.\n\nActivation error: '+code);
   }
