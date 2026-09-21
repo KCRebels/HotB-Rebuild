@@ -945,7 +945,11 @@ let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='
 let observationTargetPaId='',observationTargetPlayer='',observationMode='game',observationScope='current',observationPromptInning=0,observationFromInningPrompt=false,observationRecognition=null;
 let observationEditId='',observationEditGameId='';
 if(!db.coachPortal||typeof db.coachPortal!=='object')db.coachPortal={name:'',phone:'',portalId:'',portalPin:'',portalPinHash:''};
-const restoredPracticeCandidate=!portalToken&&window.HotBPracticeSession?.restore(db.activePracticeSession);
+let restoredPracticeCandidate=null;
+if(!portalToken&&db.activePracticeSession){
+ try{restoredPracticeCandidate=window.HotBPracticeSession?.restore?.(db.activePracticeSession)||null}
+ catch(error){console.error('HotB could not restore the saved practice session during startup.',error)}
+}
 // A setup-stage draft has no generated plan yet. Do not install it into the
 // live practice workspace: doing so makes practicePlan truthy and hides the
 // cloud-publication recovery detector after an activation-local-save failure.
@@ -964,13 +968,21 @@ if(restoredPracticeCandidate?.stage==='setup'&&!restoredPracticeCandidate.plan&&
  // refresh cannot silently replace the coach's unresolved practice.
  if(!Array.isArray(practiceSetupState.selectedNames))practiceSetupState.selectedNames=db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name);
  const savedStartupResolution=db.activePracticeSession?.resolution;
- practiceResolution=restoredPracticeCandidate.resolution?structuredClone(restoredPracticeCandidate.resolution):null;
+ if(restoredPracticeCandidate.resolution){
+  try{practiceResolution=structuredClone(restoredPracticeCandidate.resolution)}
+  catch(error){console.error('HotB refused a Practice Resolution that could not be isolated during startup recovery.',error);practiceResolution=null}
+ }else practiceResolution=null;
  // Restore is not allowed to migrate/default a sealed Resolution object. Full
  // roster-aware validation happens later, but byte identity is safe to prove here
  // before any restored decision can reach the first render.
- if(practiceResolution&&(!savedStartupResolution||JSON.stringify(savedStartupResolution)!==JSON.stringify(practiceResolution))){
-  console.error('HotB refused a Practice Resolution that changed during startup recovery.');
-  practiceResolution=null;
+ if(practiceResolution){
+  let savedStartupBytes='',restoredStartupBytes='';
+  try{savedStartupBytes=JSON.stringify(savedStartupResolution);restoredStartupBytes=JSON.stringify(practiceResolution)}
+  catch(error){console.error('HotB refused a Practice Resolution that could not be sealed during startup recovery.',error);practiceResolution=null}
+  if(practiceResolution&&(!savedStartupResolution||savedStartupBytes!==restoredStartupBytes)){
+   console.error('HotB refused a Practice Resolution that changed during startup recovery.');
+   practiceResolution=null;
+  }
  }
  // Resolution snapshots restore from the failed 120-minute source attempt. Block 11 is apply-transaction-only.
  if(Number(practiceSetupState.durationMinutes)!==120){console.warn('HotB normalized restored setup duration before Practice Resolution validation.');practiceSetupState.durationMinutes=120}
