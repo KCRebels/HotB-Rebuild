@@ -4147,6 +4147,10 @@ function bind(){
         }
        }
        if(rebuiltSafe){
+        // The apply transaction is complete. Release the in-memory guard before
+        // committing so a later modal/render cycle can never inherit a locked
+        // Practice Resolution interaction state.
+        endResolutionApply();
         // Commit the resolved setup only after the rebuilt schedule and full rules
         // audit both pass. This gives restart recovery the same verified state the
         // coach is seeing instead of leaving the pre-resolution draft behind.
@@ -4162,7 +4166,7 @@ function bind(){
         practiceSetupState=structuredClone(rollbackState.setupState);
         practiceResolution=structuredClone(rollbackState.resolution);
         modal='practiceResolution';
-        db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);save();render();
+        db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);endResolutionApply();save();render();
        }
        alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
       },0);
@@ -4172,14 +4176,14 @@ function bind(){
        practiceSetupState=structuredClone(rollbackState.setupState);
        practiceResolution=structuredClone(rollbackState.resolution);
        modal='practiceResolution';
-       db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);save();render();
+       db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);endResolutionApply();save();render();
       }
       alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
      }
     },0);
    }catch(error){
     console.error('HotB Practice Resolution apply failed',error);
-    if(rollbackState){practiceSetupState=structuredClone(rollbackState.setupState);practiceResolution=structuredClone(rollbackState.resolution);modal='practiceResolution';db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);save();render()}
+    if(rollbackState){practiceSetupState=structuredClone(rollbackState.setupState);practiceResolution=structuredClone(rollbackState.resolution);modal='practiceResolution';db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);endResolutionApply();save();render()}
     else endResolutionApply();
     alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
    }
