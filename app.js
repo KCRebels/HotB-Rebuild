@@ -4225,13 +4225,13 @@ function bind(){
   const verifiedResolutionChoice=(type,name=null)=>{
    if(!practiceResolutionSnapshotIsCurrentAndValid())return false;
    const verifiedPlayers=practiceResolution.practicePlayers||[],matches=name==null?[]:verifiedPlayers.filter(player=>player.name===name);
-   if(type==='extension')return practiceResolution.canExtend===true&&Number(practiceResolution.durationMinutes)===120&&Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,'Block 11');
+   if(type==='extension')return practiceResolution.canExtend===true&&Number(practiceResolution.durationMinutes)===120&&Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,'Block 11')&&Array.isArray(practiceResolution.candidateNotices['Block 11']);
    if(matches.length!==1)return false;
    const player=matches[0],blockCount=Number(practiceResolution.durationMinutes)===132?11:Number(practiceResolution.durationMinutes)===120?10:0;
    if(!blockCount||!Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>blockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock))return false;
    if(typeof player.canPitch!=='boolean'||typeof player.requiresPitchWarmup!=='boolean'||typeof player.canCatch!=='boolean'||(!player.canPitch&&player.requiresPitchWarmup))return false;
    const label=type==='pitcher'?'Hitting Only: '+name:type==='catcher'?'Not Catching: '+name:type==='combinedPitcher'?'Hitting Only + Block 11: '+name:type==='combinedCatcher'?'Not Catching + Block 11: '+name:'';
-   if(!label||!Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,label))return false;
+   if(!label||!Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,label)||!Array.isArray(practiceResolution.candidateNotices[label]))return false;
    if(type==='pitcher')return player.canPitch===true&&(practiceResolution.pitchers||[]).includes(name);
    if(type==='catcher')return player.canCatch===true&&(practiceResolution.catchers||[]).includes(name);
    if(type==='combinedPitcher')return Number(practiceResolution.durationMinutes)===120&&player.canPitch===true&&(practiceResolution.combinedPitchers||[]).includes(name);
@@ -4683,9 +4683,13 @@ function bind(){
    if(!rollbackState||!resolutionRollbackStateIsValid(rollbackState))return {started:false,reason:'rollback'};
    if(!beginResolutionApply())return {started:false,reason:'busy'};
    try{
+    let lockedResolutionBytes='';
+    try{lockedResolutionBytes=JSON.stringify(rollbackState.resolution)}catch(error){throw new Error('Practice Resolution locked snapshot could not be sealed.')}
     const expected=expectedFactory(rollbackState.resolution);
     if(!expected)throw new Error('Practice Resolution expected state could not be derived.');
+    if(JSON.stringify(rollbackState.resolution)!==lockedResolutionBytes)throw new Error('Practice Resolution expected-state derivation changed the locked snapshot.');
     if(mutate(rollbackState.resolution)!==true)throw new Error('Practice Resolution mutation was rejected.');
+    if(JSON.stringify(rollbackState.resolution)!==lockedResolutionBytes)throw new Error('Practice Resolution mutation changed the locked snapshot.');
     rebuildResolvedPractice(rollbackState,expected);
     return {started:true,reason:'started'};
    }catch(error){
