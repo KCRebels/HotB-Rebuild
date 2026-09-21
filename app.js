@@ -2361,7 +2361,9 @@ function practiceUsageBoxes(name){
 }
 function practiceHub(){
  const hasDraft=db.activePracticeSession?.stage==='setup';
- return `${practiceHeader()}<main class="practice-hub no-print"><section class="practice-hub-intro"><h2>Plan Your Hitting Practice</h2><p>Build today's schedule, organize your drills, or focus on one player.</p></section>${db.activePortalPractice?.id&&!practicePlan?`<section class="practice-portal-publish"><div><span>RECOVERY NEEDED</span><h2>Portal Practice Still Active</h2><p>The local practice session is unavailable, but the activated coach portal can restore the published practice without rebuilding it.</p></div><button class="btn red" id="recoverOrphanedPractice">Recover Practice</button></section>`:''}<section class="practice-hub-actions"><button class="practice-hub-card primary" id="openPracticeBuilder"><span>${hasDraft?'SAVED DRAFT':'PLAN'}</span><h3>${hasDraft?'Continue Practice':'Build Practice'}</h3><p>${hasDraft?'Return to your saved attendance and adjustments.':'Choose attendance, time and create the complete rotation.'}</p></button><button class="practice-hub-card" id="openDrillLibrary"><span>LIBRARY</span><h3>Drill Library</h3><p>Search your hitting drills, setups and coaching purposes.</p></button><button class="practice-hub-card" id="openPlayerFocus"><span>PLAYER</span><h3>Player Focus</h3><p>Combine game data and coach observations into an individual hitting focus.</p></button></section></main>`;
+ const lostActivationCandidate=!db.activePortalPractice?.id&&db.activePracticeSession?.plan?.portalDraftId;
+ const recoveryNeeded=(db.activePortalPractice?.id&&!practicePlan)||lostActivationCandidate;
+ return `${practiceHeader()}<main class="practice-hub no-print"><section class="practice-hub-intro"><h2>Plan Your Hitting Practice</h2><p>Build today's schedule, organize your drills, or focus on one player.</p></section>${recoveryNeeded?`<section class="practice-portal-publish"><div><span>RECOVERY NEEDED</span><h2>Check Published Practice</h2><p>HotB has a saved practice whose portal activation may already be published. Verify the coach portal before continuing or activating again.</p></div><button class="btn red" id="recoverPublishedPractice">Recover Practice</button></section>`:''}<section class="practice-hub-actions"><button class="practice-hub-card primary" id="openPracticeBuilder"><span>${hasDraft?'SAVED DRAFT':'PLAN'}</span><h3>${hasDraft?'Continue Practice':'Build Practice'}</h3><p>${hasDraft?'Return to your saved attendance and adjustments.':'Choose attendance, time and create the complete rotation.'}</p></button><button class="practice-hub-card" id="openDrillLibrary"><span>LIBRARY</span><h3>Drill Library</h3><p>Search your hitting drills, setups and coaching purposes.</p></button><button class="practice-hub-card" id="openPlayerFocus"><span>PLAYER</span><h3>Player Focus</h3><p>Combine game data and coach observations into an individual hitting focus.</p></button></section></main>`;
 }
 function practiceLibrary(){
  const drills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[];
@@ -2584,6 +2586,23 @@ async function clearFinishedOrphanedPractice(state){
   if(!db.activePracticeSession||db.activePracticeSession?.plan?.portalDraftId===state.id)db.activePracticeSession=null;
   save();
  }
+}
+async function recoverPublishedPractice(){
+ if(db.activePortalPractice?.id){if(practicePlan)practicePlan=null;return recoverOrphanedActivePractice()}
+ const savedPlan=db.activePracticeSession?.plan,savedId=savedPlan?.portalDraftId,coachId=db.coachPortal?.portalId;
+ if(!savedId||!coachId){alert('HotB does not have enough saved information to identify the published practice safely. Nothing was changed.');return}
+ if(!cloudUser||!cloudStore){alert('HotB needs the coach cloud connection before it can verify the already-published practice. Nothing was changed.');return}
+ const button=$('#recoverPublishedPractice');if(button){button.disabled=true;button.textContent='Verifying…'}
+ try{
+  const snapshot=await Promise.race([portalDoc(coachId).get(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('practice-recovery-timeout')),8000))]),remote=snapshot.exists?snapshot.data()?.activePractice:null;
+  if(!remote||remote.id!==savedId)throw new Error('saved-draft-not-published');
+  const playerPortals=(db.roster||[]).filter(player=>player.portalId&&(remote.players||[]).some(item=>practiceFirstName(player.name)===practiceFirstName(item.name))).map(player=>({name:player.name,portalId:player.portalId,isTeamJenkins:!!player.isTeamJenkins}));
+  db.activePortalPractice={id:savedId,active:true,activatedAt:remote.activatedAt||new Date().toISOString(),players:playerPortals.map(item=>item.name),playerPortals,coachPortalId:coachId,guestPlayerPortalIds:[],guestCoachPortalIds:[]};
+  compactReconstructableLocalCaches();persistDbLocal();
+  practicePlan=null;
+  await recoverOrphanedActivePractice();
+ }catch(error){console.error('Published practice recovery failed',error);alert(String(error?.message||'')==='saved-draft-not-published'?'HotB checked the coach portal and this saved practice is not the active published practice. Nothing was changed.':'HotB could not verify and recover the published practice. Nothing was changed.')}
+ finally{if(button){button.disabled=false;button.textContent='Recover Practice'}}
 }
 async function recoverOrphanedActivePractice(){
  if(practicePlan)return;
@@ -4278,6 +4297,7 @@ function bindPractice(){
  $('#completePracticeSetup')?.addEventListener('click',()=>{practiceEquipmentSetupOpen=false;practiceDraftDrills=[];render();window.scrollTo(0,0);setTimeout(()=>persistPracticeSession(),0)});
  $('#practiceHubBack')?.addEventListener('click',()=>{if(practiceSection==='setup')persistPracticeDraft();practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)});
  $('#recoverOrphanedPractice')?.addEventListener('click',recoverOrphanedActivePractice);
+ $('#recoverPublishedPractice')?.addEventListener('click',recoverPublishedPractice);
  $('#openPracticeBuilder')?.addEventListener('click',()=>{if(db.activePortalPractice?.id&&!practicePlan){alert('A practice is still active on the player and coach portals. Resume and finish that practice before building a new one.');return}
   if(!practicePlan){
    // Opening Build Practice always starts with every current non-Jenkins player
