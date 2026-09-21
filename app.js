@@ -5115,6 +5115,14 @@ function bindPractice(){
      if(!resolutionPlanIsSafe(plan,label))return false;
      const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
      const candidateBlockCount=Number(duration)===132?11:Number(duration)===120?10:0;
+     const baselineByName=new Map(practicePlayers.map(player=>[player.name,player]));
+     const changedNames=players.filter(player=>{
+      const base=baselineByName.get(player.name);
+      return !base||player.canPitch!==base.canPitch||player.requiresPitchWarmup!==base.requiresPitchWarmup||player.canCatch!==base.canCatch||
+       player.availableFromBlock!==base.availableFromBlock||player.availableUntilBlock!==base.availableUntilBlock||
+       player.arrivalTime!==base.arrivalTime||player.departureTime!==base.departureTime||player.limitations!==base.limitations||
+       player.prePracticeComplete!==base.prePracticeComplete||player.isPitcher!==base.isPitcher||player.isCatcher!==base.isCatcher||player.isGuest!==base.isGuest;
+     }).map(player=>player.name);
      if(!candidateBlockCount||!Array.isArray(players)||!players.length||!players.every(player=>{
       if(!player||String(player.name||'').trim()!==String(player.name||'')||!String(player.name||'').length)return false;
       if(typeof player.isPitcher!=='boolean'||typeof player.isCatcher!=='boolean'||typeof player.isGuest!=='boolean'||typeof player.prePracticeComplete!=='boolean')return false;
@@ -5135,10 +5143,34 @@ function bindPractice(){
       if(actualPlayer.canPitch!==expectedPlayer.canPitch||actualPlayer.requiresPitchWarmup!==expectedPlayer.requiresPitchWarmup||actualPlayer.canCatch!==expectedPlayer.canCatch||actualPlayer.prePracticeComplete!==expectedPlayer.prePracticeComplete||actualPlayer.isPitcher!==expectedPlayer.isPitcher||actualPlayer.isCatcher!==expectedPlayer.isCatcher||actualPlayer.isGuest!==expectedPlayer.isGuest){resolutionAuditFailures.push(label+' changed verified player role or practice identity state.');return false}
      }
      if(expectedChange?.role&&expectedChange?.name){
-      const changed=(plan.players||[]).find(player=>player.name===expectedChange.name);
-      if(!changed)return false;
-      if(expectedChange.role==='pitcher'&&(changed.canPitch!==false||changed.requiresPitchWarmup!==false))return false;
-      if(expectedChange.role==='catcher'&&changed.canCatch!==false)return false;
+      // A role Resolution may alter exactly one verified player and exactly the
+      // approved role fields. This proves the candidate builder did not solve the
+      // practice by carrying an unrelated accommodation/state mutation with it.
+      if(changedNames.length!==1||changedNames[0]!==expectedChange.name){resolutionAuditFailures.push(label+' changed state outside the approved player.');return false}
+      const changed=(plan.players||[]).find(player=>player.name===expectedChange.name),base=baselineByName.get(expectedChange.name);
+      if(!changed||!base)return false;
+      if(expectedChange.role==='pitcher'){
+       if(base.canPitch!==true||changed.canPitch!==false||changed.requiresPitchWarmup!==false||changed.canCatch!==base.canCatch)return false;
+      }else if(expectedChange.role==='catcher'){
+       if(base.canCatch!==true||changed.canCatch!==false||changed.canPitch!==base.canPitch||changed.requiresPitchWarmup!==base.requiresPitchWarmup)return false;
+      }else return false;
+     }else if(Number(duration)===Number(durationMinutes)){
+      // A same-duration candidate with no declared coaching change must be
+      // byte-for-byte equivalent in player state to the failed base attempt.
+      if(changedNames.length){resolutionAuditFailures.push(label+' contained an undeclared player-state change.');return false}
+     }else{
+      // Block 11 is the only duration-only Resolution. It may extend availability
+      // only for players who were present through the original practice end.
+      if(Number(duration)!==132||Number(durationMinutes)!==120)return false;
+      const extended=practiceResolutionExtendedPlayers(practicePlayers,startTime);
+      const extendedByName=new Map(extended.map(player=>[player.name,player]));
+      if(players.some(player=>{
+       const expected=extendedByName.get(player.name);
+       return !expected||player.availableFromBlock!==expected.availableFromBlock||player.availableUntilBlock!==expected.availableUntilBlock||
+        player.arrivalTime!==expected.arrivalTime||player.departureTime!==expected.departureTime||player.limitations!==expected.limitations||
+        player.canPitch!==expected.canPitch||player.requiresPitchWarmup!==expected.requiresPitchWarmup||player.canCatch!==expected.canCatch||
+        player.prePracticeComplete!==expected.prePracticeComplete||player.isPitcher!==expected.isPitcher||player.isCatcher!==expected.isCatcher||player.isGuest!==expected.isGuest;
+      })){resolutionAuditFailures.push(label+' changed player state beyond the verified Block 11 extension.');return false}
      }
      return true;
     }catch(error){
