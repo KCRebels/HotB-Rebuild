@@ -4306,12 +4306,21 @@ function bind(){
      // is actually open in that block. This preserves the scheduler's catcher-first
      // rule after a Hitting Only / Not Catching / Block 11 Resolution rebuild.
      if(catcher==='9Square'){
+      // Match the scheduler's actual catcher-selection moment. Before general
+      // hitting/drill stations are assigned, a catcher is eligible when available,
+      // enabled, not the pitcher, not already reserved by an earlier live session,
+      // and still below the two-live-session ceiling. Later Machine/Front Toss/
+      // Drill assignments must not make 9Square look justified retroactively.
+      const earlierCatcherLoads=new Map();
+      for(const prior of practicePlan.liveSessions){
+       if(Number(prior?.block)>=block)continue;
+       if(prior?.catcher&&prior.catcher!=='9Square')earlierCatcherLoads.set(prior.catcher,(earlierCatcherLoads.get(prior.catcher)||0)+1);
+      }
       const eligibleOpenCatcher=(practicePlan.players||[]).some(player=>{
-       if(player.isCatcher!==true||player.canCatch!==true||player.name===pitcher)return false;
+       if(player.isCatcher!==true||player.canCatch!==true||player.name===pitcher||(earlierCatcherLoads.get(player.name)||0)>=2)return false;
        const availability=expected.availability?.[player.name];
        if(!availability||block<Number(availability.availableFromBlock)||block>=Number(availability.availableUntilBlock))return false;
-       const activity=practicePlan.schedule?.[player.name]?.[block]?.activity;
-       return activity!=='Catch Live'&&activity!=='Catch Warm-Up';
+       return !practicePlan.liveSessions.some(other=>Number(other?.block)===block&&other?.catcher===player.name);
       });
       if(eligibleOpenCatcher)return false;
      }
@@ -4387,6 +4396,21 @@ function bind(){
     if(session.catcher!=='9Square')liveCatcherLoads.set(session.catcher,(liveCatcherLoads.get(session.catcher)||0)+1);
    }
    if([...livePitcherLoads.values()].some(count=>count>2)||[...liveCatcherLoads.values()].some(count=>count>2))return false;
+   // Persisted summary metadata must agree with the role records it summarizes.
+   // Do not allow a resolved plan whose catcherLoads or pitcherRepeats drifted from
+   // liveSessions to pass the transaction boundary.
+   if(!Array.isArray(practicePlan.catcherLoads)||!Array.isArray(practicePlan.pitcherRepeats)||!Array.isArray(practicePlan.liveHitterRepeats))return false;
+   const catcherLoadMap=new Map(practicePlan.catcherLoads.map(item=>[item?.name,Number(item?.liveBlocks)]));
+   const eligibleCatchers=(practicePlan.players||[]).filter(player=>player.isCatcher===true).map(player=>player.name);
+   if(catcherLoadMap.size!==eligibleCatchers.length||eligibleCatchers.some(name=>catcherLoadMap.get(name)!==(liveCatcherLoads.get(name)||0)))return false;
+   const repeatedPitchers=[...livePitcherLoads.entries()].filter(([,count])=>count>1).map(([name])=>name).sort();
+   const persistedPitcherRepeats=[...new Set(practicePlan.pitcherRepeats)].sort();
+   if(repeatedPitchers.length!==persistedPitcherRepeats.length||repeatedPitchers.some((name,index)=>name!==persistedPitcherRepeats[index]))return false;
+   const liveHitCounts=new Map(expectedNames.map(name=>[name,0]));
+   practicePlan.liveSessions.forEach(session=>(session.hitters||[]).forEach(name=>liveHitCounts.set(name,(liveHitCounts.get(name)||0)+1)));
+   const repeatedHitters=[...liveHitCounts.entries()].filter(([,count])=>count>1).map(([name])=>name).sort();
+   const persistedHitterRepeats=[...new Set(practicePlan.liveHitterRepeats)].sort();
+   if(repeatedHitters.length!==persistedHitterRepeats.length||repeatedHitters.some((name,index)=>name!==persistedHitterRepeats[index]))return false;
    return true;
   };
   const rebuildResolvedPractice=(rollbackState,expected)=>{
