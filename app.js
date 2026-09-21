@@ -4497,7 +4497,11 @@ function bindPractice(){
      // Block 11 extends only players who were actually available through the end
      // of the original 120-minute practice. An explicit early departure remains
      // an explicit early departure; resolution must never silently lengthen it.
-     const extendedPlayers=practicePlayers.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock,departureTime:player.availableUntilBlock===10?practiceEndValue(startTime,132):player.departureTime}));
+     const originalEnd=practiceEndValue(startTime,120),extendedEnd=practiceEndValue(startTime,132);
+     const extendedPlayers=practicePlayers.map(player=>{
+      const stayedThroughOriginalEnd=player.availableUntilBlock===10&&(!player.departureTime||player.departureTime===originalEnd);
+      return {...player,availableUntilBlock:stayedThroughOriginalEnd?11:player.availableUntilBlock,departureTime:stayedThroughOriginalEnd?extendedEnd:player.departureTime};
+     });
      const extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=resolutionPlanIsSafe(extendedPlan);
      if(!canExtend){
       for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
