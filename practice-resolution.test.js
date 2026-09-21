@@ -99,5 +99,7 @@ mustInclude("changed sealed candidate source data before publication","Resolutio
 
 mustInclude("match(/^(\\d{1,2}):(\\d{2})$/)","Resolution clock verification must parse numeric HH:MM values");
 mustNotInclude("match(/^(\\\\d{1,2}):(\\\\d{2})$/)","Resolution clock verification must not look for literal backslash-d text");
+mustInclude("match(/^(\\d{2}):(\\d{2})$/)","Persisted Resolution clock validation must parse numeric HH:MM values");
+mustNotInclude("match(/^(\\\\d{2}):(\\\\d{2})$/)","Persisted Resolution clock validation must not look for literal backslash-d text");
 
 console.log('practice-resolution static contract tests passed');
