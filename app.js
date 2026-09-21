@@ -933,7 +933,7 @@ let infoPlayerIndex=0,infoPlayerName='';
 let pendingRosterImport=null;
 let timerInt=null,timerStart=0,timerElapsed=0;
 let lastRenderedUndoState=null;
-let practicePlan=null;
+let practicePlan=null,practiceResolution=null;
 let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false},practiceCoachOpen=false,practiceCardsOpen=false;
 let practiceSection='hub',practiceFocusPlayer='',practiceFocusRange='weekend',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practiceEquipmentSetupOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
@@ -3894,7 +3894,14 @@ function focusPublishPreviewModal(){
  if(!focus)return'';
  return `<div class="modal-backdrop"><div class="modal focus-publish-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER PORTAL PREVIEW</div><h2>${esc(first)}’s My Focus</h2></div><button class="btn" data-close>Close</button></div><p class="focus-publish-help">This is exactly what ${esc(first)} will see after you publish it.</p><div class="focus-preview-shell"><div class="focus-preview-header"><span>Back</span><b>My Focus</b><i></i></div><div class="focus-portal-preview">${portalFocusBody(focus)}</div></div><div class="focus-publish-actions"><button class="btn" data-close>Cancel</button><button class="btn red" id="confirmPublishPlayerFocus">Publish to ${esc(first)}</button></div></div></div>`;
 }
+function practiceResolutionModal(){
+ const r=practiceResolution;if(!r)return'';
+ const pitchers=(r.pitchers||[]).map(name=>`<label class="practice-resolution-pitcher"><input type="radio" name="practiceResolutionPitcher" value="${esc(name)}"><span><b>${esc(practiceFirstName(name))}</b><small>Not Pitching Live · this practice only</small></span></label>`).join('');
+ const notices=(r.notices||[]).map(note=>`<li>${esc(note)}</li>`).join('');
+ return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>HotB needs a coaching decision</h2></div></div><p class="practice-resolution-intro">HotB tried the normal rotation first, including aggressive rearranging, the one allowed 4-player Front Toss block, and 9-Square when needed.</p><section class="practice-resolution-problem"><b>What is preventing the build</b><ul>${(r.errors||[]).map(error=>`<li>${esc(error)}</li>`).join('')}</ul></section>${notices?`<section class="practice-resolution-notices"><b>Automatic equipment / capacity notices</b><ul>${notices}</ul></section>`:''}${pitchers?`<section class="practice-resolution-choice"><h3>Make one pitcher Hitting Only</h3><p>Choose any attending pitcher currently available to pitch. She stays in the full practice as a hitter, does not warm up pitching, and does not pitch Live.</p><div class="practice-resolution-pitchers">${pitchers}</div><button class="btn red block" id="applyPracticePitcherResolution">Apply & Build Practice</button></section>`:''}${r.canExtend?`<section class="practice-resolution-choice"><h3>Add Block 11</h3><p>Extend this practice by 12 minutes, from 120 to 132 minutes. HotB will use this only as an emergency solution and will not add a 12th block.</p><button class="btn black block" id="applyPracticeExtensionResolution">Add Block 11 & Build Practice</button></section>`:''}<section class="practice-resolution-last"><h3>Change Attendance / Availability</h3><p>${esc(r.rosterGuidance||'HotB could not find another rule-safe solution. Change attendance or player availability, then build again.')}</p><button class="btn block" id="returnPracticeAttendance">Change Attendance / Availability</button></section></div></div>`;
+}
 function modalView(){
+ if(modal==='practiceResolution')return practiceResolutionModal();
  if(modal==='recoveryGuide')return recoveryGuideModal();
  if(modal==='cloudBackup')return cloudBackupModal();
  if(modal==='changePitcher')return pitcherChangeModal();
@@ -3948,6 +3955,15 @@ function bind(){
  if(modal==='manageFocusDrills')bindManageFocusDrills();
  if(modal==='focusPublishPreview')bindFocusPublishPreview();
  if(modal==='cloudBackup')bindCloudBackup();
+ if(modal==='practiceResolution'){
+  $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{
+   const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}
+   const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){alert('HotB could not find that pitcher in this practice.');return}
+   const accommodation=practiceAccommodation(roster[index]);accommodation.canPitch=false;accommodation.requiresPitchWarmup=false;practiceSetupState.accommodations[picked]=accommodation;practiceResolution=null;modal=null;render();setTimeout(()=>$('#generatePractice')?.click(),0);
+  });
+  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{practiceSetupState.durationMinutes=132;practiceResolution=null;modal=null;render();setTimeout(()=>$('#generatePractice')?.click(),0)});
+  $('#returnPracticeAttendance')?.addEventListener('click',()=>{practiceResolution=null;modal=null;render();window.scrollTo(0,0)});
+ }
  $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
  $('#openRecoveryGuide')?.addEventListener('click',()=>{modal='recoveryGuide';render()});
 }
@@ -4396,14 +4412,13 @@ function bindPractice(){
   const buildButton=$('#generatePractice');if(buildButton){buildButton.disabled=true;buildButton.textContent='Building Practice…'}
   try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){console.error('HotB practice scheduler failed',error);practicePlan=null;if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));return}
   if(practicePlan.feasibilityErrors?.length){
-   const message=`HotB cannot build this practice without breaking a scheduling rule:\n\n${practicePlan.feasibilityErrors.join('\n\n')}\n\nAdjust attendance or player availability, then build again.`;
-   practicePlan=null;alert(message);render();return;
+   const errors=practicePlan.feasibilityErrors.slice(),pitchers=practicePlayers.filter(player=>player.canPitch).map(player=>player.name);
+   const rosterGuidance=pitchers.length?'If you change attendance manually, HotB recommends changing pitcher availability first rather than removing a hitter from practice.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
+   practiceResolution={errors,pitchers,canExtend:durationMinutes===120,rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,notices:practicePlan.fallbackWarnings||[]};
+   practicePlan=null;modal='practiceResolution';render();return;
   }
   if(practicePlan.fallbackWarnings?.length){
-   const repeatedHitters=practicePlan.liveHitterRepeats?.length||0,markHittingOnly=Math.ceil(repeatedHitters/2);
-   const alternative=repeatedHitters?`\n\nIf you do not want repeated live hitting, press Cancel and mark at least ${markHittingOnly} pitcher${markHittingOnly===1?'':'s'} Hitting Only.`:'\n\nPress Cancel to return and change the available pitchers.';
-   const message=`HotB can build this practice using the following fallback:\n\n${practicePlan.fallbackWarnings.join('\n\n')}${alternative}\n\nPress OK to use this schedule.`;
-   if(!confirm(message)){practicePlan=null;render();return}
+   practicePlan.buildNotices=practicePlan.fallbackWarnings.slice();
   }
   practicePlan.portalDraftId=crypto.randomUUID();
   practicePlan.machineFocus='Standard';practicePlan.frontTossFocus='Standard';
