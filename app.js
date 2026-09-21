@@ -3919,7 +3919,10 @@ function practiceResolutionExtendedPlayers(players,startTime){
  });
 }
 function practiceResolutionSignature(players,startTime,durationMinutes){
- return JSON.stringify({players:(players||[]).map(player=>({name:player.name,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,isGuest:!!player.isGuest,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||'',canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime,durationMinutes});
+ // Canonicalize attendee order so a harmless roster ordering change cannot invalidate
+ // a verified resolution, while every scheduling-relevant field still must match.
+ const canonicalPlayers=(players||[]).map(player=>({name:player.name,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,isGuest:!!player.isGuest,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||'',canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+ return JSON.stringify({players:canonicalPlayers,startTime,durationMinutes});
 }
 function currentPracticeResolutionSignature(){
  if(!practiceResolution)return'';
