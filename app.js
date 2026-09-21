@@ -4577,23 +4577,20 @@ function bindPractice(){
     if(verifyResolutionBuild(testPlayers,durationMinutes,'Not Catching: '+catcher.name))solvingCatchers.push(catcher.name)
    }
    if(!identityBlocked&&Number(durationMinutes)===120){
-    try{
-     // Block 11 extends only players who were actually available through the end
-     // of the original 120-minute practice. An explicit early departure remains
-     // an explicit early departure; resolution must never silently lengthen it.
-     const extendedPlayers=practiceResolutionExtendedPlayers(practicePlayers,startTime);
-     const extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=resolutionPlanIsSafe(extendedPlan,'Block 11');
-     if(!canExtend){
-      for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
-       const label='Hitting Only + Block 11: '+pitcher.name,testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan,label))combinedPitchers.push(pitcher.name)}catch(error){console.error('HotB Practice Resolution build failed',label,error);resolutionAuditFailures.push(label+' could not complete the verification build.')}
-      }
-      for(const catcher of extendedPlayers.filter(player=>player.canCatch)){
-       const label='Not Catching + Block 11: '+catcher.name,testPlayers=extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan,label))combinedCatchers.push(catcher.name)}catch(error){console.error('HotB Practice Resolution build failed',label,error);resolutionAuditFailures.push(label+' could not complete the verification build.')}
-      }
+    // Block 11 extends only players who were actually available through the end
+    // of the original 120-minute practice. Explicit departures remain protected.
+    const extendedPlayers=practiceResolutionExtendedPlayers(practicePlayers,startTime);
+    canExtend=verifyResolutionBuild(extendedPlayers,132,'Block 11');
+    if(!canExtend){
+     for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
+      const label='Hitting Only + Block 11: '+pitcher.name,testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
+      if(verifyResolutionBuild(testPlayers,132,label))combinedPitchers.push(pitcher.name);
      }
-    }catch(error){console.error('HotB Practice Resolution Block 11 verification failed',error);resolutionAuditFailures.push('Block 11 verification could not complete.')} 
+     for(const catcher of extendedPlayers.filter(player=>player.canCatch)){
+      const label='Not Catching + Block 11: '+catcher.name,testPlayers=extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
+      if(verifyResolutionBuild(testPlayers,132,label))combinedCatchers.push(catcher.name);
+     }
+    }
    }
    const hasVerifiedResolution=!!(solvingPitchers.length||solvingCatchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
    const rosterGuidance=identityBlocked?'HotB found attendee identity or availability information that must be corrected before resolution. Fix the roster/guest or arrival/departure entry and build again; HotB will not guess or silently normalize it.':resolutionAuditFailures.length&&!hasVerifiedResolution?'HotB could not verify a safe automatic resolution because one or more verification builds/audits did not complete. Change attendance or availability, or build again after correcting the reported verification problem.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
