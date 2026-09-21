@@ -4909,6 +4909,10 @@ function bindPractice(){
    alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));return
   }
   if(practicePlan.feasibilityErrors?.length){
+   // If this failed build was itself an automatic Resolution rebuild, revoke its
+   // one-use authorization before doing any secondary candidate work. The outer
+   // transaction will inspect the failed result and restore the original snapshot.
+   if(practiceResolutionApplyDraftId)practiceResolutionApplyDraftId=null;
    const errors=practicePlan.feasibilityErrors.slice(),identityBlocked=errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(error)),availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
    // Practice Resolution is intentionally stricter than the normal build path. It is rare,
    // so every choice shown to the coach must pass both scheduler feasibility and the full
@@ -5001,7 +5005,16 @@ function bindPractice(){
    const hasVerifiedResolution=!!(solvingPitchers.length||solvingCatchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
    const rosterGuidance=identityBlocked?'HotB found attendee identity or availability information that must be corrected before resolution. Fix the roster/guest or arrival/departure entry and build again; HotB will not guess or silently normalize it.':resolutionAuditFailures.length&&!hasVerifiedResolution?'HotB could not verify a safe automatic resolution because one or more verification builds/audits did not complete. Change attendance or availability, or build again after correcting the reported verification problem.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
-   practiceResolution={errors,pitchers:solvingPitchers,catchers:solvingCatchers,canExtend,combinedPitchers,combinedCatchers,rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,notices:practicePlan.fallbackWarnings||[],auditFailures:[...new Set(resolutionAuditFailures)],signature:resolutionSignature};
+   const cleanResolutionText=value=>String(value??'').trim();
+   const cleanResolutionList=values=>[...new Set((Array.isArray(values)?values:[]).map(cleanResolutionText).filter(Boolean))];
+   practiceResolution={
+    errors:cleanResolutionList(errors),
+    pitchers:solvingPitchers,catchers:solvingCatchers,canExtend,combinedPitchers,combinedCatchers,rosterGuidance,
+    practicePlayers,startTime,durationMinutes,noPitchersMode,
+    notices:cleanResolutionList(practicePlan.fallbackWarnings),
+    auditFailures:cleanResolutionList(resolutionAuditFailures),
+    signature:resolutionSignature
+   };
    practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
    practiceSetupState.startTime=startTime;
    practiceSetupState.durationMinutes=durationMinutes;
