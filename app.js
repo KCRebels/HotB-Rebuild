@@ -5174,9 +5174,14 @@ function persistPracticeDraft(){
  return true;
 }
 function clearPracticeSession(){
- if(db.activePracticeSession==null)return;
- if(practicePlan&&db.activePracticeSession?.plan?.portalDraftId&&db.activePracticeSession.plan.portalDraftId!==practicePlan.portalDraftId)return;
- db.activePracticeSession=null;save();
+ if(db.activePracticeSession==null)return true;
+ if(practicePlan&&db.activePracticeSession?.plan?.portalDraftId&&db.activePracticeSession.plan.portalDraftId!==practicePlan.portalDraftId)return false;
+ const previousSession=db.activePracticeSession;
+ db.activePracticeSession=null;
+ try{save()}
+ catch(error){db.activePracticeSession=previousSession;console.error('HotB could not clear the saved practice session.',error);return false}
+ if(db.activePracticeSession!==null){db.activePracticeSession=previousSession;console.error('HotB saved practice session remained after clear.');return false}
+ return true;
 }
 async function endPracticeDraft(){
  if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){console.warn('HotB ignored End Draft while Practice Resolution apply is verifying.');return}
@@ -5410,7 +5415,8 @@ function closePracticeWorkspace(){
  // This prevents a delayed callback from an old workspace from owning, rebuilding,
  // or rolling back state after the coach has intentionally ended/discarded it.
  practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practiceResolution=null;
- clearPracticeSession();stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name),startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';modal=null;render();window.scrollTo(0,0);
+ if(clearPracticeSession()!==true){console.error('HotB refused to close the practice workspace because recovery state could not be cleared.');return false}
+ stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name),startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';modal=null;render();window.scrollTo(0,0);return true;
 }
 async function endPracticeFromScreen(){
  if(practiceCompletionBusy)return;
