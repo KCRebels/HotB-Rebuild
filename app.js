@@ -3981,15 +3981,13 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
   (!player.isPitcher?!player.canPitch&&!player.requiresPitchWarmup:true)&&(!player.isCatcher?!player.canCatch:true)&&(!player.canPitch?!player.requiresPitchWarmup:true)
  ))return false;
  // Availability blocks and displayed arrival/departure clocks must describe the
- // same verified interval. This catches corrupted/restored snapshots where the
- // numeric blocks still look legal but the human-facing times no longer match.
+ // same verified interval. Reuse the production availability calculator here
+ // instead of maintaining a second approximation: arrivals round up to the next
+ // usable block, departures round down to the last fully available block, and
+ // midnight-crossing practices are handled by the same rules used at build time.
  if(players.some(player=>{
-  const arrival=clockMinutes(player.arrivalTime),departure=clockMinutes(player.departureTime);
-  if(arrival===null||departure===null||resolutionStart===null||resolutionEnd===null)return true;
-  const relativeArrival=(arrival-resolutionStart+1440)%1440,relativeDeparture=(departure-resolutionStart+1440)%1440;
-  const expectedFrom=Math.min(blockCount,Math.max(0,Math.floor(relativeArrival/12)));
-  const expectedUntil=departure===resolutionEnd?blockCount:Math.min(blockCount,Math.max(0,Math.ceil(relativeDeparture/12)));
-  return Number(player.availableFromBlock)!==expectedFrom||Number(player.availableUntilBlock)!==expectedUntil;
+  const availability=practiceAvailability(r.startTime,duration,player.arrivalTime,player.departureTime);
+  return Number(player.availableFromBlock)!==Number(availability.availableFromBlock)||Number(player.availableUntilBlock)!==Number(availability.availableUntilBlock);
  }))return false;
  const arrays=['pitchers','catchers','combinedPitchers','combinedCatchers','errors','notices','auditFailures'];
  if(!arrays.every(key=>r[key]==null||Array.isArray(r[key])))return false;
