@@ -4892,6 +4892,12 @@ function bindPractice(){
     if(Number(plan.durationMinutes)!==120&&Number(plan.durationMinutes)!==132){resolutionAuditFailures.push(label+' returned an unsupported practice duration.');return false}
     if(Number(plan.times.length)!==expectedBlocks){resolutionAuditFailures.push(label+' returned schedule timing that does not match its duration.');return false}
     if(planNames.some(name=>!Array.isArray(plan.schedule[name])||plan.schedule[name].length!==expectedBlocks)){resolutionAuditFailures.push(label+' returned incomplete player block coverage.');return false}
+    // Candidate verification must prove the same exact clock contract as final
+    // Resolution commit; otherwise an option could be advertised as verified and
+    // only fail later when the coach applies it.
+    const clockMinutes=value=>{const match=String(value||'').trim().match(/^(\\d{1,2}):(\\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null};
+    const verifiedStart=clockMinutes(plan.startTime);
+    if(verifiedStart===null||!plan.times.every((time,index)=>time&&Number(time.block)===index+1&&clockMinutes(time.start)===(verifiedStart+index*12)%(24*60)&&clockMinutes(time.end)===(verifiedStart+(index+1)*12)%(24*60))){resolutionAuditFailures.push(label+' returned an invalid block clock.');return false}
     try{
      const audit=window.HotBPracticeScheduler.validate(plan);
      if(!Array.isArray(audit)){resolutionAuditFailures.push(label+' returned an invalid safety audit.');return false}
