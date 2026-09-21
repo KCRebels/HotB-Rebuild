@@ -4515,7 +4515,7 @@ function bindPractice(){
   const buildButton=$('#generatePractice');if(buildButton){buildButton.disabled=true;buildButton.textContent='Building Practice…'}
   try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){console.error('HotB practice scheduler failed',error);practicePlan=null;if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));return}
   if(practicePlan.feasibilityErrors?.length){
-   const errors=practicePlan.feasibilityErrors.slice(),availablePitchers=practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
+   const errors=practicePlan.feasibilityErrors.slice(),identityBlocked=errors.some(error=>/duplicate player names/i.test(error)),availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
    // Practice Resolution is intentionally stricter than the normal build path. It is rare,
    // so every choice shown to the coach must pass both scheduler feasibility and the full
    // rules validator before HotB is allowed to call that choice a verified solution.
@@ -4529,12 +4529,12 @@ function bindPractice(){
     try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan))solvingPitchers.push(pitcher.name)}catch(_){}
    }
    let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
-   const availableCatchers=practicePlayers.filter(player=>player.canCatch);
+   const availableCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
    for(const catcher of availableCatchers){
     const testPlayers=practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
     try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan))solvingCatchers.push(catcher.name)}catch(_){}
    }
-   if(Number(durationMinutes)===120){
+   if(!identityBlocked&&Number(durationMinutes)===120){
     try{
      // Block 11 extends only players who were actually available through the end
      // of the original 120-minute practice. An explicit early departure remains
@@ -4553,7 +4553,7 @@ function bindPractice(){
      }
     }catch(_){}
    }
-   const rosterGuidance=availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
+   const rosterGuidance=identityBlocked?'HotB found duplicate attendee names. Fix the duplicate roster/guest entry before building again; HotB will not guess which player a resolution belongs to.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
    practiceResolution={errors,pitchers:solvingPitchers,catchers:solvingCatchers,canExtend,combinedPitchers,combinedCatchers,rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,notices:practicePlan.fallbackWarnings||[],signature:resolutionSignature};
    practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
