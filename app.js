@@ -4198,19 +4198,20 @@ function bind(){
     if(player.canCatch===false&&rows.some(row=>row?.activity==='Catch Live'||row?.activity==='Catch Warm-Up'))return false;
     // Warm-up partner records are transactional data too. A resolved practice may
     // not commit a one-sided pitcher/catcher pairing or an ineligible partner.
+    let warmupInvalid=false;
     rows.forEach((row,block)=>{
      if(row?.activity==='Pitch Warm-Up'){
-      if(!player.isPitcher||player.canPitch!==true||player.requiresPitchWarmup!==true||!row.partner)return;
+      if(!player.isPitcher||player.canPitch!==true||player.requiresPitchWarmup!==true||!row.partner){warmupInvalid=true;return}
       if(row.partner!=='Coach'){
        const partner=(practicePlan.players||[]).find(item=>item.name===row.partner),partnerRow=practicePlan.schedule?.[row.partner]?.[block];
-       if(!partner||partner.isCatcher!==true||partner.canCatch!==true||partnerRow?.activity!=='Catch Warm-Up'||partnerRow?.partner!==player.name)row.__resolutionInvalid=true;
+       if(!partner||partner.isCatcher!==true||partner.canCatch!==true||partnerRow?.activity!=='Catch Warm-Up'||partnerRow?.partner!==player.name)warmupInvalid=true;
       }
      }else if(row?.activity==='Catch Warm-Up'){
       const partner=(practicePlan.players||[]).find(item=>item.name===row.partner),partnerRow=practicePlan.schedule?.[row.partner]?.[block];
-      if(!player.isCatcher||player.canCatch!==true||!partner||partner.isPitcher!==true||partner.canPitch!==true||partner.requiresPitchWarmup!==true||partnerRow?.activity!=='Pitch Warm-Up'||partnerRow?.partner!==player.name)row.__resolutionInvalid=true;
+      if(!player.isCatcher||player.canCatch!==true||!partner||partner.isPitcher!==true||partner.canPitch!==true||partner.requiresPitchWarmup!==true||partnerRow?.activity!=='Pitch Warm-Up'||partnerRow?.partner!==player.name)warmupInvalid=true;
      }
     });
-    if(rows.some(row=>row?.__resolutionInvalid)){rows.forEach(row=>{if(row&&typeof row==='object')delete row.__resolutionInvalid});return false}
+    if(warmupInvalid)return false
    }
    return true;
   };
