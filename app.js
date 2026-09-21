@@ -4680,7 +4680,7 @@ function bind(){
    // practice that produced the verified Resolution. Prove that relationship here
    // without consulting live/mutable UI state.
    const names=players.map(player=>player.name),nameSet=new Set(names),selected=Array.isArray(setup.selectedNames)?setup.selectedNames:[];
-   if(names.length!==nameSet.size||selected.length!==names.length||new Set(selected).size!==selected.length||selected.some(name=>!nameSet.has(name)))return false;
+   if(names.length!==nameSet.size||selected.length!==names.length||new Set(selected).size!==selected.length||selected.some((name,index)=>name!==names[index]))return false;
    if(String(setup.startTime||'')!==String(r.startTime||''))return false;
    const accommodations=setup.accommodations;
    if(!accommodations||typeof accommodations!=='object'||Array.isArray(accommodations))return false;
@@ -4700,10 +4700,11 @@ function bind(){
    if(saved?.stage==='setup'){
     if(!saved.setupState||String(saved.setupState.startTime||'')!==String(setup.startTime||'')||Number(saved.setupState.durationMinutes)!==120)return false;
     const savedNames=Array.isArray(saved.setupState.selectedNames)?saved.setupState.selectedNames:[];
-    if(savedNames.length!==names.length||new Set(savedNames).size!==savedNames.length||savedNames.some(name=>!nameSet.has(name)))return false;
-    if(saved.resolution){
-     if(saved.resolution.signature!==r.signature||saved.resolution.decisionSignature!==r.decisionSignature)return false;
-    }
+    if(savedNames.length!==names.length||new Set(savedNames).size!==savedNames.length||savedNames.some((name,index)=>name!==names[index]))return false;
+    // Rollback recovery is the exact persisted transaction, not merely a session
+    // carrying equivalent signatures. Reject restore/default/migration drift here.
+    if(!saved.resolution||JSON.stringify(saved.resolution)!==JSON.stringify(r))return false;
+    if(JSON.stringify(saved.setupState)!==JSON.stringify(setup))return false;
    }
    return true;
   };
