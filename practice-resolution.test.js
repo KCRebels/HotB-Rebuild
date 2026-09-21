@@ -122,4 +122,7 @@ mustInclude("generatedResolutionBytes=JSON.stringify(practiceResolution)","gener
 mustInclude("HotB refused a Practice Resolution that changed before persistence.","generated Resolution must remain byte-identical through pre-persistence validation");
 mustInclude("HotB refused a Practice Resolution that changed during publication.","published Resolution must remain byte-identical in live and saved recovery state");
 mustInclude("JSON.stringify(db.activePracticeSession?.resolution)!==generatedResolutionBytes","published Resolution must verify exact persisted decision bytes before modal display");
+mustInclude("HotB Practice Resolution accommodation clone failed","Resolution role mutation must fail closed if its source accommodation cannot be cloned");
+mustInclude("const sourceModel=practicePlayerModel(target.roster[target.index],accommodation,practiceResolution.startTime,practiceResolution.durationMinutes);","Resolution role mutation must reconstruct its exact verified source player before changing a role");
+mustInclude("sourceFields.some(field=>sourceModel[field]!==verifiedPlayer[field])","Resolution role mutation must reject stale or malformed source accommodations");
 console.log('practice-resolution static contract tests passed');
