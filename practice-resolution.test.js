@@ -180,4 +180,8 @@ mustInclude("!Array.isArray(practiceResolution.candidateNotices[label])","role a
 mustInclude("locked snapshot could not be sealed.","apply must seal the rollback Resolution before expected-state derivation");
 mustInclude("expected-state derivation changed the locked snapshot.","expected-state derivation must be observational");
 mustInclude("mutation changed the locked snapshot.","apply mutation must not alter the immutable rollback Resolution authority");
+mustInclude("could not reconstruct the ordinary setup after rollback failure.","terminal rollback failure must prefer the sealed original 120-minute setup");
+mustInclude("db.activePracticeSession=null;","terminal rollback failure must clear restart authority rather than leave a partial Resolution session");
+mustInclude("could not clear failed Practice Resolution recovery authority.","terminal rollback cleanup storage failure must be contained");
+mustInclude("could not clear invalid Practice Resolution rollback recovery.","post-save rollback verification cleanup storage failure must be contained");
 console.log('practice-resolution static contract tests passed');
