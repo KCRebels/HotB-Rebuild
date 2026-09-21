@@ -4361,20 +4361,34 @@ function bind(){
         rebuiltSafe=resolutionPostcondition(expected);
        }
        if(rebuiltSafe){
-        // The apply transaction is complete. Release the in-memory guard before
-        // committing so a later modal/render cycle can never inherit a locked
-        // Practice Resolution interaction state.
-        endResolutionApply();
         // Commit the resolved setup only after the rebuilt schedule and full rules
-        // audit both pass. This gives restart recovery the same verified state the
-        // coach is seeing instead of leaving the pre-resolution draft behind.
+        // audit both pass. Keep the apply lock held through persistence: the
+        // transaction is not complete until restart recovery contains this exact
+        // verified plan and setup.
         practiceSetupState.selectedNames=(practicePlan.players||[]).map(player=>player.name);
         practiceSetupState.startTime=practicePlan.startTime;
         practiceSetupState.durationMinutes=practicePlan.durationMinutes;
         if(persistPracticeSession()!==true){
          rebuiltSafe=false;
          console.error('HotB Practice Resolution rebuilt plan could not be committed to restart recovery');
-        }else return;
+        }else{
+         const committed=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
+         const committedPlan=committed?.plan;
+         if(!committedPlan||committedPlan.portalDraftId!==resolutionDraftId){
+          rebuiltSafe=false;
+          console.error('HotB Practice Resolution restart recovery did not retain the resolved draft identity');
+         }else{
+          const livePlan=practicePlan;
+          practicePlan=committedPlan;
+          const committedSafe=resolutionPostcondition(expected);
+          practicePlan=livePlan;
+          if(!committedSafe){
+           rebuiltSafe=false;
+           console.error('HotB Practice Resolution restart recovery failed the resolved postcondition');
+          }
+         }
+        }
+        if(rebuiltSafe){endResolutionApply();return}
        }
        console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
        if(rollbackState)restoreResolutionRollback(rollbackState);
@@ -4534,7 +4548,12 @@ function persistPracticeSession(){
  const session=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,draftDrills:practiceDraftDrills,drillPickerOpen:practiceDrillPickerOpen,equipmentSetupOpen:practiceEquipmentSetupOpen,setupState:practiceSetupState,clock:practiceClock,portalState:null});
  if(!session?.plan?.portalDraftId||session.plan.portalDraftId!==practicePlan.portalDraftId){console.error('HotB refused to persist an incomplete practice session');return false}
  db.activePracticeSession=session;
- save();return true;
+ save();
+ // Persistence success means the exact serialized session is immediately
+ // restorable, not merely that an object was assigned to db.
+ const restored=window.HotBPracticeSession.restore?.(db.activePracticeSession);
+ if(!restored?.plan?.portalDraftId||restored.plan.portalDraftId!==practicePlan.portalDraftId){console.error('HotB could not restore the practice session it just persisted');return false}
+ return true;
 }
 function persistPracticeDraft(){
  if(practicePlan||db.activePortalPractice?.id||!window.HotBPracticeSession?.createDraft)return;
