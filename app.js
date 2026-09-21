@@ -4041,11 +4041,27 @@ function bind(){
    if(index<0){alert('HotB could not find that '+roleLabel+' in this practice. Return to Practice Setup and build again.');return null}
    return {roster,index};
   };
+  const endResolutionApply=()=>{
+   resolutionApplying=false;
+   document.querySelectorAll('.practice-resolution-modal button').forEach(button=>button.disabled=false);
+   document.querySelectorAll('.practice-resolution-modal input').forEach(input=>input.disabled=false);
+  };
   const rebuildResolvedPractice=()=>{
-   const selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
-   const startTime=practiceResolution?.startTime||practiceSetupState.startTime;
-   practiceSetupState.selectedNames=selectedNames;practiceSetupState.startTime=startTime;
-   practiceResolution=null;modal=null;persistPracticeDraft();render();setTimeout(()=>$('#generatePractice')?.click(),0);
+   try{
+    const selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
+    const startTime=practiceResolution?.startTime||practiceSetupState.startTime;
+    practiceSetupState.selectedNames=selectedNames;practiceSetupState.startTime=startTime;
+    practiceResolution=null;modal=null;persistPracticeDraft();render();
+    setTimeout(()=>{
+     const generate=$('#generatePractice');
+     if(generate)generate.click();
+     else{console.error('HotB Practice Resolution could not find Generate Practice after rebuild');alert('HotB saved the coaching change, but could not restart the build automatically. Open Practice Setup and tap Generate Practice.')}
+    },0);
+   }catch(error){
+    console.error('HotB Practice Resolution apply failed',error);
+    endResolutionApply();
+    alert('HotB could not safely apply that resolution. Your practice setup is still available. Return to Practice Setup and build again.');
+   }
   };
   $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('pitcher',picked)){rejectUnverifiedResolution();return}const target=findResolutionRosterIndex(picked,'pitcher');if(!target)return;if(!beginResolutionApply())return;
