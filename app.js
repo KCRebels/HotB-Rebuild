@@ -4122,7 +4122,8 @@ function bind(){
    try{
     // Allocate the resolved draft identity before leaving the verified Resolution
     // modal. The Build handler consumes it exactly once; rollback clears it.
-    practiceResolutionApplyDraftId=crypto.randomUUID();
+    const resolutionDraftId=crypto.randomUUID();
+    practiceResolutionApplyDraftId=resolutionDraftId;
     const selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
     const startTime=practiceResolution?.startTime||practiceSetupState.startTime;
     practiceSetupState.selectedNames=selectedNames;practiceSetupState.startTime=startTime;
@@ -4138,7 +4139,8 @@ function bind(){
       // scheduler/build failures that the click handler reports internally instead
       // of throwing back through HTMLElement.click().
       setTimeout(()=>{
-       let rebuiltSafe=!!practicePlan&&!practicePlan.feasibilityErrors?.length&&resolutionPostcondition(expected);
+       let rebuiltSafe=!!practicePlan&&!practicePlan.feasibilityErrors?.length&&practicePlan.portalDraftId===resolutionDraftId&&resolutionPostcondition(expected);
+       if(practicePlan&&practicePlan.portalDraftId!==resolutionDraftId)console.error('HotB Practice Resolution rebuilt plan changed draft identity');
        if(rebuiltSafe){
         try{
          const audit=window.HotBPracticeScheduler?.validate?.(practicePlan);
@@ -4179,6 +4181,8 @@ function bind(){
      }catch(error){
       console.error('HotB Practice Resolution automatic rebuild failed',error);
       if(rollbackState){
+       practiceResolutionApplyDraftId=null;
+       practicePlan=null;
        practiceSetupState=structuredClone(rollbackState.setupState);
        practiceResolution=structuredClone(rollbackState.resolution);
        modal='practiceResolution';
