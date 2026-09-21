@@ -325,8 +325,8 @@ assert.ok(!(hittingOnlyPlan.schedule[hittingOnlyPitcher.name]||[]).some(entry=>e
 assert.deepEqual(scheduler.validate(hittingOnlyPlan),[],'Hitting Only practice must remain fully auditable');
 
 const resolutionRoleRoster=scenario(13,5,2);
-const resolutionBase=scheduler.buildSchedule(resolutionRoleRoster,'18:00',120);
-if(resolutionBase.feasibilityErrors.length){
+const resolutionRoleBase=scheduler.buildSchedule(resolutionRoleRoster,'18:00',120);
+if(resolutionRoleBase.feasibilityErrors.length){
  const verifiedAlternatives=[];
  for(const player of resolutionRoleRoster.filter(player=>player.isPitcher&&player.canPitch!==false)){
   const changed=resolutionRoleRoster.map(item=>item.name===player.name?{...item,canPitch:false,requiresPitchWarmup:false}:item);
