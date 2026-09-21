@@ -4947,14 +4947,19 @@ function bind(){
    // practice has been reconstructed and its safety signature matches exactly.
    const verifiedResolution=practiceResolutionSnapshotIsCurrentAndValid()?practiceResolution:null;
    if(verifiedResolution){
-    const verifiedPlayers=verifiedResolution.practicePlayers,roster=practiceAttendanceRoster(),nextSetup=structuredClone(practiceSetupState),nextAccommodations=structuredClone(nextSetup.accommodations||{});
+    const verifiedPlayers=verifiedResolution.practicePlayers,roster=practiceAttendanceRoster();
+    let nextSetup,nextAccommodations;
+    try{nextSetup=structuredClone(practiceSetupState);nextAccommodations=structuredClone(nextSetup.accommodations||{})}
+    catch(error){console.error('HotB refused Return to Practice Setup because the verified setup could not be cloned.',error);return}
     nextSetup.selectedNames=verifiedPlayers.map(player=>player.name);
     nextSetup.startTime=verifiedResolution.startTime;
     nextSetup.durationMinutes=verifiedResolution.durationMinutes;
     for(const player of verifiedPlayers){
      const rosterPlayer=roster.find(item=>item.name===player.name);
      if(!rosterPlayer){console.error('HotB refused Return to Practice Setup because a verified player is no longer in the attendance roster.');return}
-     const accommodation=structuredClone(nextAccommodations[player.name]||practiceAccommodation(rosterPlayer));
+     let accommodation;
+     try{accommodation=structuredClone(nextAccommodations[player.name]||practiceAccommodation(rosterPlayer))}
+     catch(error){console.error('HotB refused Return to Practice Setup because a verified accommodation could not be cloned.',error);return}
      accommodation.arrival=player.arrivalTime||'';
      accommodation.departure=player.departureTime||'';
      accommodation.limitations=String(player.limitations||'');
@@ -4976,7 +4981,10 @@ function bind(){
     practiceSetupState=nextSetup;
    }else if(Number(practiceSetupState.durationMinutes)===132){
     // A corrupt/stale Resolution is not authority for emergency Block 11.
-    practiceSetupState=structuredClone(practiceSetupState);practiceSetupState.durationMinutes=120;
+    let normalizedSetup;
+    try{normalizedSetup=structuredClone(practiceSetupState)}
+    catch(error){console.error('HotB refused Return to Practice Setup because stale Block 11 state could not be cloned.',error);return}
+    normalizedSetup.durationMinutes=120;practiceSetupState=normalizedSetup;
    }
    practiceResolution=null;modal=null;
    if(persistPracticeDraft()!==true){
@@ -4985,8 +4993,10 @@ function bind(){
    }
    // Prove persistence did not rewrite the ordinary setup. If it did, restore the
    // exact pre-exit Resolution transaction instead of silently losing recovery.
-   const restoredExit=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
-   if(!restoredExit||restoredExit.stage!=='setup'||restoredExit.plan||restoredExit.resolution||JSON.stringify(restoredExit.setupState)!==JSON.stringify(practiceSetupState)){
+   let restoredExit=null;
+   try{restoredExit=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
+   catch(error){console.error('HotB Return to Practice Setup restart restore failed.',error)}
+   if(!restoredExit||restoredExit.stage!=='setup'||restoredExit.plan||restoredExit.resolution||JSON.stringify(restoredExit)!==JSON.stringify(db.activePracticeSession)||JSON.stringify(restoredExit.setupState)!==JSON.stringify(practiceSetupState)){
     console.error('HotB rolled back Return to Practice Setup because recovery changed the ordinary setup.');
     restoreReturnState();render();return
    }
