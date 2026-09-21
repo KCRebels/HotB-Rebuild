@@ -4992,7 +4992,7 @@ function bind(){
      save();
      if(JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession})!==originalReturnBytes||JSON.stringify(db.activePracticeSession)!==JSON.stringify(originalSession))throw new Error('return-state-post-save-drift');
      return true;
-    }catch(error){console.error('HotB could not restore the sealed Practice Resolution Return-to-Setup state.',error);practiceResolution=null;modal=null;practicePlan=null;if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;return false}
+    }catch(error){console.error('HotB could not restore the sealed Practice Resolution Return-to-Setup state.',error);practiceResolution=null;modal=null;practicePlan=null;if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;db.activePracticeSession=null;try{save()}catch(clearError){console.error('HotB could not clear failed Return-to-Setup recovery authority.',clearError)}return false}
    };
    // Build the ordinary setup locally. Nothing live changes until the failed
    // practice has been reconstructed and its safety signature matches exactly.
