@@ -4461,7 +4461,7 @@ function bindLive(){
    if(r==='HIT'||r==='H4O'){modal=r;render()} else addPitch(r);
  });
  $('#undo').onclick=undo;
- $('#coachObservation')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();openCoachObservation()});
+ const observationButton=$('#coachObservation');if(observationButton){const openObservation=event=>{event?.preventDefault?.();event?.stopPropagation?.();openCoachObservation()};observationButton.addEventListener('click',openObservation);observationButton.addEventListener('hotb-observation',openObservation)}
  $('#decreaseOuts').onclick=()=>{subtractManualOut(g);save();render()};
  $('#increaseOuts').onclick=()=>{addManualOut(g);save();render()};
  $('#forceEndInning').onclick=()=>{if(!confirm(`End inning ${g.inning} now? This will clear the bases and reset the count.`))return;const completedInning=g.inning;g.outs=0;g.inning+=1;g.runners=[];resetLiveCount(g);queueInningObservation(g,completedInning);save();render()};
