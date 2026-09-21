@@ -90,4 +90,10 @@ mustInclude("const candidatePrototype=Object.getPrototypeOf(r.candidateNotices);
 mustInclude("if(candidateNoticeEntries.length!==allowedCandidateLabels.size)return false;","Resolution candidate evidence cardinality must exactly match final choices");
 mustInclude("const hasVerifiedChoice=!!(r.pitchers.length||r.catchers.length||r.canExtend||r.combinedPitchers.length||r.combinedCatchers.length);","Resolution modal actionability must come from verified choice data rather than rendered HTML");
 
+mustInclude("const sourceBefore=JSON.stringify({practicePlayers,players});","Resolution candidate verification must seal its source player state before scheduler execution");
+mustInclude("const buildPlayers=structuredClone(players);","Resolution candidate verification must give the scheduler an isolated player copy");
+mustInclude("mutated sealed candidate source data during verification","Resolution candidate verification must reject scheduler mutation of its source state");
+mustInclude("mutated sealed candidate source data during safety audit","Resolution candidate safety audit must remain observational");
+mustInclude("changed sealed candidate source data before publication","Resolution candidate evidence must not publish after source-state mutation");
+
 console.log('practice-resolution static contract tests passed');
