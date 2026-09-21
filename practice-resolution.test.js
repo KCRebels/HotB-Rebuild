@@ -34,6 +34,9 @@ mustInclude("if(resolutionApplyBuild)return;\n  if(practicePlan.buildNotices?.le
 mustInclude("verifiedCandidateNotices[label]=candidateNotices;\n     return true;","candidate notice evidence must publish only after the candidate passes every proof");
 mustInclude("HotB refused to publish an internally inconsistent Practice Resolution.","new Resolution decisions must pass the full live snapshot validator before display");
 mustInclude("HotB could not persist the verified Practice Resolution draft.","a verified Resolution must persist successfully before its modal is shown");
+mustInclude("const canonicalStringList=values=>values.length===new Set(values).size","Resolution persisted string collections must be unique and canonical");
+mustInclude("candidateNoticeEntries.some(([,values])=>!canonicalStringList(values))","candidate fallback notices must remain canonical after restore");
+mustInclude("candidateNoticeEntries.some(([label],index)=>index>0&&candidateNoticeEntries[index-1][0].localeCompare(label)>0)","candidate notice labels must retain canonical order");
 
 const noticeCommit=source.indexOf("modal=practicePlan?.buildNotices?.length?'practiceBuildNotice':null;");
 const tokenClear=source.lastIndexOf("practiceResolutionApplyToken=null;",noticeCommit);
