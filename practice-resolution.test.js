@@ -29,7 +29,7 @@ mustInclude("HotB could not persist Return to Practice Setup after Practice Reso
 
 const selectorBug="attendees=$('[data-practice-player]:checked').map";
 assert.equal(source.includes(selectorBug),false,'Build Practice attendee collection must use querySelectorAll helper, never the single-element helper');
-mustInclude("attendees=$('[data-practice-player]:checked').map","Build Practice must collect the full checked attendee set");
+mustInclude("attendees=Array.from(document.querySelectorAll('[data-practice-player]:checked')).map","Build Practice must collect the full checked attendee set");
 mustInclude("if(resolutionApplyBuild)return;\n  if(practicePlan.buildNotices?.length)","automatic Resolution rebuild must not render an uncommitted builder or notice");
 
 const noticeCommit=source.indexOf("modal=practicePlan?.buildNotices?.length?'practiceBuildNotice':null;");
