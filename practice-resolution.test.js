@@ -208,4 +208,7 @@ mustInclude("recovery decision could not be sealed.","Resolution setup-draft per
 mustInclude("setup draft could not be sealed.","Resolution setup-draft persistence must contain draft serialization failures");
 mustInclude("setup draft save failed.","Resolution setup-draft persistence must contain storage save failures");
 mustInclude("saved setup draft could not be sealed.","Resolution setup-draft persistence must contain post-save serialization failures");
+mustInclude("could not clear the saved practice session.","practice workspace teardown must contain recovery-session clear save failures");
+mustInclude("saved practice session remained after clear.","practice workspace teardown must verify recovery authority is actually cleared");
+mustInclude("refused to close the practice workspace because recovery state could not be cleared.","Practice Resolution workspace teardown must fail closed before discarding live state");
 console.log('practice-resolution static contract tests passed');
