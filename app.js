@@ -3965,7 +3965,7 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  if(typeof r.signature!=='string'||!r.signature||r.signature!==currentPracticeResolutionSignature())return false;
  const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===132?11:duration===120?10:0,names=players.map(player=>player?.name),verifiedNames=new Set(names);
  if(!blockCount||!players.length||names.length!==verifiedNames.size)return false;
- if(typeof r.canExtend!=='boolean')return false;
+ if(typeof r.canExtend!=='boolean'||r.noPitchersMode!==null)return false;
  const startMatch=String(r.startTime||'').match(/^(\\d{2}):(\\d{2})$/),startHour=Number(startMatch?.[1]),startMinute=Number(startMatch?.[2]);
  if(!startMatch||startHour>23||startMinute>59||String(r.startTime)!==String(practiceSetupState.startTime||''))return false;
  const clockMinutes=value=>{const match=String(value||'').match(/^(\\d{2}):(\\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour<24&&minute<60?hour*60+minute:null};
@@ -4974,12 +4974,24 @@ function bindPractice(){
      const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode:null});
      if(!resolutionPlanIsSafe(plan,label))return false;
      const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
-     if(!Array.isArray(players)||!players.length||!players.every(player=>player&&String(player.name||'').trim()===String(player.name||'')&&String(player.name||'').length>0&&Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=(Number(duration)===132?11:10)&&Number(player.availableFromBlock)<Number(player.availableUntilBlock)&&typeof player.canPitch==='boolean'&&typeof player.requiresPitchWarmup==='boolean'&&typeof player.canCatch==='boolean'&&(!player.canPitch?!player.requiresPitchWarmup:true))){resolutionAuditFailures.push(label+' received malformed candidate player data.');return false}
+     const candidateBlockCount=Number(duration)===132?11:Number(duration)===120?10:0;
+     if(!candidateBlockCount||!Array.isArray(players)||!players.length||!players.every(player=>{
+      if(!player||String(player.name||'').trim()!==String(player.name||'')||!String(player.name||'').length)return false;
+      if(typeof player.isPitcher!=='boolean'||typeof player.isCatcher!=='boolean'||typeof player.isGuest!=='boolean'||typeof player.prePracticeComplete!=='boolean')return false;
+      if(!Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>candidateBlockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock))return false;
+      if(typeof player.arrivalTime!=='string'||typeof player.departureTime!=='string'||typeof player.limitations!=='string'||player.limitations.trim()!==player.limitations)return false;
+      if(typeof player.canPitch!=='boolean'||typeof player.requiresPitchWarmup!=='boolean'||typeof player.canCatch!=='boolean')return false;
+      if(!player.isPitcher&&(player.canPitch||player.requiresPitchWarmup))return false;
+      if(!player.isCatcher&&player.canCatch)return false;
+      if(!player.canPitch&&player.requiresPitchWarmup)return false;
+      const availability=practiceAvailability(startTime,duration,player.arrivalTime,player.departureTime);
+      return Number(player.availableFromBlock)===Number(availability.availableFromBlock)&&Number(player.availableUntilBlock)===Number(availability.availableUntilBlock);
+     })){resolutionAuditFailures.push(label+' received malformed or internally inconsistent candidate player data.');return false}
      if(expectedNames.length!==new Set(expectedNames).size||actualNames.length!==new Set(actualNames).size||expectedNames.length!==actualNames.length||expectedNames.some(name=>!actualNames.includes(name))){resolutionAuditFailures.push(label+' changed the verified attendee set.');return false}
      if(String(plan.startTime||'')!==String(startTime)||Number(plan.durationMinutes)!==Number(duration)){resolutionAuditFailures.push(label+' changed verified practice timing.');return false}
      for(const expectedPlayer of players){
       const actualPlayer=(plan.players||[]).find(player=>player.name===expectedPlayer.name);
-      if(!actualPlayer||Number(actualPlayer.availableFromBlock)!==Number(expectedPlayer.availableFromBlock)||Number(actualPlayer.availableUntilBlock)!==Number(expectedPlayer.availableUntilBlock)||String(actualPlayer.arrivalTime||'')!==String(expectedPlayer.arrivalTime||'')||String(actualPlayer.departureTime||'')!==String(expectedPlayer.departureTime||'')){resolutionAuditFailures.push(label+' changed verified player availability.');return false}
+      if(!actualPlayer||Number(actualPlayer.availableFromBlock)!==Number(expectedPlayer.availableFromBlock)||Number(actualPlayer.availableUntilBlock)!==Number(expectedPlayer.availableUntilBlock)||String(actualPlayer.arrivalTime||'')!==String(expectedPlayer.arrivalTime||'')||String(actualPlayer.departureTime||'')!==String(expectedPlayer.departureTime||'')||String(actualPlayer.limitations||'')!==String(expectedPlayer.limitations||'')){resolutionAuditFailures.push(label+' changed verified player availability or limitations.');return false}
       if(actualPlayer.canPitch!==expectedPlayer.canPitch||actualPlayer.requiresPitchWarmup!==expectedPlayer.requiresPitchWarmup||actualPlayer.canCatch!==expectedPlayer.canCatch||actualPlayer.prePracticeComplete!==expectedPlayer.prePracticeComplete||actualPlayer.isPitcher!==expectedPlayer.isPitcher||actualPlayer.isCatcher!==expectedPlayer.isCatcher||actualPlayer.isGuest!==expectedPlayer.isGuest){resolutionAuditFailures.push(label+' changed verified player role or practice identity state.');return false}
      }
      if(expectedChange?.role&&expectedChange?.name){
