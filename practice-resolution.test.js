@@ -149,4 +149,7 @@ mustInclude("throw new Error('invalid-practice-start-time')","practice publicati
 mustNotInclude("String(availability.arrivalTime||'')","rollback validation must not read arrival/departure fields that practiceAvailability does not return");
 mustInclude("const rebuiltPlayer=practicePlayerModel(sourceRoster[0],accommodation,r.startTime,120);","rollback validation must reconstruct the source player through the production player model");
 mustInclude("sourceFields.some(field=>rebuiltPlayer[field]!==player[field])","rollback validation must compare the complete reconstructed source player to verified Resolution state");
+mustInclude("saved recovery record could not be restored.","rollback validation must fail closed if production session restore throws");
+mustInclude("could not save the restored Practice Resolution rollback state","rollback recovery must fail closed if persistence throws");
+mustInclude("rollback post-save restore failed.","rollback post-save restart proof must fail closed if restore throws");
 console.log('practice-resolution static contract tests passed');
