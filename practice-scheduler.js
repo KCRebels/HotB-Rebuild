@@ -449,6 +449,20 @@
     if(scheduledHitter!=='Hit Live')errors.push(`${name}'s live-session record does not match Hit Live in Block ${block+1}.`);
    });
   });
+  (plan.players||[]).forEach(player=>{
+   const entries=plan.schedule?.[player.name]||[];
+   entries.forEach((entry,block)=>{
+    if(entry?.activity==='Pitch Live'){
+     if(!player.isPitcher||player.canPitch===false)errors.push(`${player.name} has Pitch Live in Block ${block+1} but is not eligible to pitch.`);
+     if(block<(player.availableFromBlock??0)||block>=(player.availableUntilBlock??BLOCK_COUNT))errors.push(`${player.name} has Pitch Live in Block ${block+1} while unavailable.`);
+    }
+    if(entry?.activity==='Catch Live'){
+     if(!player.isCatcher||player.canCatch===false)errors.push(`${player.name} has Catch Live in Block ${block+1} but is not eligible to catch.`);
+     if(block<(player.availableFromBlock??0)||block>=(player.availableUntilBlock??BLOCK_COUNT))errors.push(`${player.name} has Catch Live in Block ${block+1} while unavailable.`);
+    }
+    if(entry?.activity==='Hit Live'&&(block<(player.availableFromBlock??0)||block>=(player.availableUntilBlock??BLOCK_COUNT)))errors.push(`${player.name} has Hit Live in Block ${block+1} while unavailable.`);
+   });
+  });
   const pitcherBlockCounts={};
   (plan?.liveSessions||[]).filter(session=>session.pitcher&&session.pitcher!=='Coach').forEach(session=>pitcherBlockCounts[session.pitcher]=(pitcherBlockCounts[session.pitcher]||0)+1);
   Object.entries(pitcherBlockCounts).forEach(([name,count])=>{if(count>2)errors.push(`${name} exceeds the two-block live pitching limit.`)});
