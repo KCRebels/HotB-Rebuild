@@ -200,6 +200,11 @@ assert.ok(scheduler.validate(invalidBlock11Live).some(error=>error.includes('pit
 const malformedLive=structuredClone(block11DeparturePlan);
 malformedLive.liveSessions.push({block:99,pitcher:block11DepartureRoster[1].name,catcher:'9Square'});
 assert.ok(scheduler.validate(malformedLive).some(error=>error.includes('invalid block assignment')),'full resolution audit must reject a malformed live-session block instead of trusting it');
+const ineligibleLiveRoles=structuredClone(block11DeparturePlan);
+ineligibleLiveRoles.liveSessions.push({block:9,pitcher:block11DepartureRoster.find(player=>!player.isPitcher).name,catcher:block11DepartureRoster.find(player=>!player.isCatcher).name,hitters:[block11DepartureRoster[1].name,block11DepartureRoster[2].name]});
+assert.ok(scheduler.validate(ineligibleLiveRoles).some(error=>error.includes('not eligible to pitch live')),'full resolution audit must reject a non-pitcher assigned as the live pitcher');
+assert.ok(scheduler.validate(ineligibleLiveRoles).some(error=>error.includes('not eligible to catch live')),'full resolution audit must reject a non-catcher assigned as the live catcher');
+
 
 
 
