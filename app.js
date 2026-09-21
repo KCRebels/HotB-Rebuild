@@ -2721,7 +2721,11 @@ async function recoverOrphanedActivePractice(){
   practicePlan=recoveredPlan;practiceChosenDrills=recoveredChosenDrills;practiceClock=recoveredClock;practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceSection='builder';
   persistPracticeSession();render();if(practiceClock.running)resumeRecoveredPracticeClock();
   alert('The activated practice was recovered from the coach portal. HotB did not rebuild or reactivate it.');
- }catch(error){console.error('Practice recovery failed',error);alert(String(error?.message||'')==='practice-recovery-timeout'?'HotB could not reach the activated coach practice in time. Nothing was changed.':'HotB could not verify the exact activated practice, so nothing was changed. Do not use Clean Up.')}
+ }catch(error){
+  console.error('Practice recovery failed',error);
+  const code=String(error?.message||error||'unknown-recovery-error');
+  alert(code==='practice-recovery-timeout'?'HotB could not reach the activated coach practice in time. Nothing was changed.':`HotB recovery stopped safely. Recovery code: ${code}. Nothing was changed. Do not use Clean Up.`);
+ }
  finally{if(button){button.disabled=false;button.textContent='Recover Practice'}}
 }
 async function clearOrphanedActivePractice(){
