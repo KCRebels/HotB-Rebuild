@@ -4705,8 +4705,8 @@ function bindPractice(){
      if(String(plan.startTime||'')!==String(startTime)||Number(plan.durationMinutes)!==Number(duration)){resolutionAuditFailures.push(label+' changed verified practice timing.');return false}
      for(const expectedPlayer of players){
       const actualPlayer=(plan.players||[]).find(player=>player.name===expectedPlayer.name);
-      if(!actualPlayer||Number(actualPlayer.availableFromBlock)!==Number(expectedPlayer.availableFromBlock)||Number(actualPlayer.availableUntilBlock)!==Number(expectedPlayer.availableUntilBlock)){resolutionAuditFailures.push(label+' changed verified player availability.');return false}
-      if(actualPlayer.canPitch!==expectedPlayer.canPitch||actualPlayer.requiresPitchWarmup!==expectedPlayer.requiresPitchWarmup||actualPlayer.canCatch!==expectedPlayer.canCatch){resolutionAuditFailures.push(label+' changed a verified player role.');return false}
+      if(!actualPlayer||Number(actualPlayer.availableFromBlock)!==Number(expectedPlayer.availableFromBlock)||Number(actualPlayer.availableUntilBlock)!==Number(expectedPlayer.availableUntilBlock)||String(actualPlayer.arrivalTime||'')!==String(expectedPlayer.arrivalTime||'')||String(actualPlayer.departureTime||'')!==String(expectedPlayer.departureTime||'')){resolutionAuditFailures.push(label+' changed verified player availability.');return false}
+      if(actualPlayer.canPitch!==expectedPlayer.canPitch||actualPlayer.requiresPitchWarmup!==expectedPlayer.requiresPitchWarmup||actualPlayer.canCatch!==expectedPlayer.canCatch||actualPlayer.prePracticeComplete!==expectedPlayer.prePracticeComplete||actualPlayer.isPitcher!==expectedPlayer.isPitcher||actualPlayer.isCatcher!==expectedPlayer.isCatcher||actualPlayer.isGuest!==expectedPlayer.isGuest){resolutionAuditFailures.push(label+' changed verified player role or practice identity state.');return false}
      }
      if(expectedChange?.role&&expectedChange?.name){
       const changed=(plan.players||[]).find(player=>player.name===expectedChange.name);
