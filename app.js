@@ -3936,11 +3936,17 @@ function practiceBuildNoticeModal(){
 }
 function practiceResolutionExtendedPlayers(players,startTime){
  const extendedEnd=practiceEndValue(startTime,132),originalEnd=practiceEndValue(startTime,120);
+ if(practiceTimeMinutes(startTime)===null||practiceTimeMinutes(extendedEnd)===null||practiceTimeMinutes(originalEnd)===null)return [];
  return (players||[]).map(player=>{
   // Extend only an attendee whose verified departure was the original practice end.
   // Do not consult mutable setup state here: candidate verification, restart recovery,
   // and final postcondition proof must all derive Block 11 from the same snapshot.
   const verifiedDeparture=player.departureTime||originalEnd;
+  // The source snapshot must itself agree with the normal 120-minute availability
+  // calculator before we grant the extra block. This prevents malformed/tampered
+  // source metadata from being "repaired" into an apparently valid Block 11 choice.
+  const sourceAvailability=practiceAvailability(startTime,120,player.arrivalTime,verifiedDeparture);
+  if(Number(player.availableFromBlock)!==Number(sourceAvailability.availableFromBlock)||Number(player.availableUntilBlock)!==Number(sourceAvailability.availableUntilBlock))return {...player,availableFromBlock:-1,availableUntilBlock:-1};
   const stayedThroughOriginalEnd=Number(player.availableUntilBlock)===10&&verifiedDeparture===originalEnd;
   const extended={...player,availableUntilBlock:stayedThroughOriginalEnd?11:player.availableUntilBlock,departureTime:stayedThroughOriginalEnd?extendedEnd:player.departureTime};
   // Recalculate through the production availability function and fail closed if
