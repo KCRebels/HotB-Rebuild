@@ -4137,9 +4137,17 @@ function bind(){
    if(Array.isArray(practicePlan.liveSessions)){
     for(const live of practicePlan.liveSessions){
      const block=Number(live?.block),pitcher=String(live?.pitcher||''),catcher=String(live?.catcher||''),hitters=Array.isArray(live?.hitters)?live.hitters:[];
-     if(!Number.isInteger(block)||block<0||block>=expectedBlocks||!pitcher||!expectedSet.has(pitcher)||!catcher||!hitters.length)return false;
+     if(!Number.isInteger(block)||block<0||block>=expectedBlocks||!pitcher||!expectedSet.has(pitcher)||!catcher||hitters.length<2||hitters.length>3)return false;
      if(catcher!=='9Square'&&!expectedSet.has(catcher))return false;
+     if(catcher===pitcher)return false;
      if(hitters.length!==new Set(hitters).size||hitters.some(name=>!expectedSet.has(name)||name===pitcher||name===catcher))return false;
+     const pitcherPlayer=(practicePlan.players||[]).find(player=>player.name===pitcher);
+     const catcherPlayer=catcher==='9Square'?null:(practicePlan.players||[]).find(player=>player.name===catcher);
+     if(!pitcherPlayer||pitcherPlayer.isPitcher!==true||pitcherPlayer.canPitch!==true)return false;
+     if(catcherPlayer&&(catcherPlayer.isCatcher!==true||catcherPlayer.canCatch!==true))return false;
+     if(practicePlan.schedule?.[pitcher]?.[block]?.activity!=='Pitch Live')return false;
+     if(catcher!=='9Square'&&practicePlan.schedule?.[catcher]?.[block]?.activity!=='Catch Live')return false;
+     if(hitters.some(name=>practicePlan.schedule?.[name]?.[block]?.activity!=='Hit Live'))return false;
     }
    }
    for(const player of practicePlan.players||[]){
