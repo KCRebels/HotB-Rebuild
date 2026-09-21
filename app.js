@@ -4640,6 +4640,10 @@ function persistPracticeSession(){
  // root pointer and older sessions with portalState remain backward compatible.
  const session=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,draftDrills:practiceDraftDrills,drillPickerOpen:practiceDrillPickerOpen,equipmentSetupOpen:practiceEquipmentSetupOpen,setupState:practiceSetupState,clock:practiceClock,portalState:null});
  if(!session?.plan?.portalDraftId||session.plan.portalDraftId!==practicePlan.portalDraftId){console.error('HotB refused to persist an incomplete practice session');return false}
+ // Persisting while a Resolution transaction is still open is allowed only for
+ // the exact plan owned by that transaction. This prevents unrelated UI work from
+ // becoming the restart-recovery session during the commit window.
+ if(practiceResolutionApplyToken&&(!practicePlan.portalDraftId||practiceResolutionApplyDraftId&&practicePlan.portalDraftId!==practiceResolutionApplyDraftId)){console.error('HotB refused to persist a practice outside the active Resolution transaction');return false}
  db.activePracticeSession=session;
  save();
  // Persistence success means the exact serialized session is immediately
@@ -5138,7 +5142,7 @@ function bindPractice(){
    // rebuild only. If scheduler construction throws before the normal consume
    // point, revoke it immediately so no later/manual build can inherit Block 11
    // permission or the verified draft identity.
-   if(practiceResolutionApplyDraftId){practiceResolutionApplyDraftId=null;practiceResolutionApplyToken=null}
+   if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyToken=null}
    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
    alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));return
   }
@@ -5146,7 +5150,7 @@ function bindPractice(){
    // If this failed build was itself an automatic Resolution rebuild, revoke its
    // one-use authorization before doing any secondary candidate work. The outer
    // transaction will inspect the failed result and restore the original snapshot.
-   if(practiceResolutionApplyDraftId){practiceResolutionApplyDraftId=null;practiceResolutionApplyToken=null}
+   if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyToken=null}
    const errors=practicePlan.feasibilityErrors.slice(),identityBlocked=errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(error)),availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
    // Practice Resolution is intentionally stricter than the normal build path. It is rare,
    // so every choice shown to the coach must pass both scheduler feasibility and the full
@@ -5310,6 +5314,15 @@ function bindPractice(){
   // apply transaction. Ordinary builds get a fresh identity; Resolution rebuilds
   // reuse the verified expected identity assigned before the automatic Build click.
   const resolutionBuildDraftId=practiceResolutionApplyDraftId;
+  // A live apply token without its one-use draft authorization is an impossible
+  // transaction state. Refuse to let an ordinary/random draft identity continue
+  // under that stale Resolution token.
+  if(practiceResolutionApplyToken&&!resolutionBuildDraftId){
+   console.error('HotB refused a Practice Resolution rebuild with missing draft authorization');
+   practiceResolutionApplyToken=null;practicePlan=null;
+   if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
+   return;
+  }
   practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();
   // The build authorization is consumed here, but the transaction token remains
   // alive until the outer Resolution verifier commits or rolls back this exact plan.
