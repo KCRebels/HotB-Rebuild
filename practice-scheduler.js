@@ -77,20 +77,17 @@
    pitcherGroups=orderedPitchers.map(pitcher=>doubleNames.has(pitcher.name)?[pitcher,pitcher]:[pitcher]);
   }
   function placePitcherGroups(groups){
+   // Seven legal live blocks make this a bounded placement problem. Avoid recursive
+   // group permutations on the iPhone build tap path.
    const liveBlocks=[3,4,5,6,7,8,9],used=new Set(),placed=[];
-   function solve(remaining){
-    if(!remaining.length)return true;
-    const candidates=remaining.map((group,index)=>({group,index,starts:liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&!used.has(block+offset)&&(!pitcher||isOpen(pitcher,block+offset))))})).sort((a,b)=>a.starts.length-b.starts.length||b.group.length-a.group.length);
-    const next=candidates[0];
-    for(const start of next.starts){
-     next.group.forEach((pitcher,offset)=>{used.add(start+offset);placed.push({pitcher,liveBlock:start+offset})});
-     const rest=remaining.filter((_,index)=>index!==next.index);
-     if(solve(rest))return true;
-     next.group.forEach(()=>placed.pop());next.group.forEach((_,offset)=>used.delete(start+offset));
-    }
-    return false;
+   const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&(!pitcher||isOpen(pitcher,block+offset))));
+   const ordered=groups.slice().sort((x,y)=>startsFor(x).length-startsFor(y).length||y.length-x.length);
+   for(const group of ordered){
+    const start=startsFor(group).find(block=>group.every((_,offset)=>!used.has(block+offset)));
+    if(start===undefined)return null;
+    group.forEach((pitcher,offset)=>{used.add(start+offset);placed.push({pitcher,liveBlock:start+offset})});
    }
-   return solve(groups)?placed.slice():null;
+   return placed;
   }
   let plannedSessions=feasibilityErrors.length?[]:placePitcherGroups(pitcherGroups);
   if(!plannedSessions&&pitcherGroups.length){feasibilityErrors.push('The available pitchers cannot be placed into the live blocks while honoring arrival times, departure times, and consecutive blocks for any pitcher who throws twice.');plannedSessions=[]}
