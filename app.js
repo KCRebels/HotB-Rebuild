@@ -2250,12 +2250,12 @@ function practiceAttendanceRoster(){return [...db.roster,...practiceGuestPlayers
 function guestRolePosition(role){return role==='Pitcher'?'P':role==='Catcher'?'C':'UT'}
 function practicePlayerByName(name){return practiceAttendanceRoster().find(player=>player.name===name)}
 function practiceAvailability(startTime,durationMinutes,arrival,departure){
- const start=practiceTimeMinutes(startTime),blockMinutes=(Number(durationMinutes)||120)/10,end=start+(Number(durationMinutes)||120);
+ const start=practiceTimeMinutes(startTime),blockCount=Number(durationMinutes)===132?11:10,blockMinutes=12,end=start+blockCount*blockMinutes;
  let arrive=practiceTimeMinutes(arrival||startTime),leave=practiceTimeMinutes(departure||practiceEndValue(startTime,durationMinutes));
  const crossesMidnight=end>1440,midnightEnd=crossesMidnight?end-1440:0;
  if(arrive<start)arrive=crossesMidnight&&arrive<=midnightEnd?arrive+1440:start;
  if(leave<start)leave=crossesMidnight&&leave<=midnightEnd?leave+1440:leave;
- const availableFromBlock=Math.max(0,Math.min(10,Math.ceil((arrive-start)/blockMinutes-1e-9))),availableUntilBlock=Math.max(0,Math.min(10,Math.floor((Math.min(leave,end)-start)/blockMinutes+1e-9)));
+ const availableFromBlock=Math.max(0,Math.min(blockCount,Math.ceil((arrive-start)/blockMinutes-1e-9))),availableUntilBlock=Math.max(0,Math.min(blockCount,Math.floor((Math.min(leave,end)-start)/blockMinutes+1e-9)));
  return {availableFromBlock,availableUntilBlock:Math.max(availableFromBlock,availableUntilBlock)};
 }
 function practicePlayerModel(player,accommodation=null,startTime='18:00',durationMinutes=120){
@@ -2668,28 +2668,29 @@ async function recoverOrphanedActivePractice(){
   }
   if(!Array.isArray(remote.players)||!remote.players.length||!Number.isFinite(Number(remote.blockMinutes))||Number(remote.blockMinutes)<=0)throw new Error('practice-payload-incomplete');
   const publishedNames=remote.players.map(player=>String(player.name||'').trim()).filter(Boolean),publishedIds=new Set(publishedNames.map(name=>name.toLowerCase()));if(!publishedIds.size||publishedIds.size!==publishedNames.length)throw new Error('practice-player-conflict');
-  for(const player of remote.players){if(!Array.isArray(player.schedule)||player.schedule.length!==10)throw new Error('practice-schedule-incomplete');for(let index=0;index<10;index++){const entry=player.schedule[index];if(Number(entry?.block)!==index+1||!String(entry?.time||'').trim()||!String(entry?.assignment||'').trim())throw new Error('practice-schedule-incomplete')}}
+  const blockCount=remote.players[0]?.schedule?.length;if(![10,11].includes(blockCount))throw new Error('practice-schedule-incomplete');
+  for(const player of remote.players){if(!Array.isArray(player.schedule)||player.schedule.length!==blockCount)throw new Error('practice-schedule-incomplete');for(let index=0;index<blockCount;index++){const entry=player.schedule[index];if(Number(entry?.block)!==index+1||!String(entry?.time||'').trim()||!String(entry?.assignment||'').trim())throw new Error('practice-schedule-incomplete')}}
   const canonicalTimes=remote.players[0].schedule.map(entry=>String(entry.time||'').trim()),normalizePublishedTime=value=>String(value||'').trim().replace(/\s+/g,'').toLowerCase().replace(/am$/,'a').replace(/pm$/,'p').replace(/-/g,'–');
-  for(const player of remote.players)for(let index=0;index<10;index++)if(normalizePublishedTime(player.schedule[index]?.time)!==normalizePublishedTime(canonicalTimes[index]))throw new Error('practice-time-conflict');
+  for(const player of remote.players)for(let index=0;index<blockCount;index++)if(normalizePublishedTime(player.schedule[index]?.time)!==normalizePublishedTime(canonicalTimes[index]))throw new Error('practice-time-conflict');
   // Older/partial coach portal publications may not carry the coach-only
   // schedule even though every player's exact 10-block schedule is intact.
   // The player schedules are the authoritative rotation. Recover from them and
   // rebuild the coach view locally rather than rejecting a valid publication.
   let recoveredCoachSchedule=null;
-  if(Array.isArray(remote.schedule)&&remote.schedule.length===10){
+  if(Array.isArray(remote.schedule)&&remote.schedule.length===blockCount){
    const complete=remote.schedule.every((coachBlock,index)=>Number(coachBlock?.block)===index+1&&String(coachBlock?.time||'').trim()&&String(coachBlock?.assignment||'').trim());
    if(complete){
-    for(let index=0;index<10;index++)if(normalizePublishedTime(remote.schedule[index].time)!==normalizePublishedTime(canonicalTimes[index]))throw new Error('coach-time-conflict');
+    for(let index=0;index<blockCount;index++)if(normalizePublishedTime(remote.schedule[index].time)!==normalizePublishedTime(canonicalTimes[index]))throw new Error('coach-time-conflict');
     recoveredCoachSchedule=structuredClone(remote.schedule);
    }
   }
-  const blockMinutes=Number(remote.blockMinutes)||12,durationMinutes=blockMinutes*10;
+  const blockMinutes=Number(remote.blockMinutes)||12,durationMinutes=blockMinutes*blockCount;
   const publishedRangeMinutes=value=>{const parts=String(value||'').split(/[–-]/).map(part=>part.trim());if(parts.length!==2)return null;const parse=value=>{const raw=String(value).trim(),m24=raw.match(/^(\d{1,2}):(\d{2})$/);if(m24)return Number(m24[1])*60+Number(m24[2]);const m12=raw.match(/^(\d{1,2}):(\d{2})\s*([ap])(?:m)?$/i);if(!m12)return null;let hour=Number(m12[1])%12;if(m12[3].toLowerCase()==='p')hour+=12;return hour*60+Number(m12[2])};const start=parse(parts[0]),end=parse(parts[1]);if(start===null||end===null)return null;return (end-start+1440)%1440};
   for(const value of canonicalTimes)if(publishedRangeMinutes(value)!==blockMinutes)throw new Error('practice-duration-conflict');
   const firstTime=String(remote.players?.[0]?.schedule?.[0]?.time||'').split('–')[0].trim();
   const startLabel=firstTime||remote.startLabel||'6:00p';
   const parseLabel=value=>{const raw=String(value).trim(),twentyFour=raw.match(/^(\d{1,2}):(\d{2})$/);if(twentyFour&&Number(twentyFour[1])<24)return `${String(Number(twentyFour[1])).padStart(2,'0')}:${twentyFour[2]}`;const match=raw.match(/^(\d{1,2}):(\d{2})\s*([ap])(?:m)?$/i);if(!match)return '18:00';let hour=Number(match[1])%12;if(match[3].toLowerCase()==='p')hour+=12;return `${String(hour).padStart(2,'0')}:${match[2]}`};
-  const startTime=parseLabel(startLabel),times=Array.from({length:10},(_,index)=>{const published=remote.players?.[0]?.schedule?.[index],parts=String(published?.time||'').split('–').map(value=>value.trim());if(parts.length===2&&parts[0]&&parts[1])return {block:index+1,start:parts[0],end:parts[1]};const base=practiceTimeMinutes(startTime)+index*blockMinutes;return {block:index+1,start:practiceTimeLabel(practiceTimeValue(base)),end:practiceTimeLabel(practiceTimeValue(base+blockMinutes))}});
+  const startTime=parseLabel(startLabel),times=Array.from({length:blockCount},(_,index)=>{const published=remote.players?.[0]?.schedule?.[index],parts=String(published?.time||'').split('–').map(value=>value.trim());if(parts.length===2&&parts[0]&&parts[1])return {block:index+1,start:parts[0],end:parts[1]};const base=practiceTimeMinutes(startTime)+index*blockMinutes;return {block:index+1,start:practiceTimeLabel(practiceTimeValue(base)),end:practiceTimeLabel(practiceTimeValue(base+blockMinutes))}});
   const rosterByFirst=new Map();for(const player of db.roster){const key=practiceFirstName(player.name);if(rosterByFirst.has(key))throw new Error('roster-first-name-conflict');rosterByFirst.set(key,player)}
   const activeNameByFirst=new Map();for(const name of state.players||[]){const key=practiceFirstName(name);if(activeNameByFirst.has(key)&&activeNameByFirst.get(key)!==name)throw new Error('active-first-name-conflict');activeNameByFirst.set(key,name)}
   const players=(remote.players||[]).map(item=>{const first=practiceFirstName(item.name),source=rosterByFirst.get(first),name=source?.name||activeNameByFirst.get(first)||item.name,base=practicePlayerModel(source||{name,positions:item.role||''}),roleTokens=String(item.role||'').toUpperCase().split(/[^A-Z]+/).filter(Boolean),rolePitcher=roleTokens.includes('P'),roleCatcher=roleTokens.includes('C'),published=(item.schedule||[]).map(entry=>recoveryAssignmentToEntry(entry.assignment)),present=published.map((entry,index)=>entry.activity!=='Not Present'?index:-1).filter(index=>index>=0),availableFromBlock=present.length?Math.min(...present):0,availableUntilBlock=present.length?Math.max(...present)+1:0;return {...base,name,isPitcher:base.isPitcher||rolePitcher,isCatcher:base.isCatcher||roleCatcher,canPitch:base.isPitcher||rolePitcher,requiresPitchWarmup:base.isPitcher||rolePitcher,canCatch:base.isCatcher||roleCatcher,availableFromBlock,availableUntilBlock}});
@@ -2707,7 +2708,7 @@ async function recoverOrphanedActivePractice(){
   const liveSessions=[];
   for(const item of remote.players||[])for(const [index,published] of (item.schedule||[]).entries()){const match=String(published.assignment||'').match(/^Hit Live\s+—.*?—\s+([^—()]+?)\s+\(([^)]+)\)/i);if(!match)continue;const pitcher=match[1].trim(),catcher=match[2].trim();let session=liveSessions.find(entry=>entry.block===index);if(!session){session={block:index,pitcher,catcher,hitters:[]};liveSessions.push(session)}else if(session.pitcher!==pitcher||session.catcher!==catcher)throw new Error('live-session-conflict');const first=practiceFirstName(item.name),hitter=rosterByFirst.get(first)?.name||activeNameByFirst.get(first)||item.name;if(!session.hitters.includes(hitter))session.hitters.push(hitter)}
   Object.entries(schedule).forEach(([name,entries])=>entries.forEach((entry,index)=>{if(entry.activity!=='Pitch Live')return;let session=liveSessions.find(item=>item.block===index);if(!session){session={block:index,pitcher:name,catcher:'9Square',hitters:[]};liveSessions.push(session)}}));
-  const blocks=Array.from({length:10},(_,index)=>{const assignments={};Object.entries(schedule).forEach(([name,entries])=>{const entry=entries[index];if(!entry)return;let key=entry.activity;if(entry.activity==='Pitch Live')key=`Pitch Live — ${entry.partner||'9Square'}`;else if(entry.activity==='Catch Live')key=`Catch Live — ${entry.partner||''}`;else if(entry.activity==='Hit Live'){const live=liveSessions.find(item=>item.block===index);key=live?`Hit Live — ${live.pitcher} — ${live.catcher}`:'Hit Live'};(assignments[key]||(assignments[key]=[])).push(name)});return {block:index+1,start:times[index].start,end:times[index].end,assignments}});
+  const blocks=Array.from({length:blockCount},(_,index)=>{const assignments={};Object.entries(schedule).forEach(([name,entries])=>{const entry=entries[index];if(!entry)return;let key=entry.activity;if(entry.activity==='Pitch Live')key=`Pitch Live — ${entry.partner||'9Square'}`;else if(entry.activity==='Catch Live')key=`Catch Live — ${entry.partner||''}`;else if(entry.activity==='Hit Live'){const live=liveSessions.find(item=>item.block===index);key=live?`Hit Live — ${live.pitcher} — ${live.catcher}`:'Hit Live'};(assignments[key]||(assignments[key]=[])).push(name)});return {block:index+1,start:times[index].start,end:times[index].end,assignments}});
   const recoveredPlayerSchedules={};for(const item of remote.players||[]){const first=practiceFirstName(item.name),source=rosterByFirst.get(first),name=source?.name||activeNameByFirst.get(first)||item.name;recoveredPlayerSchedules[name]=structuredClone(item.schedule)}
   const recoveredPlan={portalDraftId:remote.id,startTime,durationMinutes,blockMinutes,times,players,schedule,blocks,drillStations,liveSessions,machineFocus,frontTossFocus,recoveredCoachSchedule:recoveredCoachSchedule||[],recoveredPlayerSchedules,warnings:['Recovered from the activated coach portal without rebuilding the scheduler.']};
   const recoveredChosenDrills=chosenDrills,clock=remote.clock||{},startedAt=Date.parse(clock.startedAt||''),activatedAt=Date.parse(remote.activatedAt||'');
