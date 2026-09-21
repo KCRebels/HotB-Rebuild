@@ -4780,6 +4780,9 @@ function bindPractice(){
      if(practiceResolution&&!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
       console.warn('Saved Practice Resolution failed resume validation; returning to setup.');
       practiceResolution=null;
+      // A rejected emergency Resolution cannot leave its 132-minute duration
+      // behind when the coach resumes the draft.
+      if(Number(practiceSetupState.durationMinutes)===132)practiceSetupState.durationMinutes=120;
       persistPracticeDraft();
      }else if(practiceResolution)modal='practiceResolution';
      render();window.scrollTo(0,0);return;
