@@ -355,6 +355,8 @@
   (plan?.players||[]).forEach(player=>{
    if(!Object.prototype.hasOwnProperty.call(plan.schedule||{},player.name)){errors.push(`${player.name} is missing from the practice schedule.`);return}
    const entries=plan.schedule[player.name]||[];
+   if(player.canPitch===false&&entries.some(entry=>entry?.activity==='Pitch Live'||entry?.activity==='Pitch Warm-Up'))errors.push(`${player.name} is Hitting Only but has pitching work assigned.`);
+   if(player.canCatch===false&&entries.some(entry=>entry?.activity==='Catch Live'||entry?.activity==='Catch Warm-Up'))errors.push(`${player.name} is Not Catching but has catching work assigned.`);
    if(entries.filter(entry=>entry?.activity==='Catch Live').length>2)errors.push(`${player.name} catches more than two live blocks.`);
    if(entries.filter(entry=>entry?.activity==='Catch Warm-Up').length>1)errors.push(`${player.name} catches more than one pitching warm-up.`);
    if(player.requiresPitchWarmup&&plan.liveSessions?.some(session=>session.pitcher===player.name)){
