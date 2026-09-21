@@ -160,4 +160,8 @@ mustInclude("verified accommodation could not be cloned.","Return-to-Setup must 
 mustInclude("stale Block 11 state could not be cloned.","Return-to-Setup must fail closed while normalizing stale emergency duration");
 mustInclude("Return to Practice Setup restart restore failed.","Return-to-Setup must fail closed if restart recovery restore throws");
 mustInclude("JSON.stringify(restoredExit)!==JSON.stringify(db.activePracticeSession)","Return-to-Setup must preserve the complete persisted ordinary setup session through restore");
+mustInclude("could not create the practice recovery session.","resolved session persistence must fail closed if session creation throws");
+mustInclude("could not seal the practice recovery session.","resolved session persistence must fail closed if session serialization throws");
+mustInclude("could not save the practice recovery session.","resolved session persistence must fail closed if storage save throws");
+mustInclude("could not restore the exact practice session it just persisted","resolved session persistence must require exact complete restart recovery bytes");
 console.log('practice-resolution static contract tests passed');
