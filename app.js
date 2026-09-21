@@ -5894,8 +5894,21 @@ function bindPractice(){
     render();return;
    }
    practicePlan=null;if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');practiceResolution=null;modal=null;render();return}
-   if(!practiceResolution||JSON.stringify(practiceResolution)!==generatedResolutionBytes||JSON.stringify(db.activePracticeSession?.resolution)!==generatedResolutionBytes){
+   let publishedSessionBytes='',publishedResolutionBytes='',publishedRestored=null;
+   try{
+    publishedSessionBytes=JSON.stringify(db.activePracticeSession);
+    publishedResolutionBytes=JSON.stringify(db.activePracticeSession?.resolution);
+    publishedRestored=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
+   }catch(error){console.error('HotB could not verify the published Practice Resolution recovery session.',error)}
+   if(!practiceResolution||JSON.stringify(practiceResolution)!==generatedResolutionBytes||publishedResolutionBytes!==generatedResolutionBytes||!publishedSessionBytes||!publishedRestored||JSON.stringify(publishedRestored)!==publishedSessionBytes){
     console.error('HotB refused a Practice Resolution that changed during publication.');
+    practiceResolution=null;modal=null;persistPracticeDraft();render();return;
+   }
+   // Modal publication is the final handoff from generation into coach interaction.
+   // Re-prove the live snapshot after persistence/restore so no stale decision can
+   // become clickable merely because its saved bytes looked correct.
+   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
+    console.error('HotB refused a Practice Resolution that was stale at modal publication.');
     practiceResolution=null;modal=null;persistPracticeDraft();render();return;
    }
    modal='practiceResolution';render();return;
