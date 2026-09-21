@@ -1507,7 +1507,13 @@ async function loadCloudStatus(){
   if(cloudLastBackup)localStorage.setItem(CLOUD_LAST_SUCCESS_KEY,cloudLastBackup.toISOString());
  }catch(error){}
 }
-function scheduleCloudBackup(){if(!cloudUser||localStorage.getItem(CLOUD_ENABLED_KEY)!=='true'||cloudBusy)return;clearTimeout(cloudBackupTimer);cloudBackupTimer=setTimeout(()=>backupToCloud(true),1800)}
+function scheduleCloudBackup(){
+ if(!cloudUser||localStorage.getItem(CLOUD_ENABLED_KEY)!=='true'||cloudBusy)return;
+ clearTimeout(cloudBackupTimer);
+ // HotB can save local state many times while a coach builds/navigates a practice.
+ // Debounce cloud backup long enough to collapse that burst into one backup.
+ cloudBackupTimer=setTimeout(()=>backupToCloud(true),15000);
+}
 function dailySnapshotId(date=new Date()){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`}
 async function pruneDailySnapshots(root){
  const history=await root.collection('snapshots').orderBy(firebase.firestore.FieldPath.documentId(),'desc').get(),expired=history.docs.slice(30);
@@ -1524,12 +1530,9 @@ async function backupToCloud(automatic=false){
   batch.set(root,{email:CLOUD_EMAIL,chunkCount:chunks.length,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),formatVersion:1});
   if(!daily.exists){chunks.forEach((data,index)=>batch.set(dailyRef.collection('chunks').doc(String(index).padStart(4,'0')),{index,data}));batch.set(dailyRef,{email:CLOUD_EMAIL,chunkCount:chunks.length,createdAt:firebase.firestore.FieldValue.serverTimestamp(),formatVersion:1})}
   await batch.commit();if(!daily.exists){cloudSnapshotCount++;pruneDailySnapshots(root).catch(()=>{})}
-  // Keep backup separate from portal creation. Background evaluation sync verifies
-  // portal identity and uses update(), so a deleted portal cannot be resurrected.
-  schedulePlayerEvaluationPortalSync(300);
   localStorage.setItem(CLOUD_ENABLED_KEY,'true');localStorage.setItem(CLOUD_PENDING_KEY,'false');localStorage.removeItem(CLOUD_ERROR_KEY);cloudLastBackup=new Date();localStorage.setItem(CLOUD_LAST_SUCCESS_KEY,cloudLastBackup.toISOString());cloudMessage=automatic?'':'Cloud backup completed.';
  }catch(error){localStorage.setItem(CLOUD_PENDING_KEY,'true');localStorage.setItem(CLOUD_ERROR_KEY,new Date().toISOString());cloudMessage='Backup needs attention. Your phone data is safe; HotB will retry when it is online.'}
- cloudBusy=false;schedulePlayerEvaluationPortalSync(300);if(route==='home')render();
+ cloudBusy=false;if(route==='home')render();
 }
 async function restoreFromCloud(){
  if(!cloudUser||cloudBusy||!confirm('Replace the data on this device with the latest cloud backup? Your current device data will be replaced.'))return;
