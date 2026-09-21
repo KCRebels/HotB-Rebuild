@@ -3928,7 +3928,12 @@ function practiceResolutionExtendedPlayers(players,startTime){
   // and final postcondition proof must all derive Block 11 from the same snapshot.
   const verifiedDeparture=player.departureTime||originalEnd;
   const stayedThroughOriginalEnd=Number(player.availableUntilBlock)===10&&verifiedDeparture===originalEnd;
-  return {...player,availableUntilBlock:stayedThroughOriginalEnd?11:player.availableUntilBlock,departureTime:stayedThroughOriginalEnd?extendedEnd:player.departureTime};
+  const extended={...player,availableUntilBlock:stayedThroughOriginalEnd?11:player.availableUntilBlock,departureTime:stayedThroughOriginalEnd?extendedEnd:player.departureTime};
+  // Recalculate through the production availability function and fail closed if
+  // the extension helper ever drifts from the scheduler's own time/block rules.
+  const availability=practiceAvailability(startTime,132,extended.arrivalTime,extended.departureTime);
+  if(Number(extended.availableFromBlock)!==Number(availability.availableFromBlock)||Number(extended.availableUntilBlock)!==Number(availability.availableUntilBlock))return {...extended,availableFromBlock:-1,availableUntilBlock:-1};
+  return extended;
  });
 }
 function practiceResolutionSignature(players,startTime,durationMinutes){
@@ -3942,7 +3947,7 @@ function practiceResolutionDecisionSignature(r){
  // The player/setup signature proves what was verified; this decision signature
  // proves which exact coaching choices passed those verification builds.
  if(!r)return'';
- const cleanList=value=>(Array.isArray(value)?value:[]).map(item=>String(item||'').trim()).filter(Boolean).slice().sort();
+ const cleanList=value=>[...new Set((Array.isArray(value)?value:[]).map(item=>String(item||'').trim()).filter(Boolean))].sort();
  return JSON.stringify({
   signature:String(r.signature||''),
   startTime:String(r.startTime||''),
@@ -4025,6 +4030,14 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  if(!['errors','notices','auditFailures'].every(key=>(r[key]||[]).every(value=>typeof value==='string'&&value.trim()===value&&value.length>0)))return false;
  const choiceKeys=['pitchers','catchers','combinedPitchers','combinedCatchers'];
  if(!choiceKeys.every(key=>{const values=r[key]||[];return values.length===new Set(values).size&&values.every(name=>typeof name==='string'&&name.trim()===name&&name.length>0&&verifiedNames.has(name))}))return false;
+ // Canonical candidate arrays are part of the signed transaction. Candidate
+ // generation sorts these lists before sealing them; require that same ordering on
+ // restore so semantically equivalent but noncanonical snapshots cannot survive.
+ if(!choiceKeys.every(key=>r[key].every((name,index)=>index===0||r[key][index-1].localeCompare(name)<=0)))return false;
+ // Block 11 is an emergency extension from the normal 120-minute practice only.
+ // A Resolution snapshot itself is always the failed base attempt; 132 minutes may
+ // exist only after a verified apply has begun, never as a fresh Resolution source.
+ if(duration!==120)return false;
  // A Resolution with no verified coaching path is informational only: it may
  // explain the scheduler conflict and offer attendance changes, but it must not
  // masquerade as an actionable decision snapshot.
