@@ -4289,7 +4289,7 @@ function bind(){
     const resolutionDraftId=crypto.randomUUID();
     practiceResolutionApplyDraftId=resolutionDraftId;
     const verifiedResolution=rollbackState?.resolution;
-    if(!verifiedResolution||!expected||!Array.isArray(verifiedResolution.practicePlayers)||!verifiedResolution.practicePlayers.length)throw new Error('Verified Practice Resolution snapshot was not available for rebuild.');
+    if(!resolutionRollbackStateIsValid(rollbackState)||!verifiedResolution||!expected||!Array.isArray(verifiedResolution.practicePlayers)||!verifiedResolution.practicePlayers.length)throw new Error('Verified Practice Resolution snapshot was not available for rebuild.');
     const selectedNames=verifiedResolution.practicePlayers.map(player=>player.name);
     const startTime=verifiedResolution.startTime;
     // The automatic rebuild is driven only by the captured verified transaction.
@@ -4340,37 +4340,56 @@ function bind(){
         }else return;
        }
        console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
-       if(rollbackState){
-        practicePlan=null;
-        practiceResolutionApplyDraftId=null;
-        practiceSetupState=structuredClone(rollbackState.setupState);
-        practiceResolution=structuredClone(rollbackState.resolution);
-        modal='practiceResolution';
-        db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);endResolutionApply();save();render();
-       }
+       if(rollbackState)restoreResolutionRollback(rollbackState);
        alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
       },0);
      }catch(error){
       console.error('HotB Practice Resolution automatic rebuild failed',error);
-      if(rollbackState){
-       practiceResolutionApplyDraftId=null;
-       practicePlan=null;
-       practiceSetupState=structuredClone(rollbackState.setupState);
-       practiceResolution=structuredClone(rollbackState.resolution);
-       modal='practiceResolution';
-       db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);endResolutionApply();save();render();
-      }
+      if(rollbackState)restoreResolutionRollback(rollbackState);
       alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
      }
     },0);
    }catch(error){
     console.error('HotB Practice Resolution apply failed',error);
-    if(rollbackState){practiceResolutionApplyDraftId=null;practicePlan=null;practiceSetupState=structuredClone(rollbackState.setupState);practiceResolution=structuredClone(rollbackState.resolution);modal='practiceResolution';db.activePracticeSession=structuredClone(rollbackState.activePracticeSession);endResolutionApply();save();render()}
+    if(rollbackState)restoreResolutionRollback(rollbackState);
     else endResolutionApply();
     alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
    }
   };
-  const resolutionRollbackState=()=>({setupState:structuredClone(practiceSetupState),resolution:structuredClone(practiceResolution),activePracticeSession:structuredClone(db.activePracticeSession)});
+  const resolutionRollbackState=()=>{
+   // Rollback is itself a transaction boundary. Capture only a fully verified
+   // Resolution and seal the rollback payload so an interrupted/failed rebuild
+   // cannot restore a different setup/session than the one the coach approved.
+   if(!practiceResolutionSnapshotIsCurrentAndValid())return null;
+   const state={setupState:structuredClone(practiceSetupState),resolution:structuredClone(practiceResolution),activePracticeSession:structuredClone(db.activePracticeSession)};
+   state.rollbackSignature=JSON.stringify({
+    setupState:state.setupState,
+    resolutionSignature:String(state.resolution?.signature||''),
+    decisionSignature:String(state.resolution?.decisionSignature||''),
+    activePracticeSession:state.activePracticeSession
+   });
+   return state;
+  };
+  const resolutionRollbackStateIsValid=state=>{
+   if(!state||!state.setupState||!state.resolution||typeof state.rollbackSignature!=='string'||!state.rollbackSignature)return false;
+   const signature=JSON.stringify({
+    setupState:state.setupState,
+    resolutionSignature:String(state.resolution?.signature||''),
+    decisionSignature:String(state.resolution?.decisionSignature||''),
+    activePracticeSession:state.activePracticeSession
+   });
+   return signature===state.rollbackSignature&&state.resolution.signature===practiceResolutionSignature(state.resolution.practicePlayers,state.resolution.startTime,state.resolution.durationMinutes)&&state.resolution.decisionSignature===practiceResolutionDecisionSignature(state.resolution);
+  };
+  const restoreResolutionRollback=state=>{
+   if(!resolutionRollbackStateIsValid(state)){console.error('HotB refused an invalid Practice Resolution rollback snapshot');practiceResolutionApplyDraftId=null;practicePlan=null;endResolutionApply();return false}
+   practiceResolutionApplyDraftId=null;
+   practicePlan=null;
+   practiceSetupState=structuredClone(state.setupState);
+   practiceResolution=structuredClone(state.resolution);
+   modal='practiceResolution';
+   db.activePracticeSession=structuredClone(state.activePracticeSession);
+   endResolutionApply();save();render();return true;
+  };
   const expectedResolutionState=(role=null,name=null,withBlock11=false,resolutionSnapshot=practiceResolution)=>{
    // Expected postconditions must come from the immutable pre-mutation snapshot.
    // In particular, role accommodations and Block 11 duration are changed before
