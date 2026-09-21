@@ -4236,8 +4236,8 @@ function bind(){
     verifiedPlayers.forEach(player=>{
      const rosterPlayer=roster.find(item=>item.name===player.name);if(!rosterPlayer)return;
      const accommodation=structuredClone(nextAccommodations[player.name]||practiceAccommodation(rosterPlayer));
-     accommodation.arrivalTime=player.arrivalTime||'';
-     accommodation.departureTime=player.departureTime||'';
+     accommodation.arrival=player.arrivalTime||'';
+     accommodation.departure=player.departureTime||'';
      accommodation.canPitch=player.canPitch===true;
      accommodation.requiresPitchWarmup=player.requiresPitchWarmup===true;
      accommodation.canCatch=player.canCatch===true;
