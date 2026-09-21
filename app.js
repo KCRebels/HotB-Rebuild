@@ -963,7 +963,15 @@ if(restoredPracticeCandidate?.stage==='setup'&&!restoredPracticeCandidate.plan&&
  // attendance/accommodations/duration and verified decision context so an app
  // refresh cannot silently replace the coach's unresolved practice.
  if(!Array.isArray(practiceSetupState.selectedNames))practiceSetupState.selectedNames=db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name);
+ const savedStartupResolution=db.activePracticeSession?.resolution;
  practiceResolution=restoredPracticeCandidate.resolution?structuredClone(restoredPracticeCandidate.resolution):null;
+ // Restore is not allowed to migrate/default a sealed Resolution object. Full
+ // roster-aware validation happens later, but byte identity is safe to prove here
+ // before any restored decision can reach the first render.
+ if(practiceResolution&&(!savedStartupResolution||JSON.stringify(savedStartupResolution)!==JSON.stringify(practiceResolution))){
+  console.error('HotB refused a Practice Resolution that changed during startup recovery.');
+  practiceResolution=null;
+ }
  // Resolution snapshots restore from the failed 120-minute source attempt. Block 11 is apply-transaction-only.
  if(Number(practiceSetupState.durationMinutes)!==120){console.warn('HotB normalized restored setup duration before Practice Resolution validation.');practiceSetupState.durationMinutes=120}
  practiceSection='setup';
@@ -5252,7 +5260,11 @@ function bindPractice(){
  $('#savePracticeDrills')?.addEventListener('click',()=>{if(practiceDraftDrills.length!==practicePlan.drillStations)return;practiceChosenDrills=practiceDraftDrills.slice();practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=true;render();window.scrollTo(0,0)});
  $('#backToPracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice();practiceEquipmentSetupOpen=false;practiceDrillPickerOpen=true;render();window.scrollTo(0,0)});
  $('#completePracticeSetup')?.addEventListener('click',()=>{practiceEquipmentSetupOpen=false;practiceDraftDrills=[];render();window.scrollTo(0,0);setTimeout(()=>persistPracticeSession(),0)});
- $('#practiceHubBack')?.addEventListener('click',()=>{if(practiceSection==='setup')persistPracticeDraft();practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)});
+ $('#practiceHubBack')?.addEventListener('click',()=>{
+  if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){console.warn('HotB ignored Practice Hub Back while Practice Resolution apply is verifying.');return}
+  if(practiceSection==='setup'&&persistPracticeDraft()===false){console.error('HotB refused Practice Hub Back because the Practice Resolution draft could not be persisted.');return}
+  practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)
+ });
  $('#recoverOrphanedPractice')?.addEventListener('click',recoverOrphanedActivePractice);
  $('#recoverPublishedPractice')?.addEventListener('click',recoverPublishedPractice);
  $('#openPracticeBuilder')?.addEventListener('click',()=>{if(db.activePortalPractice?.id&&!practicePlan){alert('A practice is still active on the player and coach portals. Resume and finish that practice before building a new one.');return}
