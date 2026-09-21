@@ -4136,8 +4136,18 @@ function modalView(){
    // Block 11 exists only while backed by a currently verified Resolution.
    if(Number(practiceSetupState.durationMinutes)===132)practiceSetupState.durationMinutes=120;
    if(!practicePlan&&!db.activePortalPractice?.id&&window.HotBPracticeSession?.createDraft){
-    db.activePracticeSession=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:null});
-    save();
+    try{
+     const cleanedDraft=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:null});
+     const cleanedBytes=JSON.stringify(cleanedDraft);
+     const cleanedRestored=window.HotBPracticeSession.restore?.(cleanedDraft);
+     if(!cleanedDraft||cleanedDraft.stage!=='setup'||cleanedDraft.plan||cleanedDraft.resolution||!cleanedBytes||!cleanedRestored||JSON.stringify(cleanedRestored)!==cleanedBytes)throw new Error('invalid-cleaned-resolution-draft');
+     db.activePracticeSession=cleanedDraft;save();
+     if(JSON.stringify(db.activePracticeSession)!==cleanedBytes)throw new Error('cleaned-resolution-draft-save-drift');
+    }catch(error){
+     console.error('HotB could not persist a verified clean setup after rejecting stale Practice Resolution.',error);
+     db.activePracticeSession=null;
+     try{save()}catch(cleanError){console.error('HotB could not clear stale Practice Resolution recovery authority.',cleanError)}
+    }
    }
    return'';
   }
