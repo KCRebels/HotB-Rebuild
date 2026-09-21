@@ -73,4 +73,8 @@ mustInclude("selectedNames.some((name,index)=>name!==expectedNames[index])","liv
 mustInclude("if(duration!==120)return false;","Resolution snapshot validator must reject emergency Block 11 as source state");
 mustInclude("if(!r.errors.length)return false;","Resolution snapshots must retain the original failed-build evidence");
 
+mustInclude("const choiceAuthorized=role==='pitcher'","Resolution expected-state construction must authorize against the sealed final choice arrays");
+mustInclude("Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,'Block 11')","Block 11 apply authorization must retain its sealed candidate evidence");
+mustInclude("if(!label||!Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,label))return false;","role apply authorization must require its exact sealed candidate evidence");
+
 console.log('practice-resolution static contract tests passed');
