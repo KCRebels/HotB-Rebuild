@@ -141,4 +141,7 @@ mustInclude("recovery draft could not be created","Resolution draft persistence 
 mustInclude("Practice Resolution recovery draft restore failed.","Resolution draft preflight restore must fail closed on restore exceptions");
 mustInclude("Practice Resolution saved draft restore failed.","Resolution post-save restore must fail closed on restore exceptions");
 mustInclude("JSON.stringify(persisted)!==serializedDraft","Resolution post-save restore must preserve the complete setup-stage transaction byte-for-byte");
+mustInclude("practiceTimeMinutes(value){const match=","practice time parser must validate clock shape instead of coercing malformed values");
+mustInclude("duration<=0?'':practiceTimeValue(start+duration)","practice end derivation must fail closed for invalid clocks or durations");
+mustInclude("availableFromBlock:-1,availableUntilBlock:-1","practice availability must expose invalid time data as impossible availability");
 console.log('practice-resolution static contract tests passed');
