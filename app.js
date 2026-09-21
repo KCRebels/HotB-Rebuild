@@ -4151,7 +4151,13 @@ function bind(){
  if(modal==='focusPublishPreview')bindFocusPublishPreview();
  if(modal==='cloudBackup')bindCloudBackup();
  if(modal==='practiceBuildNotice'){
-  $('#acceptPracticeBuildNotice')?.addEventListener('click',()=>{modal=null;render();window.scrollTo(0,0)});
+  $('#acceptPracticeBuildNotice')?.addEventListener('click',()=>{
+   // A Resolution rebuild may render this notice while its final rules/restart
+   // verification is still queued. Do not let the notice become an escape hatch
+   // from the transaction; commit/rollback must finish before the coach continues.
+   if(practiceResolutionApplyToken){console.warn('HotB deferred Practice Build Notice until Practice Resolution verification finished.');return}
+   modal=null;render();window.scrollTo(0,0);
+  });
  }
  if(modal==='practiceResolution'){
   const resolutionStillCurrent=()=>{
@@ -4547,7 +4553,12 @@ function bind(){
          practiceResolutionApplyDraftId=null;
          practiceResolutionApplyOwnedDraftId=null;
          practiceResolutionApplyToken=null;
-         endResolutionApply();return
+         endResolutionApply();
+         // If the verified resolved schedule used an allowed scheduler fallback,
+         // keep its notice visible now that the transaction is committed. Otherwise
+         // make sure no transient Resolution modal survives into the plan screen.
+         modal=practicePlan?.buildNotices?.length?'practiceBuildNotice':null;
+         render();window.scrollTo(0,0);return
         }
        }
        console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
