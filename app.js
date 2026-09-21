@@ -4020,7 +4020,7 @@ function bind(){
  }
  if(modal==='practiceResolution'){
   const resolutionStillCurrent=()=>{
-   if(!practiceResolution?.signature)return true;
+   if(!practiceResolution?.signature){alert('HotB cannot verify this Practice Resolution because its safety signature is missing. Return to Practice Setup and build again.');return false}
    const signature=currentPracticeResolutionSignature();
    if(signature===practiceResolution.signature)return true;
    alert('This practice changed after HotB verified the resolution. Return to Practice Setup and build again so HotB can verify the current practice.');return false;
@@ -4055,7 +4055,21 @@ function bind(){
    document.querySelectorAll('.practice-resolution-modal button').forEach(button=>button.disabled=false);
    document.querySelectorAll('.practice-resolution-modal input').forEach(input=>input.disabled=false);
   };
-  const rebuildResolvedPractice=(rollbackState)=>{
+  const resolutionPostcondition=(expected)=>{
+   if(!expected||!practicePlan)return false;
+   if(String(practicePlan.startTime||'')!==String(expected.startTime||''))return false;
+   if(Number(practicePlan.durationMinutes)!==Number(expected.durationMinutes))return false;
+   const expectedNames=expected.playerNames||[],actualNames=(practicePlan.players||[]).map(player=>player.name);
+   if(expectedNames.length!==actualNames.length||expectedNames.some(name=>!actualNames.includes(name)))return false;
+   if(expected.role&&expected.name){
+    const player=(practicePlan.players||[]).find(item=>item.name===expected.name);
+    if(!player)return false;
+    if(expected.role==='pitcher'&&(player.canPitch!==false||player.requiresPitchWarmup!==false))return false;
+    if(expected.role==='catcher'&&player.canCatch!==false)return false;
+   }
+   return true;
+  };
+  const rebuildResolvedPractice=(rollbackState,expected)=>{
    try{
     const selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
     const startTime=practiceResolution?.startTime||practiceSetupState.startTime;
@@ -4072,7 +4086,7 @@ function bind(){
       // scheduler/build failures that the click handler reports internally instead
       // of throwing back through HTMLElement.click().
       setTimeout(()=>{
-       let rebuiltSafe=!!practicePlan&&!practicePlan.feasibilityErrors?.length;
+       let rebuiltSafe=!!practicePlan&&!practicePlan.feasibilityErrors?.length&&resolutionPostcondition(expected);
        if(rebuiltSafe){
         try{
          const audit=window.HotBPracticeScheduler?.validate?.(practicePlan);
@@ -4113,6 +4127,7 @@ function bind(){
    }
   };
   const resolutionRollbackState=()=>({setupState:structuredClone(practiceSetupState),resolution:structuredClone(practiceResolution)});
+  const expectedResolutionState=(role=null,name=null,withBlock11=false)=>({role,name,startTime:practiceResolution?.startTime||practiceSetupState.startTime,durationMinutes:withBlock11?132:Number(practiceResolution?.durationMinutes||practiceSetupState.durationMinutes),playerNames:(practiceResolution?.practicePlayers||[]).map(player=>player.name)});
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
    const target=findResolutionRosterIndex(name,role);if(!target)return false;
    const verifiedPlayer=practiceResolution?.practicePlayers?.find(player=>player.name===name);
@@ -4127,17 +4142,17 @@ function bind(){
    return true;
   };
   $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('pitcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'pitcher')){endResolutionApply();return}rebuildResolvedPractice(rollbackState);
+   const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('pitcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'pitcher')){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('pitcher',picked,false));
   });
   $('#applyPracticeCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('catcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'catcher')){endResolutionApply();return}rebuildResolvedPractice(rollbackState);
+   const picked=$('input[name="practiceResolutionCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('catcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'catcher')){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('pitcher',picked,false));
   });
-  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;if(!verifiedResolutionChoice('extension')){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;practiceSetupState.durationMinutes=132;rebuildResolvedPractice(rollbackState)});
+  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;if(!verifiedResolutionChoice('extension')){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;practiceSetupState.durationMinutes=132;rebuildResolvedPractice(rollbackState,expectedResolutionState(null,null,true))});
   $('#applyPracticeCombinedResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionCombinedPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('combinedPitcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'pitcher',true)){endResolutionApply();return}rebuildResolvedPractice(rollbackState);
+   const picked=$('input[name="practiceResolutionCombinedPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('combinedPitcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'pitcher',true)){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('pitcher',picked,false));
   });
   $('#applyPracticeCombinedCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('combinedCatcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'catcher',true)){endResolutionApply();return}rebuildResolvedPractice(rollbackState);
+   const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('combinedCatcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'catcher',true)){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('pitcher',picked,false));
   });
   $('#returnPracticeAttendance')?.addEventListener('click',()=>{
    practiceSetupState.selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
