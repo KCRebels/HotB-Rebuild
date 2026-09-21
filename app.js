@@ -4675,7 +4675,24 @@ function bind(){
    // Resolution and seal the rollback payload so an interrupted/failed rebuild
    // cannot restore a different setup/session than the one the coach approved.
    if(!practiceResolutionSnapshotIsCurrentAndValid())return null;
-   const state={setupState:structuredClone(practiceSetupState),resolution:structuredClone(practiceResolution),activePracticeSession:structuredClone(db.activePracticeSession)};
+   let state;
+   try{
+    state={setupState:structuredClone(practiceSetupState),resolution:structuredClone(practiceResolution),activePracticeSession:structuredClone(db.activePracticeSession)};
+   }catch(error){
+    // These transaction objects are persisted JSON data. If a browser/device
+    // cannot structuredClone them, capture the rollback from one sealed JSON
+    // serialization instead of allowing the Apply click to throw before a safe
+    // rollback owner exists.
+    console.error('HotB Practice Resolution rollback capture clone failed; attempting JSON capture',error);
+    try{
+     const captured=JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession});
+     state=JSON.parse(captured);
+     if(JSON.stringify(state)!==captured)return null;
+    }catch(captureError){
+     console.error('HotB Practice Resolution rollback capture failed',captureError);
+     return null;
+    }
+   }
    state.rollbackSignature=JSON.stringify({
     setupState:state.setupState,
     resolution:state.resolution,
