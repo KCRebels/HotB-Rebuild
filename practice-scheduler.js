@@ -386,13 +386,20 @@
    if(!Number.isInteger(block)||block<0||block>=BLOCK_COUNT){errors.push('Live session has an invalid block assignment.');return}
    if(hitters.length<2||hitters.length>3)errors.push(`Block ${block+1} must have 2–3 live hitters.`);
    if(session.catcher==='Coach')errors.push(`Block ${block+1} assigns Coach as the live catcher.`);
-   if(session.pitcher&&session.pitcher!=='Coach'){
-    if(!pitcher)errors.push(`Block ${block+1} uses a live pitcher who is not attending.`);
-    else if(block<(pitcher.availableFromBlock??0)||block>=(pitcher.availableUntilBlock??BLOCK_COUNT))errors.push(`${pitcher.name} pitches live in Block ${block+1} while unavailable.`);
+   if(!session.pitcher)errors.push(`Block ${block+1} is missing a live pitcher.`);
+   else if(session.pitcher==='Coach')errors.push(`Block ${block+1} assigns Coach as the live pitcher.`);
+   else if(!pitcher)errors.push(`Block ${block+1} uses a live pitcher who is not attending.`);
+   else{
+    if(pitcher.canPitch===false||!pitcher.isPitcher)errors.push(`${pitcher.name} is not eligible to pitch live in Block ${block+1}.`);
+    if(block<(pitcher.availableFromBlock??0)||block>=(pitcher.availableUntilBlock??BLOCK_COUNT))errors.push(`${pitcher.name} pitches live in Block ${block+1} while unavailable.`);
    }
-   if(session.catcher&&session.catcher!=='9Square'&&session.catcher!=='Coach'){
+   if(!session.catcher)errors.push(`Block ${block+1} is missing a live catcher.`);
+   else if(session.catcher!=='9Square'&&session.catcher!=='Coach'){
     if(!catcher)errors.push(`Block ${block+1} uses a live catcher who is not attending.`);
-    else if(block<(catcher.availableFromBlock??0)||block>=(catcher.availableUntilBlock??BLOCK_COUNT))errors.push(`${catcher.name} catches live in Block ${block+1} while unavailable.`);
+    else{
+     if(catcher.canCatch===false||!catcher.isCatcher)errors.push(`${catcher.name} is not eligible to catch live in Block ${block+1}.`);
+     if(block<(catcher.availableFromBlock??0)||block>=(catcher.availableUntilBlock??BLOCK_COUNT))errors.push(`${catcher.name} catches live in Block ${block+1} while unavailable.`);
+    }
    }
    hitters.forEach(name=>{const hitter=plan.players.find(player=>player.name===name);if(!hitter)errors.push(`Block ${block+1} uses live hitter ${name} who is not attending.`);else if(block<(hitter.availableFromBlock??0)||block>=(hitter.availableUntilBlock??BLOCK_COUNT))errors.push(`${name} hits live in Block ${block+1} while unavailable.`)});
   });
