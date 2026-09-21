@@ -77,4 +77,10 @@ mustInclude("const choiceAuthorized=role==='pitcher'","Resolution expected-state
 mustInclude("Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,'Block 11')","Block 11 apply authorization must retain its sealed candidate evidence");
 mustInclude("if(!label||!Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,label))return false;","role apply authorization must require its exact sealed candidate evidence");
 
+mustInclude("practiceResolution=null;modal=null;","failed Resolution rollback must not leave an untrusted Resolution modal live");
+mustInclude("if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;","failed Resolution rollback must remove transient Block 11 duration");
+mustInclude("attempting sealed JSON recovery","Resolution rollback must recover from structuredClone failure using its sealed snapshot");
+mustInclude("const sealed=JSON.parse(state.rollbackSignature);","Resolution rollback clone fallback must come from the already-verified rollback signature");
+mustInclude("HotB could not recover the sealed Practice Resolution rollback snapshot","Resolution rollback must fail closed if sealed recovery also fails");
+
 console.log('practice-resolution static contract tests passed');
