@@ -4019,6 +4019,7 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  if(!startMatch||startHour>23||startMinute>59||String(r.startTime)!==String(practiceSetupState.startTime||''))return false;
  const clockMinutes=value=>{const match=String(value||'').match(/^(\d{2}):(\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour<24&&minute<60?hour*60+minute:null};
  const resolutionStart=clockMinutes(r.startTime),resolutionEnd=resolutionStart===null?null:(resolutionStart+duration)%(24*60);
+ if(resolutionStart===null||resolutionEnd===null)return false;
  // A persisted Resolution is always the failed normal practice. Emergency Block 11
  // exists only inside an apply candidate and must never become the source snapshot.
  if(duration!==120)return false;
@@ -4736,6 +4737,11 @@ function bind(){
    // without a restart-safe copy of the original failed practice.
    const saved=state.activePracticeSession;
    if(!saved||saved.stage!=='setup'||saved.plan)return false;
+   // Validate the persisted recovery record through the same restore path startup
+   // will actually use. Raw object equality alone is not enough if restore rejects
+   // or migrates the session.
+   const restoredSaved=window.HotBPracticeSession?.restore?.(saved);
+   if(!restoredSaved||restoredSaved.stage!=='setup'||restoredSaved.plan||JSON.stringify(restoredSaved)!==JSON.stringify(saved))return false;
    {
     if(!saved.setupState||String(saved.setupState.startTime||'')!==String(setup.startTime||'')||Number(saved.setupState.durationMinutes)!==120)return false;
     const savedNames=Array.isArray(saved.setupState.selectedNames)?saved.setupState.selectedNames:[];
