@@ -3951,10 +3951,12 @@ function practiceResolutionExtendedPlayers(players,startTime){
  });
 }
 function practiceResolutionSignature(players,startTime,durationMinutes){
- // Canonicalize attendee order so a harmless roster ordering change cannot invalidate
- // a verified resolution, while every scheduling-relevant field still must match.
- const canonicalPlayers=(players||[]).map(player=>({name:String(player.name||'').trim(),isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,isGuest:!!player.isGuest,availableFromBlock:Number(player.availableFromBlock),availableUntilBlock:Number(player.availableUntilBlock),arrivalTime:String(player.arrivalTime||''),departureTime:String(player.departureTime||''),limitations:String(player.limitations||''),canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true})).sort((a,b)=>a.name.localeCompare(b.name));
- return JSON.stringify({players:canonicalPlayers,startTime:String(startTime||''),durationMinutes:Number(durationMinutes)});
+ // Attendee order is transaction data. The scheduler, setup.selectedNames,
+ // plan.players and schedule keys all preserve this order, so the source signature
+ // must seal it too instead of sorting names and treating reordered attendance as
+ // equivalent.
+ const orderedPlayers=(players||[]).map(player=>({name:String(player.name||'').trim(),isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,isGuest:!!player.isGuest,availableFromBlock:Number(player.availableFromBlock),availableUntilBlock:Number(player.availableUntilBlock),arrivalTime:String(player.arrivalTime||''),departureTime:String(player.departureTime||''),limitations:String(player.limitations||''),canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true}));
+ return JSON.stringify({players:orderedPlayers,startTime:String(startTime||''),durationMinutes:Number(durationMinutes)});
 }
 function practiceResolutionDecisionSignature(r){
  // Seal the verified alternatives as part of the persisted Resolution transaction.
