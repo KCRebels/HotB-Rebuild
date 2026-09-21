@@ -2788,10 +2788,13 @@ async function activatePlayerPlans(){
   render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
  }catch(error){
   if(button){button.disabled=false;button.textContent='Activate Player Plans'}
-  const code=String(error?.message||'');
-  if(code==='portal-activation-existing-publication'||code==='portal-activation-partial-existing-publication'){
+  const code=String(error?.code||error?.message||error||'unknown');
+  console.error('HotB player-plan activation failed',error);
+  if(code.includes('portal-activation-existing-publication')||code.includes('portal-activation-partial-existing-publication')){
    alert('HotB found this exact practice already published in the cloud. It was not overwritten or reset. Return to Practice Home and use Recover Practice so the existing live state can be verified.');
-  }else alert('The player plans could not be activated. Confirm the portal security setup and internet connection.');
+  }else{
+   alert('The player plans could not be activated.\n\nActivation error: '+code);
+  }
  }
 }
 async function deactivatePlayerPlans(){
