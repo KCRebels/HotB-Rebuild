@@ -3944,10 +3944,11 @@ function practiceResolutionModal(){
  const catchers=(r.catchers||[]).map(name=>`<label class="practice-resolution-pitcher"><input type="radio" name="practiceResolutionCatcher" value="${esc(name)}"><span><b>${esc(practiceFirstName(name))}</b><small>Not Catching · this practice only</small></span></label>`).join('');
  const combinedCatchers=(r.combinedCatchers||[]).map(name=>`<label class="practice-resolution-pitcher"><input type="radio" name="practiceResolutionCombinedCatcher" value="${esc(name)}"><span><b>${esc(practiceFirstName(name))}</b><small>Not Catching + Emergency Block 11</small></span></label>`).join('');
  const notices=(r.notices||[]).map(note=>`<li>${esc(note)}</li>`).join('');
+ const auditFailures=(r.auditFailures||[]).map(note=>`<li>${esc(note)}</li>`).join('');
  const hasVerifiedChoice=!!(pitchers||catchers||r.canExtend||combinedPitchers||combinedCatchers);
  const decisionHeading=hasVerifiedChoice?'HotB needs a coaching decision':'HotB needs a setup change';
  const decisionIntro=hasVerifiedChoice?'HotB tried the normal rotation first, including aggressive rearranging, the one allowed 4-player Front Toss block, and 9-Square when needed. Every option shown below was rebuilt and passed the full rules audit.':'HotB tried the normal rotation and the allowed Practice Resolution adjustments, but it could not prove a rule-safe coaching shortcut for this exact setup.';
- return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>${decisionHeading}</h2></div></div><p class="practice-resolution-intro">${esc(decisionIntro)}</p><section class="practice-resolution-problem"><b>What is preventing the build</b><ul>${(r.errors||[]).map(error=>`<li>${esc(error)}</li>`).join('')}</ul></section>${notices?`<section class="practice-resolution-notices"><b>Automatic equipment / capacity notices</b><ul>${notices}</ul></section>`:''}${pitchers?`<section class="practice-resolution-choice"><h3>Make one pitcher Hitting Only</h3><p>Choose any attending pitcher currently available to pitch. She stays in the full practice as a hitter, does not warm up pitching, and does not pitch Live.</p><div class="practice-resolution-pitchers">${pitchers}</div><button class="btn red block" id="applyPracticePitcherResolution">Apply & Build Practice</button></section>`:''}${catchers?`<section class="practice-resolution-choice"><h3>Remove one catcher from Catching</h3><p>She stays in the full practice as a hitter. HotB verified that removing her only from the catcher rotation resolves this exact practice.</p><div class="practice-resolution-pitchers">${catchers}</div><button class="btn red block" id="applyPracticeCatcherResolution">Apply & Build Practice</button></section>`:''}${r.canExtend?`<section class="practice-resolution-choice"><h3>Add Block 11</h3><p>Extend this practice by 12 minutes, from 120 to 132 minutes. HotB will use this only as an emergency solution and will not add a 12th block.</p><button class="btn black block" id="applyPracticeExtensionResolution">Add Block 11 & Build Practice</button></section>`:''}${combinedPitchers?`<section class="practice-resolution-choice"><h3>Hitting Only + Block 11</h3><p>HotB verified that neither change needs to be guessed: this exact two-part adjustment produces a rule-safe practice.</p><div class="practice-resolution-pitchers">${combinedPitchers}</div><button class="btn black block" id="applyPracticeCombinedResolution">Apply Both & Build Practice</button></section>`:''}${combinedCatchers?`<section class="practice-resolution-choice"><h3>Not Catching + Block 11</h3><p>HotB verified this exact two-part adjustment produces a rule-safe practice while keeping the catcher in the hitting rotation.</p><div class="practice-resolution-pitchers">${combinedCatchers}</div><button class="btn black block" id="applyPracticeCombinedCatcherResolution">Apply Both & Build Practice</button></section>`:''}<section class="practice-resolution-last"><h3>Change Attendance / Availability</h3><p>${esc(r.rosterGuidance||'HotB could not find another rule-safe solution. Change attendance or player availability, then build again.')}</p><button class="btn block" id="returnPracticeAttendance">Change Attendance / Availability</button></section></div></div>`;
+ return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>${decisionHeading}</h2></div></div><p class="practice-resolution-intro">${esc(decisionIntro)}</p><section class="practice-resolution-problem"><b>What is preventing the build</b><ul>${(r.errors||[]).map(error=>`<li>${esc(error)}</li>`).join('')}</ul></section>${auditFailures?`<section class="practice-resolution-notices"><b>Safety audit could not verify</b><ul>${auditFailures}</ul></section>`:''}${notices?`<section class="practice-resolution-notices"><b>Automatic equipment / capacity notices</b><ul>${notices}</ul></section>`:''}${pitchers?`<section class="practice-resolution-choice"><h3>Make one pitcher Hitting Only</h3><p>Choose any attending pitcher currently available to pitch. She stays in the full practice as a hitter, does not warm up pitching, and does not pitch Live.</p><div class="practice-resolution-pitchers">${pitchers}</div><button class="btn red block" id="applyPracticePitcherResolution">Apply & Build Practice</button></section>`:''}${catchers?`<section class="practice-resolution-choice"><h3>Remove one catcher from Catching</h3><p>She stays in the full practice as a hitter. HotB verified that removing her only from the catcher rotation resolves this exact practice.</p><div class="practice-resolution-pitchers">${catchers}</div><button class="btn red block" id="applyPracticeCatcherResolution">Apply & Build Practice</button></section>`:''}${r.canExtend?`<section class="practice-resolution-choice"><h3>Add Block 11</h3><p>Extend this practice by 12 minutes, from 120 to 132 minutes. HotB will use this only as an emergency solution and will not add a 12th block.</p><button class="btn black block" id="applyPracticeExtensionResolution">Add Block 11 & Build Practice</button></section>`:''}${combinedPitchers?`<section class="practice-resolution-choice"><h3>Hitting Only + Block 11</h3><p>HotB verified that neither change needs to be guessed: this exact two-part adjustment produces a rule-safe practice.</p><div class="practice-resolution-pitchers">${combinedPitchers}</div><button class="btn black block" id="applyPracticeCombinedResolution">Apply Both & Build Practice</button></section>`:''}${combinedCatchers?`<section class="practice-resolution-choice"><h3>Not Catching + Block 11</h3><p>HotB verified this exact two-part adjustment produces a rule-safe practice while keeping the catcher in the hitting rotation.</p><div class="practice-resolution-pitchers">${combinedCatchers}</div><button class="btn black block" id="applyPracticeCombinedCatcherResolution">Apply Both & Build Practice</button></section>`:''}<section class="practice-resolution-last"><h3>Change Attendance / Availability</h3><p>${esc(r.rosterGuidance||'HotB could not find another rule-safe solution. Change attendance or player availability, then build again.')}</p><button class="btn block" id="returnPracticeAttendance">Change Attendance / Availability</button></section></div></div>`;
 }
 function modalView(){
  if(modal==='practiceBuildNotice')return practiceBuildNoticeModal();
@@ -4522,20 +4523,30 @@ function bindPractice(){
    // Practice Resolution is intentionally stricter than the normal build path. It is rare,
    // so every choice shown to the coach must pass both scheduler feasibility and the full
    // rules validator before HotB is allowed to call that choice a verified solution.
-   const resolutionPlanIsSafe=plan=>{
-    if(!plan||plan.feasibilityErrors?.length)return false;
-    try{return !window.HotBPracticeScheduler.validate(plan).length}catch(_){return false}
+   const resolutionAuditFailures=[];
+   const resolutionPlanIsSafe=(plan,label)=>{
+    if(!plan){resolutionAuditFailures.push(label+' did not return a schedule.');return false}
+    if(plan.feasibilityErrors?.length)return false;
+    try{
+     const audit=window.HotBPracticeScheduler.validate(plan);
+     if(!Array.isArray(audit)){resolutionAuditFailures.push(label+' returned an invalid safety audit.');return false}
+     return audit.length===0;
+    }catch(error){
+     console.error('HotB Practice Resolution audit failed',label,error);
+     resolutionAuditFailures.push(label+' could not complete the safety audit.');
+     return false;
+    }
    };
    // Only offer a pitcher decision after proving that exact one-practice change builds cleanly.
    for(const pitcher of availablePitchers){
     const testPlayers=practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-    try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan))solvingPitchers.push(pitcher.name)}catch(_){}
+    try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan,'Hitting Only: '+pitcher.name))solvingPitchers.push(pitcher.name)}catch(_){}
    }
    let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
    const availableCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
    for(const catcher of availableCatchers){
     const testPlayers=practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-    try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan))solvingCatchers.push(catcher.name)}catch(_){}
+    try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan,'Not Catching: '+catcher.name))solvingCatchers.push(catcher.name)}catch(_){}
    }
    if(!identityBlocked&&Number(durationMinutes)===120){
     try{
@@ -4543,22 +4554,22 @@ function bindPractice(){
      // of the original 120-minute practice. An explicit early departure remains
      // an explicit early departure; resolution must never silently lengthen it.
      const extendedPlayers=practiceResolutionExtendedPlayers(practicePlayers,startTime);
-     const extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=resolutionPlanIsSafe(extendedPlan);
+     const extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=resolutionPlanIsSafe(extendedPlan,'Block 11');
      if(!canExtend){
       for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
        const testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan))combinedPitchers.push(pitcher.name)}catch(_){}
+       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan,'Hitting Only + Block 11: '+pitcher.name))combinedPitchers.push(pitcher.name)}catch(_){}
       }
       for(const catcher of extendedPlayers.filter(player=>player.canCatch)){
        const testPlayers=extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan))combinedCatchers.push(catcher.name)}catch(_){}
+       try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,132,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan,'Not Catching + Block 11: '+catcher.name))combinedCatchers.push(catcher.name)}catch(_){}
       }
      }
     }catch(_){}
    }
    const rosterGuidance=identityBlocked?'HotB found duplicate attendee names. Fix the duplicate roster/guest entry before building again; HotB will not guess which player a resolution belongs to.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
-   practiceResolution={errors,pitchers:solvingPitchers,catchers:solvingCatchers,canExtend,combinedPitchers,combinedCatchers,rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,notices:practicePlan.fallbackWarnings||[],signature:resolutionSignature};
+   practiceResolution={errors,pitchers:solvingPitchers,catchers:solvingCatchers,canExtend,combinedPitchers,combinedCatchers,rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,notices:practicePlan.fallbackWarnings||[],auditFailures:[...new Set(resolutionAuditFailures)],signature:resolutionSignature};
    practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
    practiceSetupState.startTime=startTime;
    practiceSetupState.durationMinutes=durationMinutes;
