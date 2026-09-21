@@ -233,6 +233,11 @@ orphanedScheduleLive.liveSessions=orphanedScheduleLive.liveSessions.filter(sessi
 const orphanErrors=scheduler.validate(orphanedScheduleLive);
 assert.ok(orphanErrors.some(error=>error.includes('Pitch Live')&&error.includes('without a matching live-session record')),'full resolution audit must reject scheduled live pitching with missing live-session metadata');
 assert.ok(orphanErrors.some(error=>error.includes('Hit Live')&&error.includes('without a matching live-session record')),'full resolution audit must reject scheduled live hitting with missing live-session metadata');
+const ineligibleScheduledRole=structuredClone(block11DeparturePlan);
+const nonPitcher=ineligibleScheduledRole.players.find(player=>!player.isPitcher);
+ineligibleScheduledRole.schedule[nonPitcher.name][9]={activity:'Pitch Live'};
+assert.ok(scheduler.validate(ineligibleScheduledRole).some(error=>error.includes('Pitch Live in Block 10')&&error.includes('not eligible to pitch')),'full resolution audit must independently reject ineligible scheduled live pitching even when metadata is absent or corrupt');
+
 
 
 
