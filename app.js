@@ -4594,9 +4594,11 @@ function bind(){
          rebuiltSafe=false;
          console.error('HotB Practice Resolution rebuilt plan could not be committed to restart recovery');
         }else{
-         const committed=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
+         let committed=null;
+         try{committed=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
+         catch(error){console.error('HotB Practice Resolution committed session restore failed',error);rebuiltSafe=false}
          const committedPlan=committed?.plan;
-         if(!committedPlan||committedPlan.portalDraftId!==resolutionDraftId){
+         if(rebuiltSafe&&(!committedPlan||committedPlan.portalDraftId!==resolutionDraftId)){
           rebuiltSafe=false;
           console.error('HotB Practice Resolution restart recovery did not retain the resolved draft identity');
          }else{
@@ -4622,6 +4624,15 @@ function bind(){
         if(rebuiltSafe&&!transactionIsCurrent()){
          rebuiltSafe=false;
          console.error('HotB Practice Resolution transaction changed during restart-recovery verification');
+        }
+        if(rebuiltSafe){
+         // The complete committed session must survive production restore exactly.
+         // A restore migration/default is not allowed to become the successful
+         // restart authority for a Resolution apply.
+         if(!committed||JSON.stringify(committed)!==JSON.stringify(db.activePracticeSession)){
+          rebuiltSafe=false;
+          console.error('HotB Practice Resolution committed session changed during restart restore');
+         }
         }
         if(rebuiltSafe){
          // The recovery proof temporarily swaps practicePlan to the restored copy.
