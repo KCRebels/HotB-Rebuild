@@ -4251,11 +4251,13 @@ function bind(){
    if(!Array.isArray(expected.playerNames)||!expectedNames.length||expectedNames.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return false;
    if(actualNames.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return false;
    if(expectedNames.length!==expectedSet.size||actualNames.length!==actualSet.size)return false;
-   if(expectedSet.size!==actualSet.size||expectedNames.some(name=>!actualSet.has(name)))return false;
+   // Resolution commit preserves the verified attendee order as transaction data.
+   // This keeps plan.players, setup.selectedNames and persisted recovery aligned.
+   if(expectedNames.length!==actualNames.length||actualNames.some((name,index)=>name!==expectedNames[index]))return false;
    const expectedBlocks=Number(expected.durationMinutes)===132?11:10;
    if(!Array.isArray(practicePlan.times)||practicePlan.times.length!==expectedBlocks)return false;
    const scheduleKeys=Object.keys(practicePlan.schedule||{}),scheduleSet=new Set(scheduleKeys);
-   if(scheduleKeys.length!==scheduleSet.size||scheduleSet.size!==expectedSet.size||expectedNames.some(name=>!scheduleSet.has(name)))return false;
+   if(scheduleKeys.length!==scheduleSet.size||scheduleSet.size!==expectedSet.size||expectedNames.some((name,index)=>scheduleKeys[index]!==name))return false;
    for(const name of expectedNames)if(!Array.isArray(practicePlan.schedule?.[name])||practicePlan.schedule[name].length!==expectedBlocks)return false;
    // The rebuilt plan must not merely have the right number of blocks. Every time
    // row must be the exact 12-minute sequence implied by the verified start time.
@@ -4450,16 +4452,21 @@ function bind(){
    // Do not allow a resolved plan whose catcherLoads or pitcherRepeats drifted from
    // liveSessions to pass the transaction boundary.
    if(!Array.isArray(practicePlan.catcherLoads)||!Array.isArray(practicePlan.pitcherRepeats)||!Array.isArray(practicePlan.liveHitterRepeats))return false;
-   const catcherLoadMap=new Map(practicePlan.catcherLoads.map(item=>[item?.name,Number(item?.liveBlocks)]));
+   if(practicePlan.catcherLoads.some(item=>!item||typeof item.name!=='string'||!item.name.trim()||item.name.trim()!==item.name||!Number.isInteger(Number(item.liveBlocks))||Number(item.liveBlocks)<0))return false;
+   const catcherLoadNames=practicePlan.catcherLoads.map(item=>item.name);
+   if(catcherLoadNames.length!==new Set(catcherLoadNames).size)return false;
+   const catcherLoadMap=new Map(practicePlan.catcherLoads.map(item=>[item.name,Number(item.liveBlocks)]));
    const eligibleCatchers=(practicePlan.players||[]).filter(player=>player.isCatcher===true).map(player=>player.name);
-   if(catcherLoadMap.size!==eligibleCatchers.length||eligibleCatchers.some(name=>catcherLoadMap.get(name)!==(liveCatcherLoads.get(name)||0)))return false;
+   if(catcherLoadMap.size!==eligibleCatchers.length||eligibleCatchers.some((name,index)=>catcherLoadNames[index]!==name||catcherLoadMap.get(name)!==(liveCatcherLoads.get(name)||0)))return false;
    const repeatedPitchers=[...livePitcherLoads.entries()].filter(([,count])=>count>1).map(([name])=>name).sort();
-   const persistedPitcherRepeats=[...new Set(practicePlan.pitcherRepeats)].sort();
+   if(practicePlan.pitcherRepeats.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name)||practicePlan.pitcherRepeats.length!==new Set(practicePlan.pitcherRepeats).size)return false;
+   const persistedPitcherRepeats=practicePlan.pitcherRepeats.slice().sort();
    if(repeatedPitchers.length!==persistedPitcherRepeats.length||repeatedPitchers.some((name,index)=>name!==persistedPitcherRepeats[index]))return false;
    const liveHitCounts=new Map(expectedNames.map(name=>[name,0]));
    practicePlan.liveSessions.forEach(session=>(session.hitters||[]).forEach(name=>liveHitCounts.set(name,(liveHitCounts.get(name)||0)+1)));
    const repeatedHitters=[...liveHitCounts.entries()].filter(([,count])=>count>1).map(([name])=>name).sort();
-   const persistedHitterRepeats=[...new Set(practicePlan.liveHitterRepeats)].sort();
+   if(practicePlan.liveHitterRepeats.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name)||practicePlan.liveHitterRepeats.length!==new Set(practicePlan.liveHitterRepeats).size)return false;
+   const persistedHitterRepeats=practicePlan.liveHitterRepeats.slice().sort();
    if(repeatedHitters.length!==persistedHitterRepeats.length||repeatedHitters.some((name,index)=>name!==persistedHitterRepeats[index]))return false;
    return finishProof(true);
   };
