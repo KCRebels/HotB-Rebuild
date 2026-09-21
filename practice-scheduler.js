@@ -393,6 +393,19 @@
     });
    });
   }
+  for(let block=0;block<BLOCK_COUNT;block++){
+   const liveForBlock=(plan.liveSessions||[]).filter(session=>Number(session.block)===block);
+   const scheduleLivePitchers=[],scheduleLiveCatchers=[],scheduleLiveHitters=[];
+   (plan.players||[]).forEach(player=>{
+    const activity=plan.schedule?.[player.name]?.[block]?.activity;
+    if(activity==='Pitch Live')scheduleLivePitchers.push(player.name);
+    if(activity==='Catch Live')scheduleLiveCatchers.push(player.name);
+    if(activity==='Hit Live')scheduleLiveHitters.push(player.name);
+   });
+   scheduleLivePitchers.forEach(name=>{if(!liveForBlock.some(session=>session.pitcher===name))errors.push(`${name} has Pitch Live in Block ${block+1} without a matching live-session record.`)});
+   scheduleLiveCatchers.forEach(name=>{if(!liveForBlock.some(session=>session.catcher===name))errors.push(`${name} has Catch Live in Block ${block+1} without a matching live-session record.`)});
+   scheduleLiveHitters.forEach(name=>{if(!liveForBlock.some(session=>Array.isArray(session.hitters)&&session.hitters.includes(name)))errors.push(`${name} has Hit Live in Block ${block+1} without a matching live-session record.`)});
+  }
   const totalFrontFours=Array.from({length:BLOCK_COUNT},(_,block)=>{const counts={};Object.values(plan.schedule||{}).map(items=>items[block]).filter(entry=>entry?.activity?.startsWith('Front Toss Lane')).forEach(entry=>counts[entry.activity]=(counts[entry.activity]||0)+1);return Object.values(counts).filter(count=>count===4).length}).reduce((a,b)=>a+b,0);
   if(totalFrontFours>1)errors.push('Practice uses more than one 4-player Front Toss block.');
   (plan?.liveSessions||[]).forEach(session=>{
