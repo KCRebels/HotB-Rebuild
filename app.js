@@ -3958,7 +3958,11 @@ function currentPracticeResolutionSignature(){
  return practiceResolutionSignature(players,practiceResolution.startTime,practiceResolution.durationMinutes);
 }
 function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
- if(!r||typeof r.signature!=='string'||!r.signature||r.signature!==currentPracticeResolutionSignature())return false;
+ // This validator is intentionally for the live global Resolution transaction.
+ // Reject detached/alternate objects instead of comparing their signature against
+ // mutable global state and accidentally certifying the wrong snapshot.
+ if(!r||r!==practiceResolution)return false;
+ if(typeof r.signature!=='string'||!r.signature||r.signature!==currentPracticeResolutionSignature())return false;
  const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===132?11:duration===120?10:0,names=players.map(player=>player?.name),verifiedNames=new Set(names);
  if(!blockCount||!players.length||names.length!==verifiedNames.size)return false;
  if(typeof r.canExtend!=='boolean')return false;
@@ -3966,9 +3970,12 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  if(!startMatch||startHour>23||startMinute>59||String(r.startTime)!==String(practiceSetupState.startTime||''))return false;
  if(!players.every(player=>
   player&&String(player.name||'').trim()===String(player.name||'')&&String(player.name||'').length>0&&
+  typeof player.isPitcher==='boolean'&&typeof player.isCatcher==='boolean'&&typeof player.isGuest==='boolean'&&typeof player.prePracticeComplete==='boolean'&&
   Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&
   Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=blockCount&&Number(player.availableFromBlock)<Number(player.availableUntilBlock)&&
-  typeof player.canPitch==='boolean'&&typeof player.requiresPitchWarmup==='boolean'&&typeof player.canCatch==='boolean'&&(!player.canPitch?!player.requiresPitchWarmup:true)
+  typeof player.arrivalTime==='string'&&typeof player.departureTime==='string'&&
+  typeof player.canPitch==='boolean'&&typeof player.requiresPitchWarmup==='boolean'&&typeof player.canCatch==='boolean'&&
+  (!player.isPitcher?!player.canPitch&&!player.requiresPitchWarmup:true)&&(!player.isCatcher?!player.canCatch:true)&&(!player.canPitch?!player.requiresPitchWarmup:true)
  ))return false;
  const arrays=['pitchers','catchers','combinedPitchers','combinedCatchers','errors','notices','auditFailures'];
  if(!arrays.every(key=>r[key]==null||Array.isArray(r[key])))return false;
