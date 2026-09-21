@@ -3954,11 +3954,19 @@ function practiceResolutionModal(){
  const currentResolutionSignature=currentPracticeResolutionSignature();
  if(!r.signature||r.signature!==currentResolutionSignature)return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>Practice changed</h2></div></div><p>HotB will not apply a resolution unless its verified safety signature exactly matches the current practice information.</p><button class="btn block" id="returnPracticeAttendance">Return to Practice Setup</button></div></div>`;
  const verifiedNames=new Set((r.practicePlayers||[]).map(player=>player.name));
+ const verifiedDuration=Number(r.durationMinutes),verifiedBlockCount=verifiedDuration===132?11:verifiedDuration===120?10:0;
+ const verifiedPlayerDataValid=Array.isArray(r.practicePlayers)&&verifiedBlockCount>0&&r.practicePlayers.every(player=>
+  player&&String(player.name||'').trim()===String(player.name||'')&&String(player.name||'').length>0&&
+  Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&
+  Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=verifiedBlockCount&&Number(player.availableFromBlock)<Number(player.availableUntilBlock)&&
+  typeof player.canPitch==='boolean'&&typeof player.requiresPitchWarmup==='boolean'&&typeof player.canCatch==='boolean'&&
+  (!player.canPitch?!player.requiresPitchWarmup:true)
+ );
  const choiceArraysValid=['pitchers','catchers','combinedPitchers','combinedCatchers','errors','notices','auditFailures'].every(key=>r[key]==null||Array.isArray(r[key]));
  const uniqueChoiceArrays=['pitchers','catchers','combinedPitchers','combinedCatchers'].every(key=>{const values=r[key]||[];return values.length===new Set(values).size});
  const noRedundantCombined=(r.combinedPitchers||[]).every(name=>!(r.pitchers||[]).includes(name))&&(r.combinedCatchers||[]).every(name=>!(r.catchers||[]).includes(name));
- const choiceDataValid=choiceArraysValid&&uniqueChoiceArrays&&noRedundantCombined&&Array.isArray(r.practicePlayers)&&r.practicePlayers.length===verifiedNames.size&&verifiedNames.size>0&&
-  Number(r.durationMinutes)>0&&Number(r.durationMinutes)<=132&&(!r.canExtend||Number(r.durationMinutes)===120)&&
+ const choiceDataValid=verifiedPlayerDataValid&&choiceArraysValid&&uniqueChoiceArrays&&noRedundantCombined&&r.practicePlayers.length===verifiedNames.size&&verifiedNames.size>0&&
+  (verifiedDuration===120||verifiedDuration===132)&&(!r.canExtend||Number(r.durationMinutes)===120)&&
   (!(r.combinedPitchers||[]).length&&!(r.combinedCatchers||[]).length||Number(r.durationMinutes)===120)&&
   [...(r.pitchers||[]),...(r.catchers||[]),...(r.combinedPitchers||[]),...(r.combinedCatchers||[])].every(name=>verifiedNames.has(name))&&
   (r.pitchers||[]).every(name=>r.practicePlayers.find(player=>player.name===name)?.canPitch)&&
