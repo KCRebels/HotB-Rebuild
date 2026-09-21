@@ -235,4 +235,6 @@ mustInclude("rejected a Practice Resolution rollback snapshot that could not be 
 mustInclude("rollback whose recovery equality proof could not be sealed.","rollback validation must contain all exact recovery equality serialization failures");
 mustInclude("refused to clear a practice recovery session that could not be sealed.","practice-session clear must seal its rollback authority before mutation");
 mustInclude("could not restore the previous practice recovery session after clear failure.","practice-session clear failure must restore and persist the previous recovery authority");
+mustInclude("$('[data-accommodation-arrival],[data-accommodation-departure],[data-accommodation-pitch],[data-accommodation-warmup],[data-accommodation-catch],[data-accommodation-prepractice],[data-accommodation-limitations]').forEach","Practice Builder must bind accommodation controls as a collection so setup binding reaches Build Practice Schedule");
+assert.ok(!source.includes("$('[data-accommodation-arrival],[data-accommodation-departure],[data-accommodation-pitch],[data-accommodation-warmup],[data-accommodation-catch],[data-accommodation-prepractice],[data-accommodation-limitations]').forEach"),"Practice Builder must never call forEach on the single-element selector helper");
 console.log('practice-resolution static contract tests passed');
