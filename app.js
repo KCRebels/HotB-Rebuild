@@ -4724,10 +4724,13 @@ function bind(){
   const restoreResolutionRollback=state=>{
    const releaseFailedRollback=message=>{
     console.error(message);
-    // A rollback failure must never strand the app inside the apply lock or leave
-    // an uncommitted 132-minute/role-mutated plan live. Fail closed to ordinary
-    // 120-minute setup when the sealed snapshot itself cannot be trusted.
+    // If exact rollback recovery is impossible, never release the transaction with
+    // its temporary Block 11 or role mutation still installed. The verified
+    // Resolution can no longer be trusted, so return to an ordinary 120-minute
+    // setup rather than exposing partially applied emergency state.
     practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;
+    practiceResolution=null;modal=null;
+    if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
     endResolutionApply();
    };
    if(!resolutionRollbackStateIsValid(state)){releaseFailedRollback('HotB refused an invalid Practice Resolution rollback snapshot');return false}
@@ -4735,9 +4738,19 @@ function bind(){
    try{
     restoredSetup=structuredClone(state.setupState);restoredResolution=structuredClone(state.resolution);restoredSession=structuredClone(state.activePracticeSession);
    }catch(error){
-    console.error('HotB Practice Resolution rollback clone failed',error);
-    releaseFailedRollback('HotB could not clone the Practice Resolution rollback snapshot');
-    return false;
+    console.error('HotB Practice Resolution rollback clone failed; attempting sealed JSON recovery',error);
+    // rollbackSignature is already proven byte-identical to the snapshot above.
+    // It is therefore a safe, deterministic fallback when structuredClone itself
+    // is unavailable or fails on a device.
+    try{
+     const sealed=JSON.parse(state.rollbackSignature);
+     if(JSON.stringify(sealed)!==state.rollbackSignature||!sealed?.setupState||!sealed?.resolution)throw new Error('rollback-signature-roundtrip-failed');
+     restoredSetup=sealed.setupState;restoredResolution=sealed.resolution;restoredSession=sealed.activePracticeSession;
+    }catch(sealedError){
+     console.error('HotB Practice Resolution sealed rollback recovery failed',sealedError);
+     releaseFailedRollback('HotB could not recover the sealed Practice Resolution rollback snapshot');
+     return false;
+    }
    }
    // Validate the clones that will actually become live state. A rollback is atomic
    // only if cloning itself preserves the sealed failed-practice snapshot.
