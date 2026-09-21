@@ -210,6 +210,15 @@ const ineligibleLiveRoles=structuredClone(block11DeparturePlan);
 ineligibleLiveRoles.liveSessions.push({block:9,pitcher:block11DepartureRoster.find(player=>!player.isPitcher).name,catcher:block11DepartureRoster.find(player=>!player.isCatcher).name,hitters:[block11DepartureRoster[1].name,block11DepartureRoster[2].name]});
 assert.ok(scheduler.validate(ineligibleLiveRoles).some(error=>error.includes('not eligible to pitch live')),'full resolution audit must reject a non-pitcher assigned as the live pitcher');
 assert.ok(scheduler.validate(ineligibleLiveRoles).some(error=>error.includes('not eligible to catch live')),'full resolution audit must reject a non-catcher assigned as the live catcher');
+const conflictingLive=structuredClone(block11DeparturePlan);
+const conflictPitcher=conflictingLive.players.find(player=>player.isPitcher&&player.canPitch);
+const conflictCatcher=conflictingLive.players.find(player=>player.isCatcher&&player.canCatch&&player.name!==conflictPitcher.name);
+const conflictHitter=conflictingLive.players.find(player=>player.name!==conflictPitcher.name&&player.name!==conflictCatcher.name);
+conflictingLive.liveSessions.push({block:9,pitcher:conflictPitcher.name,catcher:conflictCatcher.name,hitters:[conflictHitter.name,conflictHitter.name,conflictPitcher.name]});
+const conflictingErrors=scheduler.validate(conflictingLive);
+assert.ok(conflictingErrors.some(error=>error.includes('repeats the same hitter')),'full resolution audit must reject duplicate hitters inside one live session');
+assert.ok(conflictingErrors.some(error=>error.includes('cannot pitch and hit in the same live session')),'full resolution audit must reject a pitcher simultaneously listed as a hitter');
+
 
 
 
