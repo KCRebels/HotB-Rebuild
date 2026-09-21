@@ -107,4 +107,7 @@ mustNotInclude("match(/^(\\\\d{2}):(\\\\d{2})$/)","Persisted Resolution clock va
 mustInclude("const serializedDraft=JSON.stringify(draft);","Resolution draft must seal exact bytes before save");
 mustInclude("HotB Practice Resolution setup draft changed during save.","Resolution draft must fail closed if save mutates recovery bytes");
 mustInclude("HotB Practice Resolution setup draft failed post-save recovery verification.","Resolution draft must be restorable after the actual save");
+mustInclude("rollback capture clone failed; attempting JSON capture","Resolution apply must retain rollback capture when structuredClone fails");
+mustInclude("const captured=JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession});","Resolution rollback fallback must seal all three transaction sources together");
+mustInclude("if(JSON.stringify(state)!==captured)return null;","Resolution rollback JSON fallback must round-trip byte exactly before use");
 console.log('practice-resolution static contract tests passed');
