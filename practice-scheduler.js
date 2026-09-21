@@ -180,41 +180,32 @@
   });
   let liveHitterRepeats=[];
   if(liveSessions.length&&!feasibilityErrors.length){
-   const roleWeight=player=>(player.canPitch?2:0)+(player.canCatch?2:0);
-   const preferredRepeatOrder=activeAttendees.slice().sort((a,b)=>roleWeight(a)-roleWeight(b)||a.name.localeCompare(b.name));
-   const rotateBy=preferredRepeatOrder.length?((weekNumber%preferredRepeatOrder.length)+preferredRepeatOrder.length)%preferredRepeatOrder.length:0;
-   const repeatOrder=preferredRepeatOrder.slice(rotateBy).concat(preferredRepeatOrder.slice(0,rotateBy)).sort((a,b)=>roleWeight(a)-roleWeight(b));
-   let liveGroups=null,chosenRepeats=[];
-   function tryLiveGroups(repeats){
-    const tokens=[...activeAttendees,...repeats.map((player,index)=>({...player,originalName:player.name,assignmentKey:`${player.name}::live-repeat-${index}`}))];
-    const byKey=Object.fromEntries(tokens.map(player=>[player.assignmentKey||player.name,player]));
-    const groups=groupedAssignment(tokens,liveSessions,(player,session,_index,currentKeys)=>{
-     const name=player.originalName||player.name;
-     return session.pitcher!==name&&session.catcher!==name&&isOpen(activeAttendees.find(item=>item.name===name),session.block)&&!currentKeys.some(key=>(byKey[key].originalName||byKey[key].name)===name);
-    },true);
-    if(groups){liveGroups=groups;chosenRepeats=repeats;return true}
-    return false;
+   // Deterministic Rebels-only live hitter assignment. Fill each live session to
+   // two hitters first, then place every remaining hitter once; only repeat when
+   // total live capacity requires it. This avoids recursive roster permutation.
+   const hitCounts=new Map(activeAttendees.map(player=>[player.name,0]));
+   const canHit=(player,session)=>session.pitcher!==player.name&&session.catcher!==player.name&&isOpen(player,session.block)&&!session.hitters.includes(player.name);
+   function placeOne(session,allowRepeat){
+    const candidates=activeAttendees.filter(player=>canHit(player,session)&&(allowRepeat||!(hitCounts.get(player.name)||0)))
+     .sort((a,b)=>(hitCounts.get(a.name)||0)-(hitCounts.get(b.name)||0)||a.name.localeCompare(b.name));
+    const player=candidates[0];
+    if(!player)return false;
+    session.hitters.push(player.name);hitCounts.set(player.name,(hitCounts.get(player.name)||0)+1);
+    schedule[player.name][session.block]={activity:'Hit Live',partner:session.pitcher};
+    return true;
    }
-   if(!repeatHittersNeeded)tryLiveGroups([]);
-   else{
-    const picked=[];
-    function chooseRepeats(start){
-     if(picked.length===repeatHittersNeeded)return tryLiveGroups(picked.slice());
-     for(let index=start;index<=repeatOrder.length-(repeatHittersNeeded-picked.length);index++){
-      picked.push(repeatOrder[index]);
-      if(chooseRepeats(index+1))return true;
-      picked.pop();
-     }
-     return false;
-    }
-    chooseRepeats(0);
+   for(const session of liveSessions)while(session.hitters.length<2&&placeOne(session,false)){}
+   for(const player of activeAttendees.filter(player=>!(hitCounts.get(player.name)||0))){
+    const session=liveSessions.filter(item=>item.hitters.length<3&&canHit(player,item)).sort((x,y)=>x.hitters.length-y.hitters.length||x.block-y.block)[0];
+    if(session){session.hitters.push(player.name);hitCounts.set(player.name,1);schedule[player.name][session.block]={activity:'Hit Live',partner:session.pitcher}}
    }
-   if(!liveGroups)feasibilityErrors.push(`The selected pitchers, catchers, arrival times and departure times cannot provide 2–3 hitters in every live block, even with ${repeatHittersNeeded} second live-hitting assignment${repeatHittersNeeded===1?'':'s'}. Adjust availability or mark a pitcher Hitting Only and build again.`);
-   else{
-    liveHitterRepeats=chosenRepeats.map(player=>player.name);
+   for(const session of liveSessions)while(session.hitters.length<2&&placeOne(session,true)){}
+   const missing=activeAttendees.filter(player=>!(hitCounts.get(player.name)||0));
+   if(missing.length||liveSessions.some(session=>session.hitters.length<2)){
+    feasibilityErrors.push('The selected pitchers, catchers, arrival times and departure times cannot provide 2–3 hitters in every live block. Adjust availability or mark a pitcher Hitting Only and build again.');
+   }else{
+    liveHitterRepeats=activeAttendees.filter(player=>(hitCounts.get(player.name)||0)>1).map(player=>player.name);
     if(liveHitterRepeats.length)fallbackWarnings.push(`${liveHitterRepeats.join(', ')} ${liveHitterRepeats.length===1?'will receive':'will each receive'} a second live-hitting session so every live block has at least two hitters.`);
-    const actualName=key=>key.split('::live-repeat-')[0];
-    liveGroups.forEach((names,index)=>names.forEach(key=>{const name=actualName(key);liveSessions[index].hitters.push(name);schedule[name][liveSessions[index].block]={activity:'Hit Live',partner:liveSessions[index].pitcher}}));
    }
   }
   const liveBlocks=new Set(liveSessions.map(session=>session.block));
