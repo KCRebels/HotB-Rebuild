@@ -4210,11 +4210,13 @@ function bind(){
   const verifiedResolutionChoice=(type,name=null)=>{
    if(!practiceResolutionSnapshotIsCurrentAndValid())return false;
    const verifiedPlayers=practiceResolution.practicePlayers||[],matches=name==null?[]:verifiedPlayers.filter(player=>player.name===name);
-   if(type==='extension')return practiceResolution.canExtend===true&&Number(practiceResolution.durationMinutes)===120;
+   if(type==='extension')return practiceResolution.canExtend===true&&Number(practiceResolution.durationMinutes)===120&&Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,'Block 11');
    if(matches.length!==1)return false;
    const player=matches[0],blockCount=Number(practiceResolution.durationMinutes)===132?11:Number(practiceResolution.durationMinutes)===120?10:0;
    if(!blockCount||!Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>blockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock))return false;
    if(typeof player.canPitch!=='boolean'||typeof player.requiresPitchWarmup!=='boolean'||typeof player.canCatch!=='boolean'||(!player.canPitch&&player.requiresPitchWarmup))return false;
+   const label=type==='pitcher'?'Hitting Only: '+name:type==='catcher'?'Not Catching: '+name:type==='combinedPitcher'?'Hitting Only + Block 11: '+name:type==='combinedCatcher'?'Not Catching + Block 11: '+name:'';
+   if(!label||!Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,label))return false;
    if(type==='pitcher')return player.canPitch===true&&(practiceResolution.pitchers||[]).includes(name);
    if(type==='catcher')return player.canCatch===true&&(practiceResolution.catchers||[]).includes(name);
    if(type==='combinedPitcher')return Number(practiceResolution.durationMinutes)===120&&player.canPitch===true&&(practiceResolution.combinedPitchers||[]).includes(name);
@@ -4778,6 +4780,15 @@ function bind(){
    const candidateLabel=role==='pitcher'?(withBlock11?'Hitting Only + Block 11: ':'Hitting Only: ')+name:role==='catcher'?(withBlock11?'Not Catching + Block 11: ':'Not Catching: ')+name:withBlock11?'Block 11':null;
    const noticeMap=resolutionSnapshot.candidateNotices;
    if(!candidateLabel||!noticeMap||!Object.prototype.hasOwnProperty.call(noticeMap,candidateLabel)||!Array.isArray(noticeMap[candidateLabel]))return null;
+   // Expected-state construction is also an authorization boundary. Do not derive
+   // a postcondition for a label that is merely present in candidateNotices; the
+   // exact choice must still be one of the sealed final coaching alternatives.
+   const choiceAuthorized=role==='pitcher'
+    ?(withBlock11?resolutionSnapshot.combinedPitchers:resolutionSnapshot.pitchers)?.includes(name)
+    :role==='catcher'
+     ?(withBlock11?resolutionSnapshot.combinedCatchers:resolutionSnapshot.catchers)?.includes(name)
+     :withBlock11&&resolutionSnapshot.canExtend===true;
+   if(!choiceAuthorized)return null;
    return {role,name,startTime:verifiedStart,durationMinutes,playerNames:basePlayers.map(player=>player.name),expectedNotices:[...noticeMap[candidateLabel]],availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||'',limitations:String(player.limitations||'')}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
   };
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
