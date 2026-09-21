@@ -4029,12 +4029,6 @@ function bind(){
    const selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
    const startTime=practiceResolution?.startTime||practiceSetupState.startTime;
    practiceSetupState.selectedNames=selectedNames;practiceSetupState.startTime=startTime;
-   // If Block 11 was chosen, make the verified extension explicit in setup state.
-   // Players with coach-entered departures remain unchanged.
-   if(Number(practiceSetupState.durationMinutes)===132){
-    const verifiedByName=new Map((practiceResolutionExtendedPlayers(practiceResolution?.practicePlayers||[],startTime)).map(player=>[player.name,player]));
-    selectedNames.forEach(name=>{const original=(practiceResolution?.practicePlayers||[]).find(player=>player.name===name),extended=verifiedByName.get(name);if(original&&extended&&extended.availableUntilBlock===11&&original.availableUntilBlock===10){const saved=practiceSetupState.accommodations?.[name]||{};if(!saved.departure)practiceSetupState.accommodations[name]={...saved,departure:''}}});
-   }
    practiceResolution=null;modal=null;persistPracticeDraft();render();setTimeout(()=>$('#generatePractice')?.click(),0);
   };
   $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
