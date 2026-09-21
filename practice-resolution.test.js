@@ -107,6 +107,10 @@ mustNotInclude("match(/^(\\\\d{2}):(\\\\d{2})$/)","Persisted Resolution clock va
 mustInclude("try{serializedDraft=JSON.stringify(draft)}catch(error){console.error('HotB refused to persist Practice Resolution because its setup draft could not be sealed.',error);return false}","Resolution draft must seal exact bytes before save and contain serialization failure");
 mustInclude("HotB Practice Resolution setup draft changed during save.","Resolution draft must fail closed if save mutates recovery bytes");
 mustInclude("HotB Practice Resolution setup draft failed post-save recovery verification.","Resolution draft must be restorable after the actual save");
+mustInclude("const previousActivePracticeSession=db.activePracticeSession;","Resolution setup-draft persistence must retain the previous recovery authority until commit verification finishes");
+mustInclude("const restorePreviousDraftAfterFailure=(message,error=null)=>","every post-save Resolution draft failure must use one rollback path");
+mustInclude("db.activePracticeSession=previousActivePracticeSession;","failed Resolution setup-draft persistence must restore the previous recovery session");
+mustInclude("could not restore the previous practice recovery session after setup-draft persistence failure.","Resolution draft rollback persistence failure must be contained");
 mustInclude("rollback capture clone failed; attempting JSON capture","Resolution apply must retain rollback capture when structuredClone fails");
 mustInclude("const captured=JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession});","Resolution rollback fallback must seal all three transaction sources together");
 mustInclude("if(JSON.stringify(state)!==captured)return null;","Resolution rollback JSON fallback must round-trip byte exactly before use");
