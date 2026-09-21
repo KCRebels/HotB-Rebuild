@@ -4064,7 +4064,9 @@ function bind(){
    const verifiedPlayers=practiceResolution.practicePlayers||[],matches=name==null?[]:verifiedPlayers.filter(player=>player.name===name);
    if(type==='extension')return practiceResolution.canExtend===true&&Number(practiceResolution.durationMinutes)===120;
    if(matches.length!==1)return false;
-   const player=matches[0];
+   const player=matches[0],blockCount=Number(practiceResolution.durationMinutes)===132?11:Number(practiceResolution.durationMinutes)===120?10:0;
+   if(!blockCount||!Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>blockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock))return false;
+   if(typeof player.canPitch!=='boolean'||typeof player.requiresPitchWarmup!=='boolean'||typeof player.canCatch!=='boolean'||(!player.canPitch&&player.requiresPitchWarmup))return false;
    if(type==='pitcher')return player.canPitch===true&&(practiceResolution.pitchers||[]).includes(name);
    if(type==='catcher')return player.canCatch===true&&(practiceResolution.catchers||[]).includes(name);
    if(type==='combinedPitcher')return Number(practiceResolution.durationMinutes)===120&&player.canPitch===true&&(practiceResolution.combinedPitchers||[]).includes(name);
