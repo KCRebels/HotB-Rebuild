@@ -132,4 +132,8 @@ mustNotInclude("restoreReturnState();save();render();return","Return to Setup mu
 mustInclude("const restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession);","Resolution rollback must prove the restored failed draft through the actual startup restore path after save");
 mustInclude("JSON.stringify(restoredRollbackSession)!==JSON.stringify(restoredSession)","Resolution rollback must reject post-save restart migration or drift");
 mustInclude("if(db.activePracticeSession?.resolution||db.activePracticeSession?.plan){db.activePracticeSession=null;save()}","failed exact Resolution rollback must not leave unsafe restart authority persisted");
+mustInclude("const savedDraftBytes=JSON.stringify(db.activePracticeSession);","Resolution resume must seal the exact saved setup-stage transaction before restore");
+mustInclude("restored.resolution&&JSON.stringify(restored)!==savedDraftBytes","Resolution resume must reject restore migration or defaults for unresolved decisions");
+mustInclude("HotB refused Practice Resolution resume because live rollback state could not be cloned.","Resolution resume must fail closed if pre-resume live state cannot be captured");
+mustInclude("HotB refused Practice Resolution resume because the restored decision could not be cloned.","Resolution resume must fail closed if the restored decision cannot be isolated");
 console.log('practice-resolution static contract tests passed');
