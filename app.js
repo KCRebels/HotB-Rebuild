@@ -4231,6 +4231,10 @@ function bind(){
    };
    if(String(practicePlan.startTime||'')!==String(expected.startTime||''))return false;
    if(Number(practicePlan.durationMinutes)!==Number(expected.durationMinutes))return false;
+   if(!Array.isArray(expected.expectedNotices))return false;
+   const actualNotices=[...new Set((practicePlan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort();
+   const expectedNotices=[...new Set(expected.expectedNotices.map(value=>String(value||'').trim()).filter(Boolean))].sort();
+   if(JSON.stringify(actualNotices)!==JSON.stringify(expectedNotices))return false;
    const expectedNames=expected.playerNames||[],actualNames=(practicePlan.players||[]).map(player=>player.name);
    const expectedSet=new Set(expectedNames),actualSet=new Set(actualNames);
    if(!Array.isArray(expected.playerNames)||!expectedNames.length||expectedNames.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return false;
@@ -4705,7 +4709,10 @@ function bind(){
     const availability=practiceAvailability(verifiedStart,durationMinutes,player.arrivalTime,player.departureTime);
     return Number(player.availableFromBlock)===Number(availability.availableFromBlock)&&Number(player.availableUntilBlock)===Number(availability.availableUntilBlock);
    }))return null;
-   return {role,name,startTime:verifiedStart,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||'',limitations:String(player.limitations||'')}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
+   const candidateLabel=role==='pitcher'?(withBlock11?'Hitting Only + Block 11: ':'Hitting Only: ')+name:role==='catcher'?(withBlock11?'Not Catching + Block 11: ':'Not Catching: ')+name:withBlock11?'Block 11':null;
+   const noticeMap=resolutionSnapshot.candidateNotices;
+   if(!candidateLabel||!noticeMap||!Object.prototype.hasOwnProperty.call(noticeMap,candidateLabel)||!Array.isArray(noticeMap[candidateLabel]))return null;
+   return {role,name,startTime:verifiedStart,durationMinutes,playerNames:basePlayers.map(player=>player.name),expectedNotices:[...noticeMap[candidateLabel]],availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||'',limitations:String(player.limitations||'')}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
   };
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
    // This is the mutation boundary for a verified coaching choice. Re-check the
