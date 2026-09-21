@@ -3924,7 +3924,7 @@ function practiceResolutionExtendedPlayers(players,startTime){
 function practiceResolutionSignature(players,startTime,durationMinutes){
  // Canonicalize attendee order so a harmless roster ordering change cannot invalidate
  // a verified resolution, while every scheduling-relevant field still must match.
- const canonicalPlayers=(players||[]).map(player=>({name:player.name,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,isGuest:!!player.isGuest,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||'',canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+ const canonicalPlayers=(players||[]).map(player=>({name:String(player.name||'').trim(),isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,isGuest:!!player.isGuest,availableFromBlock:Number(player.availableFromBlock),availableUntilBlock:Number(player.availableUntilBlock),arrivalTime:String(player.arrivalTime||''),departureTime:String(player.departureTime||''),canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true})).sort((a,b)=>a.name.localeCompare(b.name));
  return JSON.stringify({players:canonicalPlayers,startTime,durationMinutes});
 }
 function currentPracticeResolutionSignature(){
