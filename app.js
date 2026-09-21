@@ -2717,6 +2717,14 @@ async function syncPlayerPracticeClock(){
   ...(db.activePortalPractice?.guestCoachPortalIds||[])
  ].filter(Boolean))];
  if(!ids.length){console.warn('Player portal clock sync had no portal targets');return false}
+ // Never write a clock from stale local state onto a different/newer practice.
+ // First prove every target still contains this exact publication, then update
+ // all clocks atomically, then verify the result once.
+ const preflight=await Promise.all(ids.map(async id=>{try{
+  const snapshot=await portalDoc(id).get(),active=snapshot.exists?snapshot.data()?.activePractice:null;
+  return active?.id===activeId;
+ }catch(error){return false}}));
+ if(preflight.some(ok=>!ok)){console.warn('Player portal clock preflight mismatch');return false}
  const batch=cloudStore.batch();
  ids.forEach(id=>batch.update(portalDoc(id),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
  try{await batch.commit()}catch(error){console.warn('Player portal clock batch failed',error);return false}
