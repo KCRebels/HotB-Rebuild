@@ -5079,15 +5079,25 @@ function persistPracticeSession(){
  // the exact plan owned by that transaction. This prevents unrelated UI work from
  // becoming the restart-recovery session during the commit window.
  if(practiceResolutionApplyToken&&(!practiceResolutionApplyOwnedDraftId||!practicePlan.portalDraftId||practicePlan.portalDraftId!==practiceResolutionApplyOwnedDraftId)){console.error('HotB refused to persist a practice outside the active Resolution transaction');return false}
+ const previousActivePracticeSession=db.activePracticeSession;
+ const restorePreviousSessionAfterFailure=(message,error=null)=>{
+  if(error)console.error(message,error);else console.error(message);
+  db.activePracticeSession=previousActivePracticeSession;
+  try{save()}catch(restoreError){console.error('HotB could not restore the previous practice recovery session after resolved-session persistence failure.',restoreError)}
+  return false;
+ };
  db.activePracticeSession=session;
- try{save()}catch(error){console.error('HotB could not save the practice recovery session.',error);return false}
- if(JSON.stringify(db.activePracticeSession)!==serializedSession){console.error('HotB practice persistence changed the session during save');return false}
+ try{save()}catch(error){return restorePreviousSessionAfterFailure('HotB could not save the practice recovery session.',error)}
+ let persistedSessionBytes='';
+ try{persistedSessionBytes=JSON.stringify(db.activePracticeSession)}
+ catch(error){return restorePreviousSessionAfterFailure('HotB could not seal the saved practice recovery session.',error)}
+ if(persistedSessionBytes!==serializedSession)return restorePreviousSessionAfterFailure('HotB practice persistence changed the session during save');
  // Persistence success means the exact serialized session is immediately
  // restorable, not merely that an object was assigned to db.
  let restored=null;
  try{restored=window.HotBPracticeSession.restore?.(db.activePracticeSession)}
- catch(error){console.error('HotB could not restore the practice session it just persisted',error);return false}
- if(!restored?.plan?.portalDraftId||restored.plan.portalDraftId!==practicePlan.portalDraftId||JSON.stringify(restored)!==serializedSession){console.error('HotB could not restore the exact practice session it just persisted');return false}
+ catch(error){return restorePreviousSessionAfterFailure('HotB could not restore the practice session it just persisted',error)}
+ if(!restored?.plan?.portalDraftId||restored.plan.portalDraftId!==practicePlan.portalDraftId||JSON.stringify(restored)!==serializedSession)return restorePreviousSessionAfterFailure('HotB could not restore the exact practice session it just persisted')
  // A Resolution commit is not allowed to report persistence success merely because
  // the draft ID survived serialization. Its setup identity must survive too; the
  // full resolved-plan postcondition is checked by the owning transaction immediately
@@ -5095,10 +5105,9 @@ function persistPracticeSession(){
  if(practiceResolutionApplyToken){
   const restoredSetup=restored.setupState||{},liveNames=(practicePlan.players||[]).map(player=>player.name),savedNames=Array.isArray(restoredSetup.selectedNames)?restoredSetup.selectedNames:[];
   if(String(restoredSetup.startTime||'')!==String(practicePlan.startTime||'')||Number(restoredSetup.durationMinutes)!==Number(practicePlan.durationMinutes)||savedNames.length!==liveNames.length||new Set(savedNames).size!==savedNames.length||savedNames.some((name,index)=>name!==liveNames[index])){
-   console.error('HotB Practice Resolution restart recovery changed the resolved setup identity');
-   return false;
+   return restorePreviousSessionAfterFailure('HotB Practice Resolution restart recovery changed the resolved setup identity');
   }
-  if(JSON.stringify(restored.plan)!==JSON.stringify(practicePlan)){console.error('HotB Practice Resolution restart recovery changed the resolved plan bytes');return false}
+  if(JSON.stringify(restored.plan)!==JSON.stringify(practicePlan))return restorePreviousSessionAfterFailure('HotB Practice Resolution restart recovery changed the resolved plan bytes');
  }
  return true;
 }
