@@ -4424,25 +4424,29 @@ function bind(){
    return finishProof(true);
   };
   const rebuildResolvedPractice=(rollbackState,expected)=>{
+   // Transaction ownership helpers must exist outside the try block. If setup fails
+   // before the deferred rebuild is queued, the catch path still needs a valid,
+   // ownership-aware rollback instead of throwing a second ReferenceError.
+   let resolutionDraftId=null,resolutionApplyToken=null;
+   const transactionOwnsToken=()=>!!resolutionDraftId&&!!resolutionApplyToken&&practiceResolutionApplyToken===resolutionApplyToken&&practiceResolutionApplyOwnedDraftId===resolutionDraftId;
+   const transactionIsCurrent=()=>transactionOwnsToken()&&(practiceResolutionApplyDraftId===resolutionDraftId||practicePlan?.portalDraftId===resolutionDraftId);
+   const rollbackIfOwned=()=>{
+    // Only the transaction that still owns the live token may restore its snapshot.
+    // A stale queued callback must never overwrite a newer Resolution/apply.
+    if(!transactionOwnsToken())return false;
+    return restoreResolutionRollback(rollbackState);
+   };
    try{
     // Allocate the resolved draft identity before leaving the verified Resolution
     // modal. The Build handler consumes it exactly once; rollback clears it.
-    const resolutionDraftId=crypto.randomUUID();
+    resolutionDraftId=crypto.randomUUID();
     // A monotonic apply token makes the deferred rebuild callbacks single-use.
     // If navigation, rollback, or another Resolution invalidates this transaction,
     // stale queued callbacks are forbidden from generating or committing a plan.
-    const resolutionApplyToken=crypto.randomUUID();
+    resolutionApplyToken=crypto.randomUUID();
     practiceResolutionApplyDraftId=resolutionDraftId;
     practiceResolutionApplyOwnedDraftId=resolutionDraftId;
     practiceResolutionApplyToken=resolutionApplyToken;
-    const transactionOwnsToken=()=>practiceResolutionApplyToken===resolutionApplyToken&&practiceResolutionApplyOwnedDraftId===resolutionDraftId;
-    const transactionIsCurrent=()=>transactionOwnsToken()&&(practiceResolutionApplyDraftId===resolutionDraftId||practicePlan?.portalDraftId===resolutionDraftId);
-    const rollbackIfOwned=()=>{
-     // Only the transaction that still owns the live token may restore its snapshot.
-     // A stale queued callback must never overwrite a newer Resolution/apply.
-     if(!transactionOwnsToken())return false;
-     return restoreResolutionRollback(rollbackState);
-    };
     const verifiedResolution=rollbackState?.resolution;
     if(!resolutionRollbackStateIsValid(rollbackState)||!verifiedResolution||!expected||!Array.isArray(verifiedResolution.practicePlayers)||!verifiedResolution.practicePlayers.length)throw new Error('Verified Practice Resolution snapshot was not available for rebuild.');
     const selectedNames=verifiedResolution.practicePlayers.map(player=>player.name);
