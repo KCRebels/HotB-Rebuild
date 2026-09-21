@@ -45,7 +45,7 @@ mustInclude("JSON.stringify(saved.setupState)!==JSON.stringify(setup)","Resoluti
 mustInclude("HotB ignored Return to Practice Setup while Practice Resolution apply is verifying.","Return to Setup must not race an in-flight Resolution apply");
 mustInclude("HotB refused Return to Practice Setup because the verified failed practice could not be reconstructed.","Return to Setup must reconstruct the exact verified failed practice before discarding its seal");
 mustInclude("HotB could not persist Return to Practice Setup after Practice Resolution.","Return to Setup must prove its ordinary recovery draft was persisted");
-mustInclude("const originalSetup=structuredClone(practiceSetupState),originalResolution=practiceResolution?structuredClone(practiceResolution):null,originalSession=structuredClone(db.activePracticeSession),originalModal=modal;","Return to Setup must snapshot the complete pre-exit Resolution recovery state");
+mustInclude("originalReturnBytes=JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession})","Return to Setup must seal the complete pre-exit Resolution recovery state");
 mustInclude("const verifiedResolution=practiceResolutionSnapshotIsCurrentAndValid()?practiceResolution:null;","Return to Setup reconstruction must be driven only by a currently valid Resolution");
 mustInclude("HotB refused Return to Practice Setup because a verified player is no longer in the attendance roster.","Return to Setup must fail closed when verified roster identity cannot be reconstructed");
 mustInclude("HotB rolled back Return to Practice Setup because recovery changed the ordinary setup.","Return to Setup must restore the sealed Resolution if ordinary recovery serialization drifts");
@@ -104,7 +104,7 @@ mustInclude("match(/^(\\d{2}):(\\d{2})$/)","Persisted Resolution clock validatio
 mustNotInclude("match(/^(\\\\d{2}):(\\\\d{2})$/)","Persisted Resolution clock validation must not look for literal backslash-d text");
 
 
-mustInclude("const serializedDraft=JSON.stringify(draft);","Resolution draft must seal exact bytes before save");
+mustInclude("try{serializedDraft=JSON.stringify(draft)}catch(error){console.error('HotB refused to persist Practice Resolution because its setup draft could not be sealed.',error);return false}","Resolution draft must seal exact bytes before save and contain serialization failure");
 mustInclude("HotB Practice Resolution setup draft changed during save.","Resolution draft must fail closed if save mutates recovery bytes");
 mustInclude("HotB Practice Resolution setup draft failed post-save recovery verification.","Resolution draft must be restorable after the actual save");
 mustInclude("rollback capture clone failed; attempting JSON capture","Resolution apply must retain rollback capture when structuredClone fails");
@@ -131,7 +131,8 @@ mustInclude("HotB could not restore the sealed Practice Resolution Return-to-Set
 mustNotInclude("restoreReturnState();save();render();return","Return to Setup must not perform an unverified second save after rollback");
 mustInclude("const restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession);","Resolution rollback must prove the restored failed draft through the actual startup restore path after save");
 mustInclude("JSON.stringify(restoredRollbackSession)!==JSON.stringify(restoredSession)","Resolution rollback must reject post-save restart migration or drift");
-mustInclude("if(db.activePracticeSession?.resolution||db.activePracticeSession?.plan){db.activePracticeSession=null;save()}","failed exact Resolution rollback must not leave unsafe restart authority persisted");
+mustInclude("if(db.activePracticeSession?.resolution||db.activePracticeSession?.plan){","failed exact Resolution rollback must detect unsafe restart authority");
+mustInclude("try{save()}catch(error){console.error('HotB could not clear invalid Practice Resolution rollback recovery.',error)}","failed exact Resolution rollback cleanup must contain storage failure");
 mustInclude("const savedDraftBytes=JSON.stringify(db.activePracticeSession);","Resolution resume must seal the exact saved setup-stage transaction before restore");
 mustInclude("restored.resolution&&JSON.stringify(restored)!==savedDraftBytes","Resolution resume must reject restore migration or defaults for unresolved decisions");
 mustInclude("HotB refused Practice Resolution resume because live rollback state could not be cloned.","Resolution resume must fail closed if pre-resume live state cannot be captured");
