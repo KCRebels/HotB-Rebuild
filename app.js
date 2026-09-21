@@ -5440,7 +5440,7 @@ function bindPractice(){
     try{
      const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode:null});
      if(!resolutionPlanIsSafe(plan,label))return false;
-     verifiedCandidateNotices[label]=[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort();
+     const candidateNotices=[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort();
      const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
      const candidateBlockCount=Number(duration)===132?11:Number(duration)===120?10:0;
      // Combined role + Block 11 candidates must be compared with the already
@@ -5514,6 +5514,10 @@ function bindPractice(){
         player.prePracticeComplete!==expected.prePracticeComplete||player.isPitcher!==expected.isPitcher||player.isCatcher!==expected.isCatcher||player.isGuest!==expected.isGuest;
       })){resolutionAuditFailures.push(label+' changed player state beyond the verified Block 11 extension.');return false}
      }
+     // Publish candidate metadata only after every identity/availability/role proof
+     // above succeeds. A failed candidate must leave no residue that can later be
+     // mistaken for a verified coaching choice.
+     verifiedCandidateNotices[label]=candidateNotices;
      return true;
     }catch(error){
      console.error('HotB Practice Resolution build failed',label,error);
@@ -5577,10 +5581,22 @@ function bindPractice(){
    // Resolution cannot add, remove, or swap a coaching choice without invalidating
    // the transaction and forcing a fresh verification build.
    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
+   // The generated decision object must pass the same complete validator used by
+   // display, apply, persistence and resume before it can replace the failed build.
+   // This catches candidate-generation drift at its source instead of saving a
+   // Resolution that the next render immediately rejects.
    practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
    practiceSetupState.startTime=startTime;
    practiceSetupState.durationMinutes=durationMinutes;
-   practicePlan=null;persistPracticeDraft();modal='practiceResolution';render();return;
+   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
+    console.error('HotB refused to publish an internally inconsistent Practice Resolution.');
+    practiceResolution=null;practicePlan=null;persistPracticeDraft();
+    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Plan'}
+    alert('HotB could not verify the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
+    render();return;
+   }
+
+   practicePlan=null;if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');practiceResolution=null;modal=null;render();return}modal='practiceResolution';render();return;
   }
   if(practicePlan.fallbackWarnings?.length){
    practicePlan.buildNotices=practicePlan.fallbackWarnings.slice();
