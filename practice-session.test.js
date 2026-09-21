@@ -16,6 +16,17 @@ assert.deepEqual(restoredResolutionDraft.setupState.selectedNames,['Brooklyn','L
 assert.equal(restoredResolutionDraft.setupState.accommodations.Brooklyn.canPitch,false,'Hitting Only resolution must survive setup-draft recovery');
 assert.equal(restoredResolutionDraft.setupState.accommodations.Brooklyn.requiresPitchWarmup,false,'Hitting Only resolution must not restore a pitching warm-up');
 assert.equal(restoredResolutionDraft.setupState.accommodations.Lydia.canCatch,false,'Not Catching resolution must survive setup-draft recovery');
+const verifiedResolution={errors:['No rule-safe rotation'],pitchers:['Brooklyn'],catchers:['Lydia'],canExtend:true,combinedPitchers:['Brooklyn'],combinedCatchers:['Lydia'],practicePlayers:[{name:'Brooklyn',canPitch:true,canCatch:false},{name:'Lydia',canPitch:false,canCatch:true}],startTime:'18:00',durationMinutes:120,signature:'verified-signature'};
+const unresolvedDraft=session.createDraft({setupState:{selectedNames:['Brooklyn','Lydia'],startTime:'18:00',durationMinutes:120},resolution:verifiedResolution});
+verifiedResolution.pitchers.length=0;
+const restoredUnresolved=session.restore(unresolvedDraft);
+assert.equal(unresolvedDraft.version,5,'resolution-aware setup drafts must use the current persistence version');
+assert.deepEqual(restoredUnresolved.resolution.pitchers,['Brooklyn'],'verified pitcher choices must survive refresh independently of working memory');
+assert.deepEqual(restoredUnresolved.resolution.catchers,['Lydia'],'verified catcher choices must survive refresh');
+assert.equal(restoredUnresolved.resolution.canExtend,true,'verified Block 11 choice must survive refresh');
+assert.equal(restoredUnresolved.resolution.signature,'verified-signature','resolution signature must survive refresh so stale choices still fail closed');
+restoredUnresolved.resolution.catchers.length=0;
+assert.deepEqual(unresolvedDraft.resolution.catchers,['Lydia'],'restored resolution must not mutate the persisted decision snapshot');
 
 const source={plan:{portalDraftId:'practice-1',blockMinutes:12,machineFocus:'High Tee Machine',frontTossFocus:'Opposite Field Toss',players:[{name:'Aniesa'}],schedule:{Aniesa:[{block:1,activity:'Machine'}]},liveSessions:[{block:4,pitcher:'Aniesa',catcher:'Tayte'}]},chosenDrills:[{name:'Two Tee'}],draftDrills:[{name:'Connection Ball'}],drillPickerOpen:false,equipmentSetupOpen:true,setupState:{selectedNames:['Aniesa'],guestPlayers:[{name:'Guest Ava',phone:'9135550000'}]},portalState:{active:true,id:'practice-1',players:['Aniesa','Guest Ava']},clock:{running:true,finished:false,startAt:1000,lastBlock:1,lastTwoMinuteBlock:1}};
 const saved=session.create(source);
