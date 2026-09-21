@@ -4106,9 +4106,13 @@ function bind(){
   const resolutionRollbackState=()=>({setupState:structuredClone(practiceSetupState),resolution:structuredClone(practiceResolution)});
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
    const target=findResolutionRosterIndex(name,role);if(!target)return false;
-   const accommodation=practiceAccommodation(target.roster[target.index]);
-   if(role==='pitcher'){accommodation.canPitch=false;accommodation.requiresPitchWarmup=false}
-   if(role==='catcher')accommodation.canCatch=false;
+   const verifiedPlayer=practiceResolution?.practicePlayers?.find(player=>player.name===name);
+   if(!verifiedPlayer)return false;
+   // Preserve the exact availability/limitation state that was audited. Only the
+   // coach-approved role flag is allowed to change during resolution.
+   const accommodation=structuredClone(practiceSetupState.accommodations?.[name]||practiceAccommodation(target.roster[target.index]));
+   if(role==='pitcher'){if(!verifiedPlayer.canPitch)return false;accommodation.canPitch=false;accommodation.requiresPitchWarmup=false}
+   if(role==='catcher'){if(!verifiedPlayer.canCatch)return false;accommodation.canCatch=false}
    practiceSetupState.accommodations[name]=accommodation;
    practiceSetupState.durationMinutes=withBlock11?132:(practiceResolution?.durationMinutes||practiceSetupState.durationMinutes);
    return true;
