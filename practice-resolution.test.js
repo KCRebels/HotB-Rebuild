@@ -144,4 +144,6 @@ mustInclude("JSON.stringify(persisted)!==serializedDraft","Resolution post-save 
 mustInclude("practiceTimeMinutes(value){const match=","practice time parser must validate clock shape instead of coercing malformed values");
 mustInclude("duration<=0?'':practiceTimeValue(start+duration)","practice end derivation must fail closed for invalid clocks or durations");
 mustInclude("availableFromBlock:-1,availableUntilBlock:-1","practice availability must expose invalid time data as impossible availability");
+mustInclude("if(minutes===null)return '—';","invalid practice clocks must not render as a plausible time label");
+mustInclude("throw new Error('invalid-practice-start-time')","practice publication must reject an invalid start clock instead of deriving block times");
 console.log('practice-resolution static contract tests passed');
