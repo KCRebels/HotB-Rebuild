@@ -128,6 +128,7 @@ mustInclude("sourceFields.some(field=>sourceModel[field]!==verifiedPlayer[field]
 mustInclude("originalReturnBytes=JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession})","Return to Setup must seal its entire pre-exit Resolution transaction");
 mustInclude("return-state-post-save-drift","Return to Setup rollback must verify the sealed transaction after save");
 mustInclude("HotB could not restore the sealed Practice Resolution Return-to-Setup state.","Return to Setup rollback must fail closed when exact recovery is impossible");
+mustInclude("HotB could not clear failed Return-to-Setup recovery authority.","failed Return-to-Setup rollback must clear unsafe restart authority fail-closed");
 mustNotInclude("restoreReturnState();save();render();return","Return to Setup must not perform an unverified second save after rollback");
 mustInclude("const restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession);","Resolution rollback must prove the restored failed draft through the actual startup restore path after save");
 mustInclude("JSON.stringify(restoredRollbackSession)!==JSON.stringify(restoredSession)","Resolution rollback must reject post-save restart migration or drift");
