@@ -4001,8 +4001,8 @@ function bind(){
   const beginResolutionApply=()=>{
    if(resolutionApplying)return false;
    resolutionApplying=true;
-   $('.practice-resolution-modal button').forEach(button=>button.disabled=true);
-   $('.practice-resolution-modal input').forEach(input=>input.disabled=true);
+   document.querySelectorAll('.practice-resolution-modal button').forEach(button=>button.disabled=true);
+   document.querySelectorAll('.practice-resolution-modal input').forEach(input=>input.disabled=true);
    return true;
   };
   const rebuildResolvedPractice=()=>{
@@ -4013,23 +4013,23 @@ function bind(){
   };
   $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!beginResolutionApply())return;
-   const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){resolutionApplying=false;$('.practice-resolution-modal button').forEach(button=>button.disabled=false);$('.practice-resolution-modal input').forEach(input=>input.disabled=false);alert('HotB could not find that pitcher in this practice.');return}
+   const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){resolutionApplying=false;document.querySelectorAll('.practice-resolution-modal button').forEach(button=>button.disabled=false);document.querySelectorAll('.practice-resolution-modal input').forEach(input=>input.disabled=false);alert('HotB could not find that pitcher in this practice.');return}
    const accommodation=practiceAccommodation(roster[index]);accommodation.canPitch=false;accommodation.requiresPitchWarmup=false;practiceSetupState.accommodations[picked]=accommodation;practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;rebuildResolvedPractice();
   });
   $('#applyPracticeCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!beginResolutionApply())return;
-   const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){resolutionApplying=false;$('.practice-resolution-modal button').forEach(button=>button.disabled=false);$('.practice-resolution-modal input').forEach(input=>input.disabled=false);alert('HotB could not find that catcher in this practice.');return}
+   const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){resolutionApplying=false;document.querySelectorAll('.practice-resolution-modal button').forEach(button=>button.disabled=false);document.querySelectorAll('.practice-resolution-modal input').forEach(input=>input.disabled=false);alert('HotB could not find that catcher in this practice.');return}
    const accommodation=practiceAccommodation(roster[index]);accommodation.canCatch=false;practiceSetupState.accommodations[picked]=accommodation;practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;rebuildResolvedPractice();
   });
   $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent()||!beginResolutionApply())return;practiceSetupState.durationMinutes=132;rebuildResolvedPractice()});
   $('#applyPracticeCombinedResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionCombinedPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!beginResolutionApply())return;
-   const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){resolutionApplying=false;$('.practice-resolution-modal button').forEach(button=>button.disabled=false);$('.practice-resolution-modal input').forEach(input=>input.disabled=false);alert('HotB could not find that pitcher in this practice.');return}
+   const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){resolutionApplying=false;document.querySelectorAll('.practice-resolution-modal button').forEach(button=>button.disabled=false);document.querySelectorAll('.practice-resolution-modal input').forEach(input=>input.disabled=false);alert('HotB could not find that pitcher in this practice.');return}
    const accommodation=practiceAccommodation(roster[index]);accommodation.canPitch=false;accommodation.requiresPitchWarmup=false;practiceSetupState.accommodations[picked]=accommodation;practiceSetupState.durationMinutes=132;rebuildResolvedPractice();
   });
   $('#applyPracticeCombinedCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!beginResolutionApply())return;
-   const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){resolutionApplying=false;$('.practice-resolution-modal button').forEach(button=>button.disabled=false);$('.practice-resolution-modal input').forEach(input=>input.disabled=false);alert('HotB could not find that catcher in this practice.');return}
+   const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){resolutionApplying=false;document.querySelectorAll('.practice-resolution-modal button').forEach(button=>button.disabled=false);document.querySelectorAll('.practice-resolution-modal input').forEach(input=>input.disabled=false);alert('HotB could not find that catcher in this practice.');return}
    const accommodation=practiceAccommodation(roster[index]);accommodation.canCatch=false;practiceSetupState.accommodations[picked]=accommodation;practiceSetupState.durationMinutes=132;rebuildResolvedPractice();
   });
   $('#returnPracticeAttendance')?.addEventListener('click',()=>{
