@@ -4395,24 +4395,21 @@ function persistPracticeSession(){
  save();return true;
 }
 function persistPracticeDraft(){
- // Setup drafts are normally ten blocks. Keep 132 only while preserving an
- // already-verified unresolved Resolution; arbitrary legacy durations cannot
- // become restart state for the current scheduler.
- const draftDuration=Number(practiceSetupState.durationMinutes);
- if(draftDuration!==120&&!(draftDuration===132&&practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)))practiceSetupState.durationMinutes=120;
  if(practicePlan||db.activePortalPractice?.id||!window.HotBPracticeSession?.createDraft)return;
- const checkboxes=$('[data-practice-player]');
+ const checkboxes=$$('[data-practice-player]');
  if(checkboxes.length){const roster=practiceAttendanceRoster();practiceSetupState.selectedNames=checkboxes.filter(input=>input.checked).map(input=>roster[Number(input.dataset.practicePlayer)]?.name).filter(Boolean)}
  const start=$('#practiceStartTime')?.value;if(start)practiceSetupState.startTime=start;
  const duration=Number($('#practiceDuration')?.value);if(duration)practiceSetupState.durationMinutes=duration;
- // Persistence is the last line of defense against stale Resolution data. Any
- // caller that changes setup without explicitly clearing Resolution still cannot
- // save an obsolete verified snapshot into restart recovery.
+ // Persistence is the final setup-state gate. First reject stale Resolution data,
+ // then normalize duration against the surviving transaction. The order matters:
+ // a stale 132-minute snapshot must not leave an emergency Block 11 duration behind.
  if(practiceResolution&&!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
   console.warn('HotB discarded stale Practice Resolution before saving the setup draft.');
   practiceResolution=null;
   if(modal==='practiceResolution')modal=null;
  }
+ const draftDuration=Number(practiceSetupState.durationMinutes);
+ if(draftDuration!==120&&!(draftDuration===132&&practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)))practiceSetupState.durationMinutes=120;
  db.activePracticeSession=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:practiceResolution});save();
 }
 function clearPracticeSession(){
