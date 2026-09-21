@@ -4493,7 +4493,12 @@ function bindPractice(){
     try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan))solvingCatchers.push(catcher.name)}catch(_){}
    }
    if(Number(durationMinutes)===120){
-    try{const extendedPlayers=attendees.map(player=>practicePlayerModel(player,accommodations[player.name]||practiceAccommodation(player),startTime,132)),extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=resolutionPlanIsSafe(extendedPlan);
+    try{
+     // Block 11 extends only players who were actually available through the end
+     // of the original 120-minute practice. An explicit early departure remains
+     // an explicit early departure; resolution must never silently lengthen it.
+     const extendedPlayers=practicePlayers.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock,departureTime:player.availableUntilBlock===10?practiceEndValue(startTime,132):player.departureTime}));
+     const extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=resolutionPlanIsSafe(extendedPlan);
      if(!canExtend){
       for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
        const testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
