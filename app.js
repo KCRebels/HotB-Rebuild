@@ -2671,8 +2671,18 @@ async function recoverOrphanedActivePractice(){
   for(const player of remote.players){if(!Array.isArray(player.schedule)||player.schedule.length!==10)throw new Error('practice-schedule-incomplete');for(let index=0;index<10;index++){const entry=player.schedule[index];if(Number(entry?.block)!==index+1||!String(entry?.time||'').trim()||!String(entry?.assignment||'').trim())throw new Error('practice-schedule-incomplete')}}
   const canonicalTimes=remote.players[0].schedule.map(entry=>String(entry.time||'').trim()),normalizePublishedTime=value=>String(value||'').trim().replace(/\s+/g,'').toLowerCase().replace(/am$/,'a').replace(/pm$/,'p').replace(/-/g,'–');
   for(const player of remote.players)for(let index=0;index<10;index++)if(normalizePublishedTime(player.schedule[index]?.time)!==normalizePublishedTime(canonicalTimes[index]))throw new Error('practice-time-conflict');
-  if(!Array.isArray(remote.schedule)||remote.schedule.length!==10)throw new Error('coach-schedule-incomplete');
-  for(let index=0;index<10;index++){const coachBlock=remote.schedule[index];if(Number(coachBlock?.block)!==index+1||!String(coachBlock?.time||'').trim()||!String(coachBlock?.assignment||'').trim())throw new Error('coach-schedule-incomplete');if(normalizePublishedTime(coachBlock.time)!==normalizePublishedTime(canonicalTimes[index]))throw new Error('coach-time-conflict')}
+  // Older/partial coach portal publications may not carry the coach-only
+  // schedule even though every player's exact 10-block schedule is intact.
+  // The player schedules are the authoritative rotation. Recover from them and
+  // rebuild the coach view locally rather than rejecting a valid publication.
+  let recoveredCoachSchedule=null;
+  if(Array.isArray(remote.schedule)&&remote.schedule.length===10){
+   const complete=remote.schedule.every((coachBlock,index)=>Number(coachBlock?.block)===index+1&&String(coachBlock?.time||'').trim()&&String(coachBlock?.assignment||'').trim());
+   if(complete){
+    for(let index=0;index<10;index++)if(normalizePublishedTime(remote.schedule[index].time)!==normalizePublishedTime(canonicalTimes[index]))throw new Error('coach-time-conflict');
+    recoveredCoachSchedule=structuredClone(remote.schedule);
+   }
+  }
   const blockMinutes=Number(remote.blockMinutes)||12,durationMinutes=blockMinutes*10;
   const publishedRangeMinutes=value=>{const parts=String(value||'').split(/[–-]/).map(part=>part.trim());if(parts.length!==2)return null;const parse=value=>{const raw=String(value).trim(),m24=raw.match(/^(\d{1,2}):(\d{2})$/);if(m24)return Number(m24[1])*60+Number(m24[2]);const m12=raw.match(/^(\d{1,2}):(\d{2})\s*([ap])(?:m)?$/i);if(!m12)return null;let hour=Number(m12[1])%12;if(m12[3].toLowerCase()==='p')hour+=12;return hour*60+Number(m12[2])};const start=parse(parts[0]),end=parse(parts[1]);if(start===null||end===null)return null;return (end-start+1440)%1440};
   for(const value of canonicalTimes)if(publishedRangeMinutes(value)!==blockMinutes)throw new Error('practice-duration-conflict');
@@ -2699,7 +2709,7 @@ async function recoverOrphanedActivePractice(){
   Object.entries(schedule).forEach(([name,entries])=>entries.forEach((entry,index)=>{if(entry.activity!=='Pitch Live')return;let session=liveSessions.find(item=>item.block===index);if(!session){session={block:index,pitcher:name,catcher:'9Square',hitters:[]};liveSessions.push(session)}}));
   const blocks=Array.from({length:10},(_,index)=>{const assignments={};Object.entries(schedule).forEach(([name,entries])=>{const entry=entries[index];if(!entry)return;let key=entry.activity;if(entry.activity==='Pitch Live')key=`Pitch Live — ${entry.partner||'9Square'}`;else if(entry.activity==='Catch Live')key=`Catch Live — ${entry.partner||''}`;else if(entry.activity==='Hit Live'){const live=liveSessions.find(item=>item.block===index);key=live?`Hit Live — ${live.pitcher} — ${live.catcher}`:'Hit Live'};(assignments[key]||(assignments[key]=[])).push(name)});return {block:index+1,start:times[index].start,end:times[index].end,assignments}});
   const recoveredPlayerSchedules={};for(const item of remote.players||[]){const first=practiceFirstName(item.name),source=rosterByFirst.get(first),name=source?.name||activeNameByFirst.get(first)||item.name;recoveredPlayerSchedules[name]=structuredClone(item.schedule)}
-  const recoveredPlan={portalDraftId:remote.id,startTime,durationMinutes,blockMinutes,times,players,schedule,blocks,drillStations,liveSessions,machineFocus,frontTossFocus,recoveredCoachSchedule:structuredClone(remote.schedule),recoveredPlayerSchedules,warnings:['Recovered from the activated coach portal without rebuilding the scheduler.']};
+  const recoveredPlan={portalDraftId:remote.id,startTime,durationMinutes,blockMinutes,times,players,schedule,blocks,drillStations,liveSessions,machineFocus,frontTossFocus,recoveredCoachSchedule:recoveredCoachSchedule||[],recoveredPlayerSchedules,warnings:['Recovered from the activated coach portal without rebuilding the scheduler.']};
   const recoveredChosenDrills=chosenDrills,clock=remote.clock||{},startedAt=Date.parse(clock.startedAt||''),activatedAt=Date.parse(remote.activatedAt||'');
   // Recovery is valid only for this publication, but activation and Start are
   // independent client timestamps. Do not reject a legitimate live practice
