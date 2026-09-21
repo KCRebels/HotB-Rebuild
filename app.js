@@ -5475,7 +5475,7 @@ function bindPractice(){
     if(plan.feasibilityErrors?.length){resolutionAuditFailures.push(label+' remained infeasible: '+[...new Set(plan.feasibilityErrors.map(error=>String(error||'').trim()).filter(Boolean))].join(' | '));return false}
     if(!Array.isArray(plan.players)||!plan.schedule||!Array.isArray(plan.times)){resolutionAuditFailures.push(label+' returned incomplete schedule data.');return false}
     const planNames=plan.players.map(player=>player.name),planNameSet=new Set(planNames),scheduleKeys=Object.keys(plan.schedule||{}),scheduleKeySet=new Set(scheduleKeys),expectedBlocks=Number(plan.durationMinutes)===132?11:10;
-    if(planNames.length!==planNameSet.size||scheduleKeys.length!==scheduleKeySet.size||planNameSet.size!==scheduleKeySet.size||planNames.some(name=>!scheduleKeySet.has(name))){resolutionAuditFailures.push(label+' returned inconsistent attendee schedule ownership.');return false}
+    if(planNames.length!==planNameSet.size||scheduleKeys.length!==scheduleKeySet.size||planNameSet.size!==scheduleKeySet.size||scheduleKeys.some((name,index)=>name!==planNames[index])){resolutionAuditFailures.push(label+' returned inconsistent attendee schedule ownership.');return false}
     if(Number(plan.durationMinutes)!==120&&Number(plan.durationMinutes)!==132){resolutionAuditFailures.push(label+' returned an unsupported practice duration.');return false}
     if(Number(plan.times.length)!==expectedBlocks){resolutionAuditFailures.push(label+' returned schedule timing that does not match its duration.');return false}
     if(planNames.some(name=>!Array.isArray(plan.schedule[name])||plan.schedule[name].length!==expectedBlocks)){resolutionAuditFailures.push(label+' returned incomplete player block coverage.');return false}
@@ -5533,10 +5533,11 @@ function bindPractice(){
       const availability=practiceAvailability(startTime,duration,player.arrivalTime,player.departureTime);
       return Number(player.availableFromBlock)===Number(availability.availableFromBlock)&&Number(player.availableUntilBlock)===Number(availability.availableUntilBlock);
      })){resolutionAuditFailures.push(label+' received malformed or internally inconsistent candidate player data.');return false}
-     if(expectedNames.length!==new Set(expectedNames).size||actualNames.length!==new Set(actualNames).size||expectedNames.length!==actualNames.length||expectedNames.some(name=>!actualNames.includes(name))){resolutionAuditFailures.push(label+' changed the verified attendee set.');return false}
+     if(expectedNames.length!==new Set(expectedNames).size||actualNames.length!==new Set(actualNames).size||expectedNames.length!==actualNames.length||actualNames.some((name,index)=>name!==expectedNames[index])){resolutionAuditFailures.push(label+' changed the verified attendee order.');return false}
      if(String(plan.startTime||'')!==String(startTime)||Number(plan.durationMinutes)!==Number(duration)){resolutionAuditFailures.push(label+' changed verified practice timing.');return false}
-     for(const expectedPlayer of players){
-      const actualPlayer=(plan.players||[]).find(player=>player.name===expectedPlayer.name);
+     for(let playerIndex=0;playerIndex<players.length;playerIndex++){
+      const expectedPlayer=players[playerIndex],actualPlayer=(plan.players||[])[playerIndex];
+      if(actualPlayer?.name!==expectedPlayer.name){resolutionAuditFailures.push(label+' changed verified player ordering during candidate generation.');return false}
       if(!actualPlayer||Number(actualPlayer.availableFromBlock)!==Number(expectedPlayer.availableFromBlock)||Number(actualPlayer.availableUntilBlock)!==Number(expectedPlayer.availableUntilBlock)||String(actualPlayer.arrivalTime||'')!==String(expectedPlayer.arrivalTime||'')||String(actualPlayer.departureTime||'')!==String(expectedPlayer.departureTime||'')||String(actualPlayer.limitations||'')!==String(expectedPlayer.limitations||'')){resolutionAuditFailures.push(label+' changed verified player availability or limitations.');return false}
       if(actualPlayer.canPitch!==expectedPlayer.canPitch||actualPlayer.requiresPitchWarmup!==expectedPlayer.requiresPitchWarmup||actualPlayer.canCatch!==expectedPlayer.canCatch||actualPlayer.prePracticeComplete!==expectedPlayer.prePracticeComplete||actualPlayer.isPitcher!==expectedPlayer.isPitcher||actualPlayer.isCatcher!==expectedPlayer.isCatcher||actualPlayer.isGuest!==expectedPlayer.isGuest){resolutionAuditFailures.push(label+' changed verified player role or practice identity state.');return false}
      }
