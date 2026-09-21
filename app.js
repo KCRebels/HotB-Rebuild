@@ -4615,6 +4615,17 @@ function bind(){
          console.error('HotB Practice Resolution transaction changed during restart-recovery verification');
         }
         if(rebuiltSafe){
+         // The recovery proof temporarily swaps practicePlan to the restored copy.
+         // Prove that the live plan itself is still the exact session we committed
+         // before consuming transaction ownership. A restore hook or later refactor
+         // must never be able to validate one object and leave different live bytes.
+         const committedSession=db.activePracticeSession;
+         if(!committedSession||JSON.stringify(committedSession.plan)!==JSON.stringify(practicePlan)){
+          rebuiltSafe=false;
+          console.error('HotB Practice Resolution live plan changed after restart-recovery verification');
+         }
+        }
+        if(rebuiltSafe){
          // Consume the transaction identity before unlocking the UI. No queued
          // callback from this apply is allowed to run after commit.
          practiceResolutionApplyDraftId=null;
