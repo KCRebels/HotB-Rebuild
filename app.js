@@ -1613,12 +1613,27 @@ function persistDbLocal({markCloud=true,scheduleBackup=true}={}){
  const json=JSON.stringify(db);
  try{localStorage.setItem(DBKEY,json)}catch(error){
   const quota=error?.name==='QuotaExceededError'||Number(error?.code)===22||/quota/i.test(String(error?.message||''));
-  if(quota){console.error('HotB device storage quota exceeded',error);throw new Error('device-storage-quota-exceeded')}
-  throw error;
+  if(quota){
+   // First reclaim only data that is provably reconstructable and unused after
+   // a game is saved. Never delete stats/history to make room.
+   if(compactReconstructableLocalCaches()){
+    try{localStorage.setItem(DBKEY,JSON.stringify(db))}
+    catch(retryError){console.error('HotB device storage quota exceeded after safe compaction',retryError);throw new Error('device-storage-quota-exceeded')}
+   }else{console.error('HotB device storage quota exceeded',error);throw new Error('device-storage-quota-exceeded')}
+  }else throw error;
  }
  if(markCloud&&localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
  if(scheduleBackup)scheduleCloudBackup();
 }
+function compactReconstructableLocalCaches(){
+ let changed=false;
+ // Completed-game undo stacks are never used by Undo (Undo operates only on
+ // currentGame). Removing them cannot change stats, reports, observations,
+ // pitches, plate appearances or Practice History.
+ for(const game of db.savedGames||[]){if(Array.isArray(game?.undoStack)&&game.undoStack.length){delete game.undoStack;changed=true}}
+ return changed;
+}
+
 
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
 function go(r){
@@ -4666,7 +4681,14 @@ function bindGameAction(){
    const g=currentGame();
    if(!g)return;
    g.ended=true;
-   db.savedGames.push(structuredClone(g));
+   // Undo snapshots are only needed while a game is live. Each snapshot contains
+   // copies of the growing pitch/PA history, so retaining up to 50 of them in a
+   // completed game can consume most of Safari localStorage. Preserve every real
+   // game pitch, PA and observation, but discard this reconstructable live-only
+   // undo cache before archiving.
+   const completedGame=structuredClone(g);
+   delete completedGame.undoStack;
+   db.savedGames.push(completedGame);
    db.currentGame=null;
    modal=null;
    save();
