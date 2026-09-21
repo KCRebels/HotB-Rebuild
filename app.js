@@ -3910,6 +3910,8 @@ function practiceBuildNoticeModal(){
 }
 function practiceResolutionModal(){
  const r=practiceResolution;if(!r)return'';
+ const currentResolutionSignature=JSON.stringify({players:(r.practicePlayers||[]).map(player=>({name:player.name,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime:r.startTime,durationMinutes:r.durationMinutes});
+ if(r.signature&&r.signature!==currentResolutionSignature)return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>Practice changed</h2></div></div><p>HotB will not apply a resolution that was verified against different practice information.</p><button class="btn block" id="returnPracticeAttendance">Return to Practice Setup</button></div></div>`;
  const pitchers=(r.pitchers||[]).map(name=>`<label class="practice-resolution-pitcher"><input type="radio" name="practiceResolutionPitcher" value="${esc(name)}"><span><b>${esc(practiceFirstName(name))}</b><small>Not Pitching Live · this practice only</small></span></label>`).join('');
  const combinedPitchers=(r.combinedPitchers||[]).map(name=>`<label class="practice-resolution-pitcher"><input type="radio" name="practiceResolutionCombinedPitcher" value="${esc(name)}"><span><b>${esc(practiceFirstName(name))}</b><small>Hitting Only + Emergency Block 11</small></span></label>`).join('');
  const catchers=(r.catchers||[]).map(name=>`<label class="practice-resolution-pitcher"><input type="radio" name="practiceResolutionCatcher" value="${esc(name)}"><span><b>${esc(practiceFirstName(name))}</b><small>Not Catching · this practice only</small></span></label>`).join('');
@@ -3977,23 +3979,29 @@ function bind(){
   $('#acceptPracticeBuildNotice')?.addEventListener('click',()=>{modal=null;render();window.scrollTo(0,0)});
  }
  if(modal==='practiceResolution'){
-  $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{
+  const resolutionStillCurrent=()=>{
+   if(!practiceResolution?.signature)return true;
+   const signature=JSON.stringify({players:(practiceResolution.practicePlayers||[]).map(player=>({name:player.name,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime:practiceResolution.startTime,durationMinutes:practiceResolution.durationMinutes});
+   if(signature===practiceResolution.signature)return true;
+   alert('This practice changed after HotB verified the resolution. Return to Practice Setup and build again so HotB can verify the current practice.');return false;
+  };
+  $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}
    const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){alert('HotB could not find that pitcher in this practice.');return}
    const accommodation=practiceAccommodation(roster[index]);accommodation.canPitch=false;accommodation.requiresPitchWarmup=false;practiceSetupState.accommodations[picked]=accommodation;practiceSetupState.selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;practiceResolution=null;modal=null;persistPracticeDraft();render();setTimeout(()=>$('#generatePractice')?.click(),0);
   });
-  $('#applyPracticeCatcherResolution')?.addEventListener('click',()=>{
+  $('#applyPracticeCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}
    const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){alert('HotB could not find that catcher in this practice.');return}
    const accommodation=practiceAccommodation(roster[index]);accommodation.canCatch=false;practiceSetupState.accommodations[picked]=accommodation;practiceSetupState.selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;practiceResolution=null;modal=null;persistPracticeDraft();render();setTimeout(()=>$('#generatePractice')?.click(),0);
   });
-  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{practiceSetupState.selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;practiceSetupState.durationMinutes=132;practiceResolution=null;modal=null;persistPracticeDraft();render();setTimeout(()=>$('#generatePractice')?.click(),0)});
-  $('#applyPracticeCombinedResolution')?.addEventListener('click',()=>{
+  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;practiceSetupState.selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;practiceSetupState.durationMinutes=132;practiceResolution=null;modal=null;persistPracticeDraft();render();setTimeout(()=>$('#generatePractice')?.click(),0)});
+  $('#applyPracticeCombinedResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionCombinedPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}
    const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){alert('HotB could not find that pitcher in this practice.');return}
    const accommodation=practiceAccommodation(roster[index]);accommodation.canPitch=false;accommodation.requiresPitchWarmup=false;practiceSetupState.accommodations[picked]=accommodation;practiceSetupState.selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;practiceSetupState.durationMinutes=132;practiceResolution=null;modal=null;persistPracticeDraft();render();setTimeout(()=>$('#generatePractice')?.click(),0);
   });
-  $('#applyPracticeCombinedCatcherResolution')?.addEventListener('click',()=>{
+  $('#applyPracticeCombinedCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}
    const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===picked);if(index<0){alert('HotB could not find that catcher in this practice.');return}
    const accommodation=practiceAccommodation(roster[index]);accommodation.canCatch=false;practiceSetupState.accommodations[picked]=accommodation;practiceSetupState.selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;practiceSetupState.durationMinutes=132;practiceResolution=null;modal=null;persistPracticeDraft();render();setTimeout(()=>$('#generatePractice')?.click(),0);
@@ -4487,7 +4495,8 @@ function bindPractice(){
     }catch(_){}
    }
    const rosterGuidance=availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
-   practiceResolution={errors,pitchers:solvingPitchers,catchers:solvingCatchers,canExtend,combinedPitchers,combinedCatchers,rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,notices:practicePlan.fallbackWarnings||[]};
+   const resolutionSignature=JSON.stringify({players:practicePlayers.map(player=>({name:player.name,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime,durationMinutes});
+   practiceResolution={errors,pitchers:solvingPitchers,catchers:solvingCatchers,canExtend,combinedPitchers,combinedCatchers,rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,notices:practicePlan.fallbackWarnings||[],signature:resolutionSignature};
    practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
    practiceSetupState.startTime=startTime;
    practiceSetupState.durationMinutes=durationMinutes;
