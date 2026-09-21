@@ -2712,6 +2712,20 @@ async function syncPlayerPracticeClock(){
 }
 async function activatePlayerPlans(){
  if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before activating player portals.');return}
+ // Firebase can restore an old/anonymous portal identity before the coach auth
+ // observer finishes. Activation is a coach-only write, so verify the live Auth
+ // user immediately before touching playerPortals instead of trusting stale
+ // cloudUser state from an earlier callback.
+ let activationUser=cloudAuth?.currentUser||null;
+ if(!activationUser||activationUser.isAnonymous||String(activationUser.email||'').toLowerCase()!==CLOUD_EMAIL){
+  try{activationUser=await waitForPortalAuthState(5000)}catch(_){activationUser=cloudAuth?.currentUser||null}
+ }
+ if(!activationUser||activationUser.isAnonymous||String(activationUser.email||'').toLowerCase()!==CLOUD_EMAIL){
+  cloudUser=null;
+  alert('Your coach cloud session needs to reconnect before HotB can activate player plans. Open Cloud Backup, sign in, then return to this practice. Nothing was changed.');
+  return;
+ }
+ cloudUser=activationUser;
  if(!practicePlan||practiceChosenDrills.length!==practicePlan.drillStations){alert('Choose all practice drills before activating player plans.');return}
  if(practiceClock.finished){alert('This practice is already finished and cannot be activated again. Build a new practice to publish new player plans.');return}
  if(db.activePortalPractice?.id){alert(db.activePortalPractice.id===practicePlan.portalDraftId?'This exact practice is already active on the player and coach portals. HotB will not republish it or reset its live clock.':'Another practice is still active on the player and coach portals. End or deactivate that practice before activating this one.');return}
@@ -2791,7 +2805,8 @@ async function activatePlayerPlans(){
   render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
  }catch(error){
   if(button){button.disabled=false;button.textContent='Activate Player Plans'}
-  const code=String(error?.code||error?.message||error||'unknown');
+  const rawCode=String(error?.code||error?.message||error||'unknown');
+  const code=rawCode==='22'&&error?.message?String(error.message):rawCode;
   console.error('HotB player-plan activation failed',error);
   if(code.includes('portal-activation-existing-publication')||code.includes('portal-activation-partial-existing-publication')){
    alert('HotB found this exact practice already published in the cloud. It was not overwritten or reset. Return to Practice Home and use Recover Practice so the existing live state can be verified.');
