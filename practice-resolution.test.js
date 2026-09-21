@@ -152,4 +152,7 @@ mustInclude("sourceFields.some(field=>rebuiltPlayer[field]!==player[field])","ro
 mustInclude("saved recovery record could not be restored.","rollback validation must fail closed if production session restore throws");
 mustInclude("could not save the restored Practice Resolution rollback state","rollback recovery must fail closed if persistence throws");
 mustInclude("rollback post-save restore failed.","rollback post-save restart proof must fail closed if restore throws");
+mustInclude("Practice Resolution committed session restore failed","resolved commit must fail closed if restart restore throws");
+mustInclude("JSON.stringify(committed)!==JSON.stringify(db.activePracticeSession)","resolved commit must preserve the complete persisted session through restart restore");
+mustInclude("committed session changed during restart restore","resolved commit must reject restart migration or default drift");
 console.log('practice-resolution static contract tests passed');
