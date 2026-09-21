@@ -4334,10 +4334,18 @@ function persistPracticeSession(){
 }
 function persistPracticeDraft(){
  if(practicePlan||db.activePortalPractice?.id||!window.HotBPracticeSession?.createDraft)return;
- const checkboxes=$$('[data-practice-player]');
+ const checkboxes=$('[data-practice-player]');
  if(checkboxes.length){const roster=practiceAttendanceRoster();practiceSetupState.selectedNames=checkboxes.filter(input=>input.checked).map(input=>roster[Number(input.dataset.practicePlayer)]?.name).filter(Boolean)}
  const start=$('#practiceStartTime')?.value;if(start)practiceSetupState.startTime=start;
  const duration=Number($('#practiceDuration')?.value);if(duration)practiceSetupState.durationMinutes=duration;
+ // Persistence is the last line of defense against stale Resolution data. Any
+ // caller that changes setup without explicitly clearing Resolution still cannot
+ // save an obsolete verified snapshot into restart recovery.
+ if(practiceResolution&&!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
+  console.warn('HotB discarded stale Practice Resolution before saving the setup draft.');
+  practiceResolution=null;
+  if(modal==='practiceResolution')modal=null;
+ }
  db.activePracticeSession=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:practiceResolution});save();
 }
 function clearPracticeSession(){
