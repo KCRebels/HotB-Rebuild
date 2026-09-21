@@ -4436,6 +4436,13 @@ function bind(){
     if(!transactionOwnsToken())return false;
     return restoreResolutionRollback(rollbackState);
    };
+   const rollbackInitialFailure=()=>{
+    // Before this apply publishes a token it cannot conflict with a newer apply:
+    // beginResolutionApply still owns the modal lock. Restore the captured verified
+    // snapshot directly so UUID/setup failures cannot strand the Resolution disabled.
+    if(!resolutionApplyToken&&!practiceResolutionApplyToken)return restoreResolutionRollback(rollbackState);
+    return rollbackIfOwned();
+   };
    try{
     // Allocate the resolved draft identity before leaving the verified Resolution
     // modal. The Build handler consumes it exactly once; rollback clears it.
@@ -4548,7 +4555,8 @@ function bind(){
     },0);
    }catch(error){
     console.error('HotB Practice Resolution apply failed',error);
-    if(rollbackIfOwned())alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
+    if(rollbackInitialFailure())alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
+    else if(!practiceResolutionApplyToken)endResolutionApply();
    }
   };
   const startVerifiedResolutionApply=(expectedFactory,mutate)=>{
