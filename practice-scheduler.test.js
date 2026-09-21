@@ -245,6 +245,18 @@ const warmPartner=brokenWarmupPair.schedule[warmPitcher.name][warmBlock].partner
 if(warmPartner!=='Coach')brokenWarmupPair.schedule[warmPartner][warmBlock]={activity:'Drill #98'};
 else brokenWarmupPair.schedule[warmPitcher.name][warmBlock].partner='';
 assert.ok(scheduler.validate(brokenWarmupPair).some(error=>error.includes('Pitch Warm-Up')&&(error.includes("does not match the catcher's warm-up assignment")||error.includes('missing a catcher/coach partner'))),'full resolution audit must reject a broken pitcher/catcher warm-up pairing');
+const malformedAvailability=structuredClone(block11DeparturePlan);
+malformedAvailability.players[0].availableUntilBlock=12;
+assert.ok(scheduler.validate(malformedAvailability).some(error=>error.includes('invalid practice availability')),'full resolution audit must reject availability outside the verified block range');
+
+const malformedBlockCount=structuredClone(block11DeparturePlan);
+malformedBlockCount.schedule[malformedBlockCount.players[0].name].pop();
+assert.ok(scheduler.validate(malformedBlockCount).some(error=>error.includes('invalid number of practice blocks')),'full resolution audit must reject a player schedule whose block count does not match the practice');
+
+const unnamedAttendee=structuredClone(block11DeparturePlan);
+unnamedAttendee.players[0].name='';
+assert.ok(scheduler.validate(unnamedAttendee).some(error=>error.includes('Every attending player must have a name')),'full resolution audit must reject an unnamed attendee rather than verifying ambiguous identity');
+
 
 
 
