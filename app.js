@@ -3908,9 +3908,18 @@ function practiceBuildNoticeModal(){
  const notices=practicePlan?.buildNotices||[];if(!notices.length)return'';
  return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE BUILD NOTICE</div><h2>HotB built the practice</h2></div></div><p class="practice-resolution-intro">No coaching decision is required. HotB used the following allowed fallback${notices.length===1?'':'s'} to keep every hard practice rule intact.</p><section class="practice-resolution-notices"><ul>${notices.map(note=>`<li>${esc(note)}</li>`).join('')}</ul></section><button class="btn red block" id="acceptPracticeBuildNotice">Continue to Practice Plan</button></div></div>`;
 }
+function practiceResolutionSignature(players,startTime,durationMinutes){
+ return JSON.stringify({players:(players||[]).map(player=>({name:player.name,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime,durationMinutes});
+}
+function currentPracticeResolutionSignature(){
+ if(!practiceResolution)return'';
+ const roster=practiceAttendanceRoster(),names=new Set(practiceResolution.practicePlayers?.map(player=>player.name)||[]);
+ const players=roster.filter(player=>names.has(player.name)).map(player=>practicePlayerModel(player,practiceSetupState.accommodations?.[player.name]||practiceAccommodation(player),practiceResolution.startTime,practiceResolution.durationMinutes));
+ return practiceResolutionSignature(players,practiceResolution.startTime,practiceResolution.durationMinutes);
+}
 function practiceResolutionModal(){
  const r=practiceResolution;if(!r)return'';
- const currentResolutionSignature=JSON.stringify({players:(r.practicePlayers||[]).map(player=>({name:player.name,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime:r.startTime,durationMinutes:r.durationMinutes});
+ const currentResolutionSignature=currentPracticeResolutionSignature();
  if(r.signature&&r.signature!==currentResolutionSignature)return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>Practice changed</h2></div></div><p>HotB will not apply a resolution that was verified against different practice information.</p><button class="btn block" id="returnPracticeAttendance">Return to Practice Setup</button></div></div>`;
  const pitchers=(r.pitchers||[]).map(name=>`<label class="practice-resolution-pitcher"><input type="radio" name="practiceResolutionPitcher" value="${esc(name)}"><span><b>${esc(practiceFirstName(name))}</b><small>Not Pitching Live · this practice only</small></span></label>`).join('');
  const combinedPitchers=(r.combinedPitchers||[]).map(name=>`<label class="practice-resolution-pitcher"><input type="radio" name="practiceResolutionCombinedPitcher" value="${esc(name)}"><span><b>${esc(practiceFirstName(name))}</b><small>Hitting Only + Emergency Block 11</small></span></label>`).join('');
@@ -3981,7 +3990,7 @@ function bind(){
  if(modal==='practiceResolution'){
   const resolutionStillCurrent=()=>{
    if(!practiceResolution?.signature)return true;
-   const signature=JSON.stringify({players:(practiceResolution.practicePlayers||[]).map(player=>({name:player.name,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime:practiceResolution.startTime,durationMinutes:practiceResolution.durationMinutes});
+   const signature=currentPracticeResolutionSignature();
    if(signature===practiceResolution.signature)return true;
    alert('This practice changed after HotB verified the resolution. Return to Practice Setup and build again so HotB can verify the current practice.');return false;
   };
@@ -4495,7 +4504,7 @@ function bindPractice(){
     }catch(_){}
    }
    const rosterGuidance=availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
-   const resolutionSignature=JSON.stringify({players:practicePlayers.map(player=>({name:player.name,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime,durationMinutes});
+   const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
    practiceResolution={errors,pitchers:solvingPitchers,catchers:solvingCatchers,canExtend,combinedPitchers,combinedCatchers,rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,notices:practicePlan.fallbackWarnings||[],signature:resolutionSignature};
    practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
    practiceSetupState.startTime=startTime;
