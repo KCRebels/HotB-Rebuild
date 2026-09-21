@@ -197,6 +197,10 @@ assert.deepEqual(scheduler.validate(block11DeparturePlan),[],'Block 11 with a pr
 const invalidBlock11Live=structuredClone(block11DeparturePlan);
 invalidBlock11Live.liveSessions.push({block:10,pitcher:block11DepartureRoster[0].name,catcher:'9Square',hitters:[block11DepartureRoster[1].name,block11DepartureRoster[2].name]});
 assert.ok(scheduler.validate(invalidBlock11Live).some(error=>error.includes('pitches live in Block 11 while unavailable')),'full resolution audit must reject an unavailable Block 11 live pitcher');
+const malformedLive=structuredClone(block11DeparturePlan);
+malformedLive.liveSessions.push({block:99,pitcher:block11DepartureRoster[1].name,catcher:'9Square'});
+assert.ok(scheduler.validate(malformedLive).some(error=>error.includes('invalid block assignment')),'full resolution audit must reject a malformed live-session block instead of trusting it');
+
 
 
 const elevenBlockRoster=scenario(13,5,2).map(player=>({...player,availableUntilBlock:11}));
