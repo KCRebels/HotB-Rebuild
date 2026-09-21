@@ -5017,20 +5017,26 @@ function persistPracticeSession(){
  // activePortalPractice already lives at the DB root. Do not duplicate that
  // publication record inside every saved practice session; restore can use the
  // root pointer and older sessions with portalState remain backward compatible.
- const session=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,draftDrills:practiceDraftDrills,drillPickerOpen:practiceDrillPickerOpen,equipmentSetupOpen:practiceEquipmentSetupOpen,setupState:practiceSetupState,clock:practiceClock,portalState:null});
+ let session;
+ try{session=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,draftDrills:practiceDraftDrills,drillPickerOpen:practiceDrillPickerOpen,equipmentSetupOpen:practiceEquipmentSetupOpen,setupState:practiceSetupState,clock:practiceClock,portalState:null})}
+ catch(error){console.error('HotB could not create the practice recovery session.',error);return false}
  if(!session?.plan?.portalDraftId||session.plan.portalDraftId!==practicePlan.portalDraftId){console.error('HotB refused to persist an incomplete practice session');return false}
- const serializedSession=JSON.stringify(session);
+ let serializedSession='';
+ try{serializedSession=JSON.stringify(session)}catch(error){console.error('HotB could not seal the practice recovery session.',error);return false}
+ if(!serializedSession){console.error('HotB refused an empty practice recovery session.');return false}
  // Persisting while a Resolution transaction is still open is allowed only for
  // the exact plan owned by that transaction. This prevents unrelated UI work from
  // becoming the restart-recovery session during the commit window.
  if(practiceResolutionApplyToken&&(!practiceResolutionApplyOwnedDraftId||!practicePlan.portalDraftId||practicePlan.portalDraftId!==practiceResolutionApplyOwnedDraftId)){console.error('HotB refused to persist a practice outside the active Resolution transaction');return false}
  db.activePracticeSession=session;
- save();
+ try{save()}catch(error){console.error('HotB could not save the practice recovery session.',error);return false}
  if(JSON.stringify(db.activePracticeSession)!==serializedSession){console.error('HotB practice persistence changed the session during save');return false}
  // Persistence success means the exact serialized session is immediately
  // restorable, not merely that an object was assigned to db.
- const restored=window.HotBPracticeSession.restore?.(db.activePracticeSession);
- if(!restored?.plan?.portalDraftId||restored.plan.portalDraftId!==practicePlan.portalDraftId){console.error('HotB could not restore the practice session it just persisted');return false}
+ let restored=null;
+ try{restored=window.HotBPracticeSession.restore?.(db.activePracticeSession)}
+ catch(error){console.error('HotB could not restore the practice session it just persisted',error);return false}
+ if(!restored?.plan?.portalDraftId||restored.plan.portalDraftId!==practicePlan.portalDraftId||JSON.stringify(restored)!==serializedSession){console.error('HotB could not restore the exact practice session it just persisted');return false}
  // A Resolution commit is not allowed to report persistence success merely because
  // the draft ID survived serialization. Its setup identity must survive too; the
  // full resolved-plan postcondition is checked by the owning transaction immediately
