@@ -4525,7 +4525,8 @@ function bindPractice(){
      // an explicit early departure; resolution must never silently lengthen it.
      const originalEnd=practiceEndValue(startTime,120),extendedEnd=practiceEndValue(startTime,132);
      const extendedPlayers=practicePlayers.map(player=>{
-      const stayedThroughOriginalEnd=player.availableUntilBlock===10&&(!player.departureTime||player.departureTime===originalEnd);
+      const savedDeparture=practiceSetupState.accommodations?.[player.name]?.departure||'';
+      const stayedThroughOriginalEnd=player.availableUntilBlock===10&&!savedDeparture;
       return {...player,availableUntilBlock:stayedThroughOriginalEnd?11:player.availableUntilBlock,departureTime:stayedThroughOriginalEnd?extendedEnd:player.departureTime};
      });
      const extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=resolutionPlanIsSafe(extendedPlan);
