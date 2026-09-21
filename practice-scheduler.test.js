@@ -237,6 +237,15 @@ const ineligibleScheduledRole=structuredClone(block11DeparturePlan);
 const nonPitcher=ineligibleScheduledRole.players.find(player=>!player.isPitcher);
 ineligibleScheduledRole.schedule[nonPitcher.name][9]={activity:'Pitch Live'};
 assert.ok(scheduler.validate(ineligibleScheduledRole).some(error=>error.includes('Pitch Live in Block 10')&&error.includes('not eligible to pitch')),'full resolution audit must independently reject ineligible scheduled live pitching even when metadata is absent or corrupt');
+const brokenWarmupPair=structuredClone(block11DeparturePlan);
+const warmPitcher=brokenWarmupPair.players.find(player=>(brokenWarmupPair.schedule[player.name]||[]).some(entry=>entry.activity==='Pitch Warm-Up'));
+assert.ok(warmPitcher,'regression fixture must contain a pitcher warm-up');
+const warmBlock=brokenWarmupPair.schedule[warmPitcher.name].findIndex(entry=>entry.activity==='Pitch Warm-Up');
+const warmPartner=brokenWarmupPair.schedule[warmPitcher.name][warmBlock].partner;
+if(warmPartner!=='Coach')brokenWarmupPair.schedule[warmPartner][warmBlock]={activity:'Drill #98'};
+else brokenWarmupPair.schedule[warmPitcher.name][warmBlock].partner='';
+assert.ok(scheduler.validate(brokenWarmupPair).some(error=>error.includes('Pitch Warm-Up')&&(error.includes("does not match the catcher's warm-up assignment")||error.includes('missing a catcher/coach partner'))),'full resolution audit must reject a broken pitcher/catcher warm-up pairing');
+
 
 
 
