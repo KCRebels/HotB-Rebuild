@@ -4543,6 +4543,8 @@ function bindPractice(){
    const resolutionPlanIsSafe=(plan,label)=>{
     if(!plan){resolutionAuditFailures.push(label+' did not return a schedule.');return false}
     if(plan.feasibilityErrors?.length)return false;
+    if(!Array.isArray(plan.players)||!plan.schedule||!Array.isArray(plan.times)){resolutionAuditFailures.push(label+' returned incomplete schedule data.');return false}
+    if(Number(plan.times.length)!==(Number(plan.durationMinutes)===132?11:10)&&plan.durationMinutes!=null){resolutionAuditFailures.push(label+' returned schedule timing that does not match its duration.');return false}
     try{
      const audit=window.HotBPracticeScheduler.validate(plan);
      if(!Array.isArray(audit)){resolutionAuditFailures.push(label+' returned an invalid safety audit.');return false}
