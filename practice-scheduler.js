@@ -26,6 +26,7 @@
    return {...player,isGuest:!!player.isGuest,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,prePracticeComplete:!!player.prePracticeComplete,canPitch:!!player.isPitcher&&player.canPitch!==false,requiresPitchWarmup:!!player.isPitcher&&player.canPitch!==false&&player.requiresPitchWarmup!==false,canCatch:!!player.isCatcher&&player.canCatch!==false,availableFromBlock:from,availableUntilBlock:until};
   });
   const activeAttendees=attendees.filter(player=>player.availableFromBlock<player.availableUntilBlock);
+  const duplicateNames=[...new Set(attendees.map(player=>player.name).filter((name,index,names)=>names.indexOf(name)!==index))];
   const duration=BLOCK_COUNT*BLOCK_MINUTES,blockMinutes=BLOCK_MINUTES;
   const times=blockTimes(startTime,duration),warnings=[],fallbackWarnings=[];
   const schedule=Object.fromEntries(attendees.map(player=>[player.name,Array.from({length:BLOCK_COUNT},(_,block)=>block<player.availableFromBlock||block>=player.availableUntilBlock?{activity:'Not Present'}:null)]));
@@ -41,6 +42,7 @@
   });
   const isOpen=(player,block)=>block>=0&&block<BLOCK_COUNT&&schedule[player.name][block]===null&&block>(teeBlocks[player.name]??-1);
   const feasibilityErrors=[];
+  if(duplicateNames.length)feasibilityErrors.push(`Practice has duplicate player names: ${duplicateNames.join(', ')}. Each attendee must be uniquely identified before HotB can build safely.`);
   if(activeAttendees.length===0)feasibilityErrors.push('At least two available players are required to build a practice.');
   else if(activeAttendees.length===1)feasibilityErrors.push('At least two available players are required because every hitting station must have 2–3 players.');
   function groupedAssignment(playersToAssign,slots,eligible,requireAllSlots=false){
@@ -333,6 +335,8 @@
   const errors=[],BLOCK_COUNT=Number(plan?.times?.length)||DEFAULT_BLOCK_COUNT;
   if(!plan||![DEFAULT_BLOCK_COUNT,MAX_BLOCK_COUNT].includes(BLOCK_COUNT))errors.push('Schedule must contain ten blocks, or eleven when the emergency extension is approved.');
   if(!plan||!Array.isArray(plan.players)||!plan.schedule||typeof plan.schedule!=='object'){errors.push('Practice roster or schedule data is invalid.');return [...new Set(errors)]}
+  const playerNames=plan.players.map(player=>player?.name).filter(Boolean);
+  if(new Set(playerNames).size!==playerNames.length)errors.push('Practice roster contains duplicate player names.');
   const availablePlayers=plan.players.filter(player=>(player?.availableFromBlock??0)<(player?.availableUntilBlock??BLOCK_COUNT));
   if(availablePlayers.length<2)errors.push('Practice must have at least two available players.');
   Object.entries(plan?.schedule||{}).forEach(([name,entries])=>{
