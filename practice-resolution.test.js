@@ -103,4 +103,8 @@ mustNotInclude("match(/^(\\\\d{1,2}):(\\\\d{2})$/)","Resolution clock verificati
 mustInclude("match(/^(\\d{2}):(\\d{2})$/)","Persisted Resolution clock validation must parse numeric HH:MM values");
 mustNotInclude("match(/^(\\\\d{2}):(\\\\d{2})$/)","Persisted Resolution clock validation must not look for literal backslash-d text");
 
+
+mustInclude("const serializedDraft=JSON.stringify(draft);","Resolution draft must seal exact bytes before save");
+mustInclude("HotB Practice Resolution setup draft changed during save.","Resolution draft must fail closed if save mutates recovery bytes");
+mustInclude("HotB Practice Resolution setup draft failed post-save recovery verification.","Resolution draft must be restorable after the actual save");
 console.log('practice-resolution static contract tests passed');
