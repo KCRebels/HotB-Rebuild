@@ -189,6 +189,12 @@ const invalidPitcherResolution=structuredClone(pitcherDisabledPlan);
 invalidPitcherResolution.schedule[pitcherDisabled[0].name][2]={activity:'Pitch Warm-Up',partner:'Coach'};
 assert.ok(scheduler.validate(invalidPitcherResolution).some(error=>error.includes('Hitting Only but has pitching work assigned')),'full resolution audit must reject pitching work assigned to a Hitting Only player');
 
+const block11DepartureRoster=scenario(13,5,2).map((player,index)=>({...player,availableUntilBlock:index===0?10:11}));
+const block11DeparturePlan=scheduler.buildSchedule(block11DepartureRoster,'18:00',132);
+assert.ok(block11DeparturePlan.schedule[block11DepartureRoster[0].name][10].activity==='Unavailable','a player with a protected departure must remain unavailable in Block 11');
+assert.ok(!block11DeparturePlan.liveSessions.some(session=>session.block===10&&(session.pitcher===block11DepartureRoster[0].name||session.catcher===block11DepartureRoster[0].name||session.hitters?.includes(block11DepartureRoster[0].name))),'Block 11 must not assign a protected-departure player to live work');
+assert.deepEqual(scheduler.validate(block11DeparturePlan),[],'Block 11 with a protected departure must still pass the full rules audit');
+
 const elevenBlockRoster=scenario(13,5,2).map(player=>({...player,availableUntilBlock:11}));
 const elevenBlockPlan=scheduler.buildSchedule(elevenBlockRoster,'18:00',132);
 assert.equal(elevenBlockPlan.blocks.length,11,'132-minute emergency practice must contain exactly eleven blocks');
