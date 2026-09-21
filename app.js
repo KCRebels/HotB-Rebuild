@@ -2843,7 +2843,18 @@ async function activatePlayerPlans(){
    if(rollbackVerified.some(ok=>!ok))throw new Error('portal-activation-rollback-verification-failed');
    throw new Error('portal-activation-verification-failed');
   }
-  db.activePortalPractice=pendingPortalPractice;persistPracticeSession();save();
+  // Firebase publication is now verified. Record the local pointer exactly once.
+  // persistPracticeSession() already saves the entire DB; the old second save()
+  // duplicated a full localStorage write and could be the write that crossed
+  // Safari's quota after a successful portal publication.
+  db.activePortalPractice=pendingPortalPractice;
+  try{persistPracticeSession()}
+  catch(error){
+   // Keep the verified publication pointer in memory so the catch path can route
+   // to recovery instead of treating a successful Firebase activation as failed.
+   if(String(error?.message||'').includes('device-storage-quota-exceeded'))throw error;
+   throw error;
+  }
   render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
  }catch(error){
   if(button){button.disabled=false;button.textContent='Activate Player Plans'}
@@ -3883,7 +3894,10 @@ function stopPracticeClock(){
 }
 function persistPracticeSession(){
  if(!practicePlan||!window.HotBPracticeSession)return;
- db.activePracticeSession=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,draftDrills:practiceDraftDrills,drillPickerOpen:practiceDrillPickerOpen,equipmentSetupOpen:practiceEquipmentSetupOpen,setupState:practiceSetupState,clock:practiceClock,portalState:db.activePortalPractice});
+ // activePortalPractice already lives at the DB root. Do not duplicate that
+ // publication record inside every saved practice session; restore can use the
+ // root pointer and older sessions with portalState remain backward compatible.
+ db.activePracticeSession=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,draftDrills:practiceDraftDrills,drillPickerOpen:practiceDrillPickerOpen,equipmentSetupOpen:practiceEquipmentSetupOpen,setupState:practiceSetupState,clock:practiceClock,portalState:null});
  save();
 }
 function persistPracticeDraft(){
