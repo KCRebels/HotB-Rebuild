@@ -4313,7 +4313,13 @@ function bind(){
     // Allocate the resolved draft identity before leaving the verified Resolution
     // modal. The Build handler consumes it exactly once; rollback clears it.
     const resolutionDraftId=crypto.randomUUID();
+    // A monotonic apply token makes the deferred rebuild callbacks single-use.
+    // If navigation, rollback, or another Resolution invalidates this transaction,
+    // stale queued callbacks are forbidden from generating or committing a plan.
+    const resolutionApplyToken=crypto.randomUUID();
     practiceResolutionApplyDraftId=resolutionDraftId;
+    practiceResolutionApplyToken=resolutionApplyToken;
+    const transactionIsCurrent=()=>practiceResolutionApplyDraftId===resolutionDraftId&&practiceResolutionApplyToken===resolutionApplyToken;
     const verifiedResolution=rollbackState?.resolution;
     if(!resolutionRollbackStateIsValid(rollbackState)||!verifiedResolution||!expected||!Array.isArray(verifiedResolution.practicePlayers)||!verifiedResolution.practicePlayers.length)throw new Error('Verified Practice Resolution snapshot was not available for rebuild.');
     const selectedNames=verifiedResolution.practicePlayers.map(player=>player.name);
@@ -4328,6 +4334,7 @@ function bind(){
     render();
     setTimeout(()=>{
      try{
+      if(!transactionIsCurrent())throw new Error('Practice Resolution apply transaction expired before rebuild.');
       const generate=$('#generatePractice');
       if(!generate)throw new Error('Generate Practice control was not found after resolution apply.');
       generate.click();
@@ -4337,6 +4344,7 @@ function bind(){
       // scheduler/build failures that the click handler reports internally instead
       // of throwing back through HTMLElement.click().
       setTimeout(()=>{
+       if(!transactionIsCurrent()){console.warn('HotB ignored a stale Practice Resolution verification callback');return}
        let rebuiltSafe=!!practicePlan&&!practicePlan.feasibilityErrors?.length&&practicePlan.portalDraftId===resolutionDraftId&&resolutionPostcondition(expected);
        if(practicePlan&&practicePlan.portalDraftId!==resolutionDraftId)console.error('HotB Practice Resolution rebuilt plan changed draft identity');
        if(rebuiltSafe){
@@ -4388,7 +4396,13 @@ function bind(){
           }
          }
         }
-        if(rebuiltSafe){endResolutionApply();return}
+        if(rebuiltSafe){
+         // Consume the transaction identity before unlocking the UI. No queued
+         // callback from this apply is allowed to run after commit.
+         practiceResolutionApplyDraftId=null;
+         practiceResolutionApplyToken=null;
+         endResolutionApply();return
+        }
        }
        console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
        if(rollbackState)restoreResolutionRollback(rollbackState);
@@ -4451,7 +4465,7 @@ function bind(){
    return signature===state.rollbackSignature&&state.resolution.signature===practiceResolutionSignature(state.resolution.practicePlayers,state.resolution.startTime,state.resolution.durationMinutes)&&state.resolution.decisionSignature===practiceResolutionDecisionSignature(state.resolution);
   };
   const restoreResolutionRollback=state=>{
-   if(!resolutionRollbackStateIsValid(state)){console.error('HotB refused an invalid Practice Resolution rollback snapshot');practiceResolutionApplyDraftId=null;practicePlan=null;endResolutionApply();return false}
+   if(!resolutionRollbackStateIsValid(state)){console.error('HotB refused an invalid Practice Resolution rollback snapshot');practiceResolutionApplyDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;endResolutionApply();return false}
    practiceResolutionApplyDraftId=null;
    practicePlan=null;
    practiceSetupState=structuredClone(state.setupState);
@@ -4595,7 +4609,7 @@ async function endPracticeDraft(){
  }
  closePracticeWorkspace();
 }
-let practiceResolutionApplyDraftId=null;
+let practiceResolutionApplyDraftId=null,practiceResolutionApplyToken=null;
 let practiceResumeVerificationBusy=false;
 async function resumeRecoveredPracticeClock(){
  if(practiceResumeVerificationBusy||!practicePlan||!practiceClock.running)return;
