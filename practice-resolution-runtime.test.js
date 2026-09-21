@@ -44,7 +44,7 @@ function candidates(source){
  return result;
 }
 
-const source=roster();
+const source=roster(13,2,2);
 const failed=scheduler.buildSchedule(source,'18:00',120);
 assert.ok(failed.feasibilityErrors.length,'fixture must begin as a genuinely unresolved 120-minute practice');
 
