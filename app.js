@@ -4045,12 +4045,15 @@ function bind(){
    return true;
   };
   const verifiedResolutionChoice=(type,name=null)=>{
-   if(!practiceResolution)return false;
-   if(type==='pitcher')return (practiceResolution.pitchers||[]).includes(name);
-   if(type==='catcher')return (practiceResolution.catchers||[]).includes(name);
-   if(type==='extension')return practiceResolution.canExtend===true;
-   if(type==='combinedPitcher')return (practiceResolution.combinedPitchers||[]).includes(name);
-   if(type==='combinedCatcher')return (practiceResolution.combinedCatchers||[]).includes(name);
+   if(!practiceResolution?.signature||currentPracticeResolutionSignature()!==practiceResolution.signature)return false;
+   const verifiedPlayers=practiceResolution.practicePlayers||[],matches=name==null?[]:verifiedPlayers.filter(player=>player.name===name);
+   if(type==='extension')return practiceResolution.canExtend===true&&Number(practiceResolution.durationMinutes)===120;
+   if(matches.length!==1)return false;
+   const player=matches[0];
+   if(type==='pitcher')return player.canPitch===true&&(practiceResolution.pitchers||[]).includes(name);
+   if(type==='catcher')return player.canCatch===true&&(practiceResolution.catchers||[]).includes(name);
+   if(type==='combinedPitcher')return Number(practiceResolution.durationMinutes)===120&&player.canPitch===true&&(practiceResolution.combinedPitchers||[]).includes(name);
+   if(type==='combinedCatcher')return Number(practiceResolution.durationMinutes)===120&&player.canCatch===true&&(practiceResolution.combinedCatchers||[]).includes(name);
    return false;
   };
   const rejectUnverifiedResolution=()=>{
