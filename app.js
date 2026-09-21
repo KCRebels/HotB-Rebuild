@@ -4796,12 +4796,17 @@ function bind(){
    const releaseFailedRollback=message=>{
     console.error(message);
     // If exact rollback recovery is impossible, never release the transaction with
-    // its temporary Block 11 or role mutation still installed. The verified
-    // Resolution can no longer be trusted, so return to an ordinary 120-minute
-    // setup rather than exposing partially applied emergency state.
+    // its temporary Block 11 or role mutation still installed. Prefer reconstructing
+    // the ordinary 120-minute setup from the sealed rollback source; if even that
+    // cannot be cloned, clear recovery authority rather than exposing partial state.
+    let safeSetup=null;
+    try{safeSetup=state?.setupState?structuredClone(state.setupState):null}catch(error){console.error('HotB could not reconstruct the ordinary setup after rollback failure.',error)}
     practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;
     practiceResolution=null;modal=null;
-    if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
+    if(safeSetup&&Number(safeSetup.durationMinutes)===120)practiceSetupState=safeSetup;
+    else if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
+    db.activePracticeSession=null;
+    try{save()}catch(error){console.error('HotB could not clear failed Practice Resolution recovery authority.',error)}
     endResolutionApply();
    };
    if(!resolutionRollbackStateIsValid(state)){releaseFailedRollback('HotB refused an invalid Practice Resolution rollback snapshot');return false}
@@ -4847,7 +4852,10 @@ function bind(){
     if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
     // Never leave a failed/partially restored Resolution session as restart
     // authority after exact rollback verification fails.
-    if(db.activePracticeSession?.resolution||db.activePracticeSession?.plan){db.activePracticeSession=null;save()}
+    if(db.activePracticeSession?.resolution||db.activePracticeSession?.plan){
+     db.activePracticeSession=null;
+     try{save()}catch(error){console.error('HotB could not clear invalid Practice Resolution rollback recovery.',error)}
+    }
     endResolutionApply();render();return false
    }
    render();return true;
