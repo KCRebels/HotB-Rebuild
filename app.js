@@ -4079,7 +4079,7 @@ function bind(){
        if(rollbackState){
         practicePlan=null;
         practiceSetupState=structuredClone(rollbackState.setupState);
-        practiceResolution=rollbackState.resolution;
+        practiceResolution=structuredClone(rollbackState.resolution);
         modal='practiceResolution';
         persistPracticeDraft();render();
        }
@@ -4098,7 +4098,7 @@ function bind(){
     },0);
    }catch(error){
     console.error('HotB Practice Resolution apply failed',error);
-    if(rollbackState){practiceSetupState=structuredClone(rollbackState.setupState);practiceResolution=rollbackState.resolution;modal='practiceResolution';persistPracticeDraft();render()}
+    if(rollbackState){practiceSetupState=structuredClone(rollbackState.setupState);practiceResolution=structuredClone(rollbackState.resolution);modal='practiceResolution';persistPracticeDraft();render()}
     else endResolutionApply();
     alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
    }
