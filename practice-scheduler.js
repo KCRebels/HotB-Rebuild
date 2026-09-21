@@ -3,13 +3,14 @@
  if(typeof module==='object'&&module.exports)module.exports=api;
  else root.HotBPracticeScheduler=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
- const BLOCK_COUNT=10,BLOCK_MINUTES=12;
+ const DEFAULT_BLOCK_COUNT=10,MAX_BLOCK_COUNT=11,BLOCK_MINUTES=12;
  const fixedActivities=['Stretch','Tee Work'];
  const pad=value=>String(value).padStart(2,'0');
  function blockTimes(startTime='18:00',durationMinutes=120){
+  const BLOCK_COUNT=Number(durationMinutes)===132?MAX_BLOCK_COUNT:DEFAULT_BLOCK_COUNT;
   const [hour,minute]=String(startTime||'18:00').split(':').map(Number);
   const start=(Number.isFinite(hour)?hour:18)*60+(Number.isFinite(minute)?minute:0);
-  const duration=Math.max(10,Math.round((Number(durationMinutes)||120)/10)*10),blockMinutes=duration/BLOCK_COUNT;
+  const duration=BLOCK_COUNT*BLOCK_MINUTES,blockMinutes=BLOCK_MINUTES;
   const label=minutes=>{
    const normalized=(minutes+1440)%1440,h=Math.floor(normalized/60),m=normalized%60;
    const displayHour=h%12||12,period=h<12?'a':'p';
@@ -18,6 +19,7 @@
   return Array.from({length:BLOCK_COUNT},(_,index)=>({block:index+1,start:label(start+index*blockMinutes),end:label(start+(index+1)*blockMinutes)}));
  }
  function buildSchedule(players,startTime='18:00',durationMinutes=120,options={}){
+  const BLOCK_COUNT=Number(durationMinutes)===132?MAX_BLOCK_COUNT:DEFAULT_BLOCK_COUNT;
   const attendees=(players||[]).filter(player=>player&&player.name).map(player=>{
    const from=Math.max(0,Math.min(BLOCK_COUNT,Number(player.availableFromBlock)||0));
    const until=Math.max(from,Math.min(BLOCK_COUNT,Number.isFinite(Number(player.availableUntilBlock))?Number(player.availableUntilBlock):BLOCK_COUNT));
@@ -253,7 +255,7 @@
    return assignments.every(group=>group.length===0||group.length===2||group.length===3||(allowOneFrontTossFour&&group.length===4))?assignments:null;
   }
   const prePracticePlayers=activeAttendees.filter(player=>player.prePracticeComplete),reserveEarlyFront=prePracticePlayers.length>=2&&prePracticePlayers.length<=12;
-  const frontTossCandidates=[0,1,2,3,4,5,6,7,8,9].filter(block=>!liveBlocks.has(block));
+  const frontTossCandidates=Array.from({length:BLOCK_COUNT},(_,block)=>block).filter(block=>!liveBlocks.has(block));
   const orderedFrontBlocks=frontTossCandidates.slice().sort((a,b)=>(a>=8?0:1)-(b>=8?0:1)||a-b),frontSlots=orderedFrontBlocks.flatMap(block=>[{block,lane:1},{block,lane:2}]);
   if(!feasibilityErrors.length){
    let frontGroups=assignStationGroups(activeAttendees,frontSlots,(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2)));
@@ -267,7 +269,7 @@
   }
   const frontTossBlocks=[...new Set(frontTossAssignments.map(item=>item.block))].sort((a,b)=>a-b);
   if(!feasibilityErrors.length){
-   const machineSlots=[0,1,2,3,4,5,6,7,8,9].map(block=>({block})),machineGroups=assignStationGroups(activeAttendees,machineSlots,(player,slot)=>isOpen(player,slot.block));
+   const machineSlots=Array.from({length:BLOCK_COUNT},(_,block)=>({block})),machineGroups=assignStationGroups(activeAttendees,machineSlots,(player,slot)=>isOpen(player,slot.block));
    if(!machineGroups)feasibilityErrors.push('Machine cannot be scheduled exactly once per player in groups of 2–3 with the selected attendance and availability.');
    else machineGroups.forEach((names,index)=>names.forEach(name=>{schedule[name][machineSlots[index].block]={activity:'Machine'}}));
   }
@@ -331,8 +333,8 @@
   return {attendance:attendees.length,players:attendees,startTime,durationMinutes:duration,blockMinutes,times,schedule,blocks,liveSessions,liveHitterRepeats,pitcherRepeats:repeatedPitchers.map(player=>player.name),fallbackWarnings,frontTossBlocks,frontTossAssignments,drillStations,catcherLoads,warnings,feasibilityErrors};
  }
  function validate(plan){
-  const errors=[];
-  if(!plan||plan.times?.length!==BLOCK_COUNT)errors.push('Schedule must contain ten blocks.');
+  const errors=[],BLOCK_COUNT=Number(plan?.times?.length)||DEFAULT_BLOCK_COUNT;
+  if(!plan||![DEFAULT_BLOCK_COUNT,MAX_BLOCK_COUNT].includes(BLOCK_COUNT))errors.push('Schedule must contain ten blocks, or eleven when the emergency extension is approved.');
   if(!plan||!Array.isArray(plan.players)||!plan.schedule||typeof plan.schedule!=='object'){errors.push('Practice roster or schedule data is invalid.');return [...new Set(errors)]}
   const availablePlayers=plan.players.filter(player=>(player?.availableFromBlock??0)<(player?.availableUntilBlock??BLOCK_COUNT));
   if(availablePlayers.length<2)errors.push('Practice must have at least two available players.');
@@ -389,5 +391,5 @@
   Object.entries(pitcherBlockCounts).forEach(([name,count])=>{if(count>2)errors.push(`${name} exceeds the two-block live pitching limit.`)});
   return [...new Set(errors)];
  }
- return {BLOCK_COUNT,BLOCK_MINUTES,blockTimes,buildSchedule,validate};
+ return {BLOCK_COUNT:DEFAULT_BLOCK_COUNT,DEFAULT_BLOCK_COUNT,MAX_BLOCK_COUNT,BLOCK_MINUTES,blockTimes,buildSchedule,validate};
 });
