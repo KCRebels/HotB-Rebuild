@@ -5200,16 +5200,22 @@ function bindPractice(){
  $('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#endPracticeDraft')?.addEventListener('click',endPracticeDraft);
  $('#generatePractice')?.addEventListener('click',()=>{
-  const roster=practiceAttendanceRoster(),attendees=$$('[data-practice-player]:checked').map(input=>roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
-  if(!attendees.length){if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}alert('Select at least one player attending practice.');return}
-  if(!window.HotBPracticeScheduler){if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
+  const roster=practiceAttendanceRoster(),attendees=$('[data-practice-player]:checked').map(input=>roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
+  // Resolution rebuild failures are owned by rebuildResolvedPractice. Do not clear
+  // its token here: doing so makes the queued verifier stale and prevents rollback.
+  // Ordinary/manual builds still report these preflight problems directly.
+  const resolutionApplyBuild=!!practiceResolutionApplyToken;
+  if(!attendees.length){if(!resolutionApplyBuild)alert('Select at least one player attending practice.');return}
+  if(!window.HotBPracticeScheduler){if(!resolutionApplyBuild)alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
   const startTime=$('#practiceStartTime').value||'18:00',durationMinutes=Number($('#practiceDuration').value)||120;
   // Emergency Block 11 is a verified Resolution-only state. A normal/manual build
   // must never inherit 132 minutes from stale DOM, restored form state, or an
   // interrupted apply transaction.
   if(durationMinutes===132&&!practiceResolutionApplyDraftId){
-   // A half-consumed/expired Resolution transaction must not survive this guard.
-   if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}
+   // If an apply is active, leave its ownership intact and let the outer verifier
+   // restore the verified 120-minute snapshot. Manual stale Block 11 state is still
+   // normalized immediately and can never be persisted as a normal setup draft.
+   if(resolutionApplyBuild)return;
    alert('Block 11 can only be added by Practice Resolution after HotB verifies it for this exact practice.');
    const durationControl=$('#practiceDuration');if(durationControl)durationControl.value='120';
    practiceSetupState.durationMinutes=120;
@@ -5218,7 +5224,7 @@ function bindPractice(){
    return;
   }
   if(durationMinutes!==120&&durationMinutes!==132){
-   if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}
+   if(resolutionApplyBuild)return;
    alert('HotB can only build the normal 120-minute practice or a verified 132-minute Practice Resolution.');
    return;
   }
@@ -5231,7 +5237,6 @@ function bindPractice(){
   if(!practicePlayers.some(player=>player.canPitch))noPitchersMode=null;
   stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
   const buildButton=$('#generatePractice');if(buildButton){buildButton.disabled=true;buildButton.textContent='Building Practice…'}
-  const resolutionApplyBuild=!!practiceResolutionApplyToken;
   try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){
    console.error('HotB practice scheduler failed',error);practicePlan=null;
    // During an automatic Resolution rebuild, the outer transaction owns rollback.
