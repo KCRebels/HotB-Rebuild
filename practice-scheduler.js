@@ -505,6 +505,19 @@
     if(entry?.activity==='Hit Live'&&(block<(player.availableFromBlock??0)||block>=(player.availableUntilBlock??BLOCK_COUNT)))errors.push(`${player.name} has Hit Live in Block ${block+1} while unavailable.`);
    });
   });
+  for(let block=0;block<BLOCK_COUNT;block++){
+   const liveForBlock=(plan.liveSessions||[]).filter(session=>Number(session.block)===block);
+   const scheduleRoles=(plan.players||[]).map(player=>({name:player.name,activity:plan.schedule?.[player.name]?.[block]?.activity})).filter(item=>['Pitch Live','Catch Live','Hit Live'].includes(item.activity));
+   const expectedRoleCount=liveForBlock.reduce((sum,session)=>sum+1+(session.catcher&&session.catcher!=='9Square'&&session.catcher!=='Coach'?1:0)+(Array.isArray(session.hitters)?session.hitters.length:0),0);
+   if(scheduleRoles.length!==expectedRoleCount)errors.push(`Block ${block+1} live-session role count does not match the practice schedule.`);
+   const roleKeys=new Set();
+   liveForBlock.forEach(session=>{
+    if(session.pitcher&&session.pitcher!=='Coach')roleKeys.add('Pitch Live|'+session.pitcher);
+    if(session.catcher&&session.catcher!=='9Square'&&session.catcher!=='Coach')roleKeys.add('Catch Live|'+session.catcher);
+    (Array.isArray(session.hitters)?session.hitters:[]).forEach(name=>roleKeys.add('Hit Live|'+name));
+   });
+   scheduleRoles.forEach(item=>{if(!roleKeys.has(item.activity+'|'+item.name))errors.push(`${item.name} has ${item.activity} in Block ${block+1} without the exact matching live role.`)});
+  }
   const pitcherBlockCounts={};
   (plan?.liveSessions||[]).filter(session=>session.pitcher&&session.pitcher!=='Coach').forEach(session=>pitcherBlockCounts[session.pitcher]=(pitcherBlockCounts[session.pitcher]||0)+1);
   Object.entries(pitcherBlockCounts).forEach(([name,count])=>{if(count>2)errors.push(`${name} exceeds the two-block live pitching limit.`)});
