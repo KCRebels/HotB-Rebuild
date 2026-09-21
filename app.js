@@ -5771,7 +5771,7 @@ function bindPractice(){
   if(!practicePlayers.some(player=>player.canPitch))noPitchersMode=null;
   stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
   const buildButton=$('#generatePractice');if(buildButton){buildButton.disabled=true;buildButton.textContent='Building Practice…'}
-  if(!buildButton?.dataset?.schedulerReady){if(buildButton)buildButton.dataset.schedulerReady='1';setTimeout(()=>{const button=$('#generatePractice');if(button){button.disabled=false;button.click()}},0);return}\n  if(buildButton)delete buildButton.dataset.schedulerReady;\n  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){
+  // Deferred iPhone scheduler handoff.\n  if(!buildButton?.dataset?.schedulerReady){if(buildButton)buildButton.dataset.schedulerReady='1';setTimeout(()=>{const button=$('#generatePractice');if(button){button.disabled=false;button.click()}},0);return}\n  if(buildButton)delete buildButton.dataset.schedulerReady;\n  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){
    console.error('HotB practice scheduler failed',error);practicePlan=null;
    // During an automatic Resolution rebuild, the outer transaction owns rollback.
    // Preserve its token + draft authorization so the queued verifier can restore
