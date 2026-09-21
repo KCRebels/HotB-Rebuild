@@ -4399,6 +4399,7 @@ function bind(){
     // stale queued callbacks are forbidden from generating or committing a plan.
     const resolutionApplyToken=crypto.randomUUID();
     practiceResolutionApplyDraftId=resolutionDraftId;
+    practiceResolutionApplyOwnedDraftId=resolutionDraftId;
     practiceResolutionApplyToken=resolutionApplyToken;
     const transactionOwnsToken=()=>practiceResolutionApplyToken===resolutionApplyToken;
     const transactionIsCurrent=()=>transactionOwnsToken()&&(practiceResolutionApplyDraftId===resolutionDraftId||practicePlan?.portalDraftId===resolutionDraftId);
@@ -4488,6 +4489,7 @@ function bind(){
          // Consume the transaction identity before unlocking the UI. No queued
          // callback from this apply is allowed to run after commit.
          practiceResolutionApplyDraftId=null;
+         practiceResolutionApplyOwnedDraftId=null;
          practiceResolutionApplyToken=null;
          endResolutionApply();return
         }
@@ -4557,8 +4559,9 @@ function bind(){
    return signature===state.rollbackSignature&&state.resolution.signature===practiceResolutionSignature(state.resolution.practicePlayers,state.resolution.startTime,state.resolution.durationMinutes)&&state.resolution.decisionSignature===practiceResolutionDecisionSignature(state.resolution);
   };
   const restoreResolutionRollback=state=>{
-   if(!resolutionRollbackStateIsValid(state)){console.error('HotB refused an invalid Practice Resolution rollback snapshot');practiceResolutionApplyDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;endResolutionApply();return false}
+   if(!resolutionRollbackStateIsValid(state)){console.error('HotB refused an invalid Practice Resolution rollback snapshot');practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;endResolutionApply();return false}
    practiceResolutionApplyDraftId=null;
+   practiceResolutionApplyOwnedDraftId=null;
    practiceResolutionApplyToken=null;
    practicePlan=null;
    practiceSetupState=structuredClone(state.setupState);
@@ -4657,7 +4660,7 @@ function persistPracticeSession(){
  // Persisting while a Resolution transaction is still open is allowed only for
  // the exact plan owned by that transaction. This prevents unrelated UI work from
  // becoming the restart-recovery session during the commit window.
- if(practiceResolutionApplyToken&&(!practicePlan.portalDraftId||practiceResolutionApplyDraftId&&practicePlan.portalDraftId!==practiceResolutionApplyDraftId)){console.error('HotB refused to persist a practice outside the active Resolution transaction');return false}
+ if(practiceResolutionApplyToken&&(!practiceResolutionApplyOwnedDraftId||!practicePlan.portalDraftId||practicePlan.portalDraftId!==practiceResolutionApplyOwnedDraftId)){console.error('HotB refused to persist a practice outside the active Resolution transaction');return false}
  db.activePracticeSession=session;
  save();
  // Persistence success means the exact serialized session is immediately
@@ -4707,7 +4710,7 @@ async function endPracticeDraft(){
  }
  closePracticeWorkspace();
 }
-let practiceResolutionApplyDraftId=null,practiceResolutionApplyToken=null;
+let practiceResolutionApplyDraftId=null,practiceResolutionApplyToken=null,practiceResolutionApplyOwnedDraftId=null;
 let practiceResumeVerificationBusy=false;
 async function resumeRecoveredPracticeClock(){
  if(practiceResumeVerificationBusy||!practicePlan||!practiceClock.running)return;
@@ -5122,7 +5125,7 @@ function bindPractice(){
  $('#endPracticeDraft')?.addEventListener('click',endPracticeDraft);
  $('#generatePractice')?.addEventListener('click',()=>{
   const roster=practiceAttendanceRoster(),attendees=$$('[data-practice-player]:checked').map(input=>roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
-  if(!attendees.length){if(practiceResolutionApplyDraftId)practiceResolutionApplyDraftId=null;alert('Select at least one player attending practice.');return}
+  if(!attendees.length){if(practiceResolutionApplyDraftId){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}alert('Select at least one player attending practice.');return}
   if(!window.HotBPracticeScheduler){if(practiceResolutionApplyDraftId)practiceResolutionApplyDraftId=null;alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
   const startTime=$('#practiceStartTime').value||'18:00',durationMinutes=Number($('#practiceDuration').value)||120;
   // Emergency Block 11 is a verified Resolution-only state. A normal/manual build
@@ -5156,7 +5159,7 @@ function bindPractice(){
    // rebuild only. If scheduler construction throws before the normal consume
    // point, revoke it immediately so no later/manual build can inherit Block 11
    // permission or the verified draft identity.
-   if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyToken=null}
+   if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}
    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
    alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));return
   }
@@ -5164,7 +5167,7 @@ function bindPractice(){
    // If this failed build was itself an automatic Resolution rebuild, revoke its
    // one-use authorization before doing any secondary candidate work. The outer
    // transaction will inspect the failed result and restore the original snapshot.
-   if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyToken=null}
+   if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}
    const errors=practicePlan.feasibilityErrors.slice(),identityBlocked=errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(error)),availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
    // Practice Resolution is intentionally stricter than the normal build path. It is rare,
    // so every choice shown to the coach must pass both scheduler feasibility and the full
