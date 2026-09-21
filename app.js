@@ -4718,8 +4718,14 @@ function bind(){
    // choice that hits an internal apply failure must roll back quietly and remain
    // available instead of being mislabeled as an unverified coaching choice.
    if(!practiceResolutionSnapshotIsCurrentAndValid())return {started:false,reason:'stale'};
-   const rollbackState=resolutionRollbackState();
-   if(!rollbackState||!resolutionRollbackStateIsValid(rollbackState))return {started:false,reason:'rollback'};
+   let rollbackState=null;
+   try{
+    rollbackState=resolutionRollbackState();
+    if(!rollbackState||!resolutionRollbackStateIsValid(rollbackState))return {started:false,reason:'rollback'};
+   }catch(error){
+    console.error('HotB Practice Resolution rollback preparation failed',error);
+    return {started:false,reason:'rollback'};
+   }
    if(!beginResolutionApply())return {started:false,reason:'busy'};
    try{
     let lockedResolutionBytes='';
@@ -4768,21 +4774,33 @@ function bind(){
      return null;
     }
    }
-   state.rollbackSignature=JSON.stringify({
-    setupState:state.setupState,
-    resolution:state.resolution,
-    activePracticeSession:state.activePracticeSession
-   });
+   try{
+    state.rollbackSignature=JSON.stringify({
+     setupState:state.setupState,
+     resolution:state.resolution,
+     activePracticeSession:state.activePracticeSession
+    });
+   }catch(error){
+    console.error('HotB Practice Resolution rollback signature sealing failed',error);
+    return null;
+   }
+   if(!state.rollbackSignature)return null;
    return state;
   };
   const resolutionRollbackStateIsValid=state=>{
    if(!state||!state.setupState||!state.resolution||typeof state.rollbackSignature!=='string'||!state.rollbackSignature)return false;
-   const signature=JSON.stringify({
-    setupState:state.setupState,
-    resolution:state.resolution,
-    activePracticeSession:state.activePracticeSession
-   });
-   if(signature!==state.rollbackSignature)return false;
+   let signature='';
+   try{
+    signature=JSON.stringify({
+     setupState:state.setupState,
+     resolution:state.resolution,
+     activePracticeSession:state.activePracticeSession
+    });
+   }catch(error){
+    console.error('HotB rejected a Practice Resolution rollback snapshot that could not be sealed.',error);
+    return false;
+   }
+   if(!signature||signature!==state.rollbackSignature)return false;
    const r=state.resolution,setup=state.setupState,players=r.practicePlayers;
    if(!Array.isArray(players)||!players.length||Number(r.durationMinutes)!==120||Number(setup.durationMinutes)!==120)return false;
    if(r.signature!==practiceResolutionSignature(players,r.startTime,r.durationMinutes)||r.decisionSignature!==practiceResolutionDecisionSignature(r))return false;
