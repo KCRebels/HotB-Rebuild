@@ -194,4 +194,8 @@ const verificationCallbackIndex=source.indexOf("if(!transactionOwnsToken()){cons
 const verificationTryIndex=source.lastIndexOf("try{",verificationCallbackIndex);
 const verificationCatchIndex=source.indexOf("Practice Resolution verification callback failed",verificationCallbackIndex);
 assert.ok(verificationCallbackIndex>=0&&verificationTryIndex>=0&&verificationCatchIndex>verificationCallbackIndex,"deferred Resolution verification must be enclosed by its own try/catch");
+mustInclude("invalid-cleaned-resolution-draft","stale Resolution display cleanup must verify the replacement ordinary setup draft");
+mustInclude("cleaned-resolution-draft-save-drift","stale Resolution display cleanup must verify persistence did not rewrite the replacement draft");
+mustInclude("could not persist a verified clean setup after rejecting stale Practice Resolution.","stale Resolution display cleanup must contain recovery creation/save failures");
+mustInclude("could not clear stale Practice Resolution recovery authority.","failed stale Resolution cleanup must clear restart authority fail-closed");
 console.log('practice-resolution static contract tests passed');
