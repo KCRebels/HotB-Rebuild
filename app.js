@@ -4103,7 +4103,7 @@ function bind(){
     alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
    }
   };
-  const resolutionRollbackState=()=>({setupState:structuredClone(practiceSetupState),resolution:practiceResolution});
+  const resolutionRollbackState=()=>({setupState:structuredClone(practiceSetupState),resolution:structuredClone(practiceResolution)});
   $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('pitcher',picked)){rejectUnverifiedResolution();return}const target=findResolutionRosterIndex(picked,'pitcher');if(!target)return;const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;
    const accommodation=practiceAccommodation(target.roster[target.index]);accommodation.canPitch=false;accommodation.requiresPitchWarmup=false;practiceSetupState.accommodations[picked]=accommodation;practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;rebuildResolvedPractice(rollbackState);
