@@ -265,6 +265,13 @@ const unnamedBuildRoster=scenario(13,5,2);
 unnamedBuildRoster[0].name='';
 const unnamedBuildPlan=scheduler.buildSchedule(unnamedBuildRoster,'18:00',120);
 assert.ok(unnamedBuildPlan.feasibilityErrors.some(error=>error.includes('Every attending player must have a name')),'scheduler must reject unnamed attendees before Practice Resolution can silently drop them');
+const orphanSupport=structuredClone(block11DeparturePlan);
+const supportPlayer=orphanSupport.players.find(player=>(orphanSupport.schedule[player.name]||[]).some(entry=>entry.activity.startsWith('Drill #')));
+const supportBlock=orphanSupport.schedule[supportPlayer.name].findIndex(entry=>entry.activity.startsWith('Drill #'));
+orphanSupport.schedule[supportPlayer.name][supportBlock]={activity:'Machine Feed'};
+orphanSupport.players.forEach(player=>{if(player.name!==supportPlayer.name&&orphanSupport.schedule[player.name][supportBlock]?.activity==='Machine')orphanSupport.schedule[player.name][supportBlock]={activity:'Drill #97'}});
+assert.ok(scheduler.validate(orphanSupport).some(error=>error.includes('Machine Feed')&&error.includes('without an active Machine station')),'full resolution audit must reject an orphaned singleton support assignment');
+
 
 
 
