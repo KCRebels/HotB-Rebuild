@@ -2921,7 +2921,7 @@ function liveView(){
  <div class="results">
   <button class="result hbp" data-result="HBP" ${statsMode?'disabled':''}>HBP</button><button class="result ball ${percentMode&&filter==='B'?'filter-active':''}" data-result="B">B</button><button class="result foul ${percentMode&&filter==='F'?'filter-active':''}" data-result="F">F</button><button class="result hit ${percentMode&&filter==='HIT'?'filter-active':''}" data-result="HIT">HIT</button>
   <button class="result undo" id="undo">Undo</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="K">KS</button><button class="result strike ${percentMode&&filter==='K'?'filter-active':''}" data-result="KL">KL</button><button class="result out ${percentMode&&filter==='H4O'?'filter-active':''}" data-result="H4O">H4O</button>
- </div></div><div class="history-column"><div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div><button class="coach-observation-button" id="coachObservation" aria-label="Coach Observation"><svg viewBox="0 0 64 44" aria-hidden="true"><circle cx="13" cy="31" r="10"/><circle cx="51" cy="31" r="10"/><path d="M23 31h18M9 21l7-14h9l5 18M55 21 48 7h-9l-5 18"/></svg><span>OBS</span>${(g.observations||[]).length?`<b>${g.observations.length}</b>`:''}</button></div></div>`;
+ </div></div><div class="history-column"><div class="history-panel">${historyHtml(g,g.previewNext?chartName:h.name)}</div><button type="button" class="coach-observation-button" id="coachObservation" aria-label="Coach Observation" onclick="window.HotBOpenCoachObservation&&window.HotBOpenCoachObservation()"><svg viewBox="0 0 64 44" aria-hidden="true"><circle cx="13" cy="31" r="10"/><circle cx="51" cy="31" r="10"/><path d="M23 31h18M9 21l7-14h9l5 18M55 21 48 7h-9l-5 18"/></svg><span>OBS</span>${(g.observations||[]).length?`<b>${g.observations.length}</b>`:''}</button></div></div>`;
 }
 function historyHtml(g,hitter){
  const pitches=g.pitches.filter(p=>p.hitter===hitter);
@@ -3633,6 +3633,7 @@ function openCoachObservation(options={}){
  observationTargetPlayer=target?.playerName||currentHitter(g).name;observationTargetPaId=target?.paId||'';
  modal='coachObservation';render();
 }
+window.HotBOpenCoachObservation=()=>openCoachObservation();
 function openFocusObservation(){
  const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===practiceFocusPlayer);if(!selected)return;
  observationMode='focus';observationTargetPlayer=selected.name;observationTargetPaId='';
