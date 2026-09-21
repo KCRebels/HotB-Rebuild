@@ -37,6 +37,9 @@ mustInclude("HotB could not persist the verified Practice Resolution draft.","a 
 mustInclude("const canonicalStringList=values=>values.length===new Set(values).size","Resolution persisted string collections must be unique and canonical");
 mustInclude("candidateNoticeEntries.some(([,values])=>!canonicalStringList(values))","candidate fallback notices must remain canonical after restore");
 mustInclude("candidateNoticeEntries.some(([label],index)=>index>0&&candidateNoticeEntries[index-1][0].localeCompare(label)>0)","candidate notice labels must retain canonical order");
+mustInclude("HotB refused a Practice Resolution that changed during startup recovery.","startup recovery must preserve the sealed Resolution object byte-for-byte");
+mustInclude("HotB ignored Practice Hub Back while Practice Resolution apply is verifying.","Practice Hub Back must not escape an in-flight Resolution transaction");
+mustInclude("HotB refused Practice Hub Back because the Practice Resolution draft could not be persisted.","Practice Hub Back must not leave setup when Resolution recovery persistence fails");
 
 const noticeCommit=source.indexOf("modal=practicePlan?.buildNotices?.length?'practiceBuildNotice':null;");
 const tokenClear=source.lastIndexOf("practiceResolutionApplyToken=null;",noticeCommit);
