@@ -21,6 +21,9 @@ mustInclude("if(durationMinutes===132&&!practiceResolutionApplyDraftId)","Block 
 mustInclude("HotB ignored a stale Practice Resolution rebuild callback","workspace teardown must make the first deferred Resolution callback harmless");
 mustInclude("HotB Practice Resolution transaction changed during restart-recovery verification","Resolution ownership must be rechecked at the final commit boundary");
 mustInclude("HotB Practice Resolution restart recovery changed the resolved setup identity","Resolution persistence must retain exact resolved setup identity");
+mustInclude("HotB practice persistence changed the session during save","Resolution commit must reject save-time session mutation");
+mustInclude("savedNames.some((name,index)=>name!==liveNames[index])","Resolution restart recovery must preserve exact attendee order");
+mustInclude("HotB Practice Resolution restart recovery changed the resolved plan bytes","Resolution restart recovery must preserve the exact committed plan object");
 mustInclude("HotB refused a Practice Resolution rollback that changed during cloning","rollback clones must preserve the sealed failed-practice snapshot");
 mustInclude("const releaseFailedRollback=message=>","rollback corruption must have one fail-closed transaction release path");
 mustInclude("HotB could not clone the Practice Resolution rollback snapshot","rollback clone exceptions must release Resolution ownership safely");
