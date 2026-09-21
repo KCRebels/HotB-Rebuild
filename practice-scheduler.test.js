@@ -194,6 +194,10 @@ const block11DeparturePlan=scheduler.buildSchedule(block11DepartureRoster,'18:00
 assert.ok(block11DeparturePlan.schedule[block11DepartureRoster[0].name][10].activity==='Not Present','a player with a protected departure must remain Not Present in Block 11');
 assert.ok(!block11DeparturePlan.liveSessions.some(session=>session.block===10&&(session.pitcher===block11DepartureRoster[0].name||session.catcher===block11DepartureRoster[0].name||session.hitters?.includes(block11DepartureRoster[0].name))),'Block 11 must not assign a protected-departure player to live work');
 assert.deepEqual(scheduler.validate(block11DeparturePlan),[],'Block 11 with a protected departure must still pass the full rules audit');
+const invalidBlock11Live=structuredClone(block11DeparturePlan);
+invalidBlock11Live.liveSessions.push({block:10,pitcher:block11DepartureRoster[0].name,catcher:'9Square',hitters:[block11DepartureRoster[1].name,block11DepartureRoster[2].name]});
+assert.ok(scheduler.validate(invalidBlock11Live).some(error=>error.includes('pitches live in Block 11 while unavailable')),'full resolution audit must reject an unavailable Block 11 live pitcher');
+
 
 const elevenBlockRoster=scenario(13,5,2).map(player=>({...player,availableUntilBlock:11}));
 const elevenBlockPlan=scheduler.buildSchedule(elevenBlockRoster,'18:00',132);
