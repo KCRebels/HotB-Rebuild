@@ -223,6 +223,11 @@ const recordedLive=mismatchedLiveMetadata.liveSessions.find(session=>session.pit
 assert.ok(recordedLive,'regression fixture must contain a live session');
 mismatchedLiveMetadata.schedule[recordedLive.pitcher][recordedLive.block]={activity:'Drill #99'};
 assert.ok(scheduler.validate(mismatchedLiveMetadata).some(error=>error.includes("live-session record does not match Pitch Live")),'full resolution audit must reject live metadata that disagrees with the player schedule');
+const overlappingLive=structuredClone(block11DeparturePlan);
+const sourceLive=overlappingLive.liveSessions[0];
+overlappingLive.liveSessions.push({...structuredClone(sourceLive)});
+assert.ok(scheduler.validate(overlappingLive).some(error=>error.includes('assigned to more than one live role/session')),'full resolution audit must reject overlapping live sessions that reuse a player in the same block');
+
 
 
 
