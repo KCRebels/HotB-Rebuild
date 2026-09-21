@@ -113,4 +113,6 @@ mustInclude("if(JSON.stringify(state)!==captured)return null;","Resolution rollb
 mustInclude("if(resolutionStart===null||resolutionEnd===null)return false;","Resolution snapshot must reject an invalid derived practice clock boundary");
 mustInclude("const restoredSaved=window.HotBPracticeSession?.restore?.(saved);","Resolution rollback authority must prove the saved draft through the startup restore path");
 mustInclude("JSON.stringify(restoredSaved)!==JSON.stringify(saved)","Resolution rollback authority must reject restore migration or drift before apply");
+mustInclude("HotB Practice Resolution live plan changed after restart-recovery verification","Resolution commit must prove the live plan still matches the exact persisted recovery plan");
+mustInclude("JSON.stringify(committedSession.plan)!==JSON.stringify(practicePlan)","Resolution commit must compare live and persisted plan bytes before releasing ownership");
 console.log('practice-resolution static contract tests passed');
