@@ -5159,13 +5159,15 @@ function bindPractice(){
  $('#endPracticeDraft')?.addEventListener('click',endPracticeDraft);
  $('#generatePractice')?.addEventListener('click',()=>{
   const roster=practiceAttendanceRoster(),attendees=$$('[data-practice-player]:checked').map(input=>roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
-  if(!attendees.length){if(practiceResolutionApplyDraftId){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}alert('Select at least one player attending practice.');return}
-  if(!window.HotBPracticeScheduler){if(practiceResolutionApplyDraftId)practiceResolutionApplyDraftId=null;alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
+  if(!attendees.length){if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}alert('Select at least one player attending practice.');return}
+  if(!window.HotBPracticeScheduler){if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
   const startTime=$('#practiceStartTime').value||'18:00',durationMinutes=Number($('#practiceDuration').value)||120;
   // Emergency Block 11 is a verified Resolution-only state. A normal/manual build
   // must never inherit 132 minutes from stale DOM, restored form state, or an
   // interrupted apply transaction.
   if(durationMinutes===132&&!practiceResolutionApplyDraftId){
+   // A half-consumed/expired Resolution transaction must not survive this guard.
+   if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}
    alert('Block 11 can only be added by Practice Resolution after HotB verifies it for this exact practice.');
    const durationControl=$('#practiceDuration');if(durationControl)durationControl.value='120';
    practiceSetupState.durationMinutes=120;
@@ -5174,7 +5176,7 @@ function bindPractice(){
    return;
   }
   if(durationMinutes!==120&&durationMinutes!==132){
-   if(practiceResolutionApplyDraftId)practiceResolutionApplyDraftId=null;
+   if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}
    alert('HotB can only build the normal 120-minute practice or a verified 132-minute Practice Resolution.');
    return;
   }
@@ -5379,6 +5381,15 @@ function bindPractice(){
   // apply transaction. Ordinary builds get a fresh identity; Resolution rebuilds
   // reuse the verified expected identity assigned before the automatic Build click.
   const resolutionBuildDraftId=practiceResolutionApplyDraftId;
+  // All Resolution transaction identities must agree before the generated plan is
+  // allowed to inherit the verified draft ID. This catches partial cleanup or a
+  // stale authorization before any plan can be committed.
+  if(practiceResolutionApplyToken&&(!resolutionBuildDraftId||!practiceResolutionApplyOwnedDraftId||resolutionBuildDraftId!==practiceResolutionApplyOwnedDraftId)){
+   console.error('HotB refused mismatched Practice Resolution transaction identities');
+   practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;
+   if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Plan'}
+   return;
+  }
   // A live apply token without its one-use draft authorization is an impossible
   // transaction state. Refuse to let an ordinary/random draft identity continue
   // under that stale Resolution token.
