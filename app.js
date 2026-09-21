@@ -3933,6 +3933,25 @@ function practiceResolutionSignature(players,startTime,durationMinutes){
  const canonicalPlayers=(players||[]).map(player=>({name:String(player.name||'').trim(),isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,isGuest:!!player.isGuest,availableFromBlock:Number(player.availableFromBlock),availableUntilBlock:Number(player.availableUntilBlock),arrivalTime:String(player.arrivalTime||''),departureTime:String(player.departureTime||''),limitations:String(player.limitations||''),canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true})).sort((a,b)=>a.name.localeCompare(b.name));
  return JSON.stringify({players:canonicalPlayers,startTime:String(startTime||''),durationMinutes:Number(durationMinutes)});
 }
+function practiceResolutionDecisionSignature(r){
+ // Seal the verified alternatives as part of the persisted Resolution transaction.
+ // The player/setup signature proves what was verified; this decision signature
+ // proves which exact coaching choices passed those verification builds.
+ if(!r)return'';
+ const cleanList=value=>(Array.isArray(value)?value:[]).map(item=>String(item||'').trim()).filter(Boolean).slice().sort();
+ return JSON.stringify({
+  signature:String(r.signature||''),
+  pitchers:cleanList(r.pitchers),
+  catchers:cleanList(r.catchers),
+  canExtend:r.canExtend===true,
+  combinedPitchers:cleanList(r.combinedPitchers),
+  combinedCatchers:cleanList(r.combinedCatchers),
+  errors:cleanList(r.errors),
+  notices:cleanList(r.notices),
+  auditFailures:cleanList(r.auditFailures),
+  noPitchersMode:r.noPitchersMode===null?null:String(r.noPitchersMode)
+ });
+}
 function currentPracticeResolutionSignature(){
  if(!practiceResolution)return'';
  const roster=practiceAttendanceRoster(),expectedNames=practiceResolution.practicePlayers?.map(player=>player.name)||[],byName=new Map(roster.map(player=>[player.name,player]));
@@ -3963,6 +3982,7 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  // mutable global state and accidentally certifying the wrong snapshot.
  if(!r||r!==practiceResolution)return false;
  if(typeof r.signature!=='string'||!r.signature||r.signature!==currentPracticeResolutionSignature())return false;
+ if(typeof r.decisionSignature!=='string'||!r.decisionSignature||r.decisionSignature!==practiceResolutionDecisionSignature(r))return false;
  const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===132?11:duration===120?10:0,names=players.map(player=>player?.name),verifiedNames=new Set(names);
  if(!blockCount||!players.length||names.length!==verifiedNames.size)return false;
  if(typeof r.canExtend!=='boolean'||r.noPitchersMode!==null)return false;
@@ -5051,8 +5071,13 @@ function bindPractice(){
     practicePlayers,startTime,durationMinutes,noPitchersMode,
     notices:cleanResolutionList(practicePlan.fallbackWarnings),
     auditFailures:cleanResolutionList(resolutionAuditFailures),
-    signature:resolutionSignature
+    signature:resolutionSignature,
+    decisionSignature:''
    };
+   // Persist a second seal over the verified alternatives themselves. A restored
+   // Resolution cannot add, remove, or swap a coaching choice without invalidating
+   // the transaction and forcing a fresh verification build.
+   practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
    practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
    practiceSetupState.startTime=startTime;
    practiceSetupState.durationMinutes=durationMinutes;
