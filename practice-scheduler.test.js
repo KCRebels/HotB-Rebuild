@@ -271,6 +271,13 @@ const supportBlock=orphanSupport.schedule[supportPlayer.name].findIndex(entry=>e
 orphanSupport.schedule[supportPlayer.name][supportBlock]={activity:'Machine Feed'};
 orphanSupport.players.forEach(player=>{if(player.name!==supportPlayer.name&&orphanSupport.schedule[player.name][supportBlock]?.activity==='Machine')orphanSupport.schedule[player.name][supportBlock]={activity:'Drill #97'}});
 assert.ok(scheduler.validate(orphanSupport).some(error=>error.includes('Machine Feed')&&error.includes('without an active Machine station')),'full resolution audit must reject an orphaned singleton support assignment');
+const extraLiveRole=structuredClone(block11DeparturePlan);
+const extraRolePlayer=extraLiveRole.players.find(player=>(extraLiveRole.schedule[player.name]||[])[9]?.activity!=='Not Present'&&!extraLiveRole.liveSessions.some(session=>session.block===9&&(session.pitcher===player.name||session.catcher===player.name||session.hitters?.includes(player.name))));
+assert.ok(extraRolePlayer,'regression fixture must contain a player outside the Block 10 live session');
+extraLiveRole.schedule[extraRolePlayer.name][9]={activity:'Hit Live'};
+const extraRoleErrors=scheduler.validate(extraLiveRole);
+assert.ok(extraRoleErrors.some(error=>error.includes('live-session role count does not match')||error.includes('without the exact matching live role')),'full resolution audit must reject extra scheduled live roles that are absent from live metadata');
+
 
 
 
