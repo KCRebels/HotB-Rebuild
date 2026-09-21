@@ -2270,14 +2270,15 @@ function practiceRole(player){
  return model.isPitcher&&model.isCatcher?'P/C':model.isPitcher?'P':model.isCatcher?'C':'';
 }
 function practiceFirstName(name){return String(name||'').trim().split(/\s+/)[0]||''}
+function practiceCatcherName(name){return String(name||'').replace(/^9Square$/i,'9-Square')==='9-Square'?'9-Square':practiceFirstName(name)}
 function practiceEntryText(entry,plan=null,blockIndex=-1){
  if(!entry.partner)return practiceActivityLabel(entry.activity,plan);
  const partner=practiceFirstName(entry.partner);
  if(entry.activity==='Hit Live'&&plan){
   const session=plan.liveSessions?.find(item=>item.block===blockIndex);
-  if(session)return `Hit Live — 12 pitches minimum — ${practiceFirstName(session.pitcher)} (${practiceFirstName(session.catcher||'9Square')})`;
+  if(session)return `Hit Live — 12 pitches minimum — Pitcher: ${practiceFirstName(session.pitcher)} — Catcher: ${practiceCatcherName(session.catcher||'9Square')}`;
  }
- if(entry.activity==='Pitch Live')return `Pitch Live (${partner}) — 12 pitches minimum per hitter`;
+ if(entry.activity==='Pitch Live')return `Pitch Live — Catcher: ${practiceCatcherName(entry.partner)} — 12 pitches minimum per hitter`;
  if(entry.activity==='Catch Live')return `Catch Live — ${partner} — 12 pitches minimum per hitter`;
  return entry.activity.startsWith('Pitch ')?`${entry.activity} (${partner})`:`${entry.activity} — ${partner}`;
 }
@@ -2288,7 +2289,7 @@ function practiceCoachLabel(label,plan=null,blockIndex=-1){
   const session=plan.liveSessions?.find(item=>item.block===blockIndex);
   if(session)return `Hit Live — 12 pitches minimum — ${practiceFirstName(session.pitcher)} (${practiceFirstName(session.catcher||'9Square')})`;
  }
- if(activity==='Pitch Live')return `Pitch Live (${practiceFirstName(partner)}) — 12 pitches minimum per hitter`;
+ if(activity==='Pitch Live')return `Pitch Live — Catcher: ${practiceCatcherName(partner)} — 12 pitches minimum per hitter`;
  if(activity==='Catch Live')return `Catch Live — ${practiceFirstName(partner)} — 12 pitches minimum per hitter`;
  return activity.startsWith('Pitch ')?`${activity} (${practiceFirstName(partner)})`:`${activity} — ${practiceFirstName(partner)}`;
 }
