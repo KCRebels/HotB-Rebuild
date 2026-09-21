@@ -1134,3 +1134,27 @@ html,body,button,a,[role="button"]{touch-action:manipulation}
 .portal-live-clock.is-rotate>div:nth-child(2){transition:background-color .08s linear,color .08s linear,border-color .08s linear}
 .portal-live-clock.is-rotate>div:nth-child(2).rotate-flash{background:#c71920;color:#fff;border-color:#c71920}
 .portal-live-clock.is-rotate>div:nth-child(2).rotate-flash span{color:#fff}
+
+
+/* Player portal ROTATE polish: keep the existing layout, center NEXT content,
+   and flash only the TIME LEFT tile once per second. */
+.portal-practice-next button{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+}
+.portal-practice-next span{align-self:center}
+.portal-practice-next strong,.portal-practice-next small{width:100%;text-align:center}
+.portal-live-clock.is-rotate>div:nth-child(2){
+ background:#fff;
+ color:inherit;
+ border-color:#111;
+}
+.portal-live-clock.is-rotate>div:nth-child(2) span{color:#667085}
+.portal-live-clock.is-rotate>div:nth-child(2).rotate-flash{
+ background:#c71920;
+ color:#fff;
+ border-color:#c71920;
+}
+.portal-live-clock.is-rotate>div:nth-child(2).rotate-flash span{color:#fff}
