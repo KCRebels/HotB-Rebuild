@@ -218,6 +218,12 @@ conflictingLive.liveSessions.push({block:9,pitcher:conflictPitcher.name,catcher:
 const conflictingErrors=scheduler.validate(conflictingLive);
 assert.ok(conflictingErrors.some(error=>error.includes('repeats the same hitter')),'full resolution audit must reject duplicate hitters inside one live session');
 assert.ok(conflictingErrors.some(error=>error.includes('cannot pitch and hit in the same live session')),'full resolution audit must reject a pitcher simultaneously listed as a hitter');
+const mismatchedLiveMetadata=structuredClone(block11DeparturePlan);
+const recordedLive=mismatchedLiveMetadata.liveSessions.find(session=>session.pitcher&&session.pitcher!=='Coach');
+assert.ok(recordedLive,'regression fixture must contain a live session');
+mismatchedLiveMetadata.schedule[recordedLive.pitcher][recordedLive.block]={activity:'Drill #99'};
+assert.ok(scheduler.validate(mismatchedLiveMetadata).some(error=>error.includes("live-session record does not match Pitch Live")),'full resolution audit must reject live metadata that disagrees with the player schedule');
+
 
 
 
