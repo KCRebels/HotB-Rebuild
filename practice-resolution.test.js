@@ -175,4 +175,9 @@ mustInclude("candidate evidence could not be sealed after final filtering.","fin
 mustInclude("could not verify the published Practice Resolution recovery session.","Resolution modal publication must fail closed if production recovery restore throws");
 mustInclude("JSON.stringify(publishedRestored)!==publishedSessionBytes","Resolution modal publication must require exact complete persisted-session restart recovery");
 mustInclude("stale at modal publication.","Resolution modal publication must revalidate the live decision snapshot after persistence");
+mustInclude("Array.isArray(practiceResolution.candidateNotices['Block 11'])","Block 11 apply authorization must require verified array evidence");
+mustInclude("!Array.isArray(practiceResolution.candidateNotices[label])","role apply authorization must require verified array evidence");
+mustInclude("locked snapshot could not be sealed.","apply must seal the rollback Resolution before expected-state derivation");
+mustInclude("expected-state derivation changed the locked snapshot.","expected-state derivation must be observational");
+mustInclude("mutation changed the locked snapshot.","apply mutation must not alter the immutable rollback Resolution authority");
 console.log('practice-resolution static contract tests passed');
