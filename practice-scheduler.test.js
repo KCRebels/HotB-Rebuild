@@ -111,4 +111,79 @@ for(const session of earlyGuestPlan.liveSessions.filter(session=>session.pitcher
  assert.ok(session.catcher.startsWith('Scenario'),`${session.pitcher} should preferentially throw to a team catcher`);
 }
 
+
+function resolutionCandidates(players,duration=120){
+ const base=scheduler.buildSchedule(players,'18:00',duration);
+ const result={baseErrors:base.feasibilityErrors||[],pitchers:[],catchers:[],canExtend:false,combinedPitchers:[],combinedCatchers:[]};
+ if(!result.baseErrors.length)return result;
+ for(const player of players.filter(item=>item.canPitch)){
+  const changed=players.map(item=>item.name===player.name?{...item,canPitch:false,requiresPitchWarmup:false}:item);
+  if(!(scheduler.buildSchedule(changed,'18:00',duration).feasibilityErrors||[]).length)result.pitchers.push(player.name);
+ }
+ for(const player of players.filter(item=>item.canCatch)){
+  const changed=players.map(item=>item.name===player.name?{...item,canCatch:false}:item);
+  if(!(scheduler.buildSchedule(changed,'18:00',duration).feasibilityErrors||[]).length)result.catchers.push(player.name);
+ }
+ if(duration===120){
+  const extended=players.map(item=>({...item,availableUntilBlock:item.availableUntilBlock===10?11:item.availableUntilBlock}));
+  result.canExtend=!(scheduler.buildSchedule(extended,'18:00',132).feasibilityErrors||[]).length;
+  if(!result.canExtend){
+   for(const player of extended.filter(item=>item.canPitch)){
+    const changed=extended.map(item=>item.name===player.name?{...item,canPitch:false,requiresPitchWarmup:false}:item);
+    if(!(scheduler.buildSchedule(changed,'18:00',132).feasibilityErrors||[]).length)result.combinedPitchers.push(player.name);
+   }
+   for(const player of extended.filter(item=>item.canCatch)){
+    const changed=extended.map(item=>item.name===player.name?{...item,canCatch:false}:item);
+    if(!(scheduler.buildSchedule(changed,'18:00',132).feasibilityErrors||[]).length)result.combinedCatchers.push(player.name);
+   }
+  }
+ }
+ return result;
+}
+
+const resolutionBase=scenario(13,2,2);
+const resolution=resolutionCandidates(resolutionBase);
+assert.ok(resolution.baseErrors.length,'resolution audit needs an actually infeasible starting practice');
+for(const name of resolution.pitchers){
+ const changed=resolutionBase.map(player=>player.name===name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
+ assert.deepEqual(scheduler.buildSchedule(changed,'18:00',120).feasibilityErrors,[],`displayed Hitting Only choice ${name} must be independently proven`);
+}
+for(const name of resolution.catchers){
+ const changed=resolutionBase.map(player=>player.name===name?{...player,canCatch:false}:player);
+ assert.deepEqual(scheduler.buildSchedule(changed,'18:00',120).feasibilityErrors,[],`displayed Not Catching choice ${name} must be independently proven`);
+}
+if(resolution.canExtend){
+ const extended=resolutionBase.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock}));
+ assert.deepEqual(scheduler.buildSchedule(extended,'18:00',132).feasibilityErrors,[],'displayed Block 11 choice must be independently proven');
+}
+for(const name of resolution.combinedPitchers){
+ const changed=resolutionBase.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock})).map(player=>player.name===name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
+ assert.deepEqual(scheduler.buildSchedule(changed,'18:00',132).feasibilityErrors,[],`displayed Hitting Only + Block 11 choice ${name} must be independently proven`);
+}
+for(const name of resolution.combinedCatchers){
+ const changed=resolutionBase.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock})).map(player=>player.name===name?{...player,canCatch:false}:player);
+ assert.deepEqual(scheduler.buildSchedule(changed,'18:00',132).feasibilityErrors,[],`displayed Not Catching + Block 11 choice ${name} must be independently proven`);
+}
+
+const catcherDisabled=scenario(9,4,2);
+catcherDisabled[4].canCatch=false;
+const catcherDisabledPlan=scheduler.buildSchedule(catcherDisabled);
+assert.deepEqual(catcherDisabledPlan.feasibilityErrors,[],'a catcher marked Not Catching must remain a feasible hitter when the remaining catching plan works');
+assert.ok(!catcherDisabledPlan.liveSessions.some(session=>session.catcher===catcherDisabled[4].name),'Not Catching player must never be assigned as a live catcher');
+assert.ok(catcherDisabledPlan.schedule[catcherDisabled[4].name].some(entry=>entry.activity==='Hit Live'),'Not Catching player must remain in the hitting rotation');
+assert.ok(!catcherDisabledPlan.schedule[catcherDisabled[4].name].some(entry=>entry.activity==='Catch Live'||entry.activity==='Catch Warm-Up'),'Not Catching player must never receive catching work');
+
+const pitcherDisabled=scenario(9,4,2);
+pitcherDisabled[0].canPitch=false;pitcherDisabled[0].requiresPitchWarmup=false;
+const pitcherDisabledPlan=scheduler.buildSchedule(pitcherDisabled);
+assert.ok(!pitcherDisabledPlan.liveSessions.some(session=>session.pitcher===pitcherDisabled[0].name),'Hitting Only pitcher must never pitch live');
+assert.ok(!pitcherDisabledPlan.schedule[pitcherDisabled[0].name].some(entry=>entry.activity==='Pitch Live'||entry.activity==='Pitch Warm-Up'),'Hitting Only pitcher must never receive pitching work');
+assert.ok(pitcherDisabledPlan.schedule[pitcherDisabled[0].name].some(entry=>entry.activity==='Hit Live'),'Hitting Only pitcher must remain in the hitting rotation');
+
+const elevenBlockRoster=scenario(13,5,2).map(player=>({...player,availableUntilBlock:11}));
+const elevenBlockPlan=scheduler.buildSchedule(elevenBlockRoster,'18:00',132);
+assert.equal(elevenBlockPlan.blocks.length,11,'132-minute emergency practice must contain exactly eleven blocks');
+assert.ok(Object.values(elevenBlockPlan.schedule).every(entries=>entries.length===11),'every player schedule must carry Block 11');
+assert.deepEqual(scheduler.validate(elevenBlockPlan),[],'verified eleven-block practice must pass the complete rules audit');
+
 console.log('practice-scheduler tests passed');
