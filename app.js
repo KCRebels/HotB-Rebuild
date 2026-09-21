@@ -4190,6 +4190,7 @@ function bind(){
       liveRoleKeys.add(roleKey);
      }
      if(catcher!=='9Square'&&!expectedSet.has(catcher))return false;
+     if(catcher==='9Square'&&expectedSet.has(catcher))return false;
      if(catcher===pitcher)return false;
      if(hitters.length!==new Set(hitters).size||hitters.some(name=>!expectedSet.has(name)||name===pitcher||name===catcher))return false;
      const pitcherPlayer=(practicePlan.players||[]).find(player=>player.name===pitcher);
@@ -4237,6 +4238,8 @@ function bind(){
      if(player.canCatch!==false||player.canPitch!==baseline.canPitch||player.requiresPitchWarmup!==baseline.requiresPitchWarmup)return false;
     }
     const rows=practicePlan.schedule?.[player.name]||[];
+    if(!player.isPitcher&&(player.canPitch||player.requiresPitchWarmup))return false;
+    if(!player.isCatcher&&player.canCatch)return false;
     if(player.canPitch===false&&rows.some(row=>row?.activity==='Pitch Live'||row?.activity==='Pitch Warm-Up'))return false;
     if(player.requiresPitchWarmup===false&&rows.some(row=>row?.activity==='Pitch Warm-Up'))return false;
     if(player.canCatch===false&&rows.some(row=>row?.activity==='Catch Live'||row?.activity==='Catch Warm-Up'))return false;
