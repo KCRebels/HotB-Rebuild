@@ -4244,7 +4244,7 @@ function bind(){
     const resolutionDraftId=crypto.randomUUID();
     practiceResolutionApplyDraftId=resolutionDraftId;
     const selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
-    const startTime=resolutionSnapshot?.startTime||practiceSetupState.startTime;
+    const startTime=rollbackState?.resolution?.startTime||practiceSetupState.startTime;
     practiceSetupState.selectedNames=selectedNames;practiceSetupState.startTime=startTime;
     practiceResolution=null;modal=null;
     // Do not persist this transient state. Until the resolved schedule has passed
@@ -4371,7 +4371,7 @@ function bind(){
    const verifiedPlayers=practiceResolutionSnapshotIsCurrentAndValid()?practiceResolution.practicePlayers:[];
    if(verifiedPlayers.length){
     practiceSetupState.selectedNames=verifiedPlayers.map(player=>player.name);
-    practiceSetupState.startTime=resolutionSnapshot?.startTime||practiceSetupState.startTime;
+    practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;
     practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;
     const roster=practiceAttendanceRoster(),nextAccommodations={...practiceSetupState.accommodations};
     verifiedPlayers.forEach(player=>{
