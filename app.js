@@ -4523,7 +4523,7 @@ function bindPractice(){
      // Block 11 extends only players who were actually available through the end
      // of the original 120-minute practice. An explicit early departure remains
      // an explicit early departure; resolution must never silently lengthen it.
-     const originalEnd=practiceEndValue(startTime,120),extendedEnd=practiceEndValue(startTime,132);
+     const extendedEnd=practiceEndValue(startTime,132);
      const extendedPlayers=practicePlayers.map(player=>{
       const savedDeparture=practiceSetupState.accommodations?.[player.name]?.departure||'';
       const stayedThroughOriginalEnd=player.availableUntilBlock===10&&!savedDeparture;
