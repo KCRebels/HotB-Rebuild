@@ -4739,9 +4739,15 @@ function bindPractice(){
  $$('[data-text-practice-guest]').forEach(button=>button.addEventListener('click',()=>{const guest=[...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.textPracticeGuest),url=guestPortalTextUrl(guest);if(url)openSmsComposer(url);else alert('This guest link is not ready. Remove the guest and add them again.')}));
  $$('[data-share-setup-guest]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal([...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.shareSetupGuest))));
  $$('[data-practice-adjust]').forEach(button=>button.addEventListener('click',()=>{const panel=$(`[data-accommodation-panel="${button.dataset.practiceAdjust}"]`);if(!panel)return;panel.hidden=!panel.hidden;button.textContent=panel.hidden?'Adjust':'Done'}));
- $$('[data-accommodation-arrival],[data-accommodation-departure],[data-accommodation-pitch],[data-accommodation-warmup],[data-accommodation-catch],[data-accommodation-prepractice],[data-accommodation-limitations]').forEach(input=>input.addEventListener('change',()=>{storePracticeAccommodation(input.dataset.accommodationArrival??input.dataset.accommodationDeparture??input.dataset.accommodationPitch??input.dataset.accommodationWarmup??input.dataset.accommodationCatch??input.dataset.accommodationPrepractice??input.dataset.accommodationLimitations);persistPracticeDraft()}));
- $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults();persistPracticeDraft()});
- $('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();persistPracticeDraft()});
+ $('[data-accommodation-arrival],[data-accommodation-departure],[data-accommodation-pitch],[data-accommodation-warmup],[data-accommodation-catch],[data-accommodation-prepractice],[data-accommodation-limitations]').forEach(input=>input.addEventListener('change',()=>{
+  storePracticeAccommodation(input.dataset.accommodationArrival??input.dataset.accommodationDeparture??input.dataset.accommodationPitch??input.dataset.accommodationWarmup??input.dataset.accommodationCatch??input.dataset.accommodationPrepractice??input.dataset.accommodationLimitations);
+  // Any setup edit invalidates an unresolved decision immediately. Never persist
+  // old verified alternatives alongside the newly edited attendance/role state.
+  if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}
+  persistPracticeDraft();
+ }));
+ $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
+ $('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#endPracticeDraft')?.addEventListener('click',endPracticeDraft);
  $('#generatePractice')?.addEventListener('click',()=>{
   const roster=practiceAttendanceRoster(),attendees=$$('[data-practice-player]:checked').map(input=>roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
