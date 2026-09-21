@@ -4143,13 +4143,21 @@ function bind(){
    }
    if(!Array.isArray(practicePlan.liveSessions))return false;
    {
-    const liveKeys=new Set();
+    const liveKeys=new Set(),liveRoleKeys=new Set();
     for(const live of practicePlan.liveSessions){
      const block=Number(live?.block),pitcher=String(live?.pitcher||''),catcher=String(live?.catcher||''),hitters=Array.isArray(live?.hitters)?live.hitters:[];
      if(!Number.isInteger(block)||block<0||block>=expectedBlocks||!pitcher||!expectedSet.has(pitcher)||!catcher||hitters.length<2||hitters.length>3)return false;
      const liveKey=block+'|'+pitcher;
      if(liveKeys.has(liveKey))return false;
      liveKeys.add(liveKey);
+     // A player can hold only one live role in a block, even across multiple
+     // sessions. Prove that here rather than relying solely on the later scheduler audit.
+     const roleNames=[pitcher,...(catcher==='9Square'?[]:[catcher]),...hitters];
+     for(const roleName of roleNames){
+      const roleKey=block+'|'+roleName;
+      if(liveRoleKeys.has(roleKey))return false;
+      liveRoleKeys.add(roleKey);
+     }
      if(catcher!=='9Square'&&!expectedSet.has(catcher))return false;
      if(catcher===pitcher)return false;
      if(hitters.length!==new Set(hitters).size||hitters.some(name=>!expectedSet.has(name)||name===pitcher||name===catcher))return false;
@@ -4188,6 +4196,21 @@ function bind(){
     if(player.canPitch===false&&rows.some(row=>row?.activity==='Pitch Live'||row?.activity==='Pitch Warm-Up'))return false;
     if(player.requiresPitchWarmup===false&&rows.some(row=>row?.activity==='Pitch Warm-Up'))return false;
     if(player.canCatch===false&&rows.some(row=>row?.activity==='Catch Live'||row?.activity==='Catch Warm-Up'))return false;
+    // Warm-up partner records are transactional data too. A resolved practice may
+    // not commit a one-sided pitcher/catcher pairing or an ineligible partner.
+    rows.forEach((row,block)=>{
+     if(row?.activity==='Pitch Warm-Up'){
+      if(!player.isPitcher||player.canPitch!==true||player.requiresPitchWarmup!==true||!row.partner)return;
+      if(row.partner!=='Coach'){
+       const partner=(practicePlan.players||[]).find(item=>item.name===row.partner),partnerRow=practicePlan.schedule?.[row.partner]?.[block];
+       if(!partner||partner.isCatcher!==true||partner.canCatch!==true||partnerRow?.activity!=='Catch Warm-Up'||partnerRow?.partner!==player.name)row.__resolutionInvalid=true;
+      }
+     }else if(row?.activity==='Catch Warm-Up'){
+      const partner=(practicePlan.players||[]).find(item=>item.name===row.partner),partnerRow=practicePlan.schedule?.[row.partner]?.[block];
+      if(!player.isCatcher||player.canCatch!==true||!partner||partner.isPitcher!==true||partner.canPitch!==true||partner.requiresPitchWarmup!==true||partnerRow?.activity!=='Pitch Warm-Up'||partnerRow?.partner!==player.name)row.__resolutionInvalid=true;
+     }
+    });
+    if(rows.some(row=>row?.__resolutionInvalid)){rows.forEach(row=>{if(row&&typeof row==='object')delete row.__resolutionInvalid});return false}
    }
    return true;
   };
