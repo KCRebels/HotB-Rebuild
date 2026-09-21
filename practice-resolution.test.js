@@ -189,4 +189,9 @@ mustInclude("transaction changed during final committed render","Resolution must
 const finalRenderIndex=source.indexOf("try{render();window.scrollTo(0,0)}");
 const finalTokenReleaseIndex=source.indexOf("practiceResolutionApplyToken=null;",finalRenderIndex);
 assert.ok(finalRenderIndex>=0&&finalTokenReleaseIndex>finalRenderIndex,"Resolution must not consume its apply token before the committed builder renders");
+mustInclude("Practice Resolution verification callback failed","the complete deferred commit verifier must have an ownership-aware exception boundary");
+const verificationCallbackIndex=source.indexOf("if(!transactionOwnsToken()){console.warn('HotB ignored a stale Practice Resolution verification callback')");
+const verificationTryIndex=source.lastIndexOf("try{",verificationCallbackIndex);
+const verificationCatchIndex=source.indexOf("Practice Resolution verification callback failed",verificationCallbackIndex);
+assert.ok(verificationCallbackIndex>=0&&verificationTryIndex>=0&&verificationCatchIndex>verificationCallbackIndex,"deferred Resolution verification must be enclosed by its own try/catch");
 console.log('practice-resolution static contract tests passed');
