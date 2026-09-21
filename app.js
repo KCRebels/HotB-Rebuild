@@ -4667,7 +4667,10 @@ function bindPractice(){
     if(!plan){resolutionAuditFailures.push(label+' did not return a schedule.');return false}
     if(plan.feasibilityErrors?.length)return false;
     if(!Array.isArray(plan.players)||!plan.schedule||!Array.isArray(plan.times)){resolutionAuditFailures.push(label+' returned incomplete schedule data.');return false}
-    if(Number(plan.times.length)!==(Number(plan.durationMinutes)===132?11:10)&&plan.durationMinutes!=null){resolutionAuditFailures.push(label+' returned schedule timing that does not match its duration.');return false}
+    const planNames=plan.players.map(player=>player.name),planNameSet=new Set(planNames),scheduleKeys=Object.keys(plan.schedule||{}),scheduleKeySet=new Set(scheduleKeys),expectedBlocks=Number(plan.durationMinutes)===132?11:10;
+    if(planNames.length!==planNameSet.size||scheduleKeys.length!==scheduleKeySet.size||planNameSet.size!==scheduleKeySet.size||planNames.some(name=>!scheduleKeySet.has(name))){resolutionAuditFailures.push(label+' returned inconsistent attendee schedule ownership.');return false}
+    if(Number(plan.times.length)!==expectedBlocks&&plan.durationMinutes!=null){resolutionAuditFailures.push(label+' returned schedule timing that does not match its duration.');return false}
+    if(planNames.some(name=>!Array.isArray(plan.schedule[name])||plan.schedule[name].length!==expectedBlocks)){resolutionAuditFailures.push(label+' returned incomplete player block coverage.');return false}
     try{
      const audit=window.HotBPracticeScheduler.validate(plan);
      if(!Array.isArray(audit)){resolutionAuditFailures.push(label+' returned an invalid safety audit.');return false}
