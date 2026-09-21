@@ -2693,31 +2693,21 @@ async function clearOrphanedActivePractice(){
 }
 async function syncPlayerPracticeClock(){
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return false;
- const attending=new Set(db.activePortalPractice.players||[]),clock=practiceClockPortalPayload(),activeId=practicePlan.portalDraftId,updates=[],queuedIds=new Set(),queue=id=>{if(!id||queuedIds.has(id))return;queuedIds.add(id);updates.push(portalDoc(id).get().then(snapshot=>{const remote=snapshot.exists?snapshot.data()?.activePractice:null;if(!remote||remote.id!==activeId)throw new Error('portal-practice-mismatch');return portalDoc(id).update({'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})}))};
- (db.activePortalPractice?.playerPortals||[]).forEach(entry=>queue(entry.portalId));
- db.roster.filter(player=>attending.has(player.name)&&player.portalId).forEach(player=>queue(player.portalId));
- queue(db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId);
- (db.activePortalPractice?.guestPlayerPortalIds||[]).forEach(queue);
- (db.activePortalPractice?.guestCoachPortalIds||[]).forEach(queue);
- practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).forEach(guest=>queue(guest.portalId));
- practiceGuestCoaches().filter(guest=>guest.portalId).forEach(guest=>queue(guest.portalId));
- if(!updates.length){console.warn('Player portal clock sync had no portal targets');return false}
- const results=await Promise.allSettled(updates),failed=results.filter(result=>result.status==='rejected');
- if(failed.length){console.warn(`Player portal clock sync failed for ${failed.length} of ${updates.length} portal documents`);
-  // A failed clock fan-out can be partial because these writes are independent.
-  // Never leave the caller guessing which portals changed. Read back every target;
-  // callers will then either verify the intended state or run their guarded repair.
-  await Promise.allSettled([...queuedIds].map(id=>portalDoc(id).get()));
-  return false
- }
- // A fulfilled update is not enough. Read every target back so Start/rollback
- // only succeeds when the exact clock state is visible on every live portal.
- const verification=await Promise.all([...queuedIds].map(async id=>{try{
+ const clock=practiceClockPortalPayload(),activeId=practicePlan.portalDraftId,ids=[...new Set([
+  ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),
+  db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
+  ...(db.activePortalPractice?.guestPlayerPortalIds||[]),
+  ...(db.activePortalPractice?.guestCoachPortalIds||[])
+ ].filter(Boolean))];
+ if(!ids.length){console.warn('Player portal clock sync had no portal targets');return false}
+ const batch=cloudStore.batch();
+ ids.forEach(id=>batch.update(portalDoc(id),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
+ try{await batch.commit()}catch(error){console.warn('Player portal clock batch failed',error);return false}
+ const verification=await Promise.all(ids.map(async id=>{try{
   const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null,remoteClock=remote?.clock||{};
   return remote?.id===activeId&&remoteClock.status===clock.status&&(clock.startedAt?remoteClock.startedAt===clock.startedAt:!remoteClock.startedAt)&&(clock.endedAt?remoteClock.endedAt===clock.endedAt:!remoteClock.endedAt);
  }catch(error){return false}}));
- if(verification.some(ok=>!ok)){console.warn('Player portal clock read-back verification failed');return false}
- return true;
+ return verification.every(Boolean);
 }
 async function activatePlayerPlans(){
  if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before activating player portals.');return}
@@ -4011,16 +4001,15 @@ async function beginPracticeClock(){
    :'Practice did not start, and HotB could not safely reset every portal. Do not start practice until the connection is restored and Start succeeds.');
   return;
  }
- // Read every published target back after Start. A successful update call alone is
- // not enough: all devices must carry this exact practice and this exact start time.
+ // syncPlayerPracticeClock already committed the Start atomically and performed
+ // the authoritative read-back. Do not immediately read every portal a second time.
  const expectedStartedAt=new Date(practiceClock.startAt).toISOString(),startVerifyIds=[...new Set([
   ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),
   db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
   ...(db.activePortalPractice?.guestPlayerPortalIds||[]),
   ...(db.activePortalPractice?.guestCoachPortalIds||[])
  ].filter(Boolean))];
- const startVerification=await Promise.all(startVerifyIds.map(async id=>{try{const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null;return remote?.id===practicePlan.portalDraftId&&remote?.clock?.status==='running'&&remote?.clock?.startedAt===expectedStartedAt}catch(error){return false}}));
- if(!startVerifyIds.length||startVerification.some(ok=>!ok)){
+if(!startVerifyIds.length){
   // Preserve the failed start timestamp long enough to repair only portals that
   // actually accepted this exact start. Never issue a blanket rollback through
   // syncPlayerPracticeClock(): that routine refuses mismatched targets and can
