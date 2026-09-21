@@ -960,10 +960,12 @@ if(restoredGeneratedPractice&&!recoveredPracticeSession){
 if(restoredPracticeCandidate?.stage==='setup'&&!restoredPracticeCandidate.plan&&!db.activePortalPractice?.id){
  practiceSetupState={...practiceSetupState,...restoredPracticeCandidate.setupState};
  // Setup drafts are the safety net for Practice Resolution. Restore the exact
- // attendance/accommodations/duration that produced the unresolved practice so
- // an app refresh cannot silently replace the coach's decision context.
+ // attendance/accommodations/duration and verified decision context so an app
+ // refresh cannot silently replace the coach's unresolved practice.
  if(!Array.isArray(practiceSetupState.selectedNames))practiceSetupState.selectedNames=db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name);
+ practiceResolution=restoredPracticeCandidate.resolution?structuredClone(restoredPracticeCandidate.resolution):null;
  practiceSection='setup';
+ if(practiceResolution)modal='practiceResolution';
 }
 if(recoveredPracticeSession){
  practicePlan=recoveredPracticeSession.plan;
@@ -4160,7 +4162,7 @@ function persistPracticeDraft(){
  if(checkboxes.length){const roster=practiceAttendanceRoster();practiceSetupState.selectedNames=checkboxes.filter(input=>input.checked).map(input=>roster[Number(input.dataset.practicePlayer)]?.name).filter(Boolean)}
  const start=$('#practiceStartTime')?.value;if(start)practiceSetupState.startTime=start;
  const duration=Number($('#practiceDuration')?.value);if(duration)practiceSetupState.durationMinutes=duration;
- db.activePracticeSession=window.HotBPracticeSession.createDraft({setupState:practiceSetupState});save();
+ db.activePracticeSession=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:practiceResolution});save();
 }
 function clearPracticeSession(){
  if(db.activePracticeSession==null)return;
