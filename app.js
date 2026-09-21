@@ -4438,7 +4438,7 @@ function bindLive(){
  const g=currentGame();
  $('.live-app')?.addEventListener('click',event=>{
   const button=event.target.closest('button');
-  if(button&&button.id!=='undo'&&!button.matches('[data-zone],[data-result]')&&g.pendingZone){g.pendingZone=null;save()}
+  if(button&&button.id!=='undo'&&button.id!=='coachObservation'&&!button.matches('[data-zone],[data-result],[data-dq-pending]')&&g.pendingZone){g.pendingZone=null;save()}
  },true);
  const percentMode=!g.firstPitchView&&(g.zoneScope==='TEAM'||g.previewNext||(g.historyTab==='ALL'&&(g.allView||'DOTS')==='PCT'));
  $$('[data-plan]').forEach(b=>b.onclick=()=>{
@@ -4462,7 +4462,7 @@ function bindLive(){
    if(r==='HIT'||r==='H4O'){modal=r;render()} else addPitch(r);
  });
  $('#undo').onclick=undo;
- const observationButton=$('#coachObservation');if(observationButton){observationButton.onclick=event=>{event.preventDefault();openCoachObservation()}}
+ const observationButton=$('#coachObservation');if(observationButton){observationButton.onclick=event=>{event.preventDefault();event.stopPropagation();openCoachObservation()}}
  $('#decreaseOuts').onclick=()=>{subtractManualOut(g);save();render()};
  $('#increaseOuts').onclick=()=>{addManualOut(g);save();render()};
  $('#forceEndInning').onclick=()=>{if(!confirm(`End inning ${g.inning} now? This will clear the bases and reset the count.`))return;const completedInning=g.inning;g.outs=0;g.inning+=1;g.runners=[];resetLiveCount(g);queueInningObservation(g,completedInning);save();render()};
