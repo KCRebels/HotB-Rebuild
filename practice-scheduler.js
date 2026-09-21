@@ -411,6 +411,16 @@
    const frontFours=Object.values(frontCounts).filter(count=>count===4).length;
    if(Object.values(frontCounts).some(count=>count<2||count>4)||frontFours>1)errors.push(`Block ${block+1} each Front Toss lane must have 2–3 players, with at most one 4-player Front Toss lane allowed in the practice.`);
    if(plan.liveSessions?.some(session=>session.block===block)&&entries.some(entry=>entry?.activity.startsWith('Front Toss')))errors.push(`Block ${block+1} has Front Toss while live pitching is active.`);
+   const namedEntries=(plan.players||[]).map(player=>({player,entry:plan.schedule?.[player.name]?.[block]}));
+   namedEntries.forEach(({player,entry})=>{
+    if(entry?.activity==='Machine Feed'&&!namedEntries.some(item=>item.entry?.activity==='Machine'))errors.push(`${player.name} has Machine Feed in Block ${block+1} without an active Machine station.`);
+    if(entry?.activity==='Front Toss Support'&&!namedEntries.some(item=>item.entry?.activity?.startsWith('Front Toss Lane')))errors.push(`${player.name} has Front Toss Support in Block ${block+1} without an active Front Toss station.`);
+    if(entry?.activity==='Live Pitching Support'&&!(plan.liveSessions||[]).some(session=>Number(session.block)===block))errors.push(`${player.name} has Live Pitching Support in Block ${block+1} without an active live session.`);
+    if(entry?.activity==='Equipment / Ball Reset'){
+     const hasSupportedStation=namedEntries.some(item=>item.entry?.activity==='Machine'||item.entry?.activity?.startsWith('Front Toss Lane'))||(plan.liveSessions||[]).some(session=>Number(session.block)===block);
+     if(hasSupportedStation)errors.push(`${player.name} is assigned Equipment / Ball Reset in Block ${block+1} even though a station support role is available.`);
+    }
+   });
    const drillCounts={};entries.filter(entry=>entry?.activity.startsWith('Drill #')).forEach(entry=>drillCounts[entry.activity]=(drillCounts[entry.activity]||0)+1);
    if(Object.values(drillCounts).some(count=>count>3||(count<2&&availablePlayers.length>1)))errors.push(`Block ${block+1} has a drill station without 2–3 players.`);
    if(Object.values(drillCounts).includes(1)&&Object.values(drillCounts).includes(3))errors.push(`Block ${block+1} must rebalance one- and three-player drill groups into two-player groups.`);
