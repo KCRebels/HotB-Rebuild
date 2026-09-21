@@ -3950,6 +3950,16 @@ function currentPracticeResolutionSignature(){
  const players=expectedNames.map(name=>{const player=byName.get(name);return practicePlayerModel(player,practiceSetupState.accommodations?.[name]||practiceAccommodation(player),practiceResolution.startTime,practiceResolution.durationMinutes)});
  return practiceResolutionSignature(players,practiceResolution.startTime,practiceResolution.durationMinutes);
 }
+function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
+ if(!r||!r.signature||r.signature!==currentPracticeResolutionSignature())return false;
+ const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===132?11:duration===120?10:0,names=players.map(player=>player?.name);
+ return blockCount>0&&players.length>0&&names.length===new Set(names).size&&players.every(player=>
+  player&&String(player.name||'').trim()===String(player.name||'')&&String(player.name||'').length>0&&
+  Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&
+  Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=blockCount&&Number(player.availableFromBlock)<Number(player.availableUntilBlock)&&
+  typeof player.canPitch==='boolean'&&typeof player.requiresPitchWarmup==='boolean'&&typeof player.canCatch==='boolean'&&(!player.canPitch?!player.requiresPitchWarmup:true)
+ );
+}
 function practiceResolutionModal(){
  const r=practiceResolution;if(!r)return'';
  const currentResolutionSignature=currentPracticeResolutionSignature();
@@ -4241,7 +4251,7 @@ function bind(){
    // Return to setup from the exact verified snapshot. This button is also the
    // escape hatch for stale/corrupt resolutions, so do not carry mutated role or
    // availability data forward from whatever currently happens to be in memory.
-   const verifiedPlayers=Array.isArray(practiceResolution?.practicePlayers)?practiceResolution.practicePlayers:[];
+   const verifiedPlayers=practiceResolutionSnapshotIsCurrentAndValid()?practiceResolution.practicePlayers:[];
    if(verifiedPlayers.length){
     practiceSetupState.selectedNames=verifiedPlayers.map(player=>player.name);
     practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;
