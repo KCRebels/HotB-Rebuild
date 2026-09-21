@@ -4646,17 +4646,29 @@ function bind(){
          }
         }
         if(rebuiltSafe){
-         // Consume the transaction identity before unlocking the UI. No queued
-         // callback from this apply is allowed to run after commit.
+         // Prepare the final UI while this transaction still owns its token. Rendering
+         // is part of the commit handoff: if it throws, ownership remains available
+         // to restore the sealed failed-practice snapshot instead of leaving a
+         // committed session behind a broken/unreleased Resolution UI.
+         modal=practicePlan?.buildNotices?.length?'practiceBuildNotice':null;
+         try{render();window.scrollTo(0,0)}
+         catch(error){
+          console.error('HotB Practice Resolution final committed plan render failed',error);
+          if(rollbackIfOwned())alert('HotB could not open the verified rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+          return;
+         }
+         if(!transactionIsCurrent()){
+          console.error('HotB Practice Resolution transaction changed during final committed render');
+          if(rollbackIfOwned())alert('HotB could not finish opening the verified rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+          return;
+         }
+         // Consume the transaction identity only after the committed builder has
+         // rendered successfully and ownership still matches this exact draft.
          practiceResolutionApplyDraftId=null;
          practiceResolutionApplyOwnedDraftId=null;
          practiceResolutionApplyToken=null;
          endResolutionApply();
-         // If the verified resolved schedule used an allowed scheduler fallback,
-         // keep its notice visible now that the transaction is committed. Otherwise
-         // make sure no transient Resolution modal survives into the plan screen.
-         modal=practicePlan?.buildNotices?.length?'practiceBuildNotice':null;
-         render();window.scrollTo(0,0);return
+         return
         }
        }
        console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
