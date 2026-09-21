@@ -155,4 +155,9 @@ mustInclude("rollback post-save restore failed.","rollback post-save restart pro
 mustInclude("Practice Resolution committed session restore failed","resolved commit must fail closed if restart restore throws");
 mustInclude("JSON.stringify(committed)!==JSON.stringify(db.activePracticeSession)","resolved commit must preserve the complete persisted session through restart restore");
 mustInclude("committed session changed during restart restore","resolved commit must reject restart migration or default drift");
+mustInclude("verified setup could not be cloned.","Return-to-Setup must fail closed if verified setup isolation fails");
+mustInclude("verified accommodation could not be cloned.","Return-to-Setup must fail closed if verified accommodation isolation fails");
+mustInclude("stale Block 11 state could not be cloned.","Return-to-Setup must fail closed while normalizing stale emergency duration");
+mustInclude("Return to Practice Setup restart restore failed.","Return-to-Setup must fail closed if restart recovery restore throws");
+mustInclude("JSON.stringify(restoredExit)!==JSON.stringify(db.activePracticeSession)","Return-to-Setup must preserve the complete persisted ordinary setup session through restore");
 console.log('practice-resolution static contract tests passed');
