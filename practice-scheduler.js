@@ -336,12 +336,18 @@
   if(!plan||![DEFAULT_BLOCK_COUNT,MAX_BLOCK_COUNT].includes(BLOCK_COUNT))errors.push('Schedule must contain ten blocks, or eleven when the emergency extension is approved.');
   if(!plan||!Array.isArray(plan.players)||!plan.schedule||typeof plan.schedule!=='object'){errors.push('Practice roster or schedule data is invalid.');return [...new Set(errors)]}
   const playerNames=plan.players.map(player=>player?.name).filter(Boolean);
+  if(playerNames.length!==plan.players.length)errors.push('Every attending player must have a name before HotB can verify the practice.');
   if(new Set(playerNames).size!==playerNames.length)errors.push('Practice roster contains duplicate player names.');
+  plan.players.forEach(player=>{
+   const from=Number(player?.availableFromBlock??0),until=Number(player?.availableUntilBlock??BLOCK_COUNT);
+   if(!Number.isInteger(from)||!Number.isInteger(until)||from<0||until<0||from>BLOCK_COUNT||until>BLOCK_COUNT||from>until)errors.push(`${player?.name||'An attendee'} has invalid practice availability.`);
+  });
   const availablePlayers=plan.players.filter(player=>(player?.availableFromBlock??0)<(player?.availableUntilBlock??BLOCK_COUNT));
   if(availablePlayers.length<2)errors.push('Practice must have at least two available players.');
   Object.entries(plan?.schedule||{}).forEach(([name,entries])=>{
    if(!Array.isArray(entries)){errors.push(`${name} has an invalid schedule.`);return}
-   if(entries.length!==BLOCK_COUNT||entries.some(entry=>!entry?.activity))errors.push(`${name} has downtime while present.`);
+   if(entries.length!==BLOCK_COUNT){errors.push(`${name} has an invalid number of practice blocks.`);return}
+   if(entries.some(entry=>!entry?.activity))errors.push(`${name} has downtime while present.`);
    const player=plan?.players?.find(item=>item.name===name),from=player?.availableFromBlock||0,until=player?.availableUntilBlock??BLOCK_COUNT;
    entries.forEach((entry,index)=>{const shouldBeAbsent=index<from||index>=until;if(shouldBeAbsent&&entry?.activity!=='Not Present')errors.push(`${name} is scheduled in Block ${index+1} while unavailable.`);if(!shouldBeAbsent&&entry?.activity==='Not Present')errors.push(`${name} is marked Not Present in Block ${index+1} while available.`)});
    if(!player?.prePracticeComplete&&from<until&&entries[from]?.activity!=='Stretch')errors.push(`${name} must complete Warm-Up in the first attended block.`);
