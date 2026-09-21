@@ -1,0 +1,21 @@
+name: Practice Resolution Verification
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app.js'
+      - 'practice-resolution.test.js'
+      - '.github/workflows/practice-resolution.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check app syntax
+        run: node --check app.js
+      - name: Run Practice Resolution contracts
+        run: node practice-resolution.test.js
