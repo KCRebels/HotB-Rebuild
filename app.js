@@ -5253,6 +5253,10 @@ function bindPractice(){
      // availability legitimately reaches Block 11 is falsely counted as a role
      // mutation and the combined solution can never verify.
      const comparisonPlayers=expectedChange&&Number(duration)===132&&Number(durationMinutes)===120?practiceResolutionExtendedPlayers(practicePlayers,startTime):practicePlayers;
+     const baselineBlockCount=Number(duration)===132?11:10;
+     if(comparisonPlayers.length!==practicePlayers.length||comparisonPlayers.some(player=>!Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>baselineBlockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock))){
+      resolutionAuditFailures.push(label+' could not verify its comparison baseline.');return false;
+     }
      const baselineByName=new Map(comparisonPlayers.map(player=>[player.name,player]));
      const changedNames=players.filter(player=>{
       const base=baselineByName.get(player.name);
@@ -5305,6 +5309,7 @@ function bindPractice(){
       // only for players who were present through the original practice end.
       if(Number(duration)!==132||Number(durationMinutes)!==120)return false;
       const extended=practiceResolutionExtendedPlayers(practicePlayers,startTime);
+      if(extended.length!==practicePlayers.length||extended.some(player=>Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)<0)){resolutionAuditFailures.push(label+' could not verify the Block 11 extension baseline.');return false}
       const extendedByName=new Map(extended.map(player=>[player.name,player]));
       if(players.some(player=>{
        const expected=extendedByName.get(player.name);
@@ -5362,7 +5367,7 @@ function bindPractice(){
    const rosterGuidance=identityBlocked?'HotB found attendee identity or availability information that must be corrected before resolution. Fix the roster/guest or arrival/departure entry and build again; HotB will not guess or silently normalize it.':resolutionAuditFailures.length&&!hasVerifiedResolution?'HotB could not verify a safe automatic resolution because one or more verification builds/audits did not complete. Change attendance or availability, or build again after correcting the reported verification problem.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
    const cleanResolutionText=value=>String(value??'').trim();
-   const cleanResolutionList=values=>[...new Set((Array.isArray(values)?values:[]).map(cleanResolutionText).filter(Boolean))];
+   const cleanResolutionList=values=>[...new Set((Array.isArray(values)?values:[]).map(cleanResolutionText).filter(Boolean))].sort();
    practiceResolution={
     errors:cleanResolutionList(errors),
     pitchers:solvingPitchers,catchers:solvingCatchers,canExtend,combinedPitchers,combinedCatchers,rosterGuidance,
