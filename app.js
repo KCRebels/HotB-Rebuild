@@ -4402,7 +4402,7 @@ function bind(){
     practiceResolutionApplyOwnedDraftId=resolutionDraftId;
     practiceResolutionApplyToken=resolutionApplyToken;
     const transactionOwnsToken=()=>practiceResolutionApplyToken===resolutionApplyToken;
-    const transactionIsCurrent=()=>transactionOwnsToken()&&(practiceResolutionApplyDraftId===resolutionDraftId||practicePlan?.portalDraftId===resolutionDraftId);
+    const transactionIsCurrent=()=>transactionOwnsToken()&&practiceResolutionApplyOwnedDraftId===resolutionDraftId&&(practiceResolutionApplyDraftId===resolutionDraftId||practicePlan?.portalDraftId===resolutionDraftId);
     const rollbackIfOwned=()=>{
      // Only the transaction that still owns the live token may restore its snapshot.
      // A stale queued callback must never overwrite a newer Resolution/apply.
@@ -4559,7 +4559,7 @@ function bind(){
    return signature===state.rollbackSignature&&state.resolution.signature===practiceResolutionSignature(state.resolution.practicePlayers,state.resolution.startTime,state.resolution.durationMinutes)&&state.resolution.decisionSignature===practiceResolutionDecisionSignature(state.resolution);
   };
   const restoreResolutionRollback=state=>{
-   if(!resolutionRollbackStateIsValid(state)){console.error('HotB refused an invalid Practice Resolution rollback snapshot');practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;endResolutionApply();return false}
+   if(!resolutionRollbackStateIsValid(state)){console.error('HotB refused an invalid Practice Resolution rollback snapshot');practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;endResolutionApply();return false}
    practiceResolutionApplyDraftId=null;
    practiceResolutionApplyOwnedDraftId=null;
    practiceResolutionApplyToken=null;
@@ -4579,6 +4579,12 @@ function bind(){
    const basePlayers=resolutionSnapshot.practicePlayers,durationMinutes=withBlock11?132:Number(resolutionSnapshot.durationMinutes),verifiedStart=String(resolutionSnapshot.startTime||'');
    if((durationMinutes!==120&&durationMinutes!==132)||!verifiedStart)return null;
    const expectedPlayers=withBlock11?practiceResolutionExtendedPlayers(basePlayers,verifiedStart):basePlayers;
+   const expectedBlockCount=durationMinutes===132?11:10;
+   if(expectedPlayers.length!==basePlayers.length||!expectedPlayers.every(player=>{
+    if(!Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>expectedBlockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock))return false;
+    const availability=practiceAvailability(verifiedStart,durationMinutes,player.arrivalTime,player.departureTime);
+    return Number(player.availableFromBlock)===Number(availability.availableFromBlock)&&Number(player.availableUntilBlock)===Number(availability.availableUntilBlock);
+   }))return null;
    return {role,name,startTime:verifiedStart,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||'',limitations:String(player.limitations||'')}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
   };
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
@@ -4588,6 +4594,10 @@ function bind(){
    if(role!=='pitcher'&&role!=='catcher')return false;
    if(typeof withBlock11!=='boolean')return false;
    if(withBlock11&&Number(practiceResolution.durationMinutes)!==120)return false;
+   if(withBlock11){
+    const extended=practiceResolutionExtendedPlayers(practiceResolution.practicePlayers||[],practiceResolution.startTime);
+    if(extended.length!==(practiceResolution.practicePlayers||[]).length||extended.some(player=>Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)<0))return false;
+   }
    const target=findResolutionRosterIndex(name,role);if(!target)return false;
    const verifiedPlayers=(practiceResolution.practicePlayers||[]).filter(player=>player.name===name);
    if(verifiedPlayers.length!==1)return false;
@@ -4607,7 +4617,7 @@ function bind(){
   $('#applyPracticeCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('catcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState('catcher',picked,false,snapshot),()=>applyResolutionAccommodation(picked,'catcher'));
   });
-  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;if(!verifiedResolutionChoice('extension')){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState(null,null,true,snapshot),snapshot=>{if(Number(snapshot.durationMinutes)!==120||snapshot.canExtend!==true)return false;practiceSetupState.durationMinutes=132;return true})});
+  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;if(!verifiedResolutionChoice('extension')){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState(null,null,true,snapshot),snapshot=>{if(Number(snapshot.durationMinutes)!==120||snapshot.canExtend!==true)return false;const extended=practiceResolutionExtendedPlayers(snapshot.practicePlayers||[],snapshot.startTime);if(extended.length!==(snapshot.practicePlayers||[]).length||extended.some(player=>Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)<0))return false;practiceSetupState.durationMinutes=132;return true})});
   $('#applyPracticeCombinedResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionCombinedPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('combinedPitcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState('pitcher',picked,true,snapshot),()=>applyResolutionAccommodation(picked,'pitcher',true));
   });
