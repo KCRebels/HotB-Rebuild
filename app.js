@@ -4126,16 +4126,30 @@ function bind(){
    if(scheduleKeys.length!==scheduleSet.size||scheduleSet.size!==expectedSet.size||expectedNames.some(name=>!scheduleSet.has(name)))return false;
    for(const name of expectedNames)if(!Array.isArray(practicePlan.schedule?.[name])||practicePlan.schedule[name].length!==expectedBlocks)return false;
    // The rebuilt plan must not merely have the right number of blocks. Every time
-   // row and every assignment must be structurally usable before Resolution commits.
-   if(!practicePlan.times.every((time,index)=>time&&Number(time.block)===index+1&&String(time.start||'').length>0&&String(time.end||'').length>0))return false;
+   // row must be the exact 12-minute sequence implied by the verified start time.
+   // This catches shifted, duplicated, skipped, or malformed block clocks before
+   // a resolved practice can be committed to restart recovery or player portals.
+   const clockMinutes=value=>{const match=String(value||'').trim().match(/^(\\d{1,2}):(\\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null};
+   const verifiedStart=clockMinutes(expected.startTime);
+   if(verifiedStart===null)return false;
+   if(!practicePlan.times.every((time,index)=>{
+    if(!time||Number(time.block)!==index+1)return false;
+    const start=clockMinutes(time.start),end=clockMinutes(time.end),expectedStart=(verifiedStart+index*12)%(24*60),expectedEnd=(verifiedStart+(index+1)*12)%(24*60);
+    return start===expectedStart&&end===expectedEnd;
+   }))return false;
    for(const name of expectedNames){
     const rows=practicePlan.schedule[name];
     if(rows.some(row=>!row||typeof row!=='object'||typeof row.activity!=='string'||!row.activity.trim()))return false;
    }
-   if(Array.isArray(practicePlan.liveSessions)){
+   if(!Array.isArray(practicePlan.liveSessions))return false;
+   {
+    const liveKeys=new Set();
     for(const live of practicePlan.liveSessions){
      const block=Number(live?.block),pitcher=String(live?.pitcher||''),catcher=String(live?.catcher||''),hitters=Array.isArray(live?.hitters)?live.hitters:[];
      if(!Number.isInteger(block)||block<0||block>=expectedBlocks||!pitcher||!expectedSet.has(pitcher)||!catcher||hitters.length<2||hitters.length>3)return false;
+     const liveKey=block+'|'+pitcher;
+     if(liveKeys.has(liveKey))return false;
+     liveKeys.add(liveKey);
      if(catcher!=='9Square'&&!expectedSet.has(catcher))return false;
      if(catcher===pitcher)return false;
      if(hitters.length!==new Set(hitters).size||hitters.some(name=>!expectedSet.has(name)||name===pitcher||name===catcher))return false;
