@@ -107,9 +107,11 @@ mustNotInclude("match(/^(\\\\d{2}):(\\\\d{2})$/)","Persisted Resolution clock va
 mustInclude("try{serializedDraft=JSON.stringify(draft)}catch(error){console.error('HotB refused to persist Practice Resolution because its setup draft could not be sealed.',error);return false}","Resolution draft must seal exact bytes before save and contain serialization failure");
 mustInclude("HotB Practice Resolution setup draft changed during save.","Resolution draft must fail closed if save mutates recovery bytes");
 mustInclude("HotB Practice Resolution setup draft failed post-save recovery verification.","Resolution draft must be restorable after the actual save");
-mustInclude("const previousActivePracticeSession=db.activePracticeSession;","Resolution setup-draft persistence must retain the previous recovery authority until commit verification finishes");
+mustInclude("previousActivePracticeSessionBytes=JSON.stringify(db.activePracticeSession);","Resolution persistence must seal the previous recovery authority before replacement");
+mustInclude("previousActivePracticeSession=previousActivePracticeSessionBytes?JSON.parse(previousActivePracticeSessionBytes):null;","Resolution persistence rollback authority must be isolated from later mutation");
 mustInclude("const restorePreviousDraftAfterFailure=(message,error=null)=>","every post-save Resolution draft failure must use one rollback path");
 mustInclude("db.activePracticeSession=previousActivePracticeSession;","failed Resolution setup-draft persistence must restore the previous recovery session");
+mustInclude("setup-draft-rollback-save-drift","Resolution setup-draft rollback must verify the previous authority survived its recovery save");
 mustInclude("could not restore the previous practice recovery session after setup-draft persistence failure.","Resolution draft rollback persistence failure must be contained");
 mustInclude("rollback capture clone failed; attempting JSON capture","Resolution apply must retain rollback capture when structuredClone fails");
 mustInclude("const captured=JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession});","Resolution rollback fallback must seal all three transaction sources together");
@@ -172,8 +174,9 @@ mustInclude("could not create the practice recovery session.","resolved session 
 mustInclude("could not seal the practice recovery session.","resolved session persistence must fail closed if session serialization throws");
 mustInclude("could not save the practice recovery session.","resolved session persistence must fail closed if storage save throws");
 mustInclude("could not restore the exact practice session it just persisted","resolved session persistence must require exact complete restart recovery bytes");
-mustInclude("const previousActivePracticeSession=db.activePracticeSession;","resolved session persistence must retain the previous restart authority until verification completes");
+mustInclude("refused to replace a practice recovery session whose previous authority could not be sealed.","resolved session persistence must fail closed if its previous restart authority cannot be sealed");
 mustInclude("const restorePreviousSessionAfterFailure=(message,error=null)=>","resolved session persistence failures must use one transactional rollback path");
+mustInclude("resolved-session-rollback-save-drift","resolved session rollback must verify the previous authority survived its recovery save");
 mustInclude("could not restore the previous practice recovery session after resolved-session persistence failure.","resolved session persistence rollback failure must be contained");
 mustInclude("could not seal the saved practice recovery session.","resolved session persistence must contain post-save serialization failure");
 mustInclude("returned schedule data that could not be sealed.","candidate safety verification must reject an unserializable schedule");
@@ -226,6 +229,7 @@ mustInclude("refused to close the practice workspace because recovery state coul
 mustInclude("HotB Practice Resolution rollback preparation failed","Resolution apply must contain rollback preparation exceptions before acquiring the apply lock");
 mustInclude("HotB Practice Resolution rollback signature sealing failed","rollback capture must contain signature serialization failure");
 mustInclude("rejected a Practice Resolution rollback snapshot that could not be sealed.","rollback validation must fail closed instead of throwing on signature serialization");
+mustInclude("rollback whose recovery equality proof could not be sealed.","rollback validation must contain all exact recovery equality serialization failures");
 mustInclude("refused to clear a practice recovery session that could not be sealed.","practice-session clear must seal its rollback authority before mutation");
 mustInclude("could not restore the previous practice recovery session after clear failure.","practice-session clear failure must restore and persist the previous recovery authority");
 console.log('practice-resolution static contract tests passed');
