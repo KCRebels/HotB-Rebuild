@@ -4236,19 +4236,23 @@ function bind(){
    return {role,name,startTime:practiceResolution?.startTime||practiceSetupState.startTime,durationMinutes,playerNames:basePlayers.map(player=>player.name),availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||''}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
   };
   const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
+   // This is the mutation boundary for a verified coaching choice. Re-check the
+   // complete snapshot here even though the button handler already verified it.
+   if(!practiceResolutionSnapshotIsCurrentAndValid())return false;
+   if(role!=='pitcher'&&role!=='catcher')return false;
+   if(typeof withBlock11!=='boolean')return false;
+   if(withBlock11&&Number(practiceResolution.durationMinutes)!==120)return false;
    const target=findResolutionRosterIndex(name,role);if(!target)return false;
-   const verifiedPlayers=(practiceResolution?.practicePlayers||[]).filter(player=>player.name===name);
+   const verifiedPlayers=(practiceResolution.practicePlayers||[]).filter(player=>player.name===name);
    if(verifiedPlayers.length!==1)return false;
    const verifiedPlayer=verifiedPlayers[0];
-   const currentSignature=currentPracticeResolutionSignature();
-   if(!practiceResolution?.signature||currentSignature!==practiceResolution.signature)return false;
    // Preserve the exact availability/limitation state that was audited. Only the
    // coach-approved role flag is allowed to change during resolution.
    const accommodation=structuredClone(practiceSetupState.accommodations?.[name]||practiceAccommodation(target.roster[target.index]));
    if(role==='pitcher'){if(!verifiedPlayer.canPitch)return false;accommodation.canPitch=false;accommodation.requiresPitchWarmup=false}
-   if(role==='catcher'){if(!verifiedPlayer.canCatch)return false;accommodation.canCatch=false}
+   else if(role==='catcher'){if(!verifiedPlayer.canCatch)return false;accommodation.canCatch=false}
    practiceSetupState.accommodations[name]=accommodation;
-   practiceSetupState.durationMinutes=withBlock11?132:(practiceResolution?.durationMinutes||practiceSetupState.durationMinutes);
+   practiceSetupState.durationMinutes=withBlock11?132:Number(practiceResolution.durationMinutes);
    return true;
   };
   $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
@@ -4257,7 +4261,7 @@ function bind(){
   $('#applyPracticeCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('catcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'catcher')){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('catcher',picked,false));
   });
-  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;if(!verifiedResolutionChoice('extension')){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;practiceSetupState.durationMinutes=132;rebuildResolvedPractice(rollbackState,expectedResolutionState(null,null,true))});
+  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;if(!verifiedResolutionChoice('extension')){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!practiceResolutionSnapshotIsCurrentAndValid()||Number(practiceResolution.durationMinutes)!==120||practiceResolution.canExtend!==true){endResolutionApply();rejectUnverifiedResolution();return}practiceSetupState.durationMinutes=132;rebuildResolvedPractice(rollbackState,expectedResolutionState(null,null,true))});
   $('#applyPracticeCombinedResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
    const picked=$('input[name="practiceResolutionCombinedPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('combinedPitcher',picked)){rejectUnverifiedResolution();return}const rollbackState=resolutionRollbackState();if(!beginResolutionApply())return;if(!applyResolutionAccommodation(picked,'pitcher',true)){endResolutionApply();return}rebuildResolvedPractice(rollbackState,expectedResolutionState('pitcher',picked,true));
   });
