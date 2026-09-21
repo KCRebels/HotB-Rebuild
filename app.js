@@ -4157,8 +4157,10 @@ function bind(){
         practiceSetupState.selectedNames=(practicePlan.players||[]).map(player=>player.name);
         practiceSetupState.startTime=practicePlan.startTime;
         practiceSetupState.durationMinutes=practicePlan.durationMinutes;
-        persistPracticeSession();
-        return;
+        if(persistPracticeSession()!==true){
+         rebuiltSafe=false;
+         console.error('HotB Practice Resolution rebuilt plan could not be committed to restart recovery');
+        }else return;
        }
        console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
        if(rollbackState){
@@ -4263,8 +4265,10 @@ function persistPracticeSession(){
  // activePortalPractice already lives at the DB root. Do not duplicate that
  // publication record inside every saved practice session; restore can use the
  // root pointer and older sessions with portalState remain backward compatible.
- db.activePracticeSession=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,draftDrills:practiceDraftDrills,drillPickerOpen:practiceDrillPickerOpen,equipmentSetupOpen:practiceEquipmentSetupOpen,setupState:practiceSetupState,clock:practiceClock,portalState:null});
- save();
+ const session=window.HotBPracticeSession.create({plan:practicePlan,chosenDrills:practiceChosenDrills,draftDrills:practiceDraftDrills,drillPickerOpen:practiceDrillPickerOpen,equipmentSetupOpen:practiceEquipmentSetupOpen,setupState:practiceSetupState,clock:practiceClock,portalState:null});
+ if(!session?.plan?.portalDraftId||session.plan.portalDraftId!==practicePlan.portalDraftId){console.error('HotB refused to persist an incomplete practice session');return false}
+ db.activePracticeSession=session;
+ save();return true;
 }
 function persistPracticeDraft(){
  if(practicePlan||db.activePortalPractice?.id||!window.HotBPracticeSession?.createDraft)return;
