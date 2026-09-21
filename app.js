@@ -4773,11 +4773,15 @@ function bind(){
    const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('combinedCatcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState('catcher',picked,true,snapshot),()=>applyResolutionAccommodation(picked,'catcher',true));
   });
   $('#returnPracticeAttendance')?.addEventListener('click',()=>{
+   // Return to setup is a destructive exit from the verified decision context.
+   // It must never race an apply that already owns rollback/commit state.
+   if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){console.warn('HotB ignored Return to Practice Setup while Practice Resolution apply is verifying.');return}
    // Return to setup from the exact verified snapshot. This button is also the
    // escape hatch for stale/corrupt resolutions, so do not carry mutated role or
    // availability data forward from whatever currently happens to be in memory.
    const verifiedPlayers=practiceResolutionSnapshotIsCurrentAndValid()?practiceResolution.practicePlayers:[];
    if(verifiedPlayers.length){
+    const verifiedResolution=practiceResolution;
     practiceSetupState.selectedNames=verifiedPlayers.map(player=>player.name);
     practiceSetupState.startTime=practiceResolution?.startTime||practiceSetupState.startTime;
     practiceSetupState.durationMinutes=practiceResolution?.durationMinutes||practiceSetupState.durationMinutes;
@@ -4795,8 +4799,22 @@ function bind(){
      nextAccommodations[player.name]=accommodation;
     });
     practiceSetupState.accommodations=nextAccommodations;
+    // Prove the reconstructed setup is exactly the failed practice before throwing
+    // away its Resolution seal. This catches time/default conversion drift at the
+    // Return-to-Setup boundary.
+    const reconstructed=verifiedPlayers.map(player=>{
+     const rosterPlayer=roster.find(item=>item.name===player.name);
+     return rosterPlayer?practicePlayerModel(rosterPlayer,practiceSetupState.accommodations[player.name]||practiceAccommodation(rosterPlayer),verifiedResolution.startTime,verifiedResolution.durationMinutes):null;
+    });
+    if(reconstructed.some(player=>!player)||practiceResolutionSignature(reconstructed,verifiedResolution.startTime,verifiedResolution.durationMinutes)!==verifiedResolution.signature){
+     console.error('HotB refused Return to Practice Setup because the verified failed practice could not be reconstructed.');
+     practiceSetupState=structuredClone(resolutionRollbackState()?.setupState||practiceSetupState);
+     render();return;
+    }
    }
-   practiceResolution=null;modal=null;persistPracticeDraft();render();window.scrollTo(0,0);
+   practiceResolution=null;modal=null;
+   if(persistPracticeDraft()!==true){console.error('HotB could not persist Return to Practice Setup after Practice Resolution.');render();return}
+   render();window.scrollTo(0,0);
   });
  }
  $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
