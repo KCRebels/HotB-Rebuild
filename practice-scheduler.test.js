@@ -191,7 +191,7 @@ assert.ok(scheduler.validate(invalidPitcherResolution).some(error=>error.include
 
 const block11DepartureRoster=scenario(13,5,2).map((player,index)=>({...player,availableUntilBlock:index===0?10:11}));
 const block11DeparturePlan=scheduler.buildSchedule(block11DepartureRoster,'18:00',132);
-assert.ok(block11DeparturePlan.schedule[block11DepartureRoster[0].name][10].activity==='Unavailable','a player with a protected departure must remain unavailable in Block 11');
+assert.ok(block11DeparturePlan.schedule[block11DepartureRoster[0].name][10].activity==='Not Present','a player with a protected departure must remain Not Present in Block 11');
 assert.ok(!block11DeparturePlan.liveSessions.some(session=>session.block===10&&(session.pitcher===block11DepartureRoster[0].name||session.catcher===block11DepartureRoster[0].name||session.hitters?.includes(block11DepartureRoster[0].name))),'Block 11 must not assign a protected-departure player to live work');
 assert.deepEqual(scheduler.validate(block11DeparturePlan),[],'Block 11 with a protected departure must still pass the full rules audit');
 
