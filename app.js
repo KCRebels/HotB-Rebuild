@@ -3908,6 +3908,14 @@ function practiceBuildNoticeModal(){
  const notices=practicePlan?.buildNotices||[];if(!notices.length)return'';
  return `<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE BUILD NOTICE</div><h2>HotB built the practice</h2></div></div><p class="practice-resolution-intro">No coaching decision is required. HotB used the following allowed fallback${notices.length===1?'':'s'} to keep every hard practice rule intact.</p><section class="practice-resolution-notices"><ul>${notices.map(note=>`<li>${esc(note)}</li>`).join('')}</ul></section><button class="btn red block" id="acceptPracticeBuildNotice">Continue to Practice Plan</button></div></div>`;
 }
+function practiceResolutionExtendedPlayers(players,startTime){
+ const extendedEnd=practiceEndValue(startTime,132);
+ return (players||[]).map(player=>{
+  const savedDeparture=practiceSetupState.accommodations?.[player.name]?.departure||'';
+  const stayedThroughOriginalEnd=player.availableUntilBlock===10&&!savedDeparture;
+  return {...player,availableUntilBlock:stayedThroughOriginalEnd?11:player.availableUntilBlock,departureTime:stayedThroughOriginalEnd?extendedEnd:player.departureTime};
+ });
+}
 function practiceResolutionSignature(players,startTime,durationMinutes){
  return JSON.stringify({players:(players||[]).map(player=>({name:player.name,availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,prePracticeComplete:player.prePracticeComplete})),startTime,durationMinutes});
 }
@@ -4021,6 +4029,12 @@ function bind(){
    const selectedNames=practiceResolution?.practicePlayers?.map(player=>player.name)||practiceSetupState.selectedNames;
    const startTime=practiceResolution?.startTime||practiceSetupState.startTime;
    practiceSetupState.selectedNames=selectedNames;practiceSetupState.startTime=startTime;
+   // If Block 11 was chosen, make the verified extension explicit in setup state.
+   // Players with coach-entered departures remain unchanged.
+   if(Number(practiceSetupState.durationMinutes)===132){
+    const verifiedByName=new Map((practiceResolutionExtendedPlayers(practiceResolution?.practicePlayers||[],startTime)).map(player=>[player.name,player]));
+    selectedNames.forEach(name=>{const original=(practiceResolution?.practicePlayers||[]).find(player=>player.name===name),extended=verifiedByName.get(name);if(original&&extended&&extended.availableUntilBlock===11&&original.availableUntilBlock===10){const saved=practiceSetupState.accommodations?.[name]||{};if(!saved.departure)practiceSetupState.accommodations[name]={...saved,departure:''}}});
+   }
    practiceResolution=null;modal=null;persistPracticeDraft();render();setTimeout(()=>$('#generatePractice')?.click(),0);
   };
   $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
@@ -4523,12 +4537,7 @@ function bindPractice(){
      // Block 11 extends only players who were actually available through the end
      // of the original 120-minute practice. An explicit early departure remains
      // an explicit early departure; resolution must never silently lengthen it.
-     const extendedEnd=practiceEndValue(startTime,132);
-     const extendedPlayers=practicePlayers.map(player=>{
-      const savedDeparture=practiceSetupState.accommodations?.[player.name]?.departure||'';
-      const stayedThroughOriginalEnd=player.availableUntilBlock===10&&!savedDeparture;
-      return {...player,availableUntilBlock:stayedThroughOriginalEnd?11:player.availableUntilBlock,departureTime:stayedThroughOriginalEnd?extendedEnd:player.departureTime};
-     });
+     const extendedPlayers=practiceResolutionExtendedPlayers(practicePlayers,startTime);
      const extendedPlan=window.HotBPracticeScheduler.buildSchedule(extendedPlayers,startTime,132,{noPitchersMode:null});canExtend=resolutionPlanIsSafe(extendedPlan);
      if(!canExtend){
       for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
