@@ -4257,18 +4257,21 @@ function bindPractice(){
   // The schedule is complete. Move to the plan screen immediately.
   // Do not persist from the build click path; persistence is handled by the normal
   // practice workflow after the completed screen is visible.
-  try{
-   const app=document.getElementById('app');
-   if(app){
-    app.innerHTML=`<div class="app practice-app">${practicePage()}</div>${modal?modalView():''}`;
-    bind();
-   }else render();
-   window.scrollTo(0,0);
-  }catch(error){
-   console.error('HotB practice plan screen failed',error);
-   if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
-   alert('The schedule was built, but HotB could not open the practice-plan screen: '+String(error?.message||error||'unknown'));
-  }
+  // Let the Build click finish before replacing the entire practice screen.
+  // iOS Home Screen Safari can stall when HotB rewrites #app and rebinds every
+  // practice control synchronously inside the same tap handler.
+  practiceSection='builder';
+  setTimeout(()=>{
+   try{
+    render();
+    window.scrollTo(0,0);
+   }catch(error){
+    console.error('HotB practice plan screen failed',error);
+    const currentBuildButton=$('#generatePractice');
+    if(currentBuildButton){currentBuildButton.disabled=false;currentBuildButton.textContent='Build Practice Schedule'}
+    alert('The schedule was built, but HotB could not open the practice-plan screen: '+String(error?.message||error||'unknown'));
+   }
+  },0);
  });
  $('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',limitations:practiceSetupState.accommodations?.[player.name]?.limitations||'',prePracticeComplete:!!player.prePracticeComplete,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={...practiceSetupState,selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;practiceSection='setup';persistPracticeDraft();render();window.scrollTo(0,0)});
  $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;if(practiceCoachOpen)practiceCardsOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
