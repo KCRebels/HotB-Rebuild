@@ -4814,12 +4814,16 @@ function bind(){
    db.activePracticeSession=restoredSession;
    endResolutionApply();save();
    // save() must not mutate the rollback object or its persisted recovery record.
-   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)||JSON.stringify(db.activePracticeSession)!==JSON.stringify(restoredSession)){
+   const restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
+   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)||JSON.stringify(db.activePracticeSession)!==JSON.stringify(restoredSession)||!restoredRollbackSession||JSON.stringify(restoredRollbackSession)!==JSON.stringify(restoredSession)){
     console.error('HotB Practice Resolution rollback failed post-save verification');
     // Do not keep displaying a Resolution whose recovery record no longer proves
     // the same transaction. Normalize the live setup before releasing control.
     practiceResolution=null;modal=null;practicePlan=null;
     if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
+    // Never leave a failed/partially restored Resolution session as restart
+    // authority after exact rollback verification fails.
+    if(db.activePracticeSession?.resolution||db.activePracticeSession?.plan){db.activePracticeSession=null;save()}
     endResolutionApply();render();return false
    }
    render();return true;
