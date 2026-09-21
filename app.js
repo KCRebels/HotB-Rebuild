@@ -3913,8 +3913,11 @@ function practiceResolutionSignature(players,startTime,durationMinutes){
 }
 function currentPracticeResolutionSignature(){
  if(!practiceResolution)return'';
- const roster=practiceAttendanceRoster(),names=new Set(practiceResolution.practicePlayers?.map(player=>player.name)||[]);
- const players=roster.filter(player=>names.has(player.name)).map(player=>practicePlayerModel(player,practiceSetupState.accommodations?.[player.name]||practiceAccommodation(player),practiceResolution.startTime,practiceResolution.durationMinutes));
+ const roster=practiceAttendanceRoster(),expectedNames=practiceResolution.practicePlayers?.map(player=>player.name)||[],byName=new Map(roster.map(player=>[player.name,player]));
+ // Preserve the exact verified attendee order and fail closed if any verified player
+ // disappears. Filtering the live roster could otherwise hide a removed guest/player.
+ if(expectedNames.some(name=>!byName.has(name)))return'__practice_roster_changed__';
+ const players=expectedNames.map(name=>{const player=byName.get(name);return practicePlayerModel(player,practiceSetupState.accommodations?.[name]||practiceAccommodation(player),practiceResolution.startTime,practiceResolution.durationMinutes)});
  return practiceResolutionSignature(players,practiceResolution.startTime,practiceResolution.durationMinutes);
 }
 function practiceResolutionModal(){
