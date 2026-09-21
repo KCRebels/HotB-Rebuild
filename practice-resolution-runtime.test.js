@@ -96,4 +96,4 @@ const restoredDraft=session.restore(unresolved);
 assert.deepEqual(restoredDraft.resolution,unresolved.resolution,'unresolved verified Resolution choices must survive restart recovery exactly');
 assert.equal(restoredDraft.setupState.durationMinutes,120,'unresolved recovery authority must remain the original 120-minute failed practice');
 
-console.log(`practice-resolution runtime tests passed (${verified.length} verified alternatives: ${[...kinds].join(', ')})`);
+console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; exercised: ${[...exercised].join(', ')})`);
