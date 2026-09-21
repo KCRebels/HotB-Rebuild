@@ -3952,13 +3952,24 @@ function currentPracticeResolutionSignature(){
 }
 function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  if(!r||!r.signature||r.signature!==currentPracticeResolutionSignature())return false;
- const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===132?11:duration===120?10:0,names=players.map(player=>player?.name);
- return blockCount>0&&players.length>0&&names.length===new Set(names).size&&players.every(player=>
+ const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===132?11:duration===120?10:0,names=players.map(player=>player?.name),verifiedNames=new Set(names);
+ if(!blockCount||!players.length||names.length!==verifiedNames.size)return false;
+ if(!players.every(player=>
   player&&String(player.name||'').trim()===String(player.name||'')&&String(player.name||'').length>0&&
   Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&
   Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=blockCount&&Number(player.availableFromBlock)<Number(player.availableUntilBlock)&&
   typeof player.canPitch==='boolean'&&typeof player.requiresPitchWarmup==='boolean'&&typeof player.canCatch==='boolean'&&(!player.canPitch?!player.requiresPitchWarmup:true)
- );
+ ))return false;
+ const arrays=['pitchers','catchers','combinedPitchers','combinedCatchers','errors','notices','auditFailures'];
+ if(!arrays.every(key=>r[key]==null||Array.isArray(r[key])))return false;
+ const choiceKeys=['pitchers','catchers','combinedPitchers','combinedCatchers'];
+ if(!choiceKeys.every(key=>{const values=r[key]||[];return values.length===new Set(values).size&&values.every(name=>verifiedNames.has(name))}))return false;
+ if((r.combinedPitchers||[]).some(name=>(r.pitchers||[]).includes(name))||(r.combinedCatchers||[]).some(name=>(r.catchers||[]).includes(name)))return false;
+ if(r.canExtend===true&&duration!==120)return false;
+ if(duration!==120&&((r.combinedPitchers||[]).length||(r.combinedCatchers||[]).length))return false;
+ if((r.pitchers||[]).some(name=>!players.find(player=>player.name===name)?.canPitch)||(r.combinedPitchers||[]).some(name=>!players.find(player=>player.name===name)?.canPitch))return false;
+ if((r.catchers||[]).some(name=>!players.find(player=>player.name===name)?.canCatch)||(r.combinedCatchers||[]).some(name=>!players.find(player=>player.name===name)?.canCatch))return false;
+ return true;
 }
 function practiceResolutionModal(){
  const r=practiceResolution;if(!r)return'';
