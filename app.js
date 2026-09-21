@@ -5171,7 +5171,7 @@ function bindPractice(){
    const resolutionAuditFailures=[];
    const resolutionPlanIsSafe=(plan,label)=>{
     if(!plan){resolutionAuditFailures.push(label+' did not return a schedule.');return false}
-    if(plan.feasibilityErrors?.length)return false;
+    if(plan.feasibilityErrors?.length){resolutionAuditFailures.push(label+' remained infeasible: '+[...new Set(plan.feasibilityErrors.map(error=>String(error||'').trim()).filter(Boolean))].join(' | '));return false}
     if(!Array.isArray(plan.players)||!plan.schedule||!Array.isArray(plan.times)){resolutionAuditFailures.push(label+' returned incomplete schedule data.');return false}
     const planNames=plan.players.map(player=>player.name),planNameSet=new Set(planNames),scheduleKeys=Object.keys(plan.schedule||{}),scheduleKeySet=new Set(scheduleKeys),expectedBlocks=Number(plan.durationMinutes)===132?11:10;
     if(planNames.length!==planNameSet.size||scheduleKeys.length!==scheduleKeySet.size||planNameSet.size!==scheduleKeySet.size||planNames.some(name=>!scheduleKeySet.has(name))){resolutionAuditFailures.push(label+' returned inconsistent attendee schedule ownership.');return false}
@@ -5187,7 +5187,8 @@ function bindPractice(){
     try{
      const audit=window.HotBPracticeScheduler.validate(plan);
      if(!Array.isArray(audit)){resolutionAuditFailures.push(label+' returned an invalid safety audit.');return false}
-     return audit.length===0;
+     if(audit.length){resolutionAuditFailures.push(label+' failed the safety audit: '+[...new Set(audit.map(error=>String(error||'').trim()).filter(Boolean))].join(' | '));return false}
+     return true;
     }catch(error){
      console.error('HotB Practice Resolution audit failed',label,error);
      resolutionAuditFailures.push(label+' could not complete the safety audit.');
@@ -5288,8 +5289,12 @@ function bindPractice(){
     // Block 11 extends only players who were actually available through the end
     // of the original 120-minute practice. Explicit departures remain protected.
     const extendedPlayers=practiceResolutionExtendedPlayers(practicePlayers,startTime);
-    canExtend=verifyResolutionBuild(extendedPlayers,132,'Block 11');
-    if(!canExtend){
+    // The extension helper marks any production-availability disagreement invalid.
+    // Do not fan out combined candidates from a poisoned Block 11 baseline.
+    const extensionBaselineValid=extendedPlayers.length===practicePlayers.length&&extendedPlayers.every(player=>Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=11&&Number(player.availableFromBlock)<Number(player.availableUntilBlock));
+    canExtend=extensionBaselineValid&&verifyResolutionBuild(extendedPlayers,132,'Block 11');
+    if(!extensionBaselineValid)resolutionAuditFailures.push('Block 11 availability could not be verified against the production availability rules.');
+    if(!canExtend&&extensionBaselineValid){
      for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
       const label='Hitting Only + Block 11: '+pitcher.name,testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
       if(verifyResolutionBuild(testPlayers,132,label,{role:'pitcher',name:pitcher.name}))combinedPitchers.push(pitcher.name);
