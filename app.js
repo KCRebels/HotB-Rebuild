@@ -4828,7 +4828,20 @@ function persistPracticeDraft(){
  // Resolution snapshot itself is also defined as the failed 120-minute source.
  if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
  const resolutionToPersist=practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)?structuredClone(practiceResolution):null;
- db.activePracticeSession=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:resolutionToPersist});save();
+ const draft=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:resolutionToPersist});
+ // Saving an unresolved Resolution is a recovery contract, not a best-effort cache.
+ // Prove the exact sealed decision survives a createDraft -> restore round trip
+ // before replacing the last known-good recovery session.
+ if(resolutionToPersist){
+  const restored=window.HotBPracticeSession.restore?.(draft),savedResolution=restored?.resolution;
+  if(!restored||restored.stage!=='setup'||restored.plan||!savedResolution||savedResolution.signature!==resolutionToPersist.signature||savedResolution.decisionSignature!==resolutionToPersist.decisionSignature||practiceResolutionDecisionSignature(savedResolution)!==savedResolution.decisionSignature){
+   console.error('HotB refused to persist a Practice Resolution draft that did not survive recovery serialization.');
+   return false;
+  }
+  const source=JSON.stringify(resolutionToPersist),roundTrip=JSON.stringify(savedResolution);
+  if(source!==roundTrip){console.error('HotB refused to persist a Practice Resolution draft that changed during recovery serialization.');return false}
+ }
+ db.activePracticeSession=draft;save();return true;
 }
 function clearPracticeSession(){
  if(db.activePracticeSession==null)return;
@@ -5198,6 +5211,7 @@ function bindPractice(){
    if(savedSetupDraft){
     const restored=window.HotBPracticeSession?.restore(db.activePracticeSession);
     if(restored?.stage==='setup'&&!restored.plan){
+     const previousSetup=structuredClone(practiceSetupState),previousResolution=practiceResolution?structuredClone(practiceResolution):null;
      practiceSetupState={...practiceSetupState,...restored.setupState};
      practiceResolution=restored.resolution?structuredClone(restored.resolution):null;
      // Resume follows the same invariant as startup: unresolved Resolution state
@@ -5212,7 +5226,17 @@ function bindPractice(){
       // behind when the coach resumes the draft.
       if(Number(practiceSetupState.durationMinutes)===132)practiceSetupState.durationMinutes=120;
       persistPracticeDraft();
-     }else if(practiceResolution)modal='practiceResolution';
+     }else if(practiceResolution){
+      // The restored object must be byte-for-byte the sealed object in the saved
+      // draft. This catches restore migrations/defaults that might otherwise keep
+      // valid signatures while changing recovery metadata.
+      const savedResolution=db.activePracticeSession?.resolution;
+      if(!savedResolution||JSON.stringify(savedResolution)!==JSON.stringify(practiceResolution)){
+       console.error('HotB refused a Practice Resolution that changed while restoring the saved draft.');
+       practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='hub';modal=null;render();window.scrollTo(0,0);return;
+      }
+      modal='practiceResolution';
+     }
      render();window.scrollTo(0,0);return;
     }
    }
