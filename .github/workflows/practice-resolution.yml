@@ -30,6 +30,8 @@ jobs:
       - name: Run practice scheduler tests
         run: node practice-scheduler.test.js
       - name: Run practice session tests
+        if: always()
         run: node practice-session.test.js
       - name: Run app persistence tests
+        if: always()
         run: node app-persistence.test.js
