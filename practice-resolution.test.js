@@ -68,8 +68,8 @@ mustInclude("HotB ignored Practice Hub Back while Practice Resolution apply is v
 mustInclude("HotB refused Practice Hub Back because the Practice Resolution draft could not be persisted.","Practice Hub Back must not leave setup when Resolution recovery persistence fails");
 
 const noticeCommit=source.indexOf("modal=practicePlan?.buildNotices?.length?'practiceBuildNotice':null;");
-const tokenClear=source.lastIndexOf("practiceResolutionApplyToken=null;",noticeCommit);
-assert.ok(tokenClear>=0&&tokenClear<noticeCommit,'Resolution build notice may appear only after the transaction token is cleared');
+const tokenClear=source.indexOf("practiceResolutionApplyToken=null;",noticeCommit);
+assert.ok(noticeCommit>=0&&tokenClear>noticeCommit,'Resolution must retain transaction ownership while preparing and rendering the committed build notice');
 
 mustInclude("selectedNames.some((name,index)=>name!==expectedNames[index])","live Resolution validity must preserve exact verified attendee order");
 mustInclude("if(duration!==120)return false;","Resolution snapshot validator must reject emergency Block 11 as source state");
