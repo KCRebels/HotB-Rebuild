@@ -5770,7 +5770,14 @@ function bindPractice(){
      // above succeeds. A failed candidate must leave no residue that can later be
      // mistaken for a verified coaching choice.
      if(JSON.stringify({practicePlayers,players})!==sourceBefore){resolutionAuditFailures.push(label+' changed sealed candidate source data before publication.');return false}
+     let candidateEvidence='';
+     try{candidateEvidence=JSON.stringify(candidateNotices)}catch(error){resolutionAuditFailures.push(label+' notice evidence could not be sealed.');return false}
      verifiedCandidateNotices[label]=candidateNotices;
+     if(JSON.stringify(verifiedCandidateNotices[label])!==candidateEvidence||JSON.stringify({practicePlayers,players})!==sourceBefore){
+      delete verifiedCandidateNotices[label];
+      resolutionAuditFailures.push(label+' changed while publishing verified candidate evidence.');
+      return false;
+     }
      return true;
     }catch(error){
      console.error('HotB Practice Resolution build failed',label,error);
@@ -5826,8 +5833,10 @@ function bindPractice(){
     ...combinedCatchers.map(name=>'Not Catching + Block 11: '+name)
    ]);
    for(const label of Object.keys(verifiedCandidateNotices)){if(!survivingCandidateLabels.has(label))delete verifiedCandidateNotices[label]}
-   const candidateEvidenceComplete=[...survivingCandidateLabels].every(label=>Object.prototype.hasOwnProperty.call(verifiedCandidateNotices,label))&&Object.keys(verifiedCandidateNotices).length===survivingCandidateLabels.size;
-   if(!candidateEvidenceComplete){
+   const candidateEvidenceComplete=[...survivingCandidateLabels].every(label=>Object.prototype.hasOwnProperty.call(verifiedCandidateNotices,label)&&Array.isArray(verifiedCandidateNotices[label]))&&Object.keys(verifiedCandidateNotices).length===survivingCandidateLabels.size;
+   let finalCandidateEvidence='';
+   try{finalCandidateEvidence=JSON.stringify(verifiedCandidateNotices)}catch(error){resolutionAuditFailures.push('Practice Resolution candidate evidence could not be sealed after final filtering.')}
+   if(!candidateEvidenceComplete||!finalCandidateEvidence){
     resolutionAuditFailures.push('Practice Resolution candidate evidence did not match the final verified choices.');
     solvingPitchers=[];solvingCatchers=[];canExtend=false;combinedPitchers=[];combinedCatchers=[];
     for(const label of Object.keys(verifiedCandidateNotices))delete verifiedCandidateNotices[label];
