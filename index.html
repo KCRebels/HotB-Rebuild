@@ -42,7 +42,7 @@
   if('caches' in window)caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('hotb-app-')).map(key=>caches.delete(key)))).catch(()=>{});
 }catch(_){}})();
 </script>
-<script src="pwa-update.js?v=20260920-pwa220"></script><script>
+<script src="pwa-update.js?v=20260920-pwa221"></script><script>
 (()=>{try{
  if(!new URLSearchParams(location.search).has('portal'))return;
  // Arm the startup watchdog only after app.js has actually been requested.
