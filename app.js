@@ -4060,7 +4060,12 @@ function bind(){
    if(String(practicePlan.startTime||'')!==String(expected.startTime||''))return false;
    if(Number(practicePlan.durationMinutes)!==Number(expected.durationMinutes))return false;
    const expectedNames=expected.playerNames||[],actualNames=(practicePlan.players||[]).map(player=>player.name);
-   if(expectedNames.length!==actualNames.length||expectedNames.some(name=>!actualNames.includes(name)))return false;
+   const expectedSet=new Set(expectedNames),actualSet=new Set(actualNames);
+   if(expectedNames.length!==expectedSet.size||actualNames.length!==actualSet.size)return false;
+   if(expectedSet.size!==actualSet.size||expectedNames.some(name=>!actualSet.has(name)))return false;
+   const expectedBlocks=Number(expected.durationMinutes)===132?11:10;
+   if(!Array.isArray(practicePlan.times)||practicePlan.times.length!==expectedBlocks)return false;
+   if(Object.keys(practicePlan.schedule||{}).length!==expectedSet.size)return false;
    if(expected.role&&expected.name){
     const player=(practicePlan.players||[]).find(item=>item.name===expected.name);
     if(!player)return false;
