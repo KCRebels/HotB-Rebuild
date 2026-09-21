@@ -4555,16 +4555,26 @@ function bindPractice(){
      return false;
     }
    };
+   const verifyResolutionBuild=(players,duration,label)=>{
+    try{
+     const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode:null});
+     return resolutionPlanIsSafe(plan,label);
+    }catch(error){
+     console.error('HotB Practice Resolution build failed',label,error);
+     resolutionAuditFailures.push(label+' could not complete the verification build.');
+     return false;
+    }
+   };
    // Only offer a pitcher decision after proving that exact one-practice change builds cleanly.
    for(const pitcher of availablePitchers){
     const testPlayers=practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-    try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan,'Hitting Only: '+pitcher.name))solvingPitchers.push(pitcher.name)}catch(error){console.error('HotB Practice Resolution build failed','Hitting Only: '+pitcher.name,error);resolutionAuditFailures.push('Hitting Only: '+pitcher.name+' could not complete the verification build.')}
+    if(verifyResolutionBuild(testPlayers,durationMinutes,'Hitting Only: '+pitcher.name))solvingPitchers.push(pitcher.name)
    }
    let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
    const availableCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
    for(const catcher of availableCatchers){
     const testPlayers=practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-    try{const testPlan=window.HotBPracticeScheduler.buildSchedule(testPlayers,startTime,durationMinutes,{noPitchersMode:null});if(resolutionPlanIsSafe(testPlan,'Not Catching: '+catcher.name))solvingCatchers.push(catcher.name)}catch(error){console.error('HotB Practice Resolution build failed','Not Catching: '+catcher.name,error);resolutionAuditFailures.push('Not Catching: '+catcher.name+' could not complete the verification build.')}
+    if(verifyResolutionBuild(testPlayers,durationMinutes,'Not Catching: '+catcher.name))solvingCatchers.push(catcher.name)
    }
    if(!identityBlocked&&Number(durationMinutes)===120){
     try{
