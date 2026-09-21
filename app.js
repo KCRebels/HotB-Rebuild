@@ -3945,8 +3945,10 @@ function currentPracticeResolutionSignature(){
  // Resolution identity is name-based. Ambiguous names anywhere in the current
  // attendance roster are unsafe even if only one duplicate happens to be selected.
  const rosterNames=roster.map(player=>player.name),rosterNameSet=new Set(rosterNames);
+ if(rosterNames.some(name=>!String(name||'').trim()||String(name)!==String(name).trim()))return'__practice_invalid_roster_name__';
  if(rosterNames.length!==rosterNameSet.size)return'__practice_duplicate_roster_name__';
  if(expectedNames.length!==expectedSet.size)return'__practice_duplicate_verified_name__';
+ if(selectedNames.some(name=>!String(name||'').trim()||String(name)!==String(name).trim()))return'__practice_invalid_selected_name__';
  if(selectedNames.length!==selectedSet.size)return'__practice_duplicate_selected_name__';
  if(expectedSet.size!==selectedSet.size||expectedNames.some(name=>!selectedSet.has(name)))return'__practice_attendance_changed__';
  if(expectedNames.some(name=>!byName.has(name)))return'__practice_roster_changed__';
