@@ -4605,9 +4605,23 @@ function bindPractice(){
  $('#recoverPublishedPractice')?.addEventListener('click',recoverPublishedPractice);
  $('#openPracticeBuilder')?.addEventListener('click',()=>{if(db.activePortalPractice?.id&&!practicePlan){alert('A practice is still active on the player and coach portals. Resume and finish that practice before building a new one.');return}
   if(!practicePlan){
-   // Opening Build Practice always starts with every current non-Jenkins player
-   // selected. Render first, then force the actual DOM checkbox properties too;
-   // this avoids stale iOS form-state restoration overriding checked markup.
+   // A saved setup/resolution draft is authoritative. Never replace its verified
+   // attendance with the full roster merely because the coach returned through
+   // the Practice Hub. Fresh setup still starts with every current Rebels player.
+   const savedSetupDraft=db.activePracticeSession?.stage==='setup'&&!db.activePracticeSession?.plan;
+   if(savedSetupDraft){
+    const restored=window.HotBPracticeSession?.restore(db.activePracticeSession);
+    if(restored?.stage==='setup'&&!restored.plan){
+     practiceSetupState={...practiceSetupState,...restored.setupState};
+     practiceResolution=restored.resolution?structuredClone(restored.resolution):null;
+     practiceSection='setup';
+     if(practiceResolution)modal='practiceResolution';
+     render();window.scrollTo(0,0);return;
+    }
+   }
+   // Fresh Build Practice starts with every current non-Jenkins player selected.
+   // Render first, then force actual checkbox properties so stale iOS form-state
+   // restoration cannot override the checked markup.
    practiceSetupState.selectedNames=practiceAttendanceRoster().filter(player=>!player.isTeamJenkins).map(player=>player.name);
    practiceSection='setup';
    render();
