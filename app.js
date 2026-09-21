@@ -4698,15 +4698,22 @@ function bind(){
   };
   const restoreResolutionRollback=state=>{
    if(!resolutionRollbackStateIsValid(state)){console.error('HotB refused an invalid Practice Resolution rollback snapshot');practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;endResolutionApply();return false}
+   const restoredSetup=structuredClone(state.setupState),restoredResolution=structuredClone(state.resolution),restoredSession=structuredClone(state.activePracticeSession);
+   // Validate the clones that will actually become live state. A rollback is atomic
+   // only if cloning itself preserves the sealed failed-practice snapshot.
+   if(JSON.stringify(restoredSetup)!==JSON.stringify(state.setupState)||JSON.stringify(restoredResolution)!==JSON.stringify(state.resolution)||JSON.stringify(restoredSession)!==JSON.stringify(state.activePracticeSession)){console.error('HotB refused a Practice Resolution rollback that changed during cloning');return false}
    practiceResolutionApplyDraftId=null;
    practiceResolutionApplyOwnedDraftId=null;
    practiceResolutionApplyToken=null;
    practicePlan=null;
-   practiceSetupState=structuredClone(state.setupState);
-   practiceResolution=structuredClone(state.resolution);
+   practiceSetupState=restoredSetup;
+   practiceResolution=restoredResolution;
    modal='practiceResolution';
-   db.activePracticeSession=structuredClone(state.activePracticeSession);
-   endResolutionApply();save();render();return true;
+   db.activePracticeSession=restoredSession;
+   endResolutionApply();save();
+   // save() must not mutate the rollback object or its persisted recovery record.
+   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)||JSON.stringify(db.activePracticeSession)!==JSON.stringify(restoredSession)){console.error('HotB Practice Resolution rollback failed post-save verification');practiceResolution=null;modal=null;render();return false}
+   render();return true;
   };
   const expectedResolutionState=(role=null,name=null,withBlock11=false,resolutionSnapshot=practiceResolution)=>{
    // Expected postconditions must come from the immutable pre-mutation snapshot.
@@ -4818,6 +4825,17 @@ function persistPracticeSession(){
  // restorable, not merely that an object was assigned to db.
  const restored=window.HotBPracticeSession.restore?.(db.activePracticeSession);
  if(!restored?.plan?.portalDraftId||restored.plan.portalDraftId!==practicePlan.portalDraftId){console.error('HotB could not restore the practice session it just persisted');return false}
+ // A Resolution commit is not allowed to report persistence success merely because
+ // the draft ID survived serialization. Its setup identity must survive too; the
+ // full resolved-plan postcondition is checked by the owning transaction immediately
+ // after this function returns.
+ if(practiceResolutionApplyToken){
+  const restoredSetup=restored.setupState||{},liveNames=(practicePlan.players||[]).map(player=>player.name),savedNames=Array.isArray(restoredSetup.selectedNames)?restoredSetup.selectedNames:[];
+  if(String(restoredSetup.startTime||'')!==String(practicePlan.startTime||'')||Number(restoredSetup.durationMinutes)!==Number(practicePlan.durationMinutes)||savedNames.length!==liveNames.length||new Set(savedNames).size!==savedNames.length||savedNames.some(name=>!liveNames.includes(name))){
+   console.error('HotB Practice Resolution restart recovery changed the resolved setup identity');
+   return false;
+  }
+ }
  return true;
 }
 function persistPracticeDraft(){
