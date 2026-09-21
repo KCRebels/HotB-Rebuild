@@ -139,7 +139,7 @@ mustInclude("return-state-post-save-drift","Return to Setup rollback must verify
 mustInclude("HotB could not restore the sealed Practice Resolution Return-to-Setup state.","Return to Setup rollback must fail closed when exact recovery is impossible");
 mustInclude("HotB could not clear failed Return-to-Setup recovery authority.","failed Return-to-Setup rollback must clear unsafe restart authority fail-closed");
 mustNotInclude("restoreReturnState();save();render();return","Return to Setup must not perform an unverified second save after rollback");
-mustInclude("try{restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}","Resolution rollback must prove the restored failed draft through the actual startup restore path after save with exception containment");
+mustInclude("restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession);","Resolution rollback must prove the restored failed draft through the actual startup restore path after save with exception containment");
 mustInclude("rollbackPostSaveExact=!!restoredRollbackSession&&JSON.stringify(db.activePracticeSession)===JSON.stringify(restoredSession)&&JSON.stringify(restoredRollbackSession)===JSON.stringify(restoredSession);","Resolution rollback must reject post-save restart migration or drift inside a contained equality proof");
 mustInclude("if(db.activePracticeSession?.resolution||db.activePracticeSession?.plan){","failed exact Resolution rollback must detect unsafe restart authority");
 mustInclude("try{save()}catch(error){console.error('HotB could not clear invalid Practice Resolution rollback recovery.',error)}","failed exact Resolution rollback cleanup must contain storage failure");
