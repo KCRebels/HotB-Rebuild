@@ -5210,21 +5210,24 @@ function bindPractice(){
   if(!practicePlayers.some(player=>player.canPitch))noPitchersMode=null;
   stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
   const buildButton=$('#generatePractice');if(buildButton){buildButton.disabled=true;buildButton.textContent='Building Practice…'}
+  const resolutionApplyBuild=!!practiceResolutionApplyToken;
   try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){
    console.error('HotB practice scheduler failed',error);practicePlan=null;
-   // A Resolution apply token is single-use authorization for this automatic
-   // rebuild only. If scheduler construction throws before the normal consume
-   // point, revoke it immediately so no later/manual build can inherit Block 11
-   // permission or the verified draft identity.
-   if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}
+   // During an automatic Resolution rebuild, the outer transaction owns rollback.
+   // Preserve its token + draft authorization so the queued verifier can restore
+   // the original verified Resolution instead of mistaking this failure for stale work.
    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
-   alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));return
+   if(!resolutionApplyBuild)alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));
+   return
   }
   if(practicePlan.feasibilityErrors?.length){
-   // If this failed build was itself an automatic Resolution rebuild, revoke its
-   // one-use authorization before doing any secondary candidate work. The outer
-   // transaction will inspect the failed result and restore the original snapshot.
-   if(practiceResolutionApplyToken){practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null}
+   // A failed automatic Resolution rebuild must not create a second Resolution on
+   // top of the coaching choice being applied. Leave transaction ownership intact;
+   // the outer verifier will see this infeasible plan and roll back atomically.
+   if(resolutionApplyBuild){
+    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
+    return;
+   }
    const errors=practicePlan.feasibilityErrors.slice(),identityBlocked=errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(error)),availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
    // Practice Resolution is intentionally stricter than the normal build path. It is rare,
    // so every choice shown to the coach must pass both scheduler feasibility and the full
