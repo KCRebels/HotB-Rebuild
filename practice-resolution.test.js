@@ -69,4 +69,8 @@ const noticeCommit=source.indexOf("modal=practicePlan?.buildNotices?.length?'pra
 const tokenClear=source.lastIndexOf("practiceResolutionApplyToken=null;",noticeCommit);
 assert.ok(tokenClear>=0&&tokenClear<noticeCommit,'Resolution build notice may appear only after the transaction token is cleared');
 
+mustInclude("selectedNames.some((name,index)=>name!==expectedNames[index])","live Resolution validity must preserve exact verified attendee order");
+mustInclude("if(duration!==120)return false;","Resolution snapshot validator must reject emergency Block 11 as source state");
+mustInclude("if(!r.errors.length)return false;","Resolution snapshots must retain the original failed-build evidence");
+
 console.log('practice-resolution static contract tests passed');
