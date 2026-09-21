@@ -4985,7 +4985,23 @@ function persistPracticeDraft(){
   const source=JSON.stringify(resolutionToPersist),roundTrip=JSON.stringify(savedResolution);
   if(source!==roundTrip){console.error('HotB refused to persist a Practice Resolution draft that changed during recovery serialization.');return false}
  }
- db.activePracticeSession=draft;save();return true;
+ const serializedDraft=JSON.stringify(draft);
+ db.activePracticeSession=draft;save();
+ // save() is part of the Resolution recovery transaction. Do not report success
+ // unless the exact draft that was preflight-verified is still present afterward
+ // and can still be restored as the same setup/Resolution bytes.
+ if(JSON.stringify(db.activePracticeSession)!==serializedDraft){
+  console.error('HotB Practice Resolution setup draft changed during save.');
+  return false;
+ }
+ if(resolutionToPersist){
+  const persisted=window.HotBPracticeSession.restore?.(db.activePracticeSession);
+  if(!persisted||persisted.stage!=='setup'||persisted.plan||JSON.stringify(persisted.setupState)!==JSON.stringify(practiceSetupState)||JSON.stringify(persisted.resolution)!==JSON.stringify(resolutionToPersist)){
+   console.error('HotB Practice Resolution setup draft failed post-save recovery verification.');
+   return false;
+  }
+ }
+ return true;
 }
 function clearPracticeSession(){
  if(db.activePracticeSession==null)return;
