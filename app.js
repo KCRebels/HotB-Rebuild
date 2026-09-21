@@ -5209,11 +5209,22 @@ function persistPracticeDraft(){
 function clearPracticeSession(){
  if(db.activePracticeSession==null)return true;
  if(practicePlan&&db.activePracticeSession?.plan?.portalDraftId&&db.activePracticeSession.plan.portalDraftId!==practicePlan.portalDraftId)return false;
- const previousSession=db.activePracticeSession;
+ let previousSession=null,previousSessionBytes='';
+ try{
+  previousSessionBytes=JSON.stringify(db.activePracticeSession);
+  previousSession=JSON.parse(previousSessionBytes);
+ }catch(error){console.error('HotB refused to clear a practice recovery session that could not be sealed.',error);return false}
+ if(!previousSessionBytes)return false;
+ const restorePreviousSession=(message,error=null)=>{
+  if(error)console.error(message,error);else console.error(message);
+  db.activePracticeSession=previousSession;
+  try{save()}catch(restoreError){console.error('HotB could not restore the previous practice recovery session after clear failure.',restoreError)}
+  return false;
+ };
  db.activePracticeSession=null;
  try{save()}
- catch(error){db.activePracticeSession=previousSession;console.error('HotB could not clear the saved practice session.',error);return false}
- if(db.activePracticeSession!==null){db.activePracticeSession=previousSession;console.error('HotB saved practice session remained after clear.');return false}
+ catch(error){return restorePreviousSession('HotB could not clear the saved practice session.',error)}
+ if(db.activePracticeSession!==null)return restorePreviousSession('HotB saved practice session remained after clear.');
  return true;
 }
 async function endPracticeDraft(){
