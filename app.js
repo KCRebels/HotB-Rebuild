@@ -4520,11 +4520,19 @@ function bind(){
    let resolutionDraftId=null,resolutionApplyToken=null;
    const transactionOwnsToken=()=>!!resolutionDraftId&&!!resolutionApplyToken&&practiceResolutionApplyToken===resolutionApplyToken&&practiceResolutionApplyOwnedDraftId===resolutionDraftId;
    const transactionIsCurrent=()=>transactionOwnsToken()&&(practiceResolutionApplyDraftId===resolutionDraftId||practicePlan?.portalDraftId===resolutionDraftId);
-   const rollbackIfOwned=()=>{
+   const rollbackIfOwned=(message=null)=>{
     // Only the transaction that still owns the live token may restore its snapshot.
     // A stale queued callback must never overwrite a newer Resolution/apply.
     if(!transactionOwnsToken())return false;
-    return restoreResolutionRollback(rollbackState);
+    const restored=restoreResolutionRollback(rollbackState);
+    // Rollback publication is asynchronous on iPhone. Queue the explanation behind
+    // that paint instead of alerting immediately and blocking the recovery frame.
+    if(restored&&message){
+     const notify=()=>alert(message);
+     if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(notify,0));
+     else setTimeout(notify,16);
+    }
+    return restored;
    };
    const rollbackInitialFailure=()=>{
     // Before this apply publishes a token it cannot conflict with a newer apply:
@@ -4569,7 +4577,7 @@ function bind(){
       try{render()}
       catch(error){
        console.error('HotB Practice Resolution could not open the verified rebuild setup',error);
-       if(rollbackIfOwned())alert('HotB could not start the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+       rollbackIfOwned('HotB could not start the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
        return;
       }
       // Workspace teardown deliberately clears the global identities. A callback
@@ -4577,7 +4585,7 @@ function bind(){
       if(!transactionOwnsToken()){console.warn('HotB ignored a stale Practice Resolution rebuild callback');return}
       if(!transactionIsCurrent()){
        console.error('HotB Practice Resolution apply lost draft authorization before rebuild');
-       if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+       rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
        return;
       }
       const generate=$('#generatePractice');
@@ -4610,13 +4618,13 @@ function bind(){
        const buildReady=await waitForResolvedBuild();
        if(!buildReady){
         console.error('HotB Practice Resolution rebuild did not finish before verification');
-        if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+        rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
         return;
        }
        if(!transactionOwnsToken()){console.warn('HotB ignored a stale Practice Resolution verification callback');return}
        if(!transactionIsCurrent()){
         console.error('HotB Practice Resolution rebuild lost its draft authorization');
-        if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+        rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
         return;
        }
        let rebuiltSafe=!!practicePlan&&!practicePlan.feasibilityErrors?.length&&practicePlan.portalDraftId===resolutionDraftId&&resolutionPostcondition(expected);
@@ -4720,18 +4728,18 @@ function bind(){
          });
          if(!transactionIsCurrent()){
           console.error('HotB Practice Resolution transaction changed before final committed render');
-          if(rollbackIfOwned())alert('HotB could not finish opening the verified rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+          rollbackIfOwned('HotB could not finish opening the verified rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
           return;
          }
          try{render();window.scrollTo(0,0)}
          catch(error){
           console.error('HotB Practice Resolution final committed plan render failed',error);
-          if(rollbackIfOwned())alert('HotB could not open the verified rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+          rollbackIfOwned('HotB could not open the verified rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
           return;
          }
          if(!transactionIsCurrent()){
           console.error('HotB Practice Resolution transaction changed during final committed render');
-          if(rollbackIfOwned())alert('HotB could not finish opening the verified rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+          rollbackIfOwned('HotB could not finish opening the verified rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
           return;
          }
          // Consume the transaction identity only after the committed builder has
@@ -4744,21 +4752,23 @@ function bind(){
         }
        }
        console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
-       if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+       rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
        }catch(error){
         console.error('HotB Practice Resolution verification callback failed',error);
-        if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+        rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
        }
       },0);
      }catch(error){
       console.error('HotB Practice Resolution automatic rebuild failed',error);
-      if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+      rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
      }
     },0);
    }catch(error){
     console.error('HotB Practice Resolution apply failed',error);
-    if(rollbackInitialFailure())alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
-    else if(!practiceResolutionApplyToken)endResolutionApply();
+    if(rollbackInitialFailure()){
+     const notify=()=>alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
+     if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(notify,0));else setTimeout(notify,16);
+    }else if(!practiceResolutionApplyToken)endResolutionApply();
    }
   };
   const startVerifiedResolutionApply=(expectedFactory,mutate)=>{
