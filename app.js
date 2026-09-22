@@ -5786,10 +5786,12 @@ function bindPractice(){
     }
     return;
    }
+   const stage=String(stuckButton.dataset.buildStage||'pre-scheduler');
    stuckButton.disabled=false;stuckButton.textContent='Build Practice Schedule';
-   alert('HotB stopped before a practice schedule was created. Please tap Build Practice Schedule again.');
+   alert('HotB practice build stopped at '+stage+'. Please tell me this exact stage.');
   },250);
-  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){
+  if(buildButton)buildButton.dataset.buildStage='scheduler';
+  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});if(buildButton)buildButton.dataset.buildStage='scheduler-returned'}catch(error){
    console.error('HotB practice scheduler failed',error);clearTimeout(buildWatchdog);practicePlan=null;
    // During an automatic Resolution rebuild, the outer transaction owns rollback.
    // Preserve its token + draft authorization so the queued verifier can restore
@@ -5798,6 +5800,7 @@ function bindPractice(){
    if(!resolutionApplyBuild)alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));
    return
   }
+  if(buildButton)buildButton.dataset.buildStage='post-scheduler';
   if(practicePlan.feasibilityErrors?.length){
    // A failed automatic Resolution rebuild must not create a second Resolution on
    // top of the coaching choice being applied. Leave transaction ownership intact;
