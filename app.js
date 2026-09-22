@@ -5973,7 +5973,11 @@ function bindPractice(){
    // asynchronous verification transaction is still alive.
    const setResolutionStage=stage=>{
     const button=$('#generatePractice');
-    if(button){button.disabled=true;button.textContent='Building Practice…'}
+    if(button){
+     button.disabled=true;
+     const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-finalize':'Finalizing Resolution…','practice-resolution-seal':'Sealing Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-restore-verify':'Verifying Saved Resolution…','practice-resolution-publish':'Opening Resolution…'};
+     button.textContent=labels[stage]||'Building Practice…';
+    }
     armBuildWatchdog(stage,20000);
    };
    setResolutionStage('practice-resolution-start');
@@ -6197,14 +6201,14 @@ function bindPractice(){
     canExtend=extensionBaselineValid&&verifyResolutionCandidate(extendedPlayers,132,'Block 11');
     if(!extensionBaselineValid)resolutionAuditFailures.push('Block 11 availability could not be verified against the production availability rules.');
     if(!canExtend&&extensionBaselineValid){
-     for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
+     for(const pitcher of extendedPlayers.filter(player=>player.canPitch&&!solvingPitchers.includes(player.name))){
       setResolutionStage('practice-resolution-pitcher-block11');
       await yieldResolutionUI();
       if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
       const label='Hitting Only + Block 11: '+pitcher.name,testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
       if(verifyResolutionCandidate(testPlayers,132,label,{role:'pitcher',name:pitcher.name}))combinedPitchers.push(pitcher.name);
      }
-     for(const catcher of extendedPlayers.filter(player=>player.canCatch)){
+     for(const catcher of extendedPlayers.filter(player=>player.canCatch&&!solvingCatchers.includes(player.name))){
       setResolutionStage('practice-resolution-catcher-block11');
       await yieldResolutionUI();
       if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
