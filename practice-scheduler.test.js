@@ -448,7 +448,12 @@ const rebels12NoCatchMakennaLateBrooklynEarly=rebels13.filter(player=>player.nam
  return {...player};
 });
 const rebels12NoCatchMakennaLateBrooklynEarlyPlan=scheduler.buildSchedule(rebels12NoCatchMakennaLateBrooklynEarly,'18:00',120);
-assert.deepEqual(rebels12NoCatchMakennaLateBrooklynEarlyPlan.feasibilityErrors,['Front toss cannot be scheduled exactly once per player while keeping at least 2 players at every station, even after using the one allowed 4-player Front Toss block.'],'exact phone setup must preserve the reproduced Front Toss conflict until a complete cross-stage solution is proven');
+assert.deepEqual(rebels12NoCatchMakennaLateBrooklynEarlyPlan.feasibilityErrors,[],'exact phone setup with Makenna late and Brooklyn early must build directly');
+assert.deepEqual(scheduler.validate(rebels12NoCatchMakennaLateBrooklynEarlyPlan),[],'exact opposite-availability phone setup must pass the full audit');
+const brooklynEarlyPitch=rebels12NoCatchMakennaLateBrooklynEarlyPlan.schedule['Brooklyn Gering'].findIndex(entry=>entry.activity==='Pitch Live');
+const brooklynEarlyWarm=rebels12NoCatchMakennaLateBrooklynEarlyPlan.schedule['Brooklyn Gering'].findIndex(entry=>entry.activity==='Pitch Warm-Up');
+assert.ok(brooklynEarlyPitch>=0&&brooklynEarlyPitch<7,'Brooklyn must pitch before her 30-minute-early departure');
+assert.ok(brooklynEarlyWarm>=0&&brooklynEarlyPitch-brooklynEarlyWarm>=1&&brooklynEarlyPitch-brooklynEarlyWarm<=2,'Brooklyn must retain a legal pitching warm-up without consuming her only Front Toss opportunity');
 const rebels12NoCatchMakennaLateBrooklynEarly11=rebels12NoCatchMakennaLateBrooklynEarly.map(player=>({...player,availableUntilBlock:player.name==='Brooklyn Gering'?7:11}));
 const rebels12NoCatchMakennaLateBrooklynEarly11Plan=scheduler.buildSchedule(rebels12NoCatchMakennaLateBrooklynEarly11,'18:00',132);
 assert.deepEqual(rebels12NoCatchMakennaLateBrooklynEarly11Plan.feasibilityErrors,[],'Block 11 should provide a verified resolution for the exact opposite-availability phone setup');
