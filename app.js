@@ -6136,13 +6136,34 @@ function bindPractice(){
      return false;
     }
    };
+   // Cache verification by the complete candidate input. The same combined
+   // Block 11 candidate can be reached through more than one Resolution branch;
+   // iPhone should never pay for an identical full scheduler + rules audit twice.
+   const resolutionVerificationCache=new Map();
+   const verifyResolutionCandidate=(players,candidateDuration,label,expectedChange=null)=>{
+    let key='';
+    try{key=JSON.stringify({players,duration:candidateDuration,expectedChange})}
+    catch(error){resolutionAuditFailures.push(label+' could not seal its verification cache key.');return false}
+    if(resolutionVerificationCache.has(key)){
+     const cached=resolutionVerificationCache.get(key);
+     if(cached?.notices)verifiedCandidateNotices[label]=structuredClone(cached.notices);
+     return cached?.safe===true;
+    }
+    const safe=verifyResolutionBuild(players,candidateDuration,label,expectedChange);
+    let notices=null;
+    if(safe&&verifiedCandidateNotices[label]){
+     try{notices=structuredClone(verifiedCandidateNotices[label])}catch(error){notices=null}
+    }
+    resolutionVerificationCache.set(key,{safe,notices});
+    return safe;
+   };
    // Only offer a pitcher decision after proving that exact one-practice change builds cleanly.
    for(const pitcher of availablePitchers){
     setResolutionStage('practice-resolution-pitcher');
     await yieldResolutionUI();
     if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
     const testPlayers=practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-    if(verifyResolutionBuild(testPlayers,durationMinutes,'Hitting Only: '+pitcher.name,{role:'pitcher',name:pitcher.name}))solvingPitchers.push(pitcher.name)
+    if(verifyResolutionCandidate(testPlayers,durationMinutes,'Hitting Only: '+pitcher.name,{role:'pitcher',name:pitcher.name}))solvingPitchers.push(pitcher.name)
    }
    let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
    const availableCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
@@ -6151,7 +6172,7 @@ function bindPractice(){
     await yieldResolutionUI();
     if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
     const testPlayers=practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-    if(verifyResolutionBuild(testPlayers,durationMinutes,'Not Catching: '+catcher.name,{role:'catcher',name:catcher.name}))solvingCatchers.push(catcher.name)
+    if(verifyResolutionCandidate(testPlayers,durationMinutes,'Not Catching: '+catcher.name,{role:'catcher',name:catcher.name}))solvingCatchers.push(catcher.name)
    }
    if(!identityBlocked&&Number(durationMinutes)===120){
     // Block 11 extends only players who were actually available through the end
@@ -6161,7 +6182,7 @@ function bindPractice(){
     // Do not fan out combined candidates from a poisoned Block 11 baseline.
     const extensionBaselineValid=extendedPlayers.length===practicePlayers.length&&extendedPlayers.every(player=>Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=11&&Number(player.availableFromBlock)<Number(player.availableUntilBlock));
     if(extensionBaselineValid){setResolutionStage('practice-resolution-block11');await yieldResolutionUI();if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Block 11. Nothing was committed. Please review the setup and build again.');return}}
-    canExtend=extensionBaselineValid&&verifyResolutionBuild(extendedPlayers,132,'Block 11');
+    canExtend=extensionBaselineValid&&verifyResolutionCandidate(extendedPlayers,132,'Block 11');
     if(!extensionBaselineValid)resolutionAuditFailures.push('Block 11 availability could not be verified against the production availability rules.');
     if(!canExtend&&extensionBaselineValid){
      for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
