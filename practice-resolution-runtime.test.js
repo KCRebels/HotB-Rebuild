@@ -664,6 +664,6 @@ console.log('Resolution 487 infeasible-candidate short-circuit regression passed
  assert.ok(branch.includes("'Not Catching: '+player.name"),'catcher opt-out must be tested as a coaching option');
  assert.ok(branch.includes("'Block 11'"),'emergency Block 11 must be tested as a coaching option');
  assert.ok(branch.includes('sortedCandidateNotices'),'verified option notices must be sealed with the decision');
- assert.ok(branch.includes("bundle:'resolution497'"),'published Resolution must identify the verified-option architecture');
+ assert.ok(app497.includes("bundle:'resolution497'"),'published Resolution must identify the verified-option architecture');
 }
 console.log('Resolution 497 verified coaching-option regression passed.');
