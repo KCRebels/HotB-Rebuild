@@ -6015,7 +6015,6 @@ function bindPractice(){
     buildWatchdogStage=stage;
    };
    setResolutionStage('practice-resolution-start');
-   await yieldResolutionUI();
    if(!resolutionApplyBuild&&!buildSetupStillOwned()){
     recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was building. Nothing was committed. Please review the setup and tap Build Practice Schedule again.');
     return;
@@ -6221,14 +6220,9 @@ function bindPractice(){
      const candidate=candidates[index],spec=buildCandidate(candidate);
      if(verifyResolutionCandidate(spec.players,spec.duration,spec.label,spec.expectedChange))onSafe(candidate,spec);
      markBuildProgress();
-     // The next loop iteration yields before its scheduler pass. Do not also yield
-     // after the audit: on the final candidate that creates an otherwise unnecessary
-     // async boundary immediately before Resolution finalization, which is the exact
-     // continuation iPhone Safari has repeatedly stranded.
-     if(index<candidates.length-1){
-      await yieldResolutionUI();
-      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed',ownershipMessage);return false}
-     }
+     // The next iteration already yields before its scheduler pass. One yield per
+     // candidate is sufficient; a second yield here only doubles Safari continuation
+     // points without creating any additional scheduler isolation.
     }
     return true;
    };
@@ -6254,7 +6248,7 @@ function bindPractice(){
     // The extension helper marks any production-availability disagreement invalid.
     // Do not fan out combined candidates from a poisoned Block 11 baseline.
     const extensionBaselineValid=extendedPlayers.length===practicePlayers.length&&extendedPlayers.every(player=>Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=11&&Number(player.availableFromBlock)<Number(player.availableUntilBlock));
-    if(extensionBaselineValid){setResolutionStage('practice-resolution-block11');await yieldResolutionUI();if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Block 11. Nothing was committed. Please review the setup and build again.');return}}
+    if(extensionBaselineValid){setResolutionStage('practice-resolution-block11');if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Block 11. Nothing was committed. Please review the setup and build again.');return}}
     canExtend=extensionBaselineValid&&verifyResolutionCandidate(extendedPlayers,132,'Block 11');
     if(!extensionBaselineValid)resolutionAuditFailures.push('Block 11 availability could not be verified against the production availability rules.');
     if(!canExtend&&extensionBaselineValid){
