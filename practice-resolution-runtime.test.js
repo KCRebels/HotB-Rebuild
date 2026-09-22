@@ -871,3 +871,17 @@ console.log('Resolution 537 Apply role-model regression passed.');
  assert.match(source,/Diagnostic: '\+detail/,'rebuild failure must surface its exact diagnostic instead of silently returning to setup');
 }
 console.log('Resolution 538 rollback-normalization regression passed.');
+
+
+/* Resolution 539 postcondition diagnostic regression.
+   A device-only immutable-postcondition rejection must identify the failed clause. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('const resolutionPostcondition=');
+ const end=source.indexOf('const rebuildResolvedPractice=',start);
+ const branch=source.slice(start,end);
+ assert.match(branch,/const failProof=reason=>/,'postcondition must own a clause diagnostic');
+ assert.match(branch,/hotb-resolution-postcondition/,'postcondition diagnostic must survive to rebuild error');
+ assert.match(source,/immutable postcondition \['\+postconditionDetail\+'\]/,'Apply failure must display postcondition clause');
+}
+console.log('Resolution 539 postcondition diagnostic regression passed.');
