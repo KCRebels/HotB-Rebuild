@@ -5975,7 +5975,7 @@ function bindPractice(){
     const button=$('#generatePractice');
     if(button){
      button.disabled=true;
-     const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-finalize':'Finalizing Resolution…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Sealing Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-restore-verify':'Verifying Saved Resolution…','practice-resolution-publish':'Opening Resolution…'};
+     const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-finalize':'Finalizing Resolution…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Preparing Resolution…','practice-resolution-byte-seal':'Sealing Resolution…','practice-resolution-snapshot-verify':'Validating Resolution…','practice-resolution-prepersist-verify':'Checking Final Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-restore-verify':'Verifying Saved Resolution…','practice-resolution-publish':'Opening Resolution…'};
      button.textContent=labels[stage]||'Building Practice…';
     }
     armBuildWatchdog(stage,20000);
@@ -6275,20 +6275,21 @@ function bindPractice(){
    // Resolution cannot add, remove, or swap a coaching choice without invalidating
    // the transaction and forcing a fresh verification build.
    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
-   // Seal the complete generated object before validation/persistence. Signatures
-   // protect the decision fields, but this byte seal also catches any accidental
-   // mutation of practicePlayers or other transaction metadata between generation
-   // and publication.
+   // Split byte sealing from the complete snapshot validator. The 13-player object
+   // is intentionally large and both operations walk it; doing both under one
+   // heartbeat can make a healthy iPhone build look stranded.
+   setResolutionStage('practice-resolution-byte-seal');
+   await yieldResolutionUI();
+   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be sealed. Nothing was committed. Please review the setup and build again.');return}
    let generatedResolutionBytes='';
    try{generatedResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not serialize the generated Practice Resolution.',error)}
    if(!generatedResolutionBytes){
     recoverPracticeBuildSetup('practice-resolution-seal-failed','HotB could not seal the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
     return;
    }
-   // The generated decision object must pass the same complete validator used by
-   // display, apply, persistence and resume before it can replace the failed build.
-   // This catches candidate-generation drift at its source instead of saving a
-   // Resolution that the next render immediately rejects.
+   setResolutionStage('practice-resolution-snapshot-verify');
+   await yieldResolutionUI();
+   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution snapshot verification. Nothing was committed. Please review the setup and build again.');return}
    practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
    practiceSetupState.startTime=startTime;
    practiceSetupState.durationMinutes=durationMinutes;
@@ -6298,7 +6299,8 @@ function bindPractice(){
     recoverPracticeBuildSetup('practice-resolution-snapshot-invalid','HotB could not verify the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
     return;
    }
-
+   setResolutionStage('practice-resolution-prepersist-verify');
+   await yieldResolutionUI();
    if(JSON.stringify(practiceResolution)!==generatedResolutionBytes){
     console.error('HotB refused a Practice Resolution that changed before persistence.');
     persistPracticeDraft();
