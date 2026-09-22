@@ -909,7 +909,7 @@ console.log('Resolution 488 mobile long-task regression passed.');
  assert.ok(combinedBody.includes('combinedPitchers=[]')&&combinedBody.includes('combinedCatchers=[]'),'combined choices must remain empty on setup tap');
  assert.ok(!combinedBody.includes('verifyOrderedCandidates('),'combined setup branch must not call scheduler candidate verifier');
  assert.ok(!combinedBody.includes('buildSchedule('),'combined setup branch must not call scheduler directly');
- assert.ok(appSource489.includes('candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?1:0)'),'build budget must exclude removed combined and role candidates');
+ assert.ok(appSource489.includes('const candidateSearchCapacity=0'),'build budget must exclude every speculative candidate');
 }
 console.log('Resolution 489 setup-tap combined-search bypass regression passed.');
 
@@ -924,6 +924,24 @@ console.log('Resolution 489 setup-tap combined-search bypass regression passed.'
  const roleBody=app490.slice(roleBranch,combinedBranch);
  assert.ok(roleBody.includes('solvingPitchers=[]')&&roleBody.includes('solvingCatchers=[]'),'role choices remain empty');
  assert.ok(!roleBody.includes('verifyOrderedCandidates(')&&!roleBody.includes('buildSchedule('),'role bypass performs no scheduler work');
- assert.ok(app490.includes('candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?1:0)'),'candidate budget permits only Block 11 after base');
+ assert.ok(app490.includes('const candidateSearchCapacity=0'),'candidate budget permits no speculative scheduler build after base');
 }
 console.log('Resolution 490 role-search bypass production regression passed.');
+
+
+/* Resolution 491 zero-speculation production regression.
+   Once the base scheduler fails, setup must publish Resolution without calling the
+   scheduler again. The repeatedly observed iPhone stall migrated to each remaining
+   candidate as earlier candidates were removed, proving the safe boundary is zero
+   speculative rebuilds on the original tap. */
+{
+ const app491=require('node:fs').readFileSync('./app.js','utf8');
+ assert.ok(app491.includes("stage:'practice-resolution-block11-search-bypassed'"),'Block 11 speculation must be bypassed');
+ assert.ok(app491.includes('const candidateSearchCapacity=0'),'candidate capacity must be zero');
+ const blockStart=app491.indexOf('}else if(extensionBaselineValid){',app491.indexOf('const verifyOrderedCandidates=async'));
+ const roleStart=app491.indexOf('if(!identityBlocked&&!canExtend&&!resolutionBudgetExceeded)',blockStart);
+ const blockBody=app491.slice(blockStart,roleStart);
+ assert.ok(blockBody.includes('canExtend=false'),'Block 11 must not be advertised without a scheduler proof');
+ assert.ok(!blockBody.includes('verifyOrderedCandidates(')&&!blockBody.includes('buildSchedule('),'Block 11 bypass performs no scheduler work');
+}
+console.log('Resolution 491 zero-speculation production regression passed.');
