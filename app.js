@@ -5873,13 +5873,9 @@ function bindPractice(){
   // The build handler now has intentional async frame yields during Practice
   // Resolution. A short timer cannot distinguish those healthy yields from a stall,
   // so use an explicit stage heartbeat and only recover after a real quiet period.
-  let buildWatchdog=null,buildWatchdogConfirm=null,buildWatchdogStage='pre-scheduler',buildWatchdogGeneration=0,buildFinished=false,buildWatchdogProgress=0;
+  let buildWatchdogStage='pre-scheduler',buildFinished=false,buildWatchdogProgress=0;
   const markBuildProgress=()=>++buildWatchdogProgress;
-  const stopBuildWatchdog=()=>{
-   buildFinished=true;buildWatchdogGeneration++;
-   clearTimeout(buildWatchdog);buildWatchdog=null;
-   clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
-  };
+  const stopBuildWatchdog=()=>{buildFinished=true};
   // A completed build publishes synchronously. render() does not require painted
   // geometry, so deferring through rAF/timers only creates another iPhone Safari
   // continuation that can be throttled or stranded after all scheduler work is done.
@@ -5935,39 +5931,6 @@ function bindPractice(){
    });
   };
   setPracticeBuildControlsLocked(true);
-  const armBuildWatchdog=(stage,timeout=12000)=>{
-   buildFinished=false;buildWatchdogStage=stage;
-   const generation=++buildWatchdogGeneration,progressAtArm=buildWatchdogProgress,stageAtArm=stage;
-   if(buildButton)buildButton.dataset.buildStage=stage;
-   clearTimeout(buildWatchdog);
-   clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
-   buildWatchdog=setTimeout(()=>{
-    if(buildFinished||generation!==buildWatchdogGeneration)return;
-    const stuckButton=$('#generatePractice');
-    if(!stuckButton||!stuckButton.disabled)return;
-    // A timeout only belongs to the exact stage/progress generation that armed it.
-    // If anything advanced, this callback is stale and must die silently.
-    if(buildWatchdogProgress!==progressAtArm||buildWatchdogStage!==stageAtArm)return;
-    // A completed feasible plan is never a scheduler stall. Publication/recovery
-    // owns the next UI transition and has its own exception handling.
-    if(practicePlan&&!practicePlan.feasibilityErrors?.length)return;
-    const confirmGeneration=generation,confirmProgress=buildWatchdogProgress,confirmStage=buildWatchdogStage;
-    const confirm=()=>{
-     buildWatchdogConfirm=null;
-     if(buildFinished||confirmGeneration!==buildWatchdogGeneration)return;
-     const confirmedButton=$('#generatePractice');
-     if(!confirmedButton||!confirmedButton.disabled)return;
-     if(buildWatchdogProgress!==confirmProgress||buildWatchdogStage!==confirmStage)return;
-     stopBuildWatchdog();
-     setPracticeBuildControlsLocked(false);
-     confirmedButton.disabled=false;confirmedButton.textContent='Build Practice Schedule';
-     alert('HotB practice build stopped at '+String(confirmedButton.dataset.buildStage||confirmStage)+'. Please tell me this exact stage.');
-    };
-    // Confirm in a later task. Do not use rAF here: a backgrounded/throttled iPhone
-    // can defer rAF and leave the Build button stranded even though timers resume.
-    buildWatchdogConfirm=setTimeout(confirm,250);
-   },timeout);
-  };
   buildWatchdogStage='scheduler';
   if(buildButton)buildButton.dataset.buildStage='scheduler';
   markBuildProgress();
@@ -5991,7 +5954,6 @@ function bindPractice(){
    // verified transaction. Retire the initial scheduler watchdog before entering it;
    // watchdog before entering it; Resolution itself no longer uses wall-clock
    // timers, eliminating false iPhone stalls during legitimate candidate work.
-   buildWatchdogGeneration++;
    buildWatchdogStage='practice-resolution';
    // Keep the build state visible and make every long Resolution phase identifiable.
    // This also keeps the Build control locked throughout the verification transaction.
