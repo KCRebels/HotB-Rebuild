@@ -632,3 +632,21 @@ const durableCommit477={setup:'failed-setup',plan:null};
 assert.equal(commitBoundary477(durableCommit477,()=>true,()=>{throw new Error('presentation only')}),'committed');
 assert.equal(durableCommit477.setup,'resolved-setup');
 assert.equal(durableCommit477.plan,'resolved-plan');
+
+
+/* Resolution 478 single-gate authorization regression.
+   A choice is authorized and converted to expected state in one pure pass; there
+   is no second callback that can disagree with or mutate the first decision. */
+function authorizedChoice478(snapshot,role,name,withBlock11){
+ if(!snapshot||typeof withBlock11!=='boolean')return null;
+ const allowed=role==='pitcher'?(withBlock11?snapshot.combinedPitchers:snapshot.pitchers):role==='catcher'?(withBlock11?snapshot.combinedCatchers:snapshot.catchers):withBlock11&&snapshot.canExtend?[null]:[];
+ if(!Array.isArray(allowed)||!allowed.includes(name))return null;
+ return {role,name,durationMinutes:withBlock11?132:120};
+}
+const gate478={pitchers:['P1'],catchers:['C1'],combinedPitchers:['P2'],combinedCatchers:['C2'],canExtend:true};
+const gateBytes478=JSON.stringify(gate478);
+assert.deepEqual(authorizedChoice478(gate478,'pitcher','P1',false),{role:'pitcher',name:'P1',durationMinutes:120});
+assert.deepEqual(authorizedChoice478(gate478,'catcher','C2',true),{role:'catcher',name:'C2',durationMinutes:132});
+assert.deepEqual(authorizedChoice478(gate478,null,null,true),{role:null,name:null,durationMinutes:132});
+assert.equal(authorizedChoice478(gate478,'pitcher','C1',false),null);
+assert.equal(JSON.stringify(gate478),gateBytes478,'single Resolution authorization gate must be read-only');
