@@ -441,8 +441,8 @@ function recoveryAccommodationFromCandidate(player){
   prePracticeComplete:player.prePracticeComplete===true
  };
 }
-const recoverySource=base.map(player=>({...player}));
-const recoveryExtended=extendPlayers(recoverySource);
+const recoverySource=controlledKcSix.map(player=>({...player}));
+const recoveryExtended=extended(recoverySource);
 for(let index=0;index<recoveryExtended.length;index++){
  const candidate=recoveryExtended[index],source=recoverySource[index],accommodation=recoveryAccommodationFromCandidate(candidate);
  assert.equal(accommodation.arrival,candidate.arrivalTime,'recovery must preserve verified arrival clock');
@@ -461,7 +461,7 @@ const recoveryFields469=['name','isPitcher','isCatcher','isGuest','availableFrom
 function exactRecoveryParity(expected,actual){
  return !!expected&&!!actual&&recoveryFields469.every(field=>expected[field]===actual[field]);
 }
-for(const fixture of [base,...matrix]){
+for(const fixture of [controlledKcSix,...matrix]){
  if(!Array.isArray(fixture))continue;
  for(const player of fixture){
   assert.equal(exactRecoveryParity(player,{...player}),true,'identical recovery player must pass exact field parity');
@@ -512,9 +512,9 @@ function detachedSetup471(source,players,startTime,duration){
  for(const player of players)detached.accommodations[player.name]=recoveryAccommodationFromCandidate(player);
  return detached;
 }
-const sourceSetup471={selectedNames:base.map(player=>player.name),startTime:'18:00',durationMinutes:120,accommodations:Object.fromEntries(base.map(player=>[player.name,recoveryAccommodationFromCandidate(player)]))};
+const sourceSetup471={selectedNames:controlledKcSix.map(player=>player.name),startTime:'18:00',durationMinutes:120,accommodations:Object.fromEntries(controlledKcSix.map(player=>[player.name,recoveryAccommodationFromCandidate(player)]))};
 const sourceBytes471=JSON.stringify(sourceSetup471);
-const extended471=extendPlayers(base.map(player=>({...player})));
+const extended471=extended(controlledKcSix.map(player=>({...player})));
 const detached471=detachedSetup471(sourceSetup471,extended471,'18:00',132);
 assert.equal(JSON.stringify(sourceSetup471),sourceBytes471,'detached Resolution setup preparation must not mutate source setup');
 assert.equal(detached471.durationMinutes,132,'detached Resolution setup must carry candidate duration');
@@ -537,13 +537,13 @@ for(const errors of [
  ['Every attending player must have a name.'],
  ['Invalid availability for Guest 1.']
 ]){
- const plan=resolutionSearchPlan472(base,errors);
+ const plan=resolutionSearchPlan472(controlledKcSix,errors);
  assert.equal(plan.blocked,true,'structural Resolution source error must be blocked');
  assert.equal(plan.capacity,0,'blocked Resolution source must have zero candidate capacity');
- assert.equal(plan.budget,1,'blocked Resolution source budget must cover only the already-failed base build');
+ assert.equal(plan.budget,1,'blocked Resolution source budget must cover only the already-failed controlledKcSix build');
  assert.equal(plan.candidateBuilds,0,'blocked Resolution source must run no candidate scheduler builds');
 }
-const solvable472=resolutionSearchPlan472(base,['Catcher coverage is insufficient.']);
+const solvable472=resolutionSearchPlan472(controlledKcSix,['Catcher coverage is insufficient.']);
 assert.equal(solvable472.blocked,false,'scheduler feasibility errors must retain Resolution search');
 assert.ok(solvable472.capacity>0,'scheduler feasibility errors must retain finite candidate capacity');
 assert.equal(solvable472.budget,Math.min(64,Math.max(2,solvable472.capacity+1)),'Resolution budget must match finite first-safe search ceiling');
@@ -577,7 +577,7 @@ function uniqueRosterMatch474(roster,name){
  for(let index=0;index<roster.length;index++)if(roster[index]?.name===name)matches.push(index);
  return matches.length===1?matches[0]:null;
 }
-const roster474=base.map(player=>({name:player.name}));
+const roster474=controlledKcSix.map(player=>({name:player.name}));
 const rosterBytes474=JSON.stringify(roster474);
 assert.equal(uniqueRosterMatch474(roster474,roster474[0].name),0,'unique live roster identity must authorize');
 assert.equal(uniqueRosterMatch474(roster474,'Missing Player'),null,'missing live roster identity must reject');
@@ -600,12 +600,12 @@ function sourceModelInvalid475(players,duration=120){
   return !Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>blockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock);
  });
 }
-assert.equal(sourceModelInvalid475(base),false,'valid Resolution fixture must pass source-model validation');
-assert.equal(sourceModelInvalid475([...base,{...base[0]}]),true,'duplicate attendee identity must fail from source data');
-assert.equal(sourceModelInvalid475(base.map((player,index)=>index?player:{...player,name:' '+player.name})),true,'untrimmed attendee identity must fail from source data');
-assert.equal(sourceModelInvalid475(base.map((player,index)=>index?player:{...player,canPitch:false,requiresPitchWarmup:true})),true,'warm-up without pitching must fail from source data');
-assert.equal(sourceModelInvalid475(base.map((player,index)=>index?player:{...player,availableFromBlock:8,availableUntilBlock:4})),true,'reversed availability must fail from source data');
-assert.equal(sourceModelInvalid475(base,144),true,'unsupported Resolution duration must fail from source data');
+assert.equal(sourceModelInvalid475(controlledKcSix),false,'valid Resolution fixture must pass source-model validation');
+assert.equal(sourceModelInvalid475([...controlledKcSix,{...controlledKcSix[0]}]),true,'duplicate attendee identity must fail from source data');
+assert.equal(sourceModelInvalid475(controlledKcSix.map((player,index)=>index?player:{...player,name:' '+player.name})),true,'untrimmed attendee identity must fail from source data');
+assert.equal(sourceModelInvalid475(controlledKcSix.map((player,index)=>index?player:{...player,canPitch:false,requiresPitchWarmup:true})),true,'warm-up without pitching must fail from source data');
+assert.equal(sourceModelInvalid475(controlledKcSix.map((player,index)=>index?player:{...player,availableFromBlock:8,availableUntilBlock:4})),true,'reversed availability must fail from source data');
+assert.equal(sourceModelInvalid475(controlledKcSix,144),true,'unsupported Resolution duration must fail from source data');
 
 
 /* Resolution 477 commit-boundary regression.
