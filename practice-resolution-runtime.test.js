@@ -477,3 +477,24 @@ for(const fixture of [base,...matrix]){
   }
  }
 }
+
+
+/* Resolution 470 apply-authority regression.
+   Authorization is read-only: candidate construction owns role/duration changes,
+   so a failed direct rebuild cannot leave transient setup mutations behind. */
+function authorizeChoice470(snapshot,role,name,withBlock11){
+ if(!snapshot||typeof withBlock11!=='boolean')return false;
+ if(role===null)return name===null&&withBlock11&&snapshot.canExtend===true;
+ if(role!=='pitcher'&&role!=='catcher')return false;
+ const allowed=role==='pitcher'?(withBlock11?snapshot.combinedPitchers:snapshot.pitchers):(withBlock11?snapshot.combinedCatchers:snapshot.catchers);
+ return Array.isArray(allowed)&&allowed.includes(name);
+}
+const authSnapshot470={canExtend:true,pitchers:['P1'],catchers:['C1'],combinedPitchers:['P2'],combinedCatchers:['C2']};
+const authBytes470=JSON.stringify(authSnapshot470);
+assert.equal(authorizeChoice470(authSnapshot470,'pitcher','P1',false),true);
+assert.equal(authorizeChoice470(authSnapshot470,'catcher','C1',false),true);
+assert.equal(authorizeChoice470(authSnapshot470,'pitcher','P2',true),true);
+assert.equal(authorizeChoice470(authSnapshot470,'catcher','C2',true),true);
+assert.equal(authorizeChoice470(authSnapshot470,null,null,true),true);
+assert.equal(authorizeChoice470(authSnapshot470,'pitcher','C1',false),false);
+assert.equal(JSON.stringify(authSnapshot470),authBytes470,'Resolution authorization must not mutate its snapshot');
