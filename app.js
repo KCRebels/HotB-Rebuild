@@ -4524,7 +4524,9 @@ function bind(){
    };
    const fail=(message,error=null)=>{
     if(error)console.error(message,error);else console.error(message);
-    if(!rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.')&&!practiceResolutionApplyToken)endResolutionApply();
+    const detail=String(error?.message||message||'resolution-apply-failed');
+    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution538',stage:'resolution-apply-failed',detail,at:new Date().toISOString()}))}catch(_){}
+    if(!rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Diagnostic: '+detail)&&!practiceResolutionApplyToken)endResolutionApply();
     return false;
    };
    try{
@@ -4851,7 +4853,11 @@ function bind(){
    let persisted=null;
    try{persisted=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
    catch(error){console.error('HotB Practice Resolution rollback restart proof failed.',error)}
-   if(!persisted||JSON.stringify(persisted)!==JSON.stringify(restored.activePracticeSession)||!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution))return normalizeFailure('HotB Practice Resolution rollback failed its final restart proof');
+   // Resolution 538: setup drafts are intentionally normalized by restore()
+   // with runtime-only defaults. Prove the immutable rollback authority instead
+   // of requiring the normalized object to be byte-identical to the minimal draft.
+   if(!persisted||persisted.stage!=='setup'||persisted.plan||!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution))return normalizeFailure('HotB Practice Resolution rollback failed its final restart proof');
+   if(JSON.stringify(persisted.resolution)!==JSON.stringify(restored.activePracticeSession?.resolution)||JSON.stringify(persisted.setupState)!==JSON.stringify(restored.activePracticeSession?.setupState))return normalizeFailure('HotB Practice Resolution rollback changed its sealed setup or Resolution authority');
    endResolutionApply();
    try{render();window.scrollTo(0,0)}
    catch(error){return normalizeFailure('HotB could not render the restored Practice Resolution')}
