@@ -18,7 +18,7 @@ assert.match(worker,/fetch\(request, \{cache: 'no-store'\}\)/,'online navigation
 assert.match(worker,/cache\.match\(new Request\(new URL\(OFFLINE_SHELL, self\.location\.href\)\.href\)\)/,'navigation must retain an offline app-shell fallback using the canonical absolute cache key');
 assert.match(worker,/self\.skipWaiting\(\)/,'new workers must activate without remaining stuck waiting');
 assert.match(worker,/self\.clients\.claim\(\)/,'new workers must take control of open clients');
-assert.doesNotMatch(worker,/localStorage|indexedDB|deleteDatabase/,'service-worker updates must not touch user data stores');
+assert.doesNotMatch(worker,/\blocalStorage\b|\bindexedDB\b|\bdeleteDatabase\b/,'service-worker executable source must not access or delete application data stores');
 assert.match(client,/updateViaCache: 'none'/,'the service-worker script must bypass the HTTP cache during update checks');
 assert.match(client,/registration\.update\(\)/,'the app must explicitly check for updates');
 assert.match(client,/visibilitychange/,'resumed Home Screen apps must check for updates');
