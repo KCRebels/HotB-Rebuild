@@ -5736,7 +5736,14 @@ function bindPractice(){
     if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-rebuild-infeasible'}
     return;
    }
-   const errors=practicePlan.feasibilityErrors.slice(),identityBlocked=errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(error)),availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
+   // Resolution 466: classify failures by whether candidate search can possibly
+   // change them. Identity/availability corruption is not a coaching-choice problem.
+   // Do not run Block 11, pitcher, catcher, or combined scheduler fan-out against
+   // malformed source data; publish one informational Resolution that sends the
+   // coach back to attendance/availability.
+   const errors=practicePlan.feasibilityErrors.slice();
+   const identityBlocked=errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(String(error||'')));
+   const availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
    // Practice Resolution is intentionally stricter than the normal build path. It is rare,
    // so every choice shown to the coach must pass both scheduler feasibility and the full
    // rules validator before HotB is allowed to call that choice a verified solution.
@@ -5779,7 +5786,8 @@ function bindPractice(){
    // practice into a false "change attendance" result. The search itself is bounded:
    // base + Block 11 + each enabled pitcher + each enabled catcher + each combined
    // role/Block 11 candidate. Cap only pathological input, never a normal roster.
-   const candidateSearchCapacity=1+(Number(durationMinutes)===120&&!identityBlocked?1:0)+availablePitchers.length+(identityBlocked?0:practicePlayers.filter(player=>player.canCatch).length)+(Number(durationMinutes)===120&&!identityBlocked?availablePitchers.length+practicePlayers.filter(player=>player.canCatch).length:0);
+   const enabledCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
+   const candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?1:0)+availablePitchers.length+enabledCatchers.length+(Number(durationMinutes)===120?availablePitchers.length+enabledCatchers.length:0);
    const RESOLUTION_BUILD_BUDGET=Math.min(64,Math.max(9,candidateSearchCapacity+1));
    let resolutionBuildCount=1,resolutionBudgetExceeded=false;
    // The base scheduler attempt above is build #1. Candidate verification is intentionally single-build. buildSchedule already
@@ -5888,6 +5896,14 @@ function bindPractice(){
     }
    };
 
+   if(identityBlocked){
+    // Nothing in the automatic candidate set can repair ambiguous identity or an
+    // invalid time interval. Skip all scheduler verification builds and go straight
+    // to sealed informational evidence. This also prevents malformed guest entries
+    // from consuming the iPhone build budget or appearing to be role-solvable.
+    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution466',stage:'practice-resolution-source-invalid',state:'candidate-search-skipped',errors:[...errors],at:new Date().toISOString()}))}catch(error){}
+   }
+
    // Resolution 459: candidate search is deliberately finite and synchronous.
    // The old generic async candidate runner yielded through setTimeout(0) between
    // failed candidates. On iPhone Safari that split one Build tap into several
@@ -5898,7 +5914,7 @@ function bindPractice(){
    // role alternatives in priority order until the first safe result. There is no
    // timer, rAF, promise continuation, recursive retry, or hidden publication hop.
    let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
-   const availableCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
+   const availableCatchers=enabledCatchers;
    let extendedPlayers=null,extensionBaselineValid=false;
    if(!identityBlocked&&Number(durationMinutes)===120){
     extendedPlayers=practiceResolutionExtendedPlayers(practicePlayers,startTime);
