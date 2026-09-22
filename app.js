@@ -6015,7 +6015,7 @@ function bindPractice(){
     if(resolutionBuildCount>=RESOLUTION_BUILD_BUDGET){
      if(!resolutionBudgetExceeded)resolutionAuditFailures.push('Practice Resolution stopped because its verified scheduler-build budget was exceeded.');
      resolutionBudgetExceeded=true;
-     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution450',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
+     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution452',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
      return false;
     }
     resolutionBuildCount++;
@@ -6146,7 +6146,7 @@ function bindPractice(){
      setResolutionStage(stage);
      if(button)button.textContent='Checking '+(stageLabels[stage]||'Resolution')+' '+(index+1)+'/'+unique.length+'…';
      const started=typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
-     const diagnosticBase={bundle:'resolution450',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
+     const diagnosticBase={bundle:'resolution452',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
      try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({...diagnosticBase,state:'started'}))}catch(error){}
      const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
      const elapsed=Math.round((typeof performance!=='undefined'&&performance.now?performance.now():Date.now())-started);
@@ -6223,7 +6223,7 @@ function bindPractice(){
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution450',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution452',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
    setResolutionStage('practice-resolution-evidence');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was preparing Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const survivingCandidateLabels=new Set([
@@ -6273,11 +6273,11 @@ function bindPractice(){
    // the transaction and forcing a fresh verification build.
    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
    // Candidate evidence was already sealed before this object was constructed.
-   // The decision signature plus the full snapshot validator below are the canonical
-   // publication proof; avoid a second JSON serialization and two extra stage writes.
-   practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
-   practiceSetupState.startTime=startTime;
-   practiceSetupState.durationMinutes=durationMinutes;
+   // Do not mutate setup state merely to make the snapshot validator pass. The
+   // Resolution transaction was opened from the already-sealed builder setup and
+   // buildSetupStillOwned() has re-proven that ownership after candidate search.
+   // Rewriting selectedNames/timing here created a second, unnecessary state edge
+   // between a safe candidate and modal publication on iPhone Safari.
    if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
     console.error('HotB refused to publish an internally inconsistent Practice Resolution.');
     // Nothing from this failed Resolution has been committed yet. Recovery owns
@@ -6294,7 +6294,7 @@ function bindPractice(){
    // persistence belongs to the chosen Apply & Build transaction.
    setResolutionStage('practice-resolution-publish');
    modal='practiceResolution';
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution450',stage:'practice-resolution-publish',state:'published',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution452',stage:'practice-resolution-publish',state:'published',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
    publishPracticeBuildFrame('practice-resolution-publish',()=>{
     render();
     setPracticeBuildControlsLocked(false);
