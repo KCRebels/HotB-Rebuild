@@ -925,3 +925,64 @@ console.log('Resolution 542 block-time representation regression passed.');
  assert.match(branch,/restore the resolved practice identity \[restore-identity\]/,'restart proof must retain portal draft identity verification');
 }
 console.log('Resolution 548 restart canonicalization regression passed.');
+
+
+/* Resolution 549 all verified-choice Apply branches.
+   Every choice displayed by Practice Resolution must pass through the same sealed
+   expected-state gate and the same direct rebuild transaction. This prevents the
+   repaired Brooklyn path from drifting away from Catcher, Block 11, or combined
+   choices. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf("$('#applyPracticePitcherResolution')");
+ const end=source.indexOf("$('#returnPracticeAttendance')",start);
+ assert.ok(start>=0&&end>start,'all Practice Resolution Apply handlers must exist together');
+ const branch=source.slice(start,end);
+ assert.match(branch,/authorizedResolutionExpectedState\('pitcher',picked,false,snapshot\)/,'Hitting Only must use sealed expected-state authorization');
+ assert.match(branch,/authorizedResolutionExpectedState\('catcher',picked,false,snapshot\)/,'Not Catching must use sealed expected-state authorization');
+ assert.match(branch,/authorizedResolutionExpectedState\(null,null,true,snapshot\)/,'Block 11 must use sealed expected-state authorization');
+ assert.match(branch,/authorizedResolutionExpectedState\('pitcher',picked,true,snapshot\)/,'Hitting Only + Block 11 must use sealed expected-state authorization');
+ assert.match(branch,/authorizedResolutionExpectedState\('catcher',picked,true,snapshot\)/,'Not Catching + Block 11 must use sealed expected-state authorization');
+ const applies=branch.match(/runVerifiedResolutionApply\(/g)||[];
+ assert.equal(applies.length,5,'all five verified choice families must share the direct Apply transaction');
+}
+console.log('Resolution 549 all-choice Apply wiring regression passed.');
+
+
+/* Resolution 549 immutable role/extension postcondition coverage.
+   A successful direct rebuild must prove the exact role mutation authorized by the
+   selected choice, and Block 11 must not be allowed to smuggle in a role change. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('const resolutionPostcondition=');
+ const end=source.indexOf('const rebuildResolvedPractice=',start);
+ const branch=source.slice(start,end);
+ assert.match(branch,/expected\.role==='pitcher'/,'postcondition must distinguish Hitting Only');
+ assert.match(branch,/player\.canPitch!==false\|\|player\.requiresPitchWarmup!==false/,'Hitting Only must prove pitching and warm-up are both disabled');
+ assert.match(branch,/expected\.role==='catcher'/,'postcondition must distinguish Not Catching');
+ assert.match(branch,/player\.canCatch!==false/,'Not Catching must prove catching is disabled');
+ assert.match(branch,/if\(!approvedTarget\)/,'non-target players must retain their verified role state');
+ assert.match(branch,/warmup-partner-consistency/,'warm-up pairing failures must produce a durable diagnostic');
+ assert.doesNotMatch(branch,/if\(warmupInvalid\)return false/,'warm-up proof must never fail without identifying the clause');
+}
+console.log('Resolution 549 immutable choice postcondition regression passed.');
+
+
+/* Resolution 549 restart-recovery field parity.
+   Role-only persistence is insufficient for late/early and Block 11 resolutions.
+   The committed setup must reproduce every availability and role field from the
+   verified candidate before the failed Resolution is discarded. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('const rebuildResolvedPractice=');
+ const end=source.indexOf('const startVerifiedResolutionApply=',start);
+ const branch=source.slice(start,end);
+ assert.match(branch,/existing\.arrival=player\.arrivalTime/,'resolved arrival must be committed to setup recovery');
+ assert.match(branch,/existing\.departure=player\.departureTime/,'resolved departure/Block 11 clock must be committed to setup recovery');
+ assert.match(branch,/existing\.canPitch=player\.canPitch===true/,'resolved pitching eligibility must be committed');
+ assert.match(branch,/existing\.requiresPitchWarmup=player\.requiresPitchWarmup===true/,'resolved warm-up eligibility must be committed');
+ assert.match(branch,/existing\.canCatch=player\.canCatch===true/,'resolved catching eligibility must be committed');
+ assert.match(branch,/recoveryFields=\['name','isPitcher','isCatcher','isGuest','availableFromBlock','availableUntilBlock','arrivalTime','departureTime','limitations','prePracticeComplete','canPitch','requiresPitchWarmup','canCatch'\]/,'restart proof must cover full attendee availability/role state');
+ assert.match(branch,/resolutionPostcondition\(expected,committed\.plan\)/,'restored plan must pass the immutable postcondition again before commit completes');
+}
+console.log('Resolution 549 restart-recovery parity regression passed.');
