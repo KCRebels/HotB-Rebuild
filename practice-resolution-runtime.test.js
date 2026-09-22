@@ -122,6 +122,14 @@ assert.deepEqual(restoredDraft.resolution,unresolved.resolution,'unresolved veri
 assert.equal(restoredDraft.setupState.durationMinutes,120,'unresolved recovery authority must remain the original 120-minute failed practice');
 
 
+const block11Fixtures=fixtures.filter(fixture=>fixture.verified.some(choice=>choice.kind==='block-11'));
+assert.ok(block11Fixtures.length,'runtime corpus must contain failed practices resolved by Block 11 so the mobile fast path is exercised');
+for(const fixture of block11Fixtures){
+ const prioritized=prioritizedResolution(fixture.source);
+ assert.equal(prioritized.kind,'block-11','Block 11-resolvable practice must choose the duration-only Resolution before role changes');
+ assert.equal(prioritized.builds,1,'Block 11-resolvable practice must require exactly one Resolution scheduler build');
+ assert.deepEqual(scheduler.validate(prioritized.plan),[],'Block 11 fast-path result must pass the full production validator');
+}
 let prioritizedParityChecked=0;
 for(const fixture of fixtures){
  const prioritized=prioritizedResolution(fixture.source);
@@ -160,4 +168,4 @@ if(productionBase.feasibilityErrors.length){
  }
 }
 
-console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${prioritizedParityChecked} prioritized parity fixtures; ${prioritizedFixturesChecked} production-shaped prioritized fixtures; exercised: ${[...exercised].join(', ')})`);
+console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${block11Fixtures.length} Block-11 fast-path fixtures; ${prioritizedParityChecked} prioritized parity fixtures; ${prioritizedFixturesChecked} production-shaped prioritized fixtures; exercised: ${[...exercised].join(', ')})`);
