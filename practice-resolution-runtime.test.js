@@ -885,3 +885,15 @@ console.log('Resolution 538 rollback-normalization regression passed.');
  assert.match(source,/immutable postcondition \['\+postconditionDetail\+'\]/,'Apply failure must display postcondition clause');
 }
 console.log('Resolution 539 postcondition diagnostic regression passed.');
+
+
+/* Resolution 540 exhaustive immutable-postcondition diagnostics. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('const resolutionPostcondition=');
+ const end=source.indexOf('const rebuildResolvedPractice=',start);
+ const branch=source.slice(start,end);
+ assert.doesNotMatch(branch,/return false[;}]/,'every immutable-postcondition rejection must identify its exact clause');
+ assert.match(branch,/postcondition-clause-\d+/,'postcondition must contain exhaustive numbered diagnostics');
+}
+console.log('Resolution 540 exhaustive postcondition diagnostic regression passed.');
