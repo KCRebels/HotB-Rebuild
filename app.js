@@ -4568,14 +4568,31 @@ function bind(){
       }
       const generate=$('#generatePractice');
       if(!generate)throw new Error('Generate Practice control was not found after resolution apply.');
+      // The Build handler is asynchronous because Practice Resolution yields frames
+      // on iPhone. Dispatch the click, then wait until that exact resolved build has
+      // either produced its authorized plan or clearly finished/failed. The old
+      // zero-ms verifier could race the async click handler and roll back a valid
+      // Resolution before the plan had reached its commit boundary.
       generate.click();
-      // The Build handler is synchronous through scheduler construction. A verified
-      // Practice Resolution is not committed merely because the click dispatched:
-      // prove that the rebuilt plan actually exists and is feasible. This catches
-      // scheduler/build failures that the click handler reports internally instead
-      // of throwing back through HTMLElement.click().
-      setTimeout(()=>{
+      const waitForResolvedBuild=async()=>{
+       const deadline=Date.now()+15000;
+       while(Date.now()<deadline){
+        if(!transactionOwnsToken())return false;
+        if(practicePlan?.portalDraftId===resolutionDraftId)return true;
+        const button=$('#generatePractice');
+        if(button&&!button.disabled&&!practiceResolutionApplyDraftId)return false;
+        await new Promise(resolve=>setTimeout(resolve,50));
+       }
+       return false;
+      };
+      setTimeout(async()=>{
        try{
+       const buildReady=await waitForResolvedBuild();
+       if(!buildReady){
+        console.error('HotB Practice Resolution rebuild did not finish before verification');
+        if(rollbackIfOwned())alert('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+        return;
+       }
        if(!transactionOwnsToken()){console.warn('HotB ignored a stale Practice Resolution verification callback');return}
        if(!transactionIsCurrent()){
         console.error('HotB Practice Resolution rebuild lost its draft authorization');
