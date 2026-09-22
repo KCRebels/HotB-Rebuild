@@ -259,6 +259,24 @@
     if(liveHitterRepeats.length)fallbackWarnings.push(`${liveHitterRepeats.join(', ')} ${liveHitterRepeats.length===1?'will receive':'will each receive'} a second live-hitting session so every live block has at least two hitters.`);
    }
   }
+  // Resolution 503: once an authoritative feasibility error exists, do not run
+  // the expensive Front Toss/Machine exact-cover solver. Those station assignments
+  // cannot repair a missing/insufficient Live plan; they only add combinatorial work
+  // before the caller can open Practice Resolution. Return a minimal failed-plan
+  // shape immediately and let the coach resolve the upstream constraint.
+  if(feasibilityErrors.length){
+   const blocks=times.map((time,index)=>{
+    const assignments={};
+    attendees.forEach(player=>{
+     const entry=schedule[player.name][index]||{activity:'Drill'};
+     const label=entry.partner?`${entry.activity} — ${entry.partner}`:entry.activity;
+     (assignments[label]||(assignments[label]=[])).push(player.name);
+    });
+    return {...time,assignments};
+   });
+   const catcherLoads=catchers.map(catcher=>({name:catcher.name,liveBlocks:schedule[catcher.name].filter(entry=>entry?.activity==='Catch Live').length}));
+   return {attendance:attendees.length,players:attendees,startTime,durationMinutes:duration,blockMinutes,times,schedule,blocks,liveSessions,liveHitterRepeats:[],pitcherRepeats:repeatedPitchers.map(player=>player.name),fallbackWarnings,frontTossBlocks:[],frontTossAssignments:[],drillStations:0,catcherLoads,warnings,feasibilityErrors:[...new Set(feasibilityErrors)]};
+  }
   const liveBlocks=new Set(liveSessions.map(session=>session.block));
   const frontTossAssignments=[];
   // Resolution 498: Front Toss and Machine share the same remaining-open-block
