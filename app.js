@@ -6230,11 +6230,14 @@ function bindPractice(){
      const candidate=candidates[index],spec=buildCandidate(candidate);
      if(verifyResolutionCandidate(spec.players,spec.duration,spec.label,spec.expectedChange))onSafe(candidate,spec);
      markBuildProgress();
-     // A verified candidate can itself consume a full mobile task. Yield after the
-     // audit as well as before it so queued watchdog probes and UI paint cannot pile
-     // up behind the next scheduler invocation.
-     await yieldResolutionUI();
-     if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed',ownershipMessage);return false}
+     // The next loop iteration yields before its scheduler pass. Do not also yield
+     // after the audit: on the final candidate that creates an otherwise unnecessary
+     // async boundary immediately before Resolution finalization, which is the exact
+     // continuation iPhone Safari has repeatedly stranded.
+     if(index<candidates.length-1){
+      await yieldResolutionUI();
+      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed',ownershipMessage);return false}
+     }
     }
     return true;
    };
@@ -6286,11 +6289,10 @@ function bindPractice(){
    // boundary. Invalidate candidate timers and enter evidence finalization in the
    // same JavaScript continuation; the evidence stage immediately below owns the
    // next deliberate paint/yield.
-   buildWatchdogStage='practice-resolution-finalize';
+   buildWatchdogStage='practice-resolution-evidence';
    buildWatchdogGeneration++;
    clearTimeout(buildWatchdog);buildWatchdog=null;
    clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
-   if(buildButton){buildButton.dataset.buildStage='practice-resolution-finalize';buildButton.textContent='Finalizing Resolution…'}
    markBuildProgress();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be finalized. Nothing was committed. Please review the setup and build again.');return}
    // Finalization is intentionally tiny and synchronous. Normalize the verified
