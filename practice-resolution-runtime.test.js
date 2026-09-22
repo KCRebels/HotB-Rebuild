@@ -839,3 +839,38 @@ assert.equal(publicationSeal484(structuredClone(publication484),[value=>{value.c
 assert.equal(publicationSeal484(structuredClone(publication484),[value=>{value.candidateNotices['Block 11'].push('changed')}]),false,'publication seal detects nested evidence mutation');
 assert.equal(publicationSeal484(structuredClone(publication484),[value=>{value.practicePlayers[0].canCatch=!value.practicePlayers[0].canCatch}]),false,'publication seal detects nested player mutation');
 console.log('Resolution 484 publication immutability regression passed.');
+
+
+/* Resolution 485 bounded combined-search regression.
+   Production deliberately tests at most one pitcher and one catcher in the expensive
+   role + Block 11 branch. This keeps a single iPhone tap bounded while preserving
+   full verification of every option that is actually shown to the coach. */
+function boundedCombined485(players,verify){
+ const attempted=[];
+ const pitcher=players.find(player=>player.canPitch);
+ if(pitcher){
+  attempted.push('pitcher:'+pitcher.name);
+  if(verify('pitcher',pitcher))return {attempted,choice:'pitcher:'+pitcher.name};
+ }
+ const catcher=players.find(player=>player.canCatch);
+ if(catcher){
+  attempted.push('catcher:'+catcher.name);
+  if(verify('catcher',catcher))return {attempted,choice:'catcher:'+catcher.name};
+ }
+ return {attempted,choice:null};
+}
+{
+ const fixture=[
+  {name:'P1',canPitch:true,canCatch:false},
+  {name:'P2',canPitch:true,canCatch:false},
+  {name:'C1',canPitch:false,canCatch:true},
+  {name:'C2',canPitch:false,canCatch:true}
+ ];
+ const none=boundedCombined485(fixture,()=>false);
+ assert.deepEqual(none.attempted,['pitcher:P1','catcher:C1'],'combined fallback is bounded to two scheduler candidates');
+ const first=boundedCombined485(fixture,(role)=>role==='pitcher');
+ assert.deepEqual(first.attempted,['pitcher:P1'],'safe first pitcher stops combined search immediately');
+ const catcher=boundedCombined485(fixture,(role)=>role==='catcher');
+ assert.deepEqual(catcher.attempted,['pitcher:P1','catcher:C1'],'catcher is checked only after first pitcher fails');
+}
+console.log('Resolution 485 bounded combined-search regression passed.');
