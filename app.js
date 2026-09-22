@@ -5909,7 +5909,7 @@ function bindPractice(){
    // pitcher + one same-duration catcher + one combined pitcher + one combined
    // catcher. Any future code that accidentally reintroduces exhaustive fan-out
    // will stop safely instead of regressing to an iPhone freeze.
-   const candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?3:2);
+   const candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?1:0);
    const RESOLUTION_BUILD_BUDGET=identityBlocked?1:candidateSearchCapacity+1;
    let resolutionBuildCount=1,resolutionBudgetExceeded=false;
    // The base scheduler attempt above is build #1. Candidate verification is intentionally single-build. buildSchedule already
@@ -6096,26 +6096,16 @@ function bindPractice(){
    }
 
    if(!identityBlocked&&!canExtend&&!resolutionBudgetExceeded){
-    // Resolution 486: same-duration role search follows the same bounded policy as
-    // the combined branch. A Resolution only needs one independently verified way
-    // forward; enumerating every eligible pitcher/catcher on the phone adds repeated
-    // scheduler work without making the displayed choice safer.
-    const firstPitcher=availablePitchers[0]||null;
-    if(firstPitcher){
-     const spec={players:practicePlayers.map(player=>player.name===firstPitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:durationMinutes,label:'Hitting Only: '+firstPitcher.name,expectedChange:{role:'pitcher',name:firstPitcher.name},choiceName:firstPitcher.name};
-     const result=await verifyOrderedCandidates([spec],'practice-resolution-pitcher','Hitting Only',safeSpec=>solvingPitchers.push(safeSpec.choiceName));
-     if(result==='aborted')return;
-     if(result==='budget')resolutionBudgetExceeded=true;
-    }
-    if(!solvingPitchers.length&&!resolutionBudgetExceeded){
-     const firstCatcher=availableCatchers[0]||null;
-     if(firstCatcher){
-      const spec={players:practicePlayers.map(player=>player.name===firstCatcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+firstCatcher.name,expectedChange:{role:'catcher',name:firstCatcher.name},choiceName:firstCatcher.name};
-      const result=await verifyOrderedCandidates([spec],'practice-resolution-catcher','Not Catching',safeSpec=>solvingCatchers.push(safeSpec.choiceName));
-      if(result==='aborted')return;
-      if(result==='budget')resolutionBudgetExceeded=true;
-     }
-    }
+    // Resolution 490: do not speculate through role changes from the setup Build
+    // transaction. The phone repeatedly demonstrated that even one additional
+    // same-duration catcher scheduler pass can strand Safari after the base and
+    // Block 11 proofs. Role toggles already exist explicitly in setup (Pitching /
+    // Catching); if Block 11 alone is not a verified solution, publish Resolution
+    // immediately and return control to the coach. This makes one Build tap perform
+    // at most the failed base schedule plus one 132-minute alternative.
+    solvingPitchers=[];
+    solvingCatchers=[];
+    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution490',stage:'practice-resolution-role-search-bypassed',state:'returned-to-coach',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,at:new Date().toISOString()}))}catch(error){}
    }
 
    if(!identityBlocked&&!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded){
