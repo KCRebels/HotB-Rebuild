@@ -47,23 +47,23 @@ jobs:
           grep -q "app.js?v=20260922-resolution454" index.html
           test "$(grep -o "practice-scheduler.js?v=20260922-resolution454" index.html | wc -l)" -eq 1
           ! grep -q "practice-scheduler.js?v=20260922-resolution452" index.html
-          grep -q "BUILD_VERSION = '2026.09.22.228'" service-worker.js
+          grep -q "BUILD_VERSION = '2026.09.22.229'" service-worker.js
           grep -q "'./practice-scheduler.js'" service-worker.js
           grep -Fq "/\\/practice-scheduler\\.js" service-worker.js
           grep -Fq "'./manifest.webmanifest'" service-worker.js
           grep -Fq "'./pwa-update.js'" service-worker.js
           grep -Fq "/\\/pwa-update\\.js" service-worker.js
           grep -Fq "/\\/manifest\\.webmanifest" service-worker.js
-          grep -q "launch=228" service-worker.js
-          grep -q "pwa-update.js?v=20260922-pwa228" index.html
-          grep -q "BUILD_VERSION = '2026.09.22.228'" pwa-update.js
-          grep -q "url.searchParams.set('launch','228')" pwa-update.js
+          grep -q "launch=229" service-worker.js
+          grep -q "pwa-update.js?v=20260922-pwa229" index.html
+          grep -q "BUILD_VERSION = '2026.09.22.229'" pwa-update.js
+          grep -q "url.searchParams.set('launch','229')" pwa-update.js
           ! grep -q "20260922-pwa227" index.html
           ! grep -q "2026.09.22.227" pwa-update.js
-          grep -q "launch=228" hotb-fresh.html
+          grep -q "launch=229" hotb-fresh.html
           ! grep -q "launch=227" hotb-fresh.html
-          grep -q '"start_url": "./?source=pwa&launch=228"' manifest.webmanifest
+          grep -q '"start_url": "./?source=pwa&launch=229"' manifest.webmanifest
           ! grep -q 'launch=227' manifest.webmanifest
-          grep -q "manifest.webmanifest?v=20260922-launch228" index.html
+          grep -q "manifest.webmanifest?v=20260922-launch229" index.html
           ! grep -q "manifest.webmanifest?v=20260922-launch227" index.html
           ! grep -q "Finalizing Resolution" app.js
