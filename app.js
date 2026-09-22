@@ -4113,9 +4113,12 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  const roleCorrect=(name,role)=>{
   const verified=verifiedByName.get(name),live=liveByName.get(name);
   if(!verified||!live)return false;
+  // The verified base snapshot must prove the player currently has the capability.
+  // The raw attendance roster stores positions, not derived isPitcher/isCatcher
+  // booleans, so derive underlying role eligibility from the canonical profile.
   return role==='pitcher'
-   ?verified.isPitcher===true&&verified.canPitch===true&&live.isPitcher===true
-   :verified.isCatcher===true&&verified.canCatch===true&&live.isCatcher===true;
+   ?verified.isPitcher===true&&verified.canPitch===true&&isPitcherProfile(live)
+   :verified.isCatcher===true&&verified.canCatch===true&&positionTokens(live).includes('C');
  };
  if(!r.pitchers.every(name=>roleCorrect(name,'pitcher'))||!r.combinedPitchers.every(name=>roleCorrect(name,'pitcher')))return false;
  if(!r.catchers.every(name=>roleCorrect(name,'catcher'))||!r.combinedCatchers.every(name=>roleCorrect(name,'catcher')))return false;
