@@ -6207,7 +6207,9 @@ function bindPractice(){
    practiceSetupState.durationMinutes=durationMinutes;
    if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
     console.error('HotB refused to publish an internally inconsistent Practice Resolution.');
-    persistPracticeDraft();
+    // Nothing from this failed Resolution has been committed yet. Recovery owns
+    // restoring/persisting the original setup; do not perform a redundant draft
+    // save immediately before that recovery transaction.
     recoverPracticeBuildSetup('practice-resolution-snapshot-invalid','HotB could not verify the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
     return;
    }
