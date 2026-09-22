@@ -5869,15 +5869,22 @@ function bindPractice(){
    modal=null;
    setPracticeBuildControlsLocked(false);
    try{
-    render();
+    // Resolution 507: render() is intentionally not called here. The Build handler
+    // is still executing and a full practice rerender/rebind can fail before the
+    // informational panel is inserted (the exact repeated symptom on iPhone).
+    // Mount the self-contained failure panel directly onto the already-live app DOM.
     const appRoot=document.querySelector('#app');
     if(!appRoot)throw new Error('HotB app root is unavailable.');
-    appRoot.insertAdjacentHTML('beforeend',failureHtml);
-    const returnButton=document.querySelector('#returnPracticeAttendance');
-    if(returnButton)returnButton.addEventListener('click',()=>{document.querySelector('.practice-resolution-modal')?.closest('.modal-backdrop')?.remove();window.scrollTo(0,0)});
+    document.querySelector('.practice-resolution-informational')?.remove();
+    const shell=document.createElement('div');
+    shell.className='practice-resolution-informational';
+    shell.innerHTML=failureHtml;
+    appRoot.appendChild(shell);
+    const returnButton=shell.querySelector('#returnPracticeAttendance');
+    if(returnButton)returnButton.addEventListener('click',()=>{shell.remove();const button=$('#generatePractice');if(button){button.disabled=false;button.textContent='Build Practice Schedule'}window.scrollTo(0,0)});
     window.scrollTo(0,0);
-    if(!document.querySelector('.practice-resolution-modal'))throw new Error('Practice Resolution failure panel did not mount.');
-    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution506',stage:'informational-failure-mounted',state:'ready',errors:resolutionErrors,at:new Date().toISOString()}))}catch(error){}
+    if(!shell.querySelector('.practice-resolution-modal'))throw new Error('Practice Resolution failure panel did not mount.');
+    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution507',stage:'direct-informational-failure-mounted',state:'ready',errors:resolutionErrors,at:new Date().toISOString()}))}catch(error){}
    }catch(error){
     console.error('HotB could not publish the informational scheduler failure panel.',error);
     practicePlan=null;
