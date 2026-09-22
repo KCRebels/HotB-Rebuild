@@ -36,6 +36,8 @@ jobs:
         continue-on-error: true
       - name: Verify deployed bundle markers
         run: |
+          test "$(grep -o "app.js?v=20260921-resolution416" index.html | wc -l)" -ge 2
+          ! grep -q "app.js?v=20260921-resolution357" index.html
           grep -q "app.js?v=20260921-resolution416" index.html
           grep -q "BUILD_VERSION = '2026.09.21.225'" service-worker.js
           grep -q "launch=225" service-worker.js
