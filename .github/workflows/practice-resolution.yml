@@ -50,4 +50,6 @@ jobs:
           grep -q "url.searchParams.set('launch','226')" pwa-update.js
           ! grep -q "20260920-pwa221" index.html
           ! grep -q "2026.09.20.221" pwa-update.js
+          grep -q "launch=226" hotb-fresh.html
+          ! grep -q "launch=136" hotb-fresh.html
           ! grep -q "Finalizing Resolution" app.js
