@@ -855,3 +855,19 @@ console.log('Resolution 536 locked-copy authorization regression passed.');
  assert.doesNotMatch(branch,/livePlayer\.isCatcher!==true/,'Apply must not require a noncanonical attendance isCatcher flag');
 }
 console.log('Resolution 537 Apply role-model regression passed.');
+
+
+/* Resolution 538 rollback-normalization regression.
+   A failed direct rebuild must return to the verified decision, not dump the coach
+   onto Practice Setup because restore() added runtime-only defaults to its draft. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('const restoreResolutionRollback=state=>');
+ const end=source.indexOf('const expectedResolutionState=',start);
+ const branch=source.slice(start,end);
+ assert.doesNotMatch(branch,/JSON\.stringify\(persisted\)!==JSON\.stringify\(restored\.activePracticeSession\)/,'rollback restart proof must allow setup-draft normalization');
+ assert.match(branch,/JSON\.stringify\(persisted\.resolution\)!==JSON\.stringify\(restored\.activePracticeSession\?\.resolution\)/,'rollback must prove sealed Resolution authority');
+ assert.match(branch,/JSON\.stringify\(persisted\.setupState\)!==JSON\.stringify\(restored\.activePracticeSession\?\.setupState\)/,'rollback must prove sealed setup authority');
+ assert.match(source,/Diagnostic: '\+detail/,'rebuild failure must surface its exact diagnostic instead of silently returning to setup');
+}
+console.log('Resolution 538 rollback-normalization regression passed.');
