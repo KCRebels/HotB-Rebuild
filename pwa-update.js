@@ -9,8 +9,11 @@
   let updateShown = false;
   let updateAccepted = sessionStorage.getItem('hotbUpdateAccepted') === BUILD_VERSION;
   const hadControllerAtLoad = Boolean(navigator.serviceWorker.controller);
-  function showUpdate(version = BUILD_VERSION) {
-    if (updateShown || updateAccepted || version === BUILD_VERSION) return;
+  function showUpdate(version = 'new') {
+    // The running pwa-update.js describes the CURRENT page, not the waiting worker.
+    // A waiting worker therefore means an update exists even when no version string
+    // is available (or when an old worker reports the same value as this page).
+    if (updateShown || updateAccepted) return;
     updateShown = true;
     const notice = document.createElement('aside');
     notice.className = 'pwa-update-notice';
@@ -44,7 +47,7 @@
       try { await registration.update(); } catch (_) { /* Retry on the next open or focus. */ }
     }
     if (registration.waiting) {
-      showUpdate();
+      showUpdate('waiting-worker');
     }
   }
 
@@ -55,7 +58,7 @@
       registration.addEventListener('updatefound', () => {
         const worker = registration.installing;
         worker?.addEventListener('statechange', () => {
-          if (worker.state === 'installed' && navigator.serviceWorker.controller) showUpdate();
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) showUpdate('installed-worker');
         });
       });
       window.addEventListener('pageshow', () => checkForUpdate(registration));
@@ -68,7 +71,7 @@
   });
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (hadControllerAtLoad) showUpdate();
+    if (hadControllerAtLoad) showUpdate('controller-changed');
   });
   navigator.serviceWorker.addEventListener('message', event => {
     if (event.data?.type === 'HOTB_UPDATE_READY' && event.data.version !== BUILD_VERSION) showUpdate(event.data.version);
