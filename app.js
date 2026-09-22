@@ -6423,12 +6423,16 @@ function bindPractice(){
     console.error('HotB refused a Practice Resolution that was stale at modal publication.');
     practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-stale','HotB stopped because the Practice Resolution was no longer current. Please build the practice again.');return;
    }
+   // Snapshot validation is a full object/roster proof. Yield after it before the
+   // final byte seal so the last publication turn stays small and deterministic.
+   markBuildProgress();
    setResolutionStage('practice-resolution-publish');
    await yieldResolutionUI();
    // The last yield is itself an asynchronous boundary. Re-prove both setup
-   // ownership and the exact verified Resolution bytes immediately before exposing
-   // any coaching choice. This closes the final gap between validation and render.
-   if(!buildSetupStillOwned()||JSON.stringify(practiceResolution)!==generatedResolutionBytes){
+   // ownership and exact bytes immediately before exposing any coaching choice.
+   let prepublishResolutionBytes='';
+   try{prepublishResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not seal Practice Resolution at publication.',error)}
+   if(!buildSetupStillOwned()||prepublishResolutionBytes!==generatedResolutionBytes){
     recoverPracticeBuildSetup('practice-resolution-prepublish-changed','HotB stopped because the verified Practice Resolution changed immediately before it could open. Please build the practice again.');
     return;
    }
