@@ -714,7 +714,7 @@ console.log('Resolution 527 render-purity regression passed.');
  assert.ok(start>=0&&end>start,'direct Resolution publication branch must exist');
  const branch=source.slice(start,end);
  assert.match(branch,/shell\.replaceWith\(decision\)/,'verified decision must atomically replace the checking shell');
- assert.match(branch,/bindPractice\(\)/,'directly mounted decision must receive Practice Resolution handlers explicitly');
+ assert.match(branch,/route='__practiceResolutionDirectMount';bind\(\)/,'directly mounted decision must receive Practice Resolution handlers through modal-only bind');
  assert.doesNotMatch(branch,/\brender\(\)/,'candidate completion must not invoke full application render');
 }
 console.log('Resolution 528 direct-publication regression passed.');
@@ -728,8 +728,9 @@ console.log('Resolution 528 direct-publication regression passed.');
  const start=source.indexOf("const decisionHtml=practiceResolutionModal()",source.indexOf('const finalizeCandidates=()=>'));
  const end=source.indexOf('const runNextCandidate=()=>',start);
  const branch=source.slice(start,end);
- assert.match(branch,/bindPractice\(\)/,'direct publication must explicitly bind Practice Resolution controls');
- assert.doesNotMatch(branch,/\n\s*bind\(\);/,'direct publication must not depend on generic route dispatch');
+ assert.match(branch,/const resolutionBindRoute=route/,'direct publication must preserve active route');
+ assert.match(branch,/route='__practiceResolutionDirectMount';bind\(\)/,'direct publication must use generic modal binding with route dispatch suppressed');
+ assert.match(branch,/finally\{route=resolutionBindRoute\}/,'direct publication must restore active route');
 }
 console.log('Resolution 529 direct-bind regression passed.');
 
