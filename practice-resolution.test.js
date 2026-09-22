@@ -140,7 +140,9 @@ mustInclude("JSON.stringify(committedSession.plan)!==JSON.stringify(practicePlan
 mustInclude("const sourceAvailability=practiceAvailability(startTime,120,player.arrivalTime,verifiedDeparture);","Block 11 must verify each source player's normal-practice availability before extension");
 mustInclude("Number(player.availableFromBlock)!==Number(sourceAvailability.availableFromBlock)","Block 11 must fail closed when source availability metadata is inconsistent");
 mustInclude("practiceTimeMinutes(startTime)===null","Block 11 extension must reject an invalid source clock before deriving boundaries");
-mustInclude("generatedResolutionBytes=JSON.stringify(practiceResolution)","generated Resolution must be byte-sealed before publication");
+mustInclude("practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution)","generated Resolution must seal the verified decision before publication");
+mustInclude("if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution))","generated Resolution must pass the full snapshot validator before publication");
+mustNotInclude("generatedResolutionBytes=JSON.stringify(practiceResolution)","generated Resolution must not reintroduce the redundant pre-publication byte-seal pass");
 
 
 
