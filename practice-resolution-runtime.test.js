@@ -44,6 +44,31 @@ function candidates(source){
  return result;
 }
 
+
+function prioritizedResolution(source){
+ let builds=0;
+ const verify=(players,duration)=>{builds++;const plan=scheduler.buildSchedule(players,'18:00',duration);return safe(plan)?plan:null};
+ const ext=extended(source),extension=verify(ext,132);
+ if(extension)return {kind:'block-11',builds,plan:extension};
+ for(const player of source.filter(p=>p.canPitch)){
+  const changed=source.map(p=>p.name===player.name?{...p,canPitch:false,requiresPitchWarmup:false}:p),plan=verify(changed,120);
+  if(plan)return {kind:'hitting-only',builds,plan,name:player.name};
+ }
+ for(const player of source.filter(p=>p.canCatch)){
+  const changed=source.map(p=>p.name===player.name?{...p,canCatch:false}:p),plan=verify(changed,120);
+  if(plan)return {kind:'not-catching',builds,plan,name:player.name};
+ }
+ for(const player of ext.filter(p=>p.canPitch)){
+  const changed=ext.map(p=>p.name===player.name?{...p,canPitch:false,requiresPitchWarmup:false}:p),plan=verify(changed,132);
+  if(plan)return {kind:'hitting-only+block-11',builds,plan,name:player.name};
+ }
+ for(const player of ext.filter(p=>p.canCatch)){
+  const changed=ext.map(p=>p.name===player.name?{...p,canCatch:false}:p),plan=verify(changed,132);
+  if(plan)return {kind:'not-catching+block-11',builds,plan,name:player.name};
+ }
+ return {kind:null,builds,plan:null};
+}
+
 const fixtures=[];
 for(let count=6;count<=15;count++){
  for(let pitchers=1;pitchers<=Math.min(6,count-1);pitchers++){
@@ -95,5 +120,17 @@ const unresolved=session.createDraft({setupState:{selectedNames:source.map(p=>p.
 const restoredDraft=session.restore(unresolved);
 assert.deepEqual(restoredDraft.resolution,unresolved.resolution,'unresolved verified Resolution choices must survive restart recovery exactly');
 assert.equal(restoredDraft.setupState.durationMinutes,120,'unresolved recovery authority must remain the original 120-minute failed practice');
+
+
+const productionShape=roster(13,2,2);
+const productionBase=scheduler.buildSchedule(productionShape,'18:00',120);
+if(productionBase.feasibilityErrors.length){
+ const prioritized=prioritizedResolution(productionShape);
+ assert.ok(prioritized.plan,'13-player / 2-pitcher / 2-catcher failed practice must have a verified prioritized Resolution when any safe Resolution exists');
+ assert.deepEqual(prioritized.plan.feasibilityErrors,[],'prioritized 13-player Resolution must be feasible');
+ assert.deepEqual(scheduler.validate(prioritized.plan),[],'prioritized 13-player Resolution must pass the production validator');
+ assert.ok(prioritized.builds<=9,'prioritized 13-player Resolution must keep scheduler fan-out bounded');
+ if(prioritized.kind==='block-11')assert.equal(prioritized.builds,1,'safe Block 11 must short-circuit all role candidate builds');
+}
 
 console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; exercised: ${[...exercised].join(', ')})`);
