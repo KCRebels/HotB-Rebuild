@@ -569,3 +569,18 @@ assert.equal(safe473.attempts,2,'ordered Resolution search must stop after first
 const none473=orderedSearch473(candidates473,()=>false);
 assert.equal(none473.result,'none');
 assert.equal(none473.attempts,candidates473.length,'unsolved ordered Resolution search must examine each finite candidate once');
+
+
+/* Resolution 474 pure/unique live-roster authorization regression. */
+function uniqueRosterMatch474(roster,name){
+ const matches=[];
+ for(let index=0;index<roster.length;index++)if(roster[index]?.name===name)matches.push(index);
+ return matches.length===1?matches[0]:null;
+}
+const roster474=base.map(player=>({name:player.name}));
+const rosterBytes474=JSON.stringify(roster474);
+assert.equal(uniqueRosterMatch474(roster474,roster474[0].name),0,'unique live roster identity must authorize');
+assert.equal(uniqueRosterMatch474(roster474,'Missing Player'),null,'missing live roster identity must reject');
+const duplicate474=[...roster474,{name:roster474[0].name}];
+assert.equal(uniqueRosterMatch474(duplicate474,roster474[0].name),null,'duplicate live roster identity must reject instead of selecting first match');
+assert.equal(JSON.stringify(roster474),rosterBytes474,'live-roster authorization must be read-only');
