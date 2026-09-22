@@ -414,4 +414,26 @@ assert.ok(rebels12NoCatchLakynHitOnlyPlan.liveSessions.every(session=>session.hi
 assert.ok(rebels12NoCatchLakynHitOnlyPlan.schedule['Lakyn Farley'].every(entry=>entry.activity!=='Pitch Live'&&entry.activity!=='Pitch Warm-Up'),'Lakyn Hitting Only must receive no pitching work');
 assert.ok(rebels12NoCatchLakynHitOnlyPlan.schedule['Lydia Copeland'].every(entry=>entry.activity!=='Catch Live'&&entry.activity!=='Catch Warm-Up'),'Lydia Not Catching must receive no catching work');
 
+
+
+// Resolution 496: exact phone edge case — Tayte absent, Lydia Not Catching,
+// Lakyn pitching normally, and Makenna arrives 30 minutes late. With no catcher,
+// Coach must cover pitcher warm-ups. The warm-up matcher must reserve Makenna's
+// scarce post-arrival slot rather than greedily consuming it for another pitcher.
+const rebels12NoCatchMakennaLate=rebels13.filter(player=>player.name!=='Tayte Stepps').map(player=>{
+ if(player.name==='Lydia Copeland')return {...player,canCatch:false};
+ if(player.name==='Makenna Whitaker')return {...player,availableFromBlock:3};
+ return {...player};
+});
+const rebels12NoCatchMakennaLatePlan=scheduler.buildSchedule(rebels12NoCatchMakennaLate,'18:00',120);
+assert.deepEqual(rebels12NoCatchMakennaLatePlan.feasibilityErrors,[],'12-player no-catcher/Makenna-late phone setup must build directly');
+assert.deepEqual(scheduler.validate(rebels12NoCatchMakennaLatePlan),[],'12-player no-catcher/Makenna-late plan must pass the full audit');
+assert.equal(rebels12NoCatchMakennaLatePlan.schedule['Makenna Whitaker'][3].activity,'Stretch','late Makenna must warm up in her first attended block');
+assert.equal(rebels12NoCatchMakennaLatePlan.schedule['Makenna Whitaker'][4].activity,'Tee Work','late Makenna must tee in her second attended block');
+const makennaLatePitch=rebels12NoCatchMakennaLatePlan.schedule['Makenna Whitaker'].findIndex(entry=>entry.activity==='Pitch Live');
+const makennaLateWarm=rebels12NoCatchMakennaLatePlan.schedule['Makenna Whitaker'].findIndex(entry=>entry.activity==='Pitch Warm-Up');
+assert.ok(makennaLatePitch>=0&&makennaLateWarm>=0&&makennaLatePitch-makennaLateWarm>=1&&makennaLatePitch-makennaLateWarm<=2,'Makenna must receive a legal pitching warm-up within two blocks before Live');
+assert.equal(rebels12NoCatchMakennaLatePlan.schedule['Makenna Whitaker'][makennaLateWarm].partner,'Coach','zero-catcher setup must use Coach for Makenna warm-up');
+assert.ok(rebels12NoCatchMakennaLatePlan.schedule['Lydia Copeland'].every(entry=>entry.activity!=='Catch Live'&&entry.activity!=='Catch Warm-Up'),'Lydia Not Catching must remain out of all catcher work');
+
 console.log('practice-scheduler tests passed');
