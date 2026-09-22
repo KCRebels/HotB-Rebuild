@@ -4624,9 +4624,8 @@ function bind(){
     if(persistPracticeSession()!==true)throw new Error('Resolved practice could not be committed to restart recovery.');
     const committed=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
     if(!committed||JSON.stringify(committed)!==JSON.stringify(db.activePracticeSession)||committed.plan?.portalDraftId!==resolutionDraftId)throw new Error('Resolved practice did not survive restart recovery exactly.');
-    const livePlan=practicePlan;practicePlan=committed.plan;
-    const committedSafe=resolutionPostcondition(expected);
-    practicePlan=livePlan;
+    const livePlan=practicePlan;
+    const committedSafe=resolutionPostcondition(expected,committed.plan);
     if(!committedSafe||JSON.stringify(committed.plan)!==JSON.stringify(livePlan))throw new Error('Resolved restart copy failed the immutable postcondition.');
     if(!transactionOwnsToken())throw new Error('Practice Resolution lost apply ownership at commit.');
 
