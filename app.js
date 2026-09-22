@@ -5902,11 +5902,8 @@ function bindPractice(){
    setPracticeBuildControlsLocked(false);
    const button=$('#generatePractice');
    if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage=stage}
-   // Error recovery is also a screen publication. Defer it to a paint frame so
-   // Safari never tears down #app synchronously from the failed build turn.
+   // Error recovery uses the same guarded synchronous screen publication path.
    publishPracticeBuildFrame(stage,()=>{
-    // Recovery publication intentionally runs after its watchdog is stopped.
-    // The frame helper may record progress, but it must never resurrect a timer.
     render();
     const restored=$('#generatePractice');
     if(restored){restored.disabled=false;restored.textContent='Build Practice Schedule';restored.dataset.buildStage=stage}
@@ -5948,10 +5945,7 @@ function bindPractice(){
    return
   }
   if(practicePlan.feasibilityErrors?.length){
-   // The base scheduler has returned. Practice Resolution now runs as one synchronous
-   // verified transaction. Retire the initial scheduler watchdog before entering it;
-   // watchdog before entering it; Resolution itself no longer uses wall-clock
-   // timers, eliminating false iPhone stalls during legitimate candidate work.
+   // The base scheduler has returned. Practice Resolution now runs as one synchronous verified transaction.
    buildStage='practice-resolution';
    // Keep the build state visible and make every long Resolution phase identifiable.
    // This also keeps the Build control locked throughout the verification transaction.
@@ -6221,7 +6215,7 @@ function bindPractice(){
    
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be finalized. Nothing was committed. Please review the setup and build again.');return}
    // Finalization is intentionally tiny and synchronous. Normalize the verified
-   // candidate lists, then immediately enter a concrete heartbeat stage.
+   // candidate lists, then immediately enter the evidence stage.
    solvingPitchers=[...new Set(solvingPitchers)].sort();
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
@@ -6248,9 +6242,7 @@ function bindPractice(){
    setResolutionStage('practice-resolution-evidence-complete');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed after HotB finalized Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const hasVerifiedResolution=!!(solvingPitchers.length||solvingCatchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
-   // Final sealing/persistence/restore verification is expensive enough to block a
-   // mobile paint. Give Safari a frame after candidate fan-out before entering the
-   // publication transaction, then re-prove that the owned setup did not change.
+   // Re-prove that the owned setup did not change before sealing and publication.
    setResolutionStage('practice-resolution-seal');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be sealed. Nothing was committed. Please review the setup and build again.');return}
    const rosterGuidance=identityBlocked?'HotB found attendee identity or availability information that must be corrected before resolution. Fix the roster/guest or arrival/departure entry and build again; HotB will not guess or silently normalize it.':resolutionAuditFailures.length&&!hasVerifiedResolution?'HotB could not verify a safe automatic resolution because one or more verification builds/audits did not complete. Change attendance or availability, or build again after correcting the reported verification problem.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
@@ -6309,9 +6301,7 @@ function bindPractice(){
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be saved. Nothing was committed. Please review the setup and build again.');return}
    practicePlan=null;
    if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');recoverPracticeBuildSetup('practice-resolution-persist-failed','HotB could not save the verified Practice Resolution. Your practice setup was kept so you can build again.');return}
-   // Persistence itself can synchronously serialize/save a large session. Yield
-   // immediately afterward before restore verification so Safari gets a paint and
-   // the build heartbeat advances between the two expensive operations.
+   // Persistence is immediately followed by byte-for-byte restore verification.
    
    setResolutionStage('practice-resolution-session-seal');
    let publishedSessionBytes='',publishedResolutionBytes='';
@@ -6360,9 +6350,7 @@ function bindPractice(){
    }
    modal='practiceResolution';
    // All scheduler/evidence/persistence work is complete before the modal handoff.
-   // Stop the stall watchdog now rather than leaving a timer alive while Safari is
-   // waiting to execute the publication frame. The publication helper has its own
-   // ownership token and exception recovery, so no build watchdog is needed here.
+   // Scheduler/evidence/persistence verification is complete; publish the Resolution screen.
    
    publishPracticeBuildFrame('practice-resolution-publish',()=>{
     render();
@@ -6385,8 +6373,6 @@ function bindPractice(){
    console.error('HotB refused mismatched Practice Resolution transaction identities');
    // Keep transaction ownership intact. The outer verifier owns the immutable
    // rollback snapshot and must be allowed to restore it atomically. Stop this
-   // build's heartbeat before returning; otherwise its timer can later fire over
-   // the restored Resolution modal and falsely report a stranded build.
    
    setPracticeBuildControlsLocked(false);
    practicePlan=null;
@@ -6396,7 +6382,7 @@ function bindPractice(){
   buildStage='finalizing-plan';
   if(buildButton)buildButton.dataset.buildStage='finalizing-plan';
   // Finalization is also protected by the immutable setup seal. Resolution
-  // verification may have taken several frames; never publish a valid schedule
+  // verification may be substantial; never publish a valid schedule
   // after the coach's live setup has diverged from the inputs that produced it.
   if(!resolutionApplyBuild&&!buildSetupStillOwned()){
    recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before HotB could publish the schedule. Nothing was committed. Please review the setup and build again.');
@@ -6445,7 +6431,6 @@ function bindPractice(){
   }
   if(practicePlan.buildNotices?.length){
    modal='practiceBuildNotice';
-   // The completed plan no longer needs a scheduler watchdog during UI publication.
    
    publishPracticeBuildFrame('practice-build-notice',()=>{render();setPracticeBuildControlsLocked(false);window.scrollTo(0,0)});
    return;
