@@ -4905,12 +4905,12 @@ function bind(){
     const verified=(snapshot.practicePlayers||[]).filter(player=>player.name===name);
     if(verified.length!==1)return null;
     const verifiedPlayer=verified[0],livePlayer=target.roster[target.index];
-    // Resolution 481: role authorization must agree across the sealed source
-    // player and the unique live attendance identity. This closes the catcher
-    // opt-out race: a player whose Catching switch changed after verification
-    // cannot be re-authorized from a stale named alternative.
-    if(role==='pitcher'&&(verifiedPlayer.isPitcher!==true||verifiedPlayer.canPitch!==true||livePlayer.isPitcher!==true))return null;
-    if(role==='catcher'&&(verifiedPlayer.isCatcher!==true||verifiedPlayer.canCatch!==true||livePlayer.isCatcher!==true))return null;
+    // Resolution 537: use the same immutable role proof as snapshot validation.
+    // The attendance roster is the UI model and does not guarantee literal
+    // isPitcher/isCatcher flags; isPitcherProfile/positionTokens are the canonical
+    // roster-role tests used to keep the verified choice current.
+    if(role==='pitcher'&&(verifiedPlayer.isPitcher!==true||verifiedPlayer.canPitch!==true||!isPitcherProfile(livePlayer)))return null;
+    if(role==='catcher'&&(verifiedPlayer.isCatcher!==true||verifiedPlayer.canCatch!==true||!positionTokens(livePlayer).includes('C')))return null;
    }else if(name!==null||!withBlock11)return null;
    const expected=expectedResolutionState(role,name,withBlock11,snapshot);
    if(!expected)return null;
