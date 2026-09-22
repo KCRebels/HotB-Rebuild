@@ -488,4 +488,55 @@ const rebels12NoCatchMakennaLateBrooklynEarly11Plan=scheduler.buildSchedule(rebe
 assert.deepEqual(rebels12NoCatchMakennaLateBrooklynEarly11Plan.feasibilityErrors,[],'production-faithful Block 11 extension of exact phone setup must build safely');
 assert.deepEqual(scheduler.validate(rebels12NoCatchMakennaLateBrooklynEarly11Plan),[],'production-faithful Block 11 extension must pass the full audit');
 
+
+/* Resolution 553 bounded production-faithful Block 11 reachability audit.
+   Search only the real 13-player roster with ONE accommodation change at a time:
+   one player may leave at an exact block boundary, or one pitcher may be Hitting
+   Only. This stays small, deterministic, and mirrors the choices a coach can make
+   on Practice Setup. It records only genuinely new choices after production's
+   least-invasive duplicate filtering. */
+{
+ const clock=until=>{const total=18*60+until*12;return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0')};
+ const safe=plan=>!(plan.feasibilityErrors||[]).length&&!scheduler.validate(plan).length;
+ const extend=players=>players.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock}));
+ const inspect=players=>{
+  const base=scheduler.buildSchedule(players,'18:00',120);
+  if(safe(base))return null;
+  const pitchers=[],catchers=[];
+  for(const player of players.filter(p=>p.canPitch)){
+   const changed=players.map(p=>p.name===player.name?{...p,canPitch:false,requiresPitchWarmup:false}:p);
+   if(safe(scheduler.buildSchedule(changed,'18:00',120)))pitchers.push(player.name);
+  }
+  for(const player of players.filter(p=>p.canCatch)){
+   const changed=players.map(p=>p.name===player.name?{...p,canCatch:false}:p);
+   if(safe(scheduler.buildSchedule(changed,'18:00',120)))catchers.push(player.name);
+  }
+  const extended=extend(players),canExtend=safe(scheduler.buildSchedule(extended,'18:00',132));
+  const combinedPitchers=[],combinedCatchers=[];
+  for(const player of extended.filter(p=>p.canPitch)){
+   const changed=extended.map(p=>p.name===player.name?{...p,canPitch:false,requiresPitchWarmup:false}:p);
+   if(safe(scheduler.buildSchedule(changed,'18:00',132))&&!pitchers.includes(player.name))combinedPitchers.push(player.name);
+  }
+  for(const player of extended.filter(p=>p.canCatch)){
+   const changed=extended.map(p=>p.name===player.name?{...p,canCatch:false}:p);
+   if(safe(scheduler.buildSchedule(changed,'18:00',132))&&!catchers.includes(player.name))combinedCatchers.push(player.name);
+  }
+  return {canExtend,pitchers,catchers,combinedPitchers,combinedCatchers,errors:base.feasibilityErrors};
+ };
+ const found={extension:null,combinedPitcher:null,combinedCatcher:null};
+ const consider=(label,players)=>{
+  const r=inspect(players);if(!r)return;
+  if(!found.extension&&r.canExtend)found.extension={setup:label,errors:r.errors};
+  if(!found.combinedPitcher&&r.combinedPitchers.length)found.combinedPitcher={setup:label,name:r.combinedPitchers[0],errors:r.errors};
+  if(!found.combinedCatcher&&r.combinedCatchers.length)found.combinedCatcher={setup:label,name:r.combinedCatchers[0],errors:r.errors};
+ };
+ for(let i=0;i<rebels13.length;i++)for(const until of [4,5,6,7,8,9]){
+  consider(rebels13[i].name+' leaves '+clock(until),rebels13.map((p,index)=>index===i?{...p,availableUntilBlock:until}:{...p}));
+ }
+ for(const pitcher of rebels13.filter(p=>p.canPitch)){
+  consider(pitcher.name+' Hitting Only',rebels13.map(p=>p.name===pitcher.name?{...p,canPitch:false,requiresPitchWarmup:false}:p));
+ }
+ console.log('Resolution 553 bounded Block 11 fixtures',JSON.stringify(found));
+}
+
 console.log('practice-scheduler tests passed');
