@@ -5924,9 +5924,11 @@ function bindPractice(){
    });
   };
   setPracticeBuildControlsLocked(true);
+  let buildWatchdogProgress=0;
+  const markBuildProgress=()=>++buildWatchdogProgress;
   const armBuildWatchdog=(stage,timeout=12000)=>{
    buildFinished=false;buildWatchdogStage=stage;
-   const generation=++buildWatchdogGeneration;
+   const generation=++buildWatchdogGeneration,progressAtArm=buildWatchdogProgress;
    if(buildButton)buildButton.dataset.buildStage=stage;
    clearTimeout(buildWatchdog);
    buildWatchdog=setTimeout(()=>{
@@ -5935,6 +5937,13 @@ function bindPractice(){
     if(buildFinished||generation!==buildWatchdogGeneration)return;
     const stuckButton=$('#generatePractice');
     if(!stuckButton||!stuckButton.disabled)return;
+    // Treat the watchdog as a true stall detector. A 13-player Resolution may
+    // legitimately take longer than one wall-clock window while still yielding
+    // frames and advancing transaction state.
+    if(buildWatchdogProgress!==progressAtArm){
+     armBuildWatchdog(buildWatchdogStage,timeout);
+     return;
+    }
     if(practicePlan&&!practicePlan.feasibilityErrors?.length){
      console.warn('HotB build watchdog observed a completed scheduler result; normal build handoff still owns publication.');
      return;
@@ -5965,8 +5974,9 @@ function bindPractice(){
    // Give iPhone Safari a real frame between expensive candidate builds. A zero-ms
    // timer can be coalesced and immediately re-enter JavaScript without painting.
    const yieldResolutionUI=()=>new Promise(resolve=>{
-    if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(resolve,0));
-    else setTimeout(resolve,16);
+    const resume=()=>{markBuildProgress();resolve()};
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(resume,0));
+    else setTimeout(resume,16);
    });
    // Keep the build state visible and make every long Resolution phase identifiable.
    // This also prevents a second tap from starting a competing build while the first
@@ -5978,6 +5988,7 @@ function bindPractice(){
      const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-finalize':'Finalizing Resolution…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Preparing Resolution…','practice-resolution-byte-seal':'Sealing Resolution…','practice-resolution-snapshot-verify':'Validating Resolution…','practice-resolution-prepersist-verify':'Checking Final Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-restore-verify':'Verifying Saved Resolution…','practice-resolution-session-seal':'Checking Saved Session…','practice-resolution-session-restore':'Restoring Saved Session…','practice-resolution-session-compare':'Comparing Saved Session…','practice-resolution-final-snapshot':'Final Resolution Check…','practice-resolution-publish':'Opening Resolution…'};
      button.textContent=labels[stage]||'Building Practice…';
     }
+    markBuildProgress();
     armBuildWatchdog(stage,20000);
    };
    setResolutionStage('practice-resolution-start');
