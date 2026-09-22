@@ -6159,6 +6159,15 @@ function bindPractice(){
    // Resolution cannot add, remove, or swap a coaching choice without invalidating
    // the transaction and forcing a fresh verification build.
    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
+   // Resolution 484: the decision snapshot must be byte-stable from sealing through
+   // publication. Validation/rendering are read-only consumers; if either path ever
+   // normalizes, sorts, or otherwise mutates the object in place, reject publication
+   // instead of persisting a decision different from the verified candidate set.
+   let sealedResolutionBytes='';
+   try{sealedResolutionBytes=JSON.stringify(practiceResolution)}catch(error){
+    recoverPracticeBuildSetup('practice-resolution-seal-failed','HotB could not seal the verified Practice Resolution. Your original setup was kept unchanged.');
+    return;
+   }
    // Candidate evidence was already sealed before this object was constructed.
    // Do not mutate setup state merely to make the snapshot validator pass. The
    // Resolution transaction was opened from the already-sealed builder setup and
@@ -6166,9 +6175,11 @@ function bindPractice(){
    // Rewriting selectedNames/timing here created a second, unnecessary state edge
    // between a safe candidate and modal publication on iPhone Safari.
    const publicationSnapshotValid=practiceResolutionSnapshotIsCurrentAndValid(practiceResolution);
+   let publicationSnapshotStable=false;
+   try{publicationSnapshotStable=JSON.stringify(practiceResolution)===sealedResolutionBytes}catch(error){publicationSnapshotStable=false}
    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution455',stage:'practice-resolution-snapshot',state:publicationSnapshotValid?'valid':'invalid',at:new Date().toISOString(),signatureMatch:practiceResolution.signature===currentPracticeResolutionSignature(),selectedNames:[...(practiceSetupState.selectedNames||[])],verifiedNames:practiceResolution.practicePlayers.map(player=>player.name),startTime:practiceSetupState.startTime,durationMinutes:practiceSetupState.durationMinutes}))}catch(error){}
-   if(!publicationSnapshotValid){
-    console.error('HotB refused to publish an internally inconsistent Practice Resolution.');
+   if(!publicationSnapshotValid||!publicationSnapshotStable){
+    console.error('HotB refused to publish an internally inconsistent or mutated Practice Resolution.');
     // Nothing from this failed Resolution has been committed yet. Recovery owns
     // restoring/persisting the original setup; do not perform a redundant draft
     // save immediately before that recovery transaction.
@@ -6190,6 +6201,9 @@ function bindPractice(){
     setPracticeBuildControlsLocked(false);
     render();
     window.scrollTo(0,0);
+    // Rendering the modal must not acquire transaction authority by changing the
+    // sealed decision. Prove byte identity again before declaring publication done.
+    if(JSON.stringify(practiceResolution)!==sealedResolutionBytes)throw new Error('Practice Resolution changed while rendering the decision screen.');
     const mountedResolution=document.querySelector('.practice-resolution-modal');
     if(!mountedResolution)throw new Error('Practice Resolution modal did not mount after verified publication.');
     const staleBuildButton=$('#generatePractice');
