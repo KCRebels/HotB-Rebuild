@@ -355,6 +355,35 @@ console.log('Resolution 551 real fixtures',JSON.stringify({
 
 
 
+
+/* Resolution 552 targeted real-roster Block 11 audit.
+   Vary exactly one real player's departure and pitcher availability. This is small
+   enough for CI, and only accepts combined choices after the corresponding
+   120-minute role-only choice has been filtered out exactly as production does. */
+function targetedRealResolutionFixtures(){
+ const pitcherIndexes=realRoster.map((p,i)=>p.isPitcher?i:-1).filter(i=>i>=0);
+ const out={extension:null,combinedPitcher:null,combinedCatcher:null};
+ outer: for(let disabledMask=0;disabledMask<(1<<pitcherIndexes.length);disabledMask++){
+  for(let early=-1;early<realRoster.length;early++){
+   for(const until of [4,5,6,7,8,9,10]){
+    const roster=cloneRoster(realRoster);
+    pitcherIndexes.forEach((index,bit)=>{if(disabledMask&(1<<bit)){roster[index].canPitch=false;roster[index].requiresPitchWarmup=false;}});
+    if(early>=0)roster[early].availableUntilBlock=until;
+    const r=resolutionCandidates(roster);
+    if(!out.extension&&r.canExtend)out.extension={disabledMask,early,until,departure:clockForUntil(until)};
+    const cp=r.combinedPitchers.filter(name=>!r.pitchers.includes(name));
+    const cc=r.combinedCatchers.filter(name=>!r.catchers.includes(name));
+    if(!out.combinedPitcher&&cp.length)out.combinedPitcher={disabledMask,early,until,departure:clockForUntil(until),name:cp[0]};
+    if(!out.combinedCatcher&&cc.length)out.combinedCatcher={disabledMask,early,until,departure:clockForUntil(until),name:cc[0]};
+    if(out.extension&&out.combinedPitcher&&out.combinedCatcher)break outer;
+   }
+  }
+ }
+ return out;
+}
+const targetedRealFixtures=targetedRealResolutionFixtures();
+console.log('Resolution 552 targeted real fixtures',JSON.stringify(Object.fromEntries(Object.entries(targetedRealFixtures).map(([key,value])=>[key,value&&{...value,early:value.early<0?null:realRoster[value.early].name}]))));
+
 const catcherDisabled=scenario(9,4,2);
 catcherDisabled[4].canCatch=false;
 const catcherDisabledPlan=scheduler.buildSchedule(catcherDisabled);
