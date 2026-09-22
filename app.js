@@ -5997,12 +5997,8 @@ function bindPractice(){
    // Give iPhone Safari a real frame between expensive candidate builds. A zero-ms
    // timer can be coalesced and immediately re-enter JavaScript without painting.
    const yieldResolutionUI=()=>new Promise(resolve=>{
-    // A deliberate yield is not a stall. No watchdog is allowed to own this gap.
-    // Invalidate the current generation, yield one timer task, then resume. The
-    // caller's next setResolutionStage() arms monitoring around real work only.
-    clearTimeout(buildWatchdog);buildWatchdog=null;
-    clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
-    buildWatchdogGeneration++;
+    // Resolution has no wall-clock watchdog. Yield exactly one browser task and
+    // resume; no timer ownership/generation state is touched here.
     setTimeout(()=>{markBuildProgress();resolve()},0);
    });
    // Keep the build state visible and make every long Resolution phase identifiable.
@@ -6017,12 +6013,6 @@ function bindPractice(){
     }
     markBuildProgress();
     buildWatchdogStage=stage;
-    // Resolution is an explicitly cooperative async transaction. Do not arm a
-    // wall-clock watchdog between its short synchronous units; the stage remains
-    // visible in data-build-stage for diagnostics if an actual exception occurs.
-    clearTimeout(buildWatchdog);buildWatchdog=null;
-    clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
-    buildWatchdogGeneration++;
    };
    setResolutionStage('practice-resolution-start');
    await yieldResolutionUI();
@@ -6291,9 +6281,6 @@ function bindPractice(){
    // same JavaScript continuation; the evidence stage immediately below owns the
    // next deliberate paint/yield.
    buildWatchdogStage='practice-resolution-evidence';
-   buildWatchdogGeneration++;
-   clearTimeout(buildWatchdog);buildWatchdog=null;
-   clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
    markBuildProgress();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be finalized. Nothing was committed. Please review the setup and build again.');return}
    // Finalization is intentionally tiny and synchronous. Normalize the verified
