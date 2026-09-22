@@ -5896,9 +5896,32 @@ function bindPractice(){
     }
     practiceResolution={errors:resolutionErrors,pitchers:verified.pitchers,catchers:verified.catchers,canExtend:verified.canExtend,combinedPitchers:verified.combinedPitchers,combinedCatchers:verified.combinedCatchers,rosterGuidance:'You can use one of the verified choices above, or return to setup and make a different attendance/availability change.',practicePlayers:sourcePlayers,startTime,durationMinutes,noPitchersMode:null,notices,auditFailures:[],candidateNotices,signature:practiceResolutionSignature(sourcePlayers,startTime,durationMinutes),decisionSignature:''};
     practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
+    // Resolution 511 diagnostic seal audit. Keep the strict validator authoritative,
+    // but expose which contract clause rejected a cooperatively verified choice set.
+    const sealAudit=()=>{
+     const r=practiceResolution,fail=reason=>reason;
+     if(!r||r.signature!==currentPracticeResolutionSignature())return fail('source-signature');
+     if(r.decisionSignature!==practiceResolutionDecisionSignature(r))return fail('decision-signature');
+     const players=r.practicePlayers||[],names=players.map(player=>player?.name),verifiedNames=new Set(names);
+     if(Number(r.durationMinutes)!==120)return fail('duration');
+     if(names.length!==verifiedNames.size)return fail('verified-identity');
+     if(!Array.isArray(practiceSetupState.selectedNames)||practiceSetupState.selectedNames.length!==names.length||practiceSetupState.selectedNames.some((name,index)=>name!==names[index]))return fail('selected-order');
+     const clockMinutes=value=>{const m=String(value||'').match(/^(\\d{2}):(\\d{2})$/);if(!m)return null;const h=Number(m[1]),min=Number(m[2]);return h<24&&min<60?h*60+min:null};
+     if(players.some(player=>clockMinutes(player.arrivalTime)===null||clockMinutes(player.departureTime)===null))return fail('availability-clock');
+     if(players.some(player=>{const a=practiceAvailability(r.startTime,120,player.arrivalTime,player.departureTime);return Number(player.availableFromBlock)!==Number(a.availableFromBlock)||Number(player.availableUntilBlock)!==Number(a.availableUntilBlock)}))return fail('availability-blocks');
+     const choiceKeys=['pitchers','catchers','combinedPitchers','combinedCatchers'];
+     const canonical=v=>Array.isArray(v)&&v.length===new Set(v).size&&v.every((x,i)=>typeof x==='string'&&x.trim()===x&&x&&(i===0||v[i-1].localeCompare(x)<=0));
+     if(!choiceKeys.every(key=>canonical(r[key])))return fail('choice-canonical');
+     if(r.pitchers.some(name=>r.combinedPitchers.includes(name))||r.catchers.some(name=>r.combinedCatchers.includes(name)))return fail('choice-overlap');
+     const labels=new Set([...r.pitchers.map(name=>'Hitting Only: '+name),...r.catchers.map(name=>'Not Catching: '+name),...(r.canExtend?['Block 11']:[]),...r.combinedPitchers.map(name=>'Hitting Only + Block 11: '+name),...r.combinedCatchers.map(name=>'Not Catching + Block 11: '+name)]);
+     const entries=Object.entries(r.candidateNotices||{});
+     if(entries.length!==labels.size||entries.some(([label])=>!labels.has(label)))return fail('candidate-notices');
+     return 'other-contract';
+    };
     if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
-     console.error('HotB rejected the completed cooperative Practice Resolution snapshot.');
-     practiceResolution=null;shell.innerHTML=basePanel('HotB checked possible coaching compromises but could not seal the result safely. Change attendance or availability and build again.');bindInfoReturn(shell);return;
+     const sealReason=sealAudit();
+     console.error('HotB rejected the completed cooperative Practice Resolution snapshot:',sealReason);
+     practiceResolution=null;shell.innerHTML=basePanel('HotB checked possible coaching compromises but the safety seal rejected '+sealReason+'. Change attendance or availability and build again.');bindInfoReturn(shell);return;
     }
     shell.remove();modal='practiceResolution';
     try{render();window.scrollTo(0,0);if(!document.querySelector('.practice-resolution-modal'))throw new Error('Verified Practice Resolution did not mount.')}
