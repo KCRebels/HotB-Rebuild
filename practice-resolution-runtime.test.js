@@ -823,3 +823,19 @@ console.log('Resolution 534 Apply rollback-capture regression passed.');
  assert.match(branch,/JSON\.stringify\(restoredSaved\.setupState\)!==JSON\.stringify\(saved\.setupState\)/,'rollback validator must prove restored setup authority');
 }
 console.log('Resolution 535 restore-normalization regression passed.');
+
+
+/* Resolution 536 locked-copy authorization regression.
+   Apply passes the JSON-captured rollback Resolution into authorization. It must
+   authorize by sealed value, never JavaScript reference identity. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('const authorizedResolutionExpectedState=');
+ const end=source.indexOf("$('#applyPracticePitcherResolution')",start);
+ const branch=source.slice(start,end);
+ assert.doesNotMatch(branch,/snapshot!==practiceResolution/,'locked rollback copy must not fail authorization on reference identity');
+ assert.match(branch,/snapshot\.signature!==practiceResolution\.signature/,'authorization must prove source signature');
+ assert.match(branch,/snapshot\.decisionSignature!==practiceResolution\.decisionSignature/,'authorization must prove decision signature');
+ assert.match(branch,/JSON\.stringify\(snapshot\)!==JSON\.stringify\(practiceResolution\)/,'authorization must prove exact sealed decision value');
+}
+console.log('Resolution 536 locked-copy authorization regression passed.');
