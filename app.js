@@ -5977,7 +5977,17 @@ function bindPractice(){
    // Give iPhone Safari a real frame between expensive candidate builds. A zero-ms
    // timer can be coalesced and immediately re-enter JavaScript without painting.
    const yieldResolutionUI=()=>new Promise(resolve=>{
-    const resume=()=>{markBuildProgress();resolve()};
+    const resume=()=>{
+     // Crossing a paint boundary is positive proof that the Resolution transaction
+     // is alive. Invalidate any timer that WebKit may already have queued for the
+     // stage we just yielded from, then start a fresh quiet-period window before
+     // synchronous verification resumes. This prevents a stale watchdog callback
+     // from winning the event-loop race at practice-resolution-finalize on the
+     // full 13-player build.
+     markBuildProgress();
+     if(!buildFinished&&String(buildWatchdogStage||'').startsWith('practice-resolution'))armBuildWatchdog(buildWatchdogStage,20000);
+     resolve();
+    };
     if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(resume,0));
     else setTimeout(resume,16);
    });
