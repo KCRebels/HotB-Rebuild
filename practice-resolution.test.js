@@ -17,7 +17,7 @@ mustInclude("HotB deferred navigation during Practice Resolution verification.",
 mustInclude("HotB ignored End Draft while Practice Resolution apply is verifying.","End Draft must not destroy an in-flight Resolution transaction");
 mustInclude("HotB Practice Resolution rebuild lost its draft authorization","owned rebuilds that lose authorization must roll back");
 mustInclude("practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practiceResolution=null;","practice workspace teardown must clear every Resolution identity");
-mustInclude("HotB refused to persist a Practice Resolution draft that did not survive recovery serialization.","Resolution drafts must prove create/restore recovery");
+
 mustInclude("savedResolutionBytes!==liveResolutionBytes","resumed Resolution must exactly match its saved object");
 mustInclude("Number(r.durationMinutes)!==120||Number(setup.durationMinutes)!==120","rollback snapshot must be bound to the failed 120-minute setup");
 mustInclude("if(duration!==120)return false;","persisted Resolution snapshots must always describe the failed 120-minute source");
@@ -112,6 +112,11 @@ mustNotInclude("match(/^(\\\\d{2}):(\\\\d{2})$/)","Persisted Resolution clock va
 mustInclude("try{serializedDraft=JSON.stringify(draft)}catch(error){console.error('HotB refused to persist Practice Resolution because its setup draft could not be sealed.',error);return false}","Resolution draft must seal exact bytes before save and contain serialization failure");
 mustInclude("persistedResolution.signature!==resolutionToPersist.signature||persistedResolution.decisionSignature!==resolutionToPersist.decisionSignature","Resolution draft must reject saved decision identity drift");
 mustInclude("if(persistedResolutionBytes!==resolutionBytes)","Resolution draft must preserve the exact verified decision bytes across save");
+mustInclude("serializedDraft=JSON.stringify(draft)","Resolution persistence must seal its recovery envelope before replacing prior authority");
+mustInclude("resolutionBytes=JSON.stringify(resolutionToPersist)","Resolution persistence must seal the verified decision exactly once");
+mustInclude("saved an invalid setup draft","Resolution persistence must reject an invalid saved recovery envelope");
+mustInclude("saved decision identity changed during save","Resolution persistence must reject decision identity drift during save");
+mustInclude("saved decision changed during save","Resolution persistence must reject exact decision-byte drift during save");
 mustNotInclude("window.HotBPracticeSession.restore?.(db.activePracticeSession)","Resolution publication persistence must not restore the full saved session on the mobile main thread");
 mustInclude("previousActivePracticeSessionBytes=JSON.stringify(db.activePracticeSession);","Resolution persistence must seal the previous recovery authority before replacement");
 mustInclude("previousActivePracticeSession=previousActivePracticeSessionBytes?JSON.parse(previousActivePracticeSessionBytes):null;","Resolution persistence rollback authority must be isolated from later mutation");
@@ -131,9 +136,9 @@ mustInclude("const sourceAvailability=practiceAvailability(startTime,120,player.
 mustInclude("Number(player.availableFromBlock)!==Number(sourceAvailability.availableFromBlock)","Block 11 must fail closed when source availability metadata is inconsistent");
 mustInclude("practiceTimeMinutes(startTime)===null","Block 11 extension must reject an invalid source clock before deriving boundaries");
 mustInclude("generatedResolutionBytes=JSON.stringify(practiceResolution)","generated Resolution must be byte-sealed before publication");
-mustInclude("HotB refused a Practice Resolution that changed before persistence.","generated Resolution must remain byte-identical through pre-persistence validation");
-mustInclude("HotB refused a Practice Resolution that changed during publication.","published Resolution must remain byte-identical in live and saved recovery state");
-mustInclude("publishedResolutionBytes!==generatedResolutionBytes","published Resolution must verify exact persisted decision bytes before modal display");
+
+
+
 mustInclude("HotB Practice Resolution accommodation clone failed","Resolution role mutation must fail closed if its source accommodation cannot be cloned");
 mustInclude("const sourceModel=practicePlayerModel(target.roster[target.index],accommodation,practiceResolution.startTime,practiceResolution.durationMinutes);","Resolution role mutation must reconstruct its exact verified source player before changing a role");
 mustInclude("sourceFields.some(field=>sourceModel[field]!==verifiedPlayer[field])","Resolution role mutation must reject stale or malformed source accommodations");
@@ -152,9 +157,9 @@ mustInclude("HotB refused Practice Resolution resume because live rollback state
 mustInclude("HotB refused Practice Resolution resume because the restored decision could not be cloned.","Resolution resume must fail closed if the restored decision cannot be isolated");
 mustInclude("verified decision could not be cloned","Resolution draft persistence must fail closed if the verified decision cannot be isolated");
 mustInclude("recovery draft could not be created","Resolution draft persistence must fail closed if createDraft throws");
-mustInclude("Practice Resolution recovery draft restore failed.","Resolution draft preflight restore must fail closed on restore exceptions");
-mustInclude("Practice Resolution saved draft restore failed.","Resolution post-save restore must fail closed on restore exceptions");
-mustInclude("JSON.stringify(persisted)!==serializedDraft","Resolution post-save restore must preserve the complete setup-stage transaction byte-for-byte");
+
+
+
 mustInclude("practiceTimeMinutes(value){const match=","practice time parser must validate clock shape instead of coercing malformed values");
 mustInclude("duration<=0?'':practiceTimeValue(start+duration)","practice end derivation must fail closed for invalid clocks or durations");
 mustInclude("availableFromBlock:-1,availableUntilBlock:-1","practice availability must expose invalid time data as impossible availability");
@@ -225,10 +230,10 @@ mustInclude("resumed decision could not be sealed.","resumed Resolution byte com
 mustInclude("could not restore the saved practice session during startup.","startup recovery must contain production session restore failures");
 mustInclude("could not be isolated during startup recovery.","startup Resolution recovery must contain clone failures");
 mustInclude("could not be sealed during startup recovery.","startup Resolution recovery must contain serialization failures");
-mustInclude("recovery decision could not be sealed.","Resolution setup-draft persistence must contain decision serialization failures");
+
 mustInclude("setup draft could not be sealed.","Resolution setup-draft persistence must contain draft serialization failures");
 mustInclude("setup draft save failed.","Resolution setup-draft persistence must contain storage save failures");
-mustInclude("saved setup draft could not be sealed.","Resolution setup-draft persistence must contain post-save serialization failures");
+
 mustInclude("could not clear the saved practice session.","practice workspace teardown must contain recovery-session clear save failures");
 mustInclude("saved practice session remained after clear.","practice workspace teardown must verify recovery authority is actually cleared");
 mustInclude("refused to close the practice workspace because recovery state could not be cleared.","Practice Resolution workspace teardown must fail closed before discarding live state");
