@@ -5981,9 +5981,24 @@ function bindPractice(){
      try{sessionStorage.setItem('hotb-resolution-seal-reason',JSON.stringify({bundle:'resolution512',reason:sealReason,at:new Date().toISOString()}))}catch(error){}
      practiceResolution=null;shell.innerHTML=basePanel('HotB checked possible coaching compromises but the safety seal rejected '+sealReason+'. Change attendance or availability and build again.');bindInfoReturn(shell);return;
     }
-    shell.remove();modal='practiceResolution';
-    try{render();window.scrollTo(0,0);if(!document.querySelector('.practice-resolution-modal'))throw new Error('Verified Practice Resolution did not mount.')}
-    catch(error){console.error('HotB could not publish verified Practice Resolution.',error);modal=null;practiceResolution=null;shell=mountResolutionHtml(basePanel('HotB verified a coaching option but could not open the decision screen. Return to setup and build again.'));bindInfoReturn(shell)}
+    // The temporary verification shell lives inside #app. render() replaces
+    // #app.innerHTML wholesale, so removing that shell first can detach #app's
+    // descendants before render captures the new Resolution modal on iOS/WebKit.
+    // Keep the shell mounted until render atomically replaces the app tree.
+    modal='practiceResolution';
+    try{
+     render();window.scrollTo(0,0);
+     const published=document.querySelector('.practice-resolution-modal');
+     if(!published)throw new Error('Verified Practice Resolution did not mount.');
+    }
+    catch(error){
+     console.error('HotB could not publish verified Practice Resolution.',error);
+     // Preserve the verified snapshot for diagnosis/retry. A rendering failure is
+     // not evidence that the already-audited coaching choices became invalid.
+     modal=null;
+     try{render()}catch(renderError){console.error('HotB could not restore Practice Setup after Resolution publication failure.',renderError)}
+     shell=mountResolutionHtml(basePanel('HotB verified a coaching option but could not open the decision screen. Return to setup and build again.'));bindInfoReturn(shell)
+    }
    };
    const runNextCandidate=()=>{
     if(resolutionCandidateCancelled||!shell.isConnected)return;
