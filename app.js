@@ -5877,29 +5877,24 @@ function bindPractice(){
    const finalizeCandidates=()=>{
     if(resolutionCandidateCancelled||!shell.isConnected)return;
     [verified.pitchers,verified.catchers,verified.combinedPitchers,verified.combinedCatchers].forEach(list=>list.sort((a,b)=>a.localeCompare(b)));
-    const candidateNotices=Object.fromEntries(Object.entries(verified.candidateNotices).sort(([a],[b])=>a.localeCompare(b)));
-    const hasChoice=!!(verified.pitchers.length||verified.catchers.length||verified.canExtend||verified.combinedPitchers.length||verified.combinedCatchers.length);
-    if(!hasChoice){
-     shell.innerHTML=basePanel('HotB checked the approved coaching compromises and none produced a rule-safe practice. Change attendance, availability, Pitching, or Catching explicitly and build again.');
-     bindInfoReturn(shell);return;
-    }
-    practiceResolution={errors:resolutionErrors,pitchers:verified.pitchers,catchers:verified.catchers,canExtend:verified.canExtend,combinedPitchers:verified.combinedPitchers,combinedCatchers:verified.combinedCatchers,rosterGuidance:'You can use one of the verified choices above, or return to setup and make a different attendance/availability change.',practicePlayers:sourcePlayers,startTime,durationMinutes,noPitchersMode:null,notices,auditFailures:[],candidateNotices,signature:practiceResolutionSignature(sourcePlayers,startTime,durationMinutes),decisionSignature:''};
-    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
-    // Resolution 510: a candidate that works in 120 minutes supersedes the same
-    // role change + Block 11 candidate. The persisted Resolution contract forbids
-    // presenting a strictly worse duplicate choice, so canonicalize before sealing.
+    // Resolution 510: prefer the least invasive verified solution. If the same role
+    // change works without Block 11, do not persist/present its extended duplicate.
     verified.combinedPitchers=verified.combinedPitchers.filter(name=>!verified.pitchers.includes(name));
     verified.combinedCatchers=verified.combinedCatchers.filter(name=>!verified.catchers.includes(name));
-    const allowedLabels=new Set([
+    const allowedCandidateLabels=new Set([
      ...verified.pitchers.map(name=>'Hitting Only: '+name),
      ...verified.catchers.map(name=>'Not Catching: '+name),
      ...(verified.canExtend?['Block 11']:[]),
      ...verified.combinedPitchers.map(name=>'Hitting Only + Block 11: '+name),
      ...verified.combinedCatchers.map(name=>'Not Catching + Block 11: '+name)
     ]);
-    for(const label of Object.keys(practiceResolution.candidateNotices))if(!allowedLabels.has(label))delete practiceResolution.candidateNotices[label];
-    practiceResolution.combinedPitchers=verified.combinedPitchers;
-    practiceResolution.combinedCatchers=verified.combinedCatchers;
+    const candidateNotices=Object.fromEntries(Object.entries(verified.candidateNotices).filter(([label])=>allowedCandidateLabels.has(label)).sort(([a],[b])=>a.localeCompare(b)));
+    const hasChoice=!!(verified.pitchers.length||verified.catchers.length||verified.canExtend||verified.combinedPitchers.length||verified.combinedCatchers.length);
+    if(!hasChoice){
+     shell.innerHTML=basePanel('HotB checked the approved coaching compromises and none produced a rule-safe practice. Change attendance, availability, Pitching, or Catching explicitly and build again.');
+     bindInfoReturn(shell);return;
+    }
+    practiceResolution={errors:resolutionErrors,pitchers:verified.pitchers,catchers:verified.catchers,canExtend:verified.canExtend,combinedPitchers:verified.combinedPitchers,combinedCatchers:verified.combinedCatchers,rosterGuidance:'You can use one of the verified choices above, or return to setup and make a different attendance/availability change.',practicePlayers:sourcePlayers,startTime,durationMinutes,noPitchersMode:null,notices,auditFailures:[],candidateNotices,signature:practiceResolutionSignature(sourcePlayers,startTime,durationMinutes),decisionSignature:''};
     practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
     if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
      console.error('HotB rejected the completed cooperative Practice Resolution snapshot.');
