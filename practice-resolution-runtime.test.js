@@ -878,71 +878,24 @@ function candidateAudit487(plan,validate){
 console.log('Resolution 487 infeasible-candidate short-circuit regression passed.');
 
 
-/* Resolution 488 mobile long-task regression.
-   Candidate verification is deliberately asynchronous: every scheduler candidate
-   receives an event-loop boundary and ownership is checked again after the yield. */
+
+
+/* Resolution 492 base-result-only discovery regression.
+   The original setup tap receives exactly one scheduler result. Once that result is
+   infeasible, Resolution publication is data-only: no candidate scheduler, extension
+   modeling, role search, or async continuation is allowed before publication. */
 {
- const appSource=require('node:fs').readFileSync('./app.js','utf8');
- assert.ok(appSource.includes('const verifyOrderedCandidates=async('),'candidate verifier must be asynchronous');
- assert.ok(appSource.includes('await new Promise(resolve=>setTimeout(resolve,0));'),'candidate verifier must yield to Safari before scheduler work');
- const yieldAt=appSource.indexOf('await new Promise(resolve=>setTimeout(resolve,0));');
- const ownershipAt=appSource.indexOf("if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed'",yieldAt);
- const schedulerAt=appSource.indexOf('const safe=verifyResolutionBuild(',yieldAt);
- assert.ok(yieldAt>=0&&ownershipAt>yieldAt&&schedulerAt>ownershipAt,'setup ownership must be re-proved after the mobile yield and before scheduler execution');
- assert.ok(appSource.includes('const verifyOrderedCandidates=async('),'legacy candidate verifier remains async if explicitly reused');
- assert.ok(appSource.includes("stage:'practice-resolution-block11-search-bypassed'"),'current setup path bypasses Block 11 candidate scheduling');
- assert.ok(appSource.includes("stage:'practice-resolution-role-search-bypassed'"),'current setup path bypasses role candidate scheduling');
- assert.ok(appSource.includes("stage:'practice-resolution-combined-bypassed'"),'current setup path bypasses combined candidate scheduling');
+ const app492=require('node:fs').readFileSync('./app.js','utf8');
+ const baseOnly=app492.indexOf("stage:'practice-resolution-base-result-only'");
+ assert.ok(baseOnly>=0,'failed build must enter base-result-only Resolution discovery');
+ const fanout=app492.indexOf('// Candidate fan-out is complete.',baseOnly);
+ assert.ok(fanout>baseOnly,'base-result-only block must flow directly to evidence publication');
+ const discovery=app492.slice(baseOnly,fanout);
+ assert.ok(!discovery.includes('buildSchedule('),'failed-build discovery must not call scheduler again');
+ assert.ok(!discovery.includes('practiceResolutionExtendedPlayers('),'failed-build discovery must not model Block 11');
+ assert.ok(!discovery.includes('verifyOrderedCandidates'),'failed-build discovery must not create candidate continuation');
+ assert.ok(!discovery.includes('setTimeout('),'failed-build discovery must not create an async continuation');
+ assert.ok(discovery.includes('const solvingPitchers=[],solvingCatchers=[],combinedPitchers=[],combinedCatchers=[]'),'all speculative choice arrays start and remain empty');
+ assert.ok(discovery.includes('const canExtend=false,resolutionBudgetExceeded=false'),'Block 11 is not speculatively advertised');
 }
-console.log('Resolution 488 mobile long-task regression passed.');
-
-
-/* Resolution 489 setup-tap combined-search bypass regression.
-   The setup Build tap must never execute a speculative role + Block 11 candidate.
-   Those were the repeatedly observed mobile stall stages. */
-{
- const appSource489=require('node:fs').readFileSync('./app.js','utf8');
- const bypassStart=appSource489.indexOf("stage:'practice-resolution-combined-bypassed'");
- assert.ok(bypassStart>=0,'production must record the combined-search bypass');
- const combinedBranchStart=appSource489.lastIndexOf('if(!identityBlocked&&!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded)',bypassStart);
- const fanoutEnd=appSource489.indexOf('// Candidate fan-out is complete.',bypassStart);
- const combinedBody=appSource489.slice(combinedBranchStart,fanoutEnd);
- assert.ok(combinedBody.includes('combinedPitchers=[]')&&combinedBody.includes('combinedCatchers=[]'),'combined choices must remain empty on setup tap');
- assert.ok(!combinedBody.includes('verifyOrderedCandidates('),'combined setup branch must not call scheduler candidate verifier');
- assert.ok(!combinedBody.includes('buildSchedule('),'combined setup branch must not call scheduler directly');
- assert.ok(appSource489.includes('const candidateSearchCapacity=0'),'build budget must exclude every speculative candidate');
-}
-console.log('Resolution 489 setup-tap combined-search bypass regression passed.');
-
-
-/* Resolution 490 role-search bypass production regression. */
-{
- const app490=require('node:fs').readFileSync('./app.js','utf8');
- const roleMarker=app490.indexOf("stage:'practice-resolution-role-search-bypassed'");
- assert.ok(roleMarker>=0,'production must bypass role search from setup');
- const roleBranch=app490.lastIndexOf('if(!identityBlocked&&!canExtend&&!resolutionBudgetExceeded)',roleMarker);
- const combinedBranch=app490.indexOf('if(!identityBlocked&&!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded)',roleMarker);
- const roleBody=app490.slice(roleBranch,combinedBranch);
- assert.ok(roleBody.includes('solvingPitchers=[]')&&roleBody.includes('solvingCatchers=[]'),'role choices remain empty');
- assert.ok(!roleBody.includes('verifyOrderedCandidates(')&&!roleBody.includes('buildSchedule('),'role bypass performs no scheduler work');
- assert.ok(app490.includes('const candidateSearchCapacity=0'),'candidate budget permits no speculative scheduler build after base');
-}
-console.log('Resolution 490 role-search bypass production regression passed.');
-
-
-/* Resolution 491 zero-speculation production regression.
-   Once the base scheduler fails, setup must publish Resolution without calling the
-   scheduler again. The repeatedly observed iPhone stall migrated to each remaining
-   candidate as earlier candidates were removed, proving the safe boundary is zero
-   speculative rebuilds on the original tap. */
-{
- const app491=require('node:fs').readFileSync('./app.js','utf8');
- assert.ok(app491.includes("stage:'practice-resolution-block11-search-bypassed'"),'Block 11 speculation must be bypassed');
- assert.ok(app491.includes('const candidateSearchCapacity=0'),'candidate capacity must be zero');
- const blockStart=app491.indexOf('}else if(extensionBaselineValid){',app491.indexOf('const verifyOrderedCandidates=async'));
- const roleStart=app491.indexOf('if(!identityBlocked&&!canExtend&&!resolutionBudgetExceeded)',blockStart);
- const blockBody=app491.slice(blockStart,roleStart);
- assert.ok(blockBody.includes('canExtend=false'),'Block 11 must not be advertised without a scheduler proof');
- assert.ok(!blockBody.includes('verifyOrderedCandidates(')&&!blockBody.includes('buildSchedule('),'Block 11 bypass performs no scheduler work');
-}
-console.log('Resolution 491 zero-speculation production regression passed.');
+console.log('Resolution 492 base-result-only discovery regression passed.');
