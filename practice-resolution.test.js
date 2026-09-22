@@ -59,7 +59,7 @@ mustInclude("actualNames.some((name,index)=>name!==expectedNames[index])","Resol
 mustInclude("scheduleKeys.some((name,index)=>name!==planNames[index])","Resolution candidate schedule ownership must preserve exact attendee order");
 mustInclude("HotB Practice Resolution build failed","Resolution candidate verification must fail closed when candidate generation throws");
 mustInclude("HotB refused to publish an internally inconsistent Practice Resolution.","new Resolution decisions must pass the full live snapshot validator before display");
-mustInclude("HotB could not persist the verified Practice Resolution draft.","a verified Resolution must persist successfully before its modal is shown");
+mustNotInclude("HotB could not persist the verified Practice Resolution draft.","verified choices must not be blocked behind the removed pre-modal draft persistence transaction");
 mustInclude("const canonicalStringList=values=>values.length===new Set(values).size","Resolution persisted string collections must be unique and canonical");
 mustInclude("candidateNoticeEntries.some(([,values])=>!canonicalStringList(values))","candidate fallback notices must remain canonical after restore");
 mustInclude("candidateNoticeEntries.some(([label],index)=>index>0&&candidateNoticeEntries[index-1][0].localeCompare(label)>0)","candidate notice labels must retain canonical order");
