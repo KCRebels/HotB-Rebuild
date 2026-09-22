@@ -5854,7 +5854,20 @@ function bindPractice(){
     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution509',stage:'role-or-identity-failure',state:'ready',errors:resolutionErrors,at:new Date().toISOString()}))}catch(error){}
     return;
    }
-   const sourcePlayers=practicePlayers.map(player=>({...player}));
+   // Resolution 513: seal the source snapshot from the same normalized
+   // accommodation clocks used by currentPracticeResolutionSignature(). The
+   // scheduler input may preserve raw late/early text while the transaction
+   // validator intentionally compares normalized HH:MM values. Keeping those two
+   // representations in one snapshot caused valid choices to fail availability-clock.
+   const liveRosterForResolution=practiceAttendanceRoster();
+   const liveRosterByName=new Map(liveRosterForResolution.map(player=>[player.name,player]));
+   const sourcePlayers=practicePlayers.map(player=>{
+    const live=liveRosterByName.get(player.name);
+    if(!live)return {...player};
+    const accommodation=practiceSetupState.accommodations?.[player.name]||{};
+    const normalized=practicePlayerModel(live,accommodation,startTime,durationMinutes);
+    return {...player,arrivalTime:normalized.arrivalTime,departureTime:normalized.departureTime,availableFromBlock:normalized.availableFromBlock,availableUntilBlock:normalized.availableUntilBlock};
+   });
    const candidateQueue=[];
    availablePitchers.forEach(player=>candidateQueue.push({kind:'pitcher',name:player.name,duration:120,label:'Hitting Only: '+player.name}));
    availableCatchers.forEach(player=>candidateQueue.push({kind:'catcher',name:player.name,duration:120,label:'Not Catching: '+player.name}));
