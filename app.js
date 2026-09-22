@@ -5955,11 +5955,30 @@ function bindPractice(){
      // being mislabeled as an unknown contract failure.
      return 'validator-drift-after-audit-pass';
     };
+    // Resolution 531: the verified decision is not apply-safe until its exact
+    // failed-practice recovery draft has been persisted. Candidate verification
+    // previously published the modal without saving the newly sealed Resolution,
+    // so Apply could see an older setup-only draft and fail rollback authorization.
     if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
      const sealReason=sealAudit();
      console.error('HotB rejected the completed cooperative Practice Resolution snapshot:',sealReason);
      try{sessionStorage.setItem('hotb-resolution-seal-reason',JSON.stringify({bundle:'resolution512',reason:sealReason,at:new Date().toISOString()}))}catch(error){}
      practiceResolution=null;shell.innerHTML=basePanel('HotB checked possible coaching compromises but the safety seal rejected '+sealReason+'. Change attendance or availability and build again.');bindInfoReturn(shell);return;
+    }
+    if(persistPracticeDraft()!==true){
+     console.error('HotB refused to publish Practice Resolution because its sealed recovery draft could not be persisted.');
+     practiceResolution=null;
+     shell.innerHTML=basePanel('HotB verified a coaching option but could not save its recovery copy. Return to setup and build again.');
+     bindInfoReturn(shell);
+     return;
+    }
+    const savedResolution=db.activePracticeSession?.resolution;
+    if(!savedResolution||JSON.stringify(savedResolution)!==JSON.stringify(practiceResolution)){
+     console.error('HotB refused to publish Practice Resolution because persisted recovery did not match the verified decision.');
+     practiceResolution=null;
+     shell.innerHTML=basePanel('HotB verified a coaching option but could not prove its saved recovery copy. Return to setup and build again.');
+     bindInfoReturn(shell);
+     return;
     }
     // Publish the already-verified decision directly into the existing shell.
     // This avoids routing the handoff through the full application render/bind
