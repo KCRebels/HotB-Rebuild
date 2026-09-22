@@ -5972,12 +5972,38 @@ function bindPractice(){
      try{sessionStorage.setItem('hotb-resolution-seal-reason',JSON.stringify({bundle:'resolution512',reason:sealReason,at:new Date().toISOString()}))}catch(error){}
      practiceResolution=null;shell.innerHTML=basePanel('HotB checked possible coaching compromises but the safety seal rejected '+sealReason+'. Change attendance or availability and build again.');bindInfoReturn(shell);return;
     }
-    if(persistPracticeDraft()!==true){
-     console.error('HotB refused to publish Practice Resolution because its sealed recovery draft could not be persisted.');
+    // Candidate verification runs after the Build click has replaced the setup
+    // controls with the checking shell. persistPracticeDraft() is intentionally a
+    // DOM-to-state helper, so calling it here can no longer read the original
+    // checkboxes/time fields. Persist the already-sealed in-memory setup directly.
+    const resolutionRecoveryDraft=window.HotBPracticeSession?.createDraft?.({setupState:practiceSetupState,resolution:practiceResolution});
+    if(!resolutionRecoveryDraft||resolutionRecoveryDraft.stage!=='setup'||resolutionRecoveryDraft.plan){
+     console.error('HotB refused to publish Practice Resolution because its sealed recovery draft could not be created.');
      practiceResolution=null;
-     shell.innerHTML=basePanel('HotB verified a coaching option but could not save its recovery copy. Return to setup and build again.');
+     shell.innerHTML=basePanel('HotB verified a coaching option but could not create its recovery copy. Return to setup and build again.');
      bindInfoReturn(shell);
      return;
+    }
+    let resolutionRecoveryBytes='';
+    try{resolutionRecoveryBytes=JSON.stringify(resolutionRecoveryDraft)}
+    catch(error){console.error('HotB refused to publish Practice Resolution because its recovery copy could not be sealed.',error)}
+    if(!resolutionRecoveryBytes){
+     practiceResolution=null;shell.innerHTML=basePanel('HotB verified a coaching option but could not seal its recovery copy. Return to setup and build again.');bindInfoReturn(shell);return;
+    }
+    const previousResolutionRecovery=db.activePracticeSession;
+    db.activePracticeSession=resolutionRecoveryDraft;
+    try{save()}
+    catch(error){
+     console.error('HotB refused to publish Practice Resolution because its recovery copy could not be saved.',error);
+     db.activePracticeSession=previousResolutionRecovery;
+     try{save()}catch(restoreError){console.error('HotB could not restore the previous practice recovery after Resolution save failure.',restoreError)}
+     practiceResolution=null;shell.innerHTML=basePanel('HotB verified a coaching option but could not save its recovery copy. Return to setup and build again.');bindInfoReturn(shell);return;
+    }
+    if(JSON.stringify(db.activePracticeSession)!==resolutionRecoveryBytes){
+     console.error('HotB refused to publish Practice Resolution because its saved recovery envelope changed.');
+     db.activePracticeSession=previousResolutionRecovery;
+     try{save()}catch(error){console.error('HotB could not restore the previous practice recovery after Resolution equality failure.',error)}
+     practiceResolution=null;shell.innerHTML=basePanel('HotB verified a coaching option but could not prove its saved recovery copy. Return to setup and build again.');bindInfoReturn(shell);return;
     }
     const savedResolution=db.activePracticeSession?.resolution;
     if(!savedResolution||JSON.stringify(savedResolution)!==JSON.stringify(practiceResolution)){
