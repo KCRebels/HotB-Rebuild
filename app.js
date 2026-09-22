@@ -5275,24 +5275,15 @@ function persistPracticeDraft(){
  try{draft=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:resolutionToPersist})}
  catch(error){console.error('HotB refused to persist Practice Resolution because its recovery draft could not be created.',error);return false}
  if(!draft||draft.stage!=='setup'||draft.plan){console.error('HotB refused an invalid Practice Resolution recovery draft.');return false}
- // Saving an unresolved Resolution is a recovery contract, not a best-effort cache.
- // Prove the exact sealed decision survives a createDraft -> restore round trip
- // before replacing the last known-good recovery session.
- if(resolutionToPersist){
-  let restored;
-  try{restored=window.HotBPracticeSession.restore?.(draft)}catch(error){console.error('HotB Practice Resolution recovery draft restore failed.',error);return false}
-  const savedResolution=restored?.resolution;
-  if(!restored||restored.stage!=='setup'||restored.plan||!savedResolution||savedResolution.signature!==resolutionToPersist.signature||savedResolution.decisionSignature!==resolutionToPersist.decisionSignature||practiceResolutionDecisionSignature(savedResolution)!==savedResolution.decisionSignature){
-   console.error('HotB refused to persist a Practice Resolution draft that did not survive recovery serialization.');
-   return false;
-  }
-  let source='',roundTrip='';
-  try{source=JSON.stringify(resolutionToPersist);roundTrip=JSON.stringify(savedResolution)}
-  catch(error){console.error('HotB refused to persist Practice Resolution because its recovery decision could not be sealed.',error);return false}
-  if(source!==roundTrip){console.error('HotB refused to persist a Practice Resolution draft that changed during recovery serialization.');return false}
- }
- let serializedDraft='';
- try{serializedDraft=JSON.stringify(draft)}catch(error){console.error('HotB refused to persist Practice Resolution because its setup draft could not be sealed.',error);return false}
+ // The live Resolution was already fully validated and decision-sealed before this
+ // function is called. Persistence therefore proves the recovery envelope and exact
+ // decision identity once, rather than restoring/stringifying the entire 13-player
+ // draft several times on the iPhone main thread.
+ let serializedDraft='',resolutionBytes='';
+ try{
+  serializedDraft=JSON.stringify(draft);
+  if(resolutionToPersist)resolutionBytes=JSON.stringify(resolutionToPersist);
+ }catch(error){console.error('HotB refused to persist Practice Resolution because its setup draft could not be sealed.',error);return false}
  if(!serializedDraft)return false;
  let previousActivePracticeSession=null,previousActivePracticeSessionBytes='';
  try{
@@ -5311,17 +5302,17 @@ function persistPracticeDraft(){
  };
  db.activePracticeSession=draft;
  try{save()}catch(error){return restorePreviousDraftAfterFailure('HotB Practice Resolution setup draft save failed.',error)}
- // save() is part of the Resolution recovery transaction. Do not report success
- // unless the exact draft that was preflight-verified is still present afterward
- // and can still be restored as the same setup/Resolution bytes.
- let persistedDraftBytes='';
- try{persistedDraftBytes=JSON.stringify(db.activePracticeSession)}
- catch(error){return restorePreviousDraftAfterFailure('HotB Practice Resolution saved setup draft could not be sealed.',error)}
- if(persistedDraftBytes!==serializedDraft)return restorePreviousDraftAfterFailure('HotB Practice Resolution setup draft changed during save.');
+ // save() is part of the Resolution recovery transaction. Verify only the fields
+ // that authorize recovery. This keeps rollback protection while eliminating the
+ // duplicate full-session restore/serialization pass that could strand Safari.
+ const persisted=db.activePracticeSession,persistedResolution=persisted?.resolution;
+ if(!persisted||persisted.stage!=='setup'||persisted.plan)return restorePreviousDraftAfterFailure('HotB Practice Resolution saved an invalid setup draft.');
  if(resolutionToPersist){
-  let persisted;
-  try{persisted=window.HotBPracticeSession.restore?.(db.activePracticeSession)}catch(error){return restorePreviousDraftAfterFailure('HotB Practice Resolution saved draft restore failed.',error)}
-  if(!persisted||persisted.stage!=='setup'||persisted.plan||JSON.stringify(persisted)!==serializedDraft||JSON.stringify(persisted.setupState)!==JSON.stringify(practiceSetupState)||JSON.stringify(persisted.resolution)!==JSON.stringify(resolutionToPersist))return restorePreviousDraftAfterFailure('HotB Practice Resolution setup draft failed post-save recovery verification.');
+  if(!persistedResolution||persistedResolution.signature!==resolutionToPersist.signature||persistedResolution.decisionSignature!==resolutionToPersist.decisionSignature)return restorePreviousDraftAfterFailure('HotB Practice Resolution saved decision identity changed during save.');
+  let persistedResolutionBytes='';
+  try{persistedResolutionBytes=JSON.stringify(persistedResolution)}
+  catch(error){return restorePreviousDraftAfterFailure('HotB Practice Resolution saved decision could not be sealed.',error)}
+  if(persistedResolutionBytes!==resolutionBytes)return restorePreviousDraftAfterFailure('HotB Practice Resolution saved decision changed during save.');
  }
  return true;
 }
