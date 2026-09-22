@@ -4269,27 +4269,28 @@ function bind(){
    document.querySelectorAll('.practice-resolution-modal input').forEach(input=>input.disabled=false);
   };
   const resolutionPostcondition=(expected,plan=practicePlan)=>{
-   if(!expected||!plan)return false;
+   if(!expected||!plan){try{sessionStorage.setItem('hotb-resolution-postcondition','missing-expected-or-plan')}catch(_){}return failProof('postcondition-clause-1');}
    // This verifier is intentionally read-only and can prove a detached candidate
    // before that plan becomes live application state.
    let proofBefore='';
-   try{proofBefore=JSON.stringify(plan)}catch(_){return false}
-   const failProof=reason=>{try{sessionStorage.setItem('hotb-resolution-postcondition',String(reason||'unknown'))}catch(_){}return false};
+   const failProof=reason=>{try{sessionStorage.setItem('hotb-resolution-postcondition',String(reason||'unknown'))}catch(_){}return failProof('postcondition-clause-2')};
+   try{proofBefore=JSON.stringify(plan)}catch(_){return failProof('plan-seal')}
+   try{sessionStorage.removeItem('hotb-resolution-postcondition')}catch(_){}
    const finishProof=result=>{
     if(!result)return failProof('finish-result');
     try{return JSON.stringify(plan)===proofBefore||failProof('plan-mutated')}catch(_){return failProof('plan-reseal')}
    };
-   if(String(plan.startTime||'')!==String(expected.startTime||''))return false;
-   if(Number(plan.durationMinutes)!==Number(expected.durationMinutes))return false;
-   if(!Array.isArray(expected.expectedNotices))return false;
+   if(String(plan.startTime||'')!==String(expected.startTime||''))return failProof('postcondition-clause-3');
+   if(Number(plan.durationMinutes)!==Number(expected.durationMinutes))return failProof('postcondition-clause-4');
+   if(!Array.isArray(expected.expectedNotices))return failProof('postcondition-clause-5');
    const actualNotices=[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort();
    const expectedNotices=[...new Set(expected.expectedNotices.map(value=>String(value||'').trim()).filter(Boolean))].sort();
    if(JSON.stringify(actualNotices)!==JSON.stringify(expectedNotices))return failProof('notices');
    const expectedNames=expected.playerNames||[],actualNames=(plan.players||[]).map(player=>player.name);
    const expectedSet=new Set(expectedNames),actualSet=new Set(actualNames);
-   if(!Array.isArray(expected.playerNames)||!expectedNames.length||expectedNames.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return false;
-   if(actualNames.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return false;
-   if(expectedNames.length!==expectedSet.size||actualNames.length!==actualSet.size)return false;
+   if(!Array.isArray(expected.playerNames)||!expectedNames.length||expectedNames.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return failProof('postcondition-clause-6');
+   if(actualNames.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return failProof('postcondition-clause-7');
+   if(expectedNames.length!==expectedSet.size||actualNames.length!==actualSet.size)return failProof('postcondition-clause-8');
    // Resolution commit preserves the verified attendee order as transaction data.
    // This keeps plan.players, setup.selectedNames and persisted recovery aligned.
    if(expectedNames.length!==actualNames.length||actualNames.some((name,index)=>name!==expectedNames[index]))return failProof('player-order');
@@ -4297,22 +4298,22 @@ function bind(){
    if(!Array.isArray(plan.times)||plan.times.length!==expectedBlocks)return failProof('times-count');
    const scheduleKeys=Object.keys(plan.schedule||{}),scheduleSet=new Set(scheduleKeys);
    if(scheduleKeys.length!==scheduleSet.size||scheduleSet.size!==expectedSet.size||expectedNames.some((name,index)=>scheduleKeys[index]!==name))return failProof('schedule-key-order');
-   for(const name of expectedNames)if(!Array.isArray(plan.schedule?.[name])||plan.schedule[name].length!==expectedBlocks)return false;
+   for(const name of expectedNames)if(!Array.isArray(plan.schedule?.[name])||plan.schedule[name].length!==expectedBlocks)return failProof('postcondition-clause-9');
    // The rebuilt plan must not merely have the right number of blocks. Every time
    // row must be the exact 12-minute sequence implied by the verified start time.
    // This catches shifted, duplicated, skipped, or malformed block clocks before
    // a resolved practice can be committed to restart recovery or player portals.
    const clockMinutes=value=>{const match=String(value||'').trim().match(/^(\d{1,2}):(\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null};
    const verifiedStart=clockMinutes(expected.startTime);
-   if(verifiedStart===null)return false;
+   if(verifiedStart===null)return failProof('postcondition-clause-10');
    if(!plan.times.every((time,index)=>{
-    if(!time||Number(time.block)!==index+1)return false;
+    if(!time||Number(time.block)!==index+1)return failProof('postcondition-clause-11');
     const start=clockMinutes(time.start),end=clockMinutes(time.end),expectedStart=(verifiedStart+index*12)%(24*60),expectedEnd=(verifiedStart+(index+1)*12)%(24*60);
     return start===expectedStart&&end===expectedEnd;
-   }))return false;
+   }))return failProof('postcondition-clause-12');
    for(const name of expectedNames){
     const rows=plan.schedule[name];
-    if(rows.some((row,index)=>!row||typeof row!=='object'||typeof row.activity!=='string'||!row.activity.trim()||row.activity.trim()!==row.activity||(row.block!=null&&Number(row.block)!==index+1)||(row.partner!=null&&(typeof row.partner!=='string'||!row.partner.trim()||row.partner.trim()!==row.partner))))return false;
+    if(rows.some((row,index)=>!row||typeof row!=='object'||typeof row.activity!=='string'||!row.activity.trim()||row.activity.trim()!==row.activity||(row.block!=null&&Number(row.block)!==index+1)||(row.partner!=null&&(typeof row.partner!=='string'||!row.partner.trim()||row.partner.trim()!==row.partner))))return failProof('postcondition-clause-13');
    }
    // A resolved practice must also be collision-free at the block level. The
    // scheduler audit remains authoritative for station-specific capacities, but
@@ -4326,10 +4327,10 @@ function bind(){
     const assignmentCount=new Map();
     for(const name of presentNames){
      const row=plan.schedule?.[name]?.[block];
-     if(!row||row.activity==='Not Present')return false;
+     if(!row||row.activity==='Not Present')return failProof('postcondition-clause-14');
      assignmentCount.set(name,(assignmentCount.get(name)||0)+1);
     }
-    if([...assignmentCount.values()].some(count=>count!==1))return false;
+    if([...assignmentCount.values()].some(count=>count!==1))return failProof('postcondition-clause-15');
     const stationGroups=new Map();
     for(const name of presentNames){
      const row=plan.schedule[name][block],activity=row.activity;
@@ -4344,9 +4345,9 @@ function bind(){
     let frontFourCount=0;
     for(const [station,names] of stationGroups){
      if(station.startsWith('Front Toss Lane ')&&names.length===4){frontFourCount++;continue}
-     if(names.length<2||names.length>3)return false;
+     if(names.length<2||names.length>3)return failProof('postcondition-clause-16');
     }
-    if(frontFourCount>1)return false;
+    if(frontFourCount>1)return failProof('postcondition-clause-17');
    }
    // The four-player Front Toss exception is practice-wide, not per block.
    let totalFrontFours=0;
@@ -4364,17 +4365,17 @@ function bind(){
     const liveKeys=new Set(),liveRoleKeys=new Set();
     for(const live of plan.liveSessions){
      const block=Number(live?.block),pitcher=String(live?.pitcher||''),catcher=String(live?.catcher||''),hitters=Array.isArray(live?.hitters)?live.hitters:[];
-     if(!Number.isInteger(block)||block<0||block>=expectedBlocks||!pitcher||pitcher.trim()!==pitcher||!expectedSet.has(pitcher)||!catcher||catcher.trim()!==catcher||hitters.length<2||hitters.length>3)return false;
-     if(hitters.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return false;
+     if(!Number.isInteger(block)||block<0||block>=expectedBlocks||!pitcher||pitcher.trim()!==pitcher||!expectedSet.has(pitcher)||!catcher||catcher.trim()!==catcher||hitters.length<2||hitters.length>3)return failProof('postcondition-clause-18');
+     if(hitters.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return failProof('postcondition-clause-19');
      const liveKey=block+'|'+pitcher;
-     if(liveKeys.has(liveKey))return false;
+     if(liveKeys.has(liveKey))return failProof('postcondition-clause-20');
      liveKeys.add(liveKey);
      // A player can hold only one live role in a block, even across multiple
      // sessions. Prove that here rather than relying solely on the later scheduler audit.
      const roleNames=[pitcher,...(catcher==='9Square'?[]:[catcher]),...hitters];
      for(const roleName of roleNames){
       const roleKey=block+'|'+roleName;
-      if(liveRoleKeys.has(roleKey))return false;
+      if(liveRoleKeys.has(roleKey))return failProof('postcondition-clause-21');
       liveRoleKeys.add(roleKey);
      }
      // Every player live role must occur inside the exact verified availability
@@ -4384,15 +4385,15 @@ function bind(){
      if(livePlayerNames.some(name=>{
       const availability=expected.availability?.[name];
       return !availability||block<Number(availability.availableFromBlock)||block>=Number(availability.availableUntilBlock);
-     }))return false;
-     if(catcher!=='9Square'&&!expectedSet.has(catcher))return false;
-     if(catcher==='9Square'&&expectedSet.has(catcher))return false;
-     if(catcher===pitcher)return false;
-     if(hitters.length!==new Set(hitters).size||hitters.some(name=>!expectedSet.has(name)||name===pitcher||name===catcher))return false;
+     }))return failProof('postcondition-clause-22');
+     if(catcher!=='9Square'&&!expectedSet.has(catcher))return failProof('postcondition-clause-23');
+     if(catcher==='9Square'&&expectedSet.has(catcher))return failProof('postcondition-clause-24');
+     if(catcher===pitcher)return failProof('postcondition-clause-25');
+     if(hitters.length!==new Set(hitters).size||hitters.some(name=>!expectedSet.has(name)||name===pitcher||name===catcher))return failProof('postcondition-clause-26');
      const pitcherPlayer=(plan.players||[]).find(player=>player.name===pitcher);
      const catcherPlayer=catcher==='9Square'?null:(plan.players||[]).find(player=>player.name===catcher);
-     if(!pitcherPlayer||pitcherPlayer.isPitcher!==true||pitcherPlayer.canPitch!==true)return false;
-     if(catcherPlayer&&(catcherPlayer.isCatcher!==true||catcherPlayer.canCatch!==true))return false;
+     if(!pitcherPlayer||pitcherPlayer.isPitcher!==true||pitcherPlayer.canPitch!==true)return failProof('postcondition-clause-27');
+     if(catcherPlayer&&(catcherPlayer.isCatcher!==true||catcherPlayer.canCatch!==true))return failProof('postcondition-clause-28');
      // 9Square is a bounded fallback, never a shortcut while an eligible catcher
      // is actually open in that block. This preserves the scheduler's catcher-first
      // rule after a Hitting Only / Not Catching / Block 11 Resolution rebuild.
@@ -4408,16 +4409,16 @@ function bind(){
        if(prior?.catcher&&prior.catcher!=='9Square')earlierCatcherLoads.set(prior.catcher,(earlierCatcherLoads.get(prior.catcher)||0)+1);
       }
       const eligibleOpenCatcher=(plan.players||[]).some(player=>{
-       if(player.isCatcher!==true||player.canCatch!==true||player.name===pitcher||(earlierCatcherLoads.get(player.name)||0)>=2)return false;
+       if(player.isCatcher!==true||player.canCatch!==true||player.name===pitcher||(earlierCatcherLoads.get(player.name)||0)>=2)return failProof('postcondition-clause-29');
        const availability=expected.availability?.[player.name];
-       if(!availability||block<Number(availability.availableFromBlock)||block>=Number(availability.availableUntilBlock))return false;
+       if(!availability||block<Number(availability.availableFromBlock)||block>=Number(availability.availableUntilBlock))return failProof('postcondition-clause-30');
        return !plan.liveSessions.some(other=>Number(other?.block)===block&&other?.catcher===player.name);
       });
-      if(eligibleOpenCatcher)return false;
+      if(eligibleOpenCatcher)return failProof('postcondition-clause-31');
      }
-     if(plan.schedule?.[pitcher]?.[block]?.activity!=='Pitch Live')return false;
-     if(catcher!=='9Square'&&plan.schedule?.[catcher]?.[block]?.activity!=='Catch Live')return false;
-     if(hitters.some(name=>plan.schedule?.[name]?.[block]?.activity!=='Hit Live'))return false;
+     if(plan.schedule?.[pitcher]?.[block]?.activity!=='Pitch Live')return failProof('postcondition-clause-32');
+     if(catcher!=='9Square'&&plan.schedule?.[catcher]?.[block]?.activity!=='Catch Live')return failProof('postcondition-clause-33');
+     if(hitters.some(name=>plan.schedule?.[name]?.[block]?.activity!=='Hit Live'))return failProof('postcondition-clause-34');
     }
    }
    // Prove the inverse mapping too: every schedule-side live assignment must be
@@ -4426,41 +4427,41 @@ function bind(){
     const sessions=plan.liveSessions.filter(session=>Number(session.block)===block);
     for(const name of expectedNames){
      const activity=plan.schedule?.[name]?.[block]?.activity;
-     if(activity==='Pitch Live'&&sessions.filter(session=>session.pitcher===name).length!==1)return false;
-     if(activity==='Catch Live'&&sessions.filter(session=>session.catcher===name).length!==1)return false;
-     if(activity==='Hit Live'&&sessions.filter(session=>Array.isArray(session.hitters)&&session.hitters.includes(name)).length!==1)return false;
+     if(activity==='Pitch Live'&&sessions.filter(session=>session.pitcher===name).length!==1)return failProof('postcondition-clause-35');
+     if(activity==='Catch Live'&&sessions.filter(session=>session.catcher===name).length!==1)return failProof('postcondition-clause-36');
+     if(activity==='Hit Live'&&sessions.filter(session=>Array.isArray(session.hitters)&&session.hitters.includes(name)).length!==1)return failProof('postcondition-clause-37');
     }
    }
    for(const player of plan.players||[]){
-    const availability=expected.availability?.[player.name];if(!availability)return false;
+    const availability=expected.availability?.[player.name];if(!availability)return failProof('postcondition-clause-38');
     const from=Number(player.availableFromBlock),until=Number(player.availableUntilBlock);
-    if(from!==Number(availability.availableFromBlock)||until!==Number(availability.availableUntilBlock)||String(player.arrivalTime||'')!==String(availability.arrivalTime||'')||String(player.departureTime||'')!==String(availability.departureTime||'')||String(player.limitations||'')!==String(availability.limitations||''))return false;
+    if(from!==Number(availability.availableFromBlock)||until!==Number(availability.availableUntilBlock)||String(player.arrivalTime||'')!==String(availability.arrivalTime||'')||String(player.departureTime||'')!==String(availability.departureTime||'')||String(player.limitations||'')!==String(availability.limitations||''))return failProof('postcondition-clause-39');
     const rows=plan.schedule?.[player.name]||[];
     for(let block=0;block<expectedBlocks;block++){
      const absent=block<from||block>=until;
-     if(absent&&rows[block]?.activity!=='Not Present')return false;
-     if(!absent&&rows[block]?.activity==='Not Present')return false;
+     if(absent&&rows[block]?.activity!=='Not Present')return failProof('postcondition-clause-40');
+     if(!absent&&rows[block]?.activity==='Not Present')return failProof('postcondition-clause-41');
     }
    }
    for(const player of plan.players||[]){
-    const baseline=expected.baselineRoles?.[player.name];if(!baseline)return false;
-    if(typeof player.canPitch!=='boolean'||typeof player.requiresPitchWarmup!=='boolean'||typeof player.canCatch!=='boolean'||typeof player.prePracticeComplete!=='boolean'||typeof player.isPitcher!=='boolean'||typeof player.isCatcher!=='boolean'||typeof player.isGuest!=='boolean')return false;
-    if(!player.canPitch&&player.requiresPitchWarmup)return false;
-    if((player.prePracticeComplete===true)!==baseline.prePracticeComplete||(player.isPitcher===true)!==baseline.isPitcher||(player.isCatcher===true)!==baseline.isCatcher||(player.isGuest===true)!==baseline.isGuest)return false;
+    const baseline=expected.baselineRoles?.[player.name];if(!baseline)return failProof('postcondition-clause-42');
+    if(typeof player.canPitch!=='boolean'||typeof player.requiresPitchWarmup!=='boolean'||typeof player.canCatch!=='boolean'||typeof player.prePracticeComplete!=='boolean'||typeof player.isPitcher!=='boolean'||typeof player.isCatcher!=='boolean'||typeof player.isGuest!=='boolean')return failProof('postcondition-clause-43');
+    if(!player.canPitch&&player.requiresPitchWarmup)return failProof('postcondition-clause-44');
+    if((player.prePracticeComplete===true)!==baseline.prePracticeComplete||(player.isPitcher===true)!==baseline.isPitcher||(player.isCatcher===true)!==baseline.isCatcher||(player.isGuest===true)!==baseline.isGuest)return failProof('postcondition-clause-45');
     const approvedTarget=expected.role&&player.name===expected.name;
     if(!approvedTarget){
-     if(player.canPitch!==baseline.canPitch||player.requiresPitchWarmup!==baseline.requiresPitchWarmup||player.canCatch!==baseline.canCatch)return false;
+     if(player.canPitch!==baseline.canPitch||player.requiresPitchWarmup!==baseline.requiresPitchWarmup||player.canCatch!==baseline.canCatch)return failProof('postcondition-clause-46');
     }else if(expected.role==='pitcher'){
-     if(player.canPitch!==false||player.requiresPitchWarmup!==false||player.canCatch!==baseline.canCatch)return false;
+     if(player.canPitch!==false||player.requiresPitchWarmup!==false||player.canCatch!==baseline.canCatch)return failProof('postcondition-clause-47');
     }else if(expected.role==='catcher'){
-     if(player.canCatch!==false||player.canPitch!==baseline.canPitch||player.requiresPitchWarmup!==baseline.requiresPitchWarmup)return false;
+     if(player.canCatch!==false||player.canPitch!==baseline.canPitch||player.requiresPitchWarmup!==baseline.requiresPitchWarmup)return failProof('postcondition-clause-48');
     }
     const rows=plan.schedule?.[player.name]||[];
-    if(!player.isPitcher&&(player.canPitch||player.requiresPitchWarmup))return false;
-    if(!player.isCatcher&&player.canCatch)return false;
-    if(player.canPitch===false&&rows.some(row=>row?.activity==='Pitch Live'||row?.activity==='Pitch Warm-Up'))return false;
-    if(player.requiresPitchWarmup===false&&rows.some(row=>row?.activity==='Pitch Warm-Up'))return false;
-    if(player.canCatch===false&&rows.some(row=>row?.activity==='Catch Live'||row?.activity==='Catch Warm-Up'))return false;
+    if(!player.isPitcher&&(player.canPitch||player.requiresPitchWarmup))return failProof('postcondition-clause-49');
+    if(!player.isCatcher&&player.canCatch)return failProof('postcondition-clause-50');
+    if(player.canPitch===false&&rows.some(row=>row?.activity==='Pitch Live'||row?.activity==='Pitch Warm-Up'))return failProof('postcondition-clause-51');
+    if(player.requiresPitchWarmup===false&&rows.some(row=>row?.activity==='Pitch Warm-Up'))return failProof('postcondition-clause-52');
+    if(player.canCatch===false&&rows.some(row=>row?.activity==='Catch Live'||row?.activity==='Catch Warm-Up'))return failProof('postcondition-clause-53');
     // Warm-up partner records are transactional data too. A resolved practice may
     // not commit a one-sided pitcher/catcher pairing or an ineligible partner.
     let warmupInvalid=false;
@@ -4490,23 +4491,23 @@ function bind(){
    // Persisted summary metadata must agree with the role records it summarizes.
    // Do not allow a resolved plan whose catcherLoads or pitcherRepeats drifted from
    // liveSessions to pass the transaction boundary.
-   if(!Array.isArray(plan.catcherLoads)||!Array.isArray(plan.pitcherRepeats)||!Array.isArray(plan.liveHitterRepeats))return false;
-   if(plan.catcherLoads.some(item=>!item||typeof item.name!=='string'||!item.name.trim()||item.name.trim()!==item.name||!Number.isInteger(Number(item.liveBlocks))||Number(item.liveBlocks)<0))return false;
+   if(!Array.isArray(plan.catcherLoads)||!Array.isArray(plan.pitcherRepeats)||!Array.isArray(plan.liveHitterRepeats))return failProof('postcondition-clause-54');
+   if(plan.catcherLoads.some(item=>!item||typeof item.name!=='string'||!item.name.trim()||item.name.trim()!==item.name||!Number.isInteger(Number(item.liveBlocks))||Number(item.liveBlocks)<0))return failProof('postcondition-clause-55');
    const catcherLoadNames=plan.catcherLoads.map(item=>item.name);
-   if(catcherLoadNames.length!==new Set(catcherLoadNames).size)return false;
+   if(catcherLoadNames.length!==new Set(catcherLoadNames).size)return failProof('postcondition-clause-56');
    const catcherLoadMap=new Map(plan.catcherLoads.map(item=>[item.name,Number(item.liveBlocks)]));
    const eligibleCatchers=(plan.players||[]).filter(player=>player.isCatcher===true).map(player=>player.name);
    if(catcherLoadMap.size!==eligibleCatchers.length||eligibleCatchers.some((name,index)=>catcherLoadNames[index]!==name||catcherLoadMap.get(name)!==(liveCatcherLoads.get(name)||0)))return failProof('catcher-load-summary');
    const repeatedPitchers=[...livePitcherLoads.entries()].filter(([,count])=>count>1).map(([name])=>name).sort();
-   if(plan.pitcherRepeats.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name)||plan.pitcherRepeats.length!==new Set(plan.pitcherRepeats).size)return false;
+   if(plan.pitcherRepeats.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name)||plan.pitcherRepeats.length!==new Set(plan.pitcherRepeats).size)return failProof('postcondition-clause-57');
    const persistedPitcherRepeats=plan.pitcherRepeats.slice().sort();
-   if(repeatedPitchers.length!==persistedPitcherRepeats.length||repeatedPitchers.some((name,index)=>name!==persistedPitcherRepeats[index]))return false;
+   if(repeatedPitchers.length!==persistedPitcherRepeats.length||repeatedPitchers.some((name,index)=>name!==persistedPitcherRepeats[index]))return failProof('postcondition-clause-58');
    const liveHitCounts=new Map(expectedNames.map(name=>[name,0]));
    plan.liveSessions.forEach(session=>(session.hitters||[]).forEach(name=>liveHitCounts.set(name,(liveHitCounts.get(name)||0)+1)));
    const repeatedHitters=[...liveHitCounts.entries()].filter(([,count])=>count>1).map(([name])=>name).sort();
-   if(plan.liveHitterRepeats.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name)||plan.liveHitterRepeats.length!==new Set(plan.liveHitterRepeats).size)return false;
+   if(plan.liveHitterRepeats.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name)||plan.liveHitterRepeats.length!==new Set(plan.liveHitterRepeats).size)return failProof('postcondition-clause-59');
    const persistedHitterRepeats=plan.liveHitterRepeats.slice().sort();
-   if(repeatedHitters.length!==persistedHitterRepeats.length||repeatedHitters.some((name,index)=>name!==persistedHitterRepeats[index]))return false;
+   if(repeatedHitters.length!==persistedHitterRepeats.length||repeatedHitters.some((name,index)=>name!==persistedHitterRepeats[index]))return failProof('postcondition-clause-60');
    return finishProof(true);
   };
   const rebuildResolvedPractice=(rollbackState,expected)=>{
