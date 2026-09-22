@@ -748,3 +748,18 @@ console.log('Resolution 529 direct-bind regression passed.');
  assert.match(branch,/route='__practiceResolutionDirectMount';bind\(\)/,'direct modal publication must run generic modal binding with route dispatch suppressed');
 }
 console.log('Resolution 530 route-interference regression passed.');
+
+
+/* Resolution 531 recovery-publication regression.
+   A verified decision may not be exposed until the exact sealed Resolution has
+   been persisted into the setup-stage recovery session used by Apply rollback. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('const finalizeCandidates=()=>');
+ const publish=source.indexOf('// Publish the already-verified decision directly',start);
+ const branch=source.slice(start,publish);
+ assert.match(branch,/if\(persistPracticeDraft\(\)!==true\)/,'verified Resolution must persist its recovery draft before publication');
+ assert.match(branch,/const savedResolution=db\.activePracticeSession\?\.resolution/,'publication must read back the persisted Resolution');
+ assert.match(branch,/JSON\.stringify\(savedResolution\)!==JSON\.stringify\(practiceResolution\)/,'publication must prove persisted decision equality');
+}
+console.log('Resolution 531 recovery-publication regression passed.');
