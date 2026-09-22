@@ -5922,7 +5922,7 @@ function bindPractice(){
      if(Number(r.durationMinutes)!==120)return fail('duration');
      if(names.length!==verifiedNames.size)return fail('verified-identity');
      if(!Array.isArray(practiceSetupState.selectedNames)||practiceSetupState.selectedNames.length!==names.length||practiceSetupState.selectedNames.some((name,index)=>name!==names[index]))return fail('selected-order');
-     const clockMinutes=value=>{const m=String(value||'').match(/^(\\d{2}):(\\d{2})$/);if(!m)return null;const h=Number(m[1]),min=Number(m[2]);return h<24&&min<60?h*60+min:null};
+     const clockMinutes=value=>{const m=String(value||'').match(/^(\d{2}):(\d{2})$/);if(!m)return null;const h=Number(m[1]),min=Number(m[2]);return h<24&&min<60?h*60+min:null};
      if(players.some(player=>clockMinutes(player.arrivalTime)===null||clockMinutes(player.departureTime)===null)){
       const bad=players.filter(player=>clockMinutes(player.arrivalTime)===null||clockMinutes(player.departureTime)===null).map(player=>player.name+':'+String(player.arrivalTime)+'/'+String(player.departureTime)).join(',');
       return fail('availability-clock['+bad+']');
