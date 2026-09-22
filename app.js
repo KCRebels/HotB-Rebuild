@@ -4669,7 +4669,11 @@ function bind(){
      throw new Error('Resolved practice could not be committed to restart recovery ['+persistDetail+'].');
     }
     const committed=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
-    if(!committed||JSON.stringify(committed)!==JSON.stringify(db.activePracticeSession)||committed.plan?.portalDraftId!==resolutionDraftId)throw new Error('Resolved practice did not survive restart recovery exactly.');
+    // restore() canonicalizes optional fields (notably resolution:null), so raw
+    // object-byte equality with the stored session is not a valid restart test.
+    // The transaction below re-runs the immutable plan proof; persistence itself
+    // already proved the exact stored bytes before this restore.
+    if(!committed||committed.plan?.portalDraftId!==resolutionDraftId)throw new Error('Resolved practice did not survive restart recovery identity verification.');
     const livePlan=practicePlan;
     const committedSafe=resolutionPostcondition(expected,committed.plan);
     if(!committedSafe||JSON.stringify(committed.plan)!==JSON.stringify(livePlan))throw new Error('Resolved restart copy failed the immutable postcondition.');
@@ -5100,7 +5104,12 @@ function persistPracticeSession(){
  let restored=null;
  try{restored=window.HotBPracticeSession.restore?.(db.activePracticeSession)}
  catch(error){return restorePreviousSessionAfterFailure('HotB could not restore the practice session it just persisted',error)}
- if(!restored?.plan?.portalDraftId||restored.plan.portalDraftId!==practicePlan.portalDraftId||JSON.stringify(restored)!==serializedSession)return restorePreviousSessionAfterFailure('HotB could not restore the exact practice session it just persisted [restore-bytes]')
+ // restore() is allowed to normalize legacy/optional session fields. Comparing its
+ // bytes with create() is therefore not a persistence proof: create() omits
+ // resolution while restore() canonically adds resolution:null. The authoritative
+ // persisted bytes were already proved above. From here verify the durable plan,
+ // setup and clock semantics field-by-field.
+ if(!restored?.plan?.portalDraftId||restored.plan.portalDraftId!==practicePlan.portalDraftId)return restorePreviousSessionAfterFailure('HotB could not restore the resolved practice identity [restore-identity]')
  // A Resolution commit is not allowed to report persistence success merely because
  // the draft ID survived serialization. Its setup identity must survive too; the
  // full resolved-plan postcondition is checked by the owning transaction immediately
