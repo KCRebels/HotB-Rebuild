@@ -5873,7 +5873,8 @@ function bindPractice(){
   // The build handler now has intentional async frame yields during Practice
   // Resolution. A short timer cannot distinguish those healthy yields from a stall,
   // so use an explicit stage heartbeat and only recover after a real quiet period.
-  let buildWatchdog=null,buildWatchdogStage='pre-scheduler',buildWatchdogGeneration=0,buildFinished=false;
+  let buildWatchdog=null,buildWatchdogStage='pre-scheduler',buildWatchdogGeneration=0,buildFinished=false,buildWatchdogProgress=0;
+  const markBuildProgress=()=>++buildWatchdogProgress;
   const stopBuildWatchdog=()=>{buildFinished=true;buildWatchdogGeneration++;clearTimeout(buildWatchdog);buildWatchdog=null};
   const publishPracticeBuildFrame=(stage,callback)=>{
    if(buildButton)buildButton.dataset.buildStage=stage;
@@ -5903,6 +5904,8 @@ function bindPractice(){
    // Error recovery is also a screen publication. Defer it to a paint frame so
    // Safari never tears down #app synchronously from the failed build turn.
    publishPracticeBuildFrame(stage,()=>{
+    // Recovery publication intentionally runs after its watchdog is stopped.
+    // The frame helper may record progress, but it must never resurrect a timer.
     render();
     const restored=$('#generatePractice');
     if(restored){restored.disabled=false;restored.textContent='Build Practice Schedule';restored.dataset.buildStage=stage}
@@ -5925,8 +5928,6 @@ function bindPractice(){
    });
   };
   setPracticeBuildControlsLocked(true);
-  let buildWatchdogProgress=0;
-  const markBuildProgress=()=>++buildWatchdogProgress;
   const armBuildWatchdog=(stage,timeout=12000)=>{
    buildFinished=false;buildWatchdogStage=stage;
    const generation=++buildWatchdogGeneration,progressAtArm=buildWatchdogProgress,stageAtArm=stage;
