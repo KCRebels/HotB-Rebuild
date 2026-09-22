@@ -2316,7 +2316,7 @@ function practiceTimeLabel(value){const minutes=practiceTimeMinutes(value);if(mi
 function practiceAccommodation(player){
  const saved=practiceSetupState.accommodations?.[player.name]||{};
  const hasPrePracticeSetting=Object.prototype.hasOwnProperty.call(saved,'prePracticeComplete');
- return {arrival:saved.arrival||'',departure:saved.departure||'',limitations:saved.limitations||'',prePracticeComplete:player.isTeamJenkins?(hasPrePracticeSetting?!!saved.prePracticeComplete:true):(!!player.isPracticeGuest&&!!saved.prePracticeComplete),canPitch:isPitcherProfile(player)?saved.canPitch!==false:false,requiresPitchWarmup:isPitcherProfile(player)?saved.requiresPitchWarmup!==false:false,canCatch:positionTokens(player).includes('C')?saved.canCatch!==false:false};
+ return {arrival:saved.arrival||'',departure:saved.departure||(player.isTeamJenkins?'19:30':''),limitations:saved.limitations||'',prePracticeComplete:player.isTeamJenkins?(hasPrePracticeSetting?!!saved.prePracticeComplete:true):(!!player.isPracticeGuest&&!!saved.prePracticeComplete),canPitch:isPitcherProfile(player)?saved.canPitch!==false:false,requiresPitchWarmup:isPitcherProfile(player)?saved.requiresPitchWarmup!==false:false,canCatch:positionTokens(player).includes('C')?saved.canCatch!==false:false};
 }
 function practiceAccommodationSummary(player,accommodation,startTime,durationMinutes){
  const endTime=practiceEndValue(startTime,durationMinutes),parts=[];
@@ -5615,7 +5615,7 @@ function storePracticeAccommodation(index){
 function refreshPracticeAccommodationDefaults(){
  const start=$('#practiceStartTime')?.value||'18:00',duration=Number($('#practiceDuration')?.value)||120,end=practiceEndValue(start,duration);
  $$('[data-accommodation-arrival]').forEach(input=>{if(input.dataset.custom!=='true')input.value=start});
- $$('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true')input.value=end});
+ $('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true'){const player=practiceAttendanceRoster()[Number(input.dataset.accommodationDeparture)];input.value=player?.isTeamJenkins?'19:30':end}});
  practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));
 }
 function bindPractice(){
