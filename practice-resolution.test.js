@@ -95,11 +95,13 @@ mustInclude("const candidatePrototype=Object.getPrototypeOf(r.candidateNotices);
 mustInclude("if(candidateNoticeEntries.length!==allowedCandidateLabels.size)return false;","Resolution candidate evidence cardinality must exactly match final choices");
 mustInclude("const hasVerifiedChoice=!!(r.pitchers.length||r.catchers.length||r.canExtend||r.combinedPitchers.length||r.combinedCatchers.length);","Resolution modal actionability must come from verified choice data rather than rendered HTML");
 
-mustInclude("try{sourceBefore=JSON.stringify({practicePlayers,players})}catch(error)","Resolution candidate verification must seal its source player state before scheduler execution and contain sealing failure");
-mustInclude("const buildPlayers=structuredClone(players);","Resolution candidate verification must give the scheduler an isolated player copy");
-mustInclude("mutated sealed candidate source data during verification","Resolution candidate verification must reject scheduler mutation of its source state");
-mustInclude("mutated sealed candidate source data during safety audit","Resolution candidate safety audit must remain observational");
-mustInclude("changed sealed candidate source data before publication","Resolution candidate evidence must not publish after source-state mutation");
+mustInclude("const sourceSeal=practiceResolutionSignature(players,startTime,duration);","Resolution candidate verification must seal its source player state before scheduler execution");
+mustNotInclude("const buildPlayers=structuredClone(players);","Resolution candidate verification must not deep-clone every roster candidate on the mobile build path");
+mustInclude("sourceSeal!==practiceResolutionSignature(players,startTime,duration)","Resolution candidate verification must reject scheduler mutation of its source state");
+mustInclude("if(!resolutionPlanIsSafe(plan,label))return false;","Resolution candidate must pass the full safety audit before publication");
+mustInclude("verifiedCandidateNotices[label]=candidateNotices.slice();","Resolution candidate evidence must publish only after verification completes");
+mustInclude("if(stopAfterFirst)return true;","Resolution role searches must stop after the first verified option instead of exhausting equivalent permutations");
+mustInclude("if(!canExtend){","Resolution must skip role permutation searches when Block 11 already resolves the failed practice");
 
 mustInclude("match(/^(\\d{1,2}):(\\d{2})$/)","Resolution clock verification must parse numeric HH:MM values");
 mustNotInclude("match(/^(\\\\d{1,2}):(\\\\d{2})$/)","Resolution clock verification must not look for literal backslash-d text");
