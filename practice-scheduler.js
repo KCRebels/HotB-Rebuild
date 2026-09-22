@@ -94,7 +94,14 @@
    const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&pitcherCanUseLiveBlock(pitcher,block+offset)));
    const ordered=groups.slice().sort((x,y)=>startsFor(x).length-startsFor(y).length||y.length-x.length);
    for(const group of ordered){
-    const start=startsFor(group).find(block=>group.every((_,offset)=>!used.has(block+offset)));
+    const candidateStarts=startsFor(group).filter(block=>group.every((_,offset)=>!used.has(block+offset)));
+    // Resolution 498: an early-departing pitcher must not automatically take the
+    // earliest Live block. Doing so can force her mandatory warm-up into Block 3,
+    // consuming her only possible Front Toss block. Prefer the latest legal Live
+    // start for departure-limited groups; full-practice groups retain the stable
+    // earliest-first behavior.
+    if(group.some(pitcher=>pitcher&&pitcher.availableUntilBlock<BLOCK_COUNT))candidateStarts.sort((a,b)=>b-a);
+    const start=candidateStarts[0];
     if(start===undefined)return null;
     group.forEach((pitcher,offset)=>{used.add(start+offset);placed.push({pitcher,liveBlock:start+offset})});
    }
