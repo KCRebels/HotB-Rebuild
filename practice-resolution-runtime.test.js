@@ -122,6 +122,14 @@ assert.deepEqual(restoredDraft.resolution,unresolved.resolution,'unresolved veri
 assert.equal(restoredDraft.setupState.durationMinutes,120,'unresolved recovery authority must remain the original 120-minute failed practice');
 
 
+let prioritizedFixturesChecked=0;
+for(const fixture of fixtures.filter(x=>x.count===13&&x.pitchers===2&&x.catchers===2)){
+ const prioritized=prioritizedResolution(fixture.source);
+ assert.ok(prioritized.plan,'resolvable 13-player / 2-pitcher / 2-catcher fixture must be found by the prioritized search');
+ assert.deepEqual(scheduler.validate(prioritized.plan),[],'prioritized production-shaped fixture must pass the production validator');
+ assert.ok(prioritized.builds<=9,'prioritized production-shaped fixture must keep scheduler fan-out bounded');
+ prioritizedFixturesChecked++;
+}
 const productionShape=roster(13,2,2);
 const productionBase=scheduler.buildSchedule(productionShape,'18:00',120);
 if(productionBase.feasibilityErrors.length){
@@ -138,4 +146,4 @@ if(productionBase.feasibilityErrors.length){
  }
 }
 
-console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; exercised: ${[...exercised].join(', ')})`);
+console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${prioritizedFixturesChecked} production-shaped prioritized fixtures; exercised: ${[...exercised].join(', ')})`);
