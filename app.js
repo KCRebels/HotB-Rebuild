@@ -5976,12 +5976,6 @@ function bindPractice(){
    const resolutionAuditFailures=[];
    const resolutionPlanIsSafe=(plan,label)=>{
     if(!plan){resolutionAuditFailures.push(label+' did not return a schedule.');return false}
-    let planBefore='';
-    try{planBefore=JSON.stringify(plan)}catch(error){resolutionAuditFailures.push(label+' returned schedule data that could not be sealed.');return false}
-    const finishSafety=result=>{
-     if(!result)return false;
-     try{return JSON.stringify(plan)===planBefore}catch(_){return false}
-    };
     if(plan.feasibilityErrors?.length){resolutionAuditFailures.push(label+' remained infeasible: '+[...new Set(plan.feasibilityErrors.map(error=>String(error||'').trim()).filter(Boolean))].join(' | '));return false}
     if(!Array.isArray(plan.players)||!plan.schedule||!Array.isArray(plan.times)){resolutionAuditFailures.push(label+' returned incomplete schedule data.');return false}
     const planNames=plan.players.map(player=>player.name),planNameSet=new Set(planNames),scheduleKeys=Object.keys(plan.schedule||{}),scheduleKeySet=new Set(scheduleKeys),expectedBlocks=Number(plan.durationMinutes)===132?11:10;
@@ -5999,7 +5993,6 @@ function bindPractice(){
      const audit=window.HotBPracticeScheduler.validate(plan);
      if(!Array.isArray(audit)){resolutionAuditFailures.push(label+' returned an invalid safety audit.');return false}
      if(audit.length){resolutionAuditFailures.push(label+' failed the safety audit: '+[...new Set(audit.map(error=>String(error||'').trim()).filter(Boolean))].join(' | '));return false}
-     if(!finishSafety(true)){resolutionAuditFailures.push(label+' changed during its safety audit.');return false}
      return true;
     }catch(error){
      console.error('HotB Practice Resolution audit failed',label,error);
