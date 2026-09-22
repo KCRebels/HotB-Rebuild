@@ -76,19 +76,13 @@
    pitcherGroups=orderedPitchers.map(pitcher=>doubleNames.has(pitcher.name)?[pitcher,pitcher]:[pitcher]);
   }
   function placePitcherGroups(groups){
-   // Live can use every post-Warm-Up/Tee block. A 120-minute practice has
-   // Blocks 4-10 available for Live; the verified 132-minute Block 11 extension
-   // must add Block 11 to this pool as real scheduling capacity rather than merely
-   // extending the later station grid. Keep placement deterministic and bounded.
-   // Preserve the historical 120-minute Live envelope (Blocks 4-9).
-   // The 132-minute resolution explicitly adds Blocks 10-11 as extra capacity.
-   // This makes Block 11 a real resolution rather than silently relaxing the
-   // baseline 120-minute scheduler and keeps the two plans meaningfully distinct.
-   const baseLiveEnd=Math.min(BLOCK_COUNT,9);
-   const liveBlocks=[
-    ...Array.from({length:Math.max(0,baseLiveEnd-3)},(_,index)=>index+3),
-    ...(BLOCK_COUNT===MAX_BLOCK_COUNT?[9,10]:[])
-   ],used=new Set(),placed=[];
+   // Live may use every block after the required Warm-Up/Tee opening: Blocks
+   // 4-10 in the normal ten-block practice and Blocks 4-11 in the approved
+   // eleven-block extension. Generate the pool directly from BLOCK_COUNT so the
+   // production rule has one source of truth and cannot drift between comments,
+   // tests, and the mobile Resolution path. Placement below is a finite pass over
+   // this fixed pool; there is no retry or recursive search.
+   const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-3)},(_,index)=>index+3),used=new Set(),placed=[];
    const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&(!pitcher||isOpen(pitcher,block+offset))));
    const ordered=groups.slice().sort((x,y)=>startsFor(x).length-startsFor(y).length||y.length-x.length);
    for(const group of ordered){
