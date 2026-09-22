@@ -6178,12 +6178,9 @@ function bindPractice(){
     solvingPitchers=[];solvingCatchers=[];canExtend=false;combinedPitchers=[];combinedCatchers=[];
     for(const label of Object.keys(verifiedCandidateNotices))delete verifiedCandidateNotices[label];
    }
-   setResolutionStage('practice-resolution-evidence-complete');
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed after HotB finalized Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const hasVerifiedResolution=!!(solvingPitchers.length||solvingCatchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
-   // Re-prove that the owned setup did not change before sealing and publication.
-   setResolutionStage('practice-resolution-seal');
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be sealed. Nothing was committed. Please review the setup and build again.');return}
+   // Evidence and setup ownership were proven immediately above. Build the sealed
+   // decision directly instead of adding two more UI/state transitions on the same tap.
    const rosterGuidance=identityBlocked?'HotB found attendee identity or availability information that must be corrected before resolution. Fix the roster/guest or arrival/departure entry and build again; HotB will not guess or silently normalize it.':resolutionAuditFailures.length&&!hasVerifiedResolution?'HotB could not verify a safe automatic resolution because one or more verification builds/audits did not complete. Change attendance or availability, or build again after correcting the reported verification problem.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
    const cleanResolutionText=value=>String(value??'').trim();
