@@ -5882,8 +5882,11 @@ function bindPractice(){
     catch(error){
      console.error('HotB practice build publication failed at '+stage,error);
      stopBuildWatchdog();
+     setPracticeBuildControlsLocked(false);
      const button=$('#generatePractice');
      if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage=stage+'-failed'}
+     // Do not recursively call this publication helper after a render exception.
+     // Leave the current DOM usable and report the exact failed handoff.
      alert('HotB built the practice but could not open the next screen at '+stage+': '+String(error?.message||error||'unknown'));
     }
    };
@@ -6274,14 +6277,16 @@ function bindPractice(){
    }
    setResolutionStage('practice-resolution-publish');
    await yieldResolutionUI();
+   // The final decision screen is a publication boundary just like a completed
+   // practice plan. Keep inputs locked and the heartbeat alive until its frame
+   // callback actually begins; never render the modal inline after an async yield.
    modal='practiceResolution';
-   try{setPracticeBuildControlsLocked(false);render();stopBuildWatchdog();window.scrollTo(0,0)}
-   catch(error){
-    console.error('HotB Practice Resolution screen failed',error);
-    stopBuildWatchdog();practiceResolution=null;modal=null;persistPracticeDraft();
-    const button=$('#generatePractice');if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage='practice-resolution-render-failed'}
-    alert('HotB verified the Practice Resolution but could not open its decision screen: '+String(error?.message||error||'unknown'));
-   }
+   publishPracticeBuildFrame('practice-resolution-publish',()=>{
+    setPracticeBuildControlsLocked(false);
+    render();
+    stopBuildWatchdog();
+    window.scrollTo(0,0);
+   });
    return;
   }
   if(practicePlan.fallbackWarnings?.length){
