@@ -5981,24 +5981,16 @@ function bindPractice(){
   }
   armBuildWatchdog('post-scheduler');
   if(practicePlan.feasibilityErrors?.length){
-   // The base scheduler has returned. Practice Resolution is a cooperative async
-   // transaction with explicit progress stages. Retire the initial scheduler
+   // The base scheduler has returned. Practice Resolution now runs as one synchronous
+   // verified transaction. Retire the initial scheduler watchdog before entering it;
    // watchdog before entering it; Resolution itself no longer uses wall-clock
    // timers, eliminating false iPhone stalls during legitimate candidate work.
    clearTimeout(buildWatchdog);buildWatchdog=null;
    clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
    buildWatchdogGeneration++;
    buildWatchdogStage='practice-resolution';
-   // Give iPhone Safari a real frame between expensive candidate builds. A zero-ms
-   // timer can be coalesced and immediately re-enter JavaScript without painting.
-   const yieldResolutionUI=()=>new Promise(resolve=>{
-    // Resolution has no wall-clock watchdog. Yield exactly one browser task and
-    // resume; no timer ownership/generation state is touched here.
-    setTimeout(()=>{markBuildProgress();resolve()},0);
-   });
    // Keep the build state visible and make every long Resolution phase identifiable.
-   // This also prevents a second tap from starting a competing build while the first
-   // asynchronous verification transaction is still alive.
+   // This also keeps the Build control locked throughout the verification transaction.
    const setResolutionStage=stage=>{
     const button=$('#generatePractice');
     if(button){
