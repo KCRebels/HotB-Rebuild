@@ -35,11 +35,10 @@ has("practiceResolution=null;","successful commit must revoke stale Resolution")
 has("sealedResolutionBytes","publication must be byte sealed");
 has("publicationSnapshotStable","publication validation must be read-only");
 has("RESOLUTION_BUILD_BUDGET","candidate search must have a hard scheduler-build budget");
-has("candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?5:2)","normal candidate search must be globally bounded");
+has("candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?3:2)","normal candidate search must be globally bounded");
 has("const firstPitcher=availablePitchers[0]||null","same-duration pitcher search must be bounded to one candidate");
 has("const firstCatcher=availableCatchers[0]||null","same-duration catcher search must be bounded to one candidate");
-has("const firstExtendedPitcher=extendedPlayers.find(player=>player.canPitch)","combined pitcher search must be bounded to one candidate");
-has("const firstExtendedCatcher=extendedPlayers.find(player=>player.canCatch)","combined catcher search must be bounded to one candidate");
+has("stage:'practice-resolution-combined-bypassed'","combined role plus Block 11 speculation must be bypassed on the setup tap");
 has("if(!plan||plan.feasibilityErrors?.length)","infeasible candidates must short-circuit before full audit");
 has("window.HotBPracticeScheduler.validate(plan)","feasible displayed candidates must still pass the full scheduler validator");
 has("if(JSON.stringify(practiceResolution)!==sealedResolutionBytes)","render must not mutate the sealed decision");
