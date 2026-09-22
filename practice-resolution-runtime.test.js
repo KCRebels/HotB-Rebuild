@@ -759,3 +759,32 @@ assert.equal(liveRoleIdentity481({isCatcher:true,canCatch:false},{isCatcher:true
 assert.equal(liveRoleIdentity481({isPitcher:true,canPitch:true},{isPitcher:true},'pitcher'),true);
 assert.equal(liveRoleIdentity481({isPitcher:true,canPitch:true},{isPitcher:false},'pitcher'),false,'live pitcher identity drift must reject');
 console.log('Resolution 481 authorization lock/identity regressions passed.');
+
+
+/* Resolution 482 detached-candidate purity and commit cleanup regression. */
+function schedulerPurity482(players,start='18:00',duration=120){
+ const before=JSON.stringify(players);
+ const plan=scheduler.buildSchedule(players,start,duration);
+ assert.equal(JSON.stringify(players),before,'scheduler must not mutate a detached Resolution candidate');
+ return plan;
+}
+for(const fixture of [controlledKcSix,productionShape,...fixtures.slice(0,20).map(item=>item.source)]){
+ if(!Array.isArray(fixture)||!fixture.length)continue;
+ const copy=fixture.map(player=>({...player}));
+ schedulerPurity482(copy,'18:00',120);
+ const ext=extended(copy.map(player=>({...player})));
+ schedulerPurity482(ext,'18:00',132);
+}
+function commitCleanup482(state){
+ const committed={...state};
+ committed.practiceResolution=null;
+ committed.modal=committed.plan?.buildNotices?.length?'practiceBuildNotice':null;
+ return committed;
+}
+const cleaned482=commitCleanup482({practiceResolution:{signature:'failed-source'},plan:{buildNotices:[]} ,modal:'practiceResolution'});
+assert.equal(cleaned482.practiceResolution,null,'successful Resolution commit must revoke the failed snapshot');
+assert.equal(cleaned482.modal,null,'successful Resolution commit without notices must leave the decision modal');
+const noticed482=commitCleanup482({practiceResolution:{signature:'failed-source'},plan:{buildNotices:['notice']},modal:'practiceResolution'});
+assert.equal(noticed482.practiceResolution,null,'build-notice commit must also revoke the failed snapshot');
+assert.equal(noticed482.modal,'practiceBuildNotice','resolved build notices remain available after commit cleanup');
+console.log('Resolution 482 candidate purity/commit cleanup regressions passed.');
