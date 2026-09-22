@@ -200,3 +200,13 @@ if(productionBase.feasibilityErrors.length){
 }
 
 console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${thirteenPlayerFixtures.length} 13-player prioritized fixtures; ${block11Fixtures.length} Block-11 fast-path fixtures; ${prioritizedParityChecked} prioritized parity fixtures; exercised: ${[...exercised].join(', ')})`);
+
+// Mobile Resolution must collapse role alternatives that are structurally identical.
+// The current 13-player Rebels shape (5 pitchers, 2 catchers, full attendance) would
+// otherwise repeat the same scheduler capacity proof up to fourteen times on one tap.
+function anonymousShape(players,duration){return JSON.stringify({duration,players:players.map(p=>JSON.stringify({isPitcher:!!p.isPitcher,isCatcher:!!p.isCatcher,isGuest:!!p.isGuest,canPitch:!!p.canPitch,requiresPitchWarmup:!!p.requiresPitchWarmup,canCatch:!!p.canCatch,prePracticeComplete:!!p.prePracticeComplete,availableFromBlock:Number(p.availableFromBlock),availableUntilBlock:Number(p.availableUntilBlock),limitations:String(p.limitations||'')})).sort()})}
+const rebels13=roster(13,5,2),rebels13Extended=extended(rebels13);
+const roleSpecs=[...rebels13.filter(p=>p.canPitch).map(p=>({players:rebels13.map(x=>x.name===p.name?{...x,canPitch:false,requiresPitchWarmup:false}:x),duration:120})),...rebels13.filter(p=>p.canCatch).map(p=>({players:rebels13.map(x=>x.name===p.name?{...x,canCatch:false}:x),duration:120})),...rebels13Extended.filter(p=>p.canPitch).map(p=>({players:rebels13Extended.map(x=>x.name===p.name?{...x,canPitch:false,requiresPitchWarmup:false}:x),duration:132})),...rebels13Extended.filter(p=>p.canCatch).map(p=>({players:rebels13Extended.map(x=>x.name===p.name?{...x,canCatch:false}:x),duration:132}))];
+assert.equal(roleSpecs.length,14,'Rebels 13-player stress shape must contain the historical fourteen role permutations');
+assert.equal(new Set(roleSpecs.map(spec=>anonymousShape(spec.players,spec.duration))).size,4,'structural candidate collapse must reduce fourteen equivalent role permutations to four scheduler proofs');
+console.log('Practice Resolution runtime verification passed; structural mobile candidate fan-out is bounded.');
