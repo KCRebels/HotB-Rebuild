@@ -9,6 +9,9 @@ const fresh=fs.readFileSync('./hotb-fresh.html','utf8');
 const manifest=JSON.parse(fs.readFileSync('./manifest.webmanifest','utf8'));
 
 assert.match(worker,/CACHE_PREFIX = 'hotb-app-'/,'HotB caches must have an app-only prefix');
+assert.match(worker,/CORE_FILES = \[[^\n]*'\.\/manifest\.webmanifest'[^\n]*'\.\/pwa-update\.js'/,'offline core must include the manifest and PWA updater that select the installed build');
+assert.match(worker,/\/\\\/pwa-update\\\.js/,'versioned PWA updater requests must participate in the network-first offline alias strategy');
+assert.match(worker,/manifest\\\.webmanifest/,'versioned manifest requests must participate in the network-first offline alias strategy');
 assert.match(worker,/name\.startsWith\(CACHE_PREFIX\).*name !== CACHE_NAME/,'activation must remove only obsolete HotB caches');
 assert.match(worker,/request\.mode === 'navigate'/,'navigations must have an explicit strategy');
 assert.match(worker,/fetch\(request, \{cache: 'no-store'\}\)/,'online navigations and code must prefer the network');
