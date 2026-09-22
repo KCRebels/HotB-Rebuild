@@ -5981,7 +5981,7 @@ function bindPractice(){
      // This modal was mounted outside the normal render cycle. Bind only modal
      // controls here: route-specific binders may assume their full page exists and
      // can throw before bind() reaches the Practice Resolution handler block.
-     // Temporarily suppress route dispatch, then restore it synchronously.
+     // Temporarily suppress route dispatch, then restore it synchronously. Resolution 530.
      const resolutionBindRoute=route;
      try{route='__practiceResolutionDirectMount';bind()}
      finally{route=resolutionBindRoute}
