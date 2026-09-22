@@ -679,7 +679,9 @@ console.log('Cooperative verified coaching-option regression passed.');
  assert.ok(start>=0&&end>start,'verified Resolution publication handoff must exist');
  const publish=source.slice(start,end);
  assert.doesNotMatch(publish,/shell\.remove\(\)/,'publication must not detach the verification shell before render');
- assert.match(publish,/render\(\);window\.scrollTo\(0,0\)/,'publication must render the verified Resolution directly');
+ assert.match(publish,/const decisionHtml=practiceResolutionModal\(\)/,'publication must build the already-verified Resolution decision directly');
+ assert.match(publish,/shell\.replaceWith\(decision\)/,'publication must atomically replace the checking shell with the decision');
+ assert.doesNotMatch(publish,/\brender\(\)/,'publication must not re-enter the full app renderer');
  assert.match(publish,/const published=document\.querySelector\('\.practice-resolution-modal'\)/,'publication must prove the decision modal mounted');
  assert.doesNotMatch(publish,/practiceResolution=null/,'a render failure must not destroy the already-verified Resolution evidence');
 }
