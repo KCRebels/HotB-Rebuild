@@ -1016,3 +1016,19 @@ console.log('Resolution 549 restart-recovery parity regression passed.');
 }
 console.log('Resolution 553 Block 11 fail-closed presentation regression passed.');
 
+
+
+/* Resolution 554 normal-build setup seal ordering.
+   storePracticeAccommodation canonicalizes defaults into practiceSetupState, so the
+   immutable ownership seal must be captured after that synchronization. Otherwise
+   an untouched normal 13-player build can reject itself as a setup change. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const handler=source.indexOf("$('#generatePractice')?.addEventListener('click',async()=>");
+ const store=source.indexOf('roster.forEach((player,index)=>storePracticeAccommodation(index));',handler);
+ const seal=source.indexOf('initialBuildSetupSignature=buildSetupSignature();',handler);
+ const scheduler=source.indexOf('HotBPracticeScheduler.buildSchedule',store);
+ assert.ok(handler>=0&&store>handler&&seal>store&&scheduler>seal,'normal build must canonicalize accommodations, then seal ownership, then call scheduler');
+ assert.match(source.slice(store,scheduler),/buildSetupOwnershipValid=!!initialBuildSetupSignature/,'canonical setup seal must reset ownership from the submitted state');
+}
+console.log('Resolution 554 normal-build setup seal regression passed.');
