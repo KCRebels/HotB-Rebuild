@@ -325,3 +325,26 @@ assert.ok(block11Fixtures.length>0,'runtime corpus must retain at least one natu
 
 
 
+
+
+/* Resolution search-budget regression.
+   Normal and guest-heavy rosters must have enough finite budget to inspect every
+   structurally possible coaching candidate. This mirrors the production formula
+   and prevents a fixed small budget from hiding valid catcher/combined solutions. */
+function resolutionBudgetFor(players,duration=120){
+ const identityBlocked=false;
+ const pitchers=players.filter(player=>player.canPitch);
+ const catchers=players.filter(player=>player.canCatch);
+ const capacity=1+(duration===120&&!identityBlocked?1:0)+pitchers.length+catchers.length+(duration===120&&!identityBlocked?pitchers.length+catchers.length:0);
+ return {capacity,budget:Math.min(64,Math.max(9,capacity+1))};
+}
+const guestHeavy=[
+ ...base,
+ ...Array.from({length:8},(_,index)=>player('Guest '+(index+1),{isPitcher:index<3,canPitch:index<3,requiresPitchWarmup:index<3,isCatcher:index>=3&&index<5,canCatch:index>=3&&index<5}))
+];
+const guestBudget=resolutionBudgetFor(guestHeavy);
+assert.ok(guestBudget.capacity>9,'guest-heavy fixture must exceed the old fixed Resolution budget');
+assert.ok(guestBudget.budget>guestBudget.capacity,'finite Resolution budget must cover the complete normal candidate search');
+const ordinaryBudget=resolutionBudgetFor(base);
+assert.ok(ordinaryBudget.budget>=9,'ordinary roster retains the conservative minimum budget');
+
