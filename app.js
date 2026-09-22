@@ -4574,9 +4574,12 @@ function bind(){
     // 132-minute candidate extended her through Block 11. Resume/edit could then
     // reconstruct a different practice than the one we had just audited.
     const roster=practiceAttendanceRoster(),nextAccommodations={...(practiceSetupState.accommodations||{})};
+    const candidateNames=(plan.players||[]).map(player=>player.name);
+    if(candidateNames.length!==new Set(candidateNames).size)throw new Error('Resolved practice contained duplicate attendee names at setup commit.');
     for(const player of plan.players||[]){
-     const rosterPlayer=roster.find(item=>item.name===player.name);
-     if(!rosterPlayer)throw new Error('Resolved practice player disappeared from attendance roster before setup commit.');
+     const rosterMatches=roster.filter(item=>item.name===player.name);
+     if(rosterMatches.length!==1)throw new Error('Resolved practice player did not map to exactly one attendance-roster entry before setup commit.');
+     const rosterPlayer=rosterMatches[0];
      let existing;
      try{existing=structuredClone(nextAccommodations[player.name]||practiceAccommodation(rosterPlayer))}
      catch(error){existing=JSON.parse(JSON.stringify(nextAccommodations[player.name]||practiceAccommodation(rosterPlayer)))}
@@ -4590,12 +4593,17 @@ function bind(){
      nextAccommodations[player.name]=existing;
     }
     practiceSetupState.accommodations=nextAccommodations;
-    // Prove that setup recovery now recreates the exact candidate that was audited.
+    // Resolution 469: prove recovery field-by-field, not by the compact Resolution
+    // signature alone. This catches late/early clocks, guest identity, Jenkins/guest
+    // pre-practice state and role flags before any resolved session reaches storage.
+    const recoveryFields=['name','isPitcher','isCatcher','isGuest','availableFromBlock','availableUntilBlock','arrivalTime','departureTime','limitations','prePracticeComplete','canPitch','requiresPitchWarmup','canCatch'];
     const recoveredPlayers=(plan.players||[]).map(player=>{
-     const rosterPlayer=roster.find(item=>item.name===player.name);
-     return practicePlayerModel(rosterPlayer,nextAccommodations[player.name],plan.startTime,plan.durationMinutes);
+     const rosterMatches=roster.filter(item=>item.name===player.name);
+     return rosterMatches.length===1?practicePlayerModel(rosterMatches[0],nextAccommodations[player.name],plan.startTime,plan.durationMinutes):null;
     });
-    if(practiceResolutionSignature(recoveredPlayers,plan.startTime,plan.durationMinutes)!==practiceResolutionSignature(plan.players,plan.startTime,plan.durationMinutes))throw new Error('Resolved setup recovery did not reproduce the verified candidate exactly.');
+    if(recoveredPlayers.some((player,index)=>!player||recoveryFields.some(field=>player[field]!==plan.players[index][field])))throw new Error('Resolved setup recovery did not reproduce the verified candidate exactly.');
+    const recoverySignature=practiceResolutionSignature(recoveredPlayers,plan.startTime,plan.durationMinutes);
+    if(recoverySignature!==practiceResolutionSignature(plan.players,plan.startTime,plan.durationMinutes))throw new Error('Resolved setup recovery signature drifted from the verified candidate.');
 
     if(persistPracticeSession()!==true)throw new Error('Resolved practice could not be committed to restart recovery.');
     const committed=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
@@ -5014,6 +5022,16 @@ function persistPracticeSession(){
    return restorePreviousSessionAfterFailure('HotB Practice Resolution restart recovery changed the resolved setup identity');
   }
   if(JSON.stringify(restored.plan)!==JSON.stringify(practicePlan))return restorePreviousSessionAfterFailure('HotB Practice Resolution restart recovery changed the resolved plan bytes');
+  // Resolution 469: setup recovery is authoritative too. Recreate every saved
+  // attendee from the persisted accommodations and require exact parity with the
+  // persisted resolved plan before reporting a successful commit.
+  const roster=practiceAttendanceRoster(),savedAccommodations=restoredSetup.accommodations||{};
+  const recoveryFields=['name','isPitcher','isCatcher','isGuest','availableFromBlock','availableUntilBlock','arrivalTime','departureTime','limitations','prePracticeComplete','canPitch','requiresPitchWarmup','canCatch'];
+  const recoveredPlayers=(restored.plan.players||[]).map(player=>{
+   const matches=roster.filter(item=>item.name===player.name);
+   return matches.length===1?practicePlayerModel(matches[0],savedAccommodations[player.name],restored.plan.startTime,restored.plan.durationMinutes):null;
+  });
+  if(recoveredPlayers.some((player,index)=>!player||recoveryFields.some(field=>player[field]!==restored.plan.players[index][field])))return restorePreviousSessionAfterFailure('HotB Practice Resolution restart recovery changed attendee availability or role state');
  }
  return true;
 }
