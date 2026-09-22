@@ -154,31 +154,57 @@
   });
   let liveHitterRepeats=[];
   if(liveSessions.length&&!feasibilityErrors.length){
-   // Deterministic Rebels-only live hitter assignment. Fill each live session to
-   // two hitters first, then place every remaining hitter once; only repeat when
-   // total live capacity requires it. This avoids recursive roster permutation.
-   const hitCounts=new Map(activeAttendees.map(player=>[player.name,0]));
-   const canHit=(player,session)=>session.pitcher!==player.name&&session.catcher!==player.name&&isOpen(player,session.block)&&!session.hitters.includes(player.name);
-   function placeOne(session,allowRepeat){
-    const candidates=activeAttendees.filter(player=>canHit(player,session)&&(allowRepeat||!(hitCounts.get(player.name)||0)))
-     .sort((a,b)=>(hitCounts.get(a.name)||0)-(hitCounts.get(b.name)||0)||a.name.localeCompare(b.name));
-    const player=candidates[0];
-    if(!player)return false;
-    session.hitters.push(player.name);hitCounts.set(player.name,(hitCounts.get(player.name)||0)+1);
-    schedule[player.name][session.block]={activity:'Hit Live',partner:session.pitcher};
-    return true;
+   // Resolution 495: live hitting is a constrained matching problem, not a greedy
+   // fill. Pitching, catching and warm-up assignments can fragment availability so
+   // an early alphabetical choice may consume the only legal slot for another
+   // player. Solve the required first live hit for every attendee exactly, then add
+   // the minimum repeat hits needed to bring every session to two hitters.
+   const players=activeAttendees.slice(),playerIndex=new Map(players.map((player,index)=>[player.name,index]));
+   const sessionOptions=liveSessions.map(session=>players.map((player,index)=>({player,index})).filter(({player})=>session.pitcher!==player.name&&session.catcher!==player.name&&isOpen(player,session.block)).map(item=>item.index));
+   const playerOptions=players.map((player,index)=>liveSessions.map((session,sessionIndex)=>sessionOptions[sessionIndex].includes(index)?sessionIndex:-1).filter(sessionIndex=>sessionIndex>=0));
+   const assignments=Array.from({length:liveSessions.length},()=>[]),memo=new Set(),fullMask=((1<<players.length)-1)>>>0;
+   const firstPass=(remaining)=>{
+    if(!remaining)return true;
+    const loads=assignments.map(group=>group.length),key=remaining+'|'+loads.join(',');
+    if(memo.has(key))return false;
+    let chosen=-1,options=null;
+    for(let index=0;index<players.length;index++)if(remaining&(1<<index)){
+     const possible=playerOptions[index].filter(sessionIndex=>assignments[sessionIndex].length<3);
+     if(!possible.length){memo.add(key);return false}
+     if(options===null||possible.length<options.length){chosen=index;options=possible}
+    }
+    options.sort((a,b)=>assignments[a].length-assignments[b].length||a-b);
+    for(const sessionIndex of options){
+     assignments[sessionIndex].push(chosen);
+     if(firstPass((remaining&~(1<<chosen))>>>0))return true;
+     assignments[sessionIndex].pop();
+    }
+    memo.add(key);return false;
+   };
+   const firstPassOk=players.length<=30&&firstPass(fullMask);
+   let repeatsOk=firstPassOk;
+   if(firstPassOk){
+    // Sessions with fewer than two hitters need repeats. Choose distinct legal
+    // attendees while preferring players who still have only their required first hit.
+    for(let sessionIndex=0;sessionIndex<liveSessions.length&&repeatsOk;sessionIndex++){
+     while(assignments[sessionIndex].length<2){
+      const counts=players.map((_,index)=>assignments.reduce((n,group)=>n+(group.includes(index)?1:0),0));
+      const candidate=sessionOptions[sessionIndex].filter(index=>!assignments[sessionIndex].includes(index)).sort((a,b)=>counts[a]-counts[b]||players[a].name.localeCompare(players[b].name))[0];
+      if(candidate===undefined){repeatsOk=false;break}
+      assignments[sessionIndex].push(candidate);
+     }
+    }
    }
-   for(const session of liveSessions)while(session.hitters.length<2&&placeOne(session,false)){}
-   for(const player of activeAttendees.filter(player=>!(hitCounts.get(player.name)||0))){
-    const session=liveSessions.filter(item=>item.hitters.length<3&&canHit(player,item)).sort((x,y)=>x.hitters.length-y.hitters.length||x.block-y.block)[0];
-    if(session){session.hitters.push(player.name);hitCounts.set(player.name,1);schedule[player.name][session.block]={activity:'Hit Live',partner:session.pitcher}}
-   }
-   for(const session of liveSessions)while(session.hitters.length<2&&placeOne(session,true)){}
-   const missing=activeAttendees.filter(player=>!(hitCounts.get(player.name)||0));
-   if(missing.length||liveSessions.some(session=>session.hitters.length<2)){
+   if(!repeatsOk){
     feasibilityErrors.push('The selected pitchers, catchers, arrival times and departure times cannot provide 2–3 hitters in every live block. Adjust availability or mark a pitcher Hitting Only and build again.');
    }else{
-    liveHitterRepeats=activeAttendees.filter(player=>(hitCounts.get(player.name)||0)>1).map(player=>player.name);
+    assignments.forEach((group,sessionIndex)=>group.forEach(index=>{
+     const player=players[index],session=liveSessions[sessionIndex];
+     session.hitters.push(player.name);
+     schedule[player.name][session.block]={activity:'Hit Live',partner:session.pitcher};
+    }));
+    const hitCounts=new Map(players.map((player,index)=>[player.name,assignments.reduce((n,group)=>n+(group.includes(index)?1:0),0)]));
+    liveHitterRepeats=players.filter(player=>(hitCounts.get(player.name)||0)>1).map(player=>player.name);
     if(liveHitterRepeats.length)fallbackWarnings.push(`${liveHitterRepeats.join(', ')} ${liveHitterRepeats.length===1?'will receive':'will each receive'} a second live-hitting session so every live block has at least two hitters.`);
    }
   }
