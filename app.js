@@ -5890,7 +5890,10 @@ function bindPractice(){
     practicePlan=null;
     const button=$('#generatePractice');
     if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage='base-failure-publish-failed'}
-    alert('HotB could not open the Practice Resolution screen. Nothing was changed. Please review the setup and build again.');
+    // Resolution 508 diagnostic: expose the exact failing browser operation on the
+    // coach device instead of collapsing every publication exception into the same
+    // generic alert. This is temporary diagnostic text and changes no practice data.
+    alert('HotB Practice Resolution publish error: '+String(error?.name||'Error')+' — '+String(error?.message||error||'unknown'));
    }
    return;
   }
