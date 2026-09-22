@@ -42,20 +42,20 @@ jobs:
         run: node pwa-update.test.js
       - name: Verify deployed bundle markers
         run: |
-          test "$(grep -o "app.js?v=20260922-resolution497" index.html | wc -l)" -eq 2
+          test "$(grep -o "app.js?v=20260922-resolution525" index.html | wc -l)" -eq 2
           ! grep -q "app.js?v=20260922-resolution452" index.html
           ! grep -q "app.js?v=20260922-resolution493" index.html
-          test "$(grep -o "practice-scheduler.js?v=20260922-resolution498" index.html | wc -l)" -eq 1
+          test "$(grep -o "practice-scheduler.js?v=20260922-resolution503" index.html | wc -l)" -eq 1
           ! grep -q "practice-scheduler.js?v=20260922-resolution452" index.html
-          grep -q "BUILD_VERSION = '2026.09.22.231'" service-worker.js
+          grep -q "BUILD_VERSION = '2026.09.22.258'" service-worker.js
           grep -q "'./practice-scheduler.js'" service-worker.js
           grep -Fq "/\\/practice-scheduler\\.js" service-worker.js
           grep -Fq "'./manifest.webmanifest'" service-worker.js
           grep -Fq "'./pwa-update.js'" service-worker.js
           grep -Fq "/\\/pwa-update\\.js" service-worker.js
           grep -Fq "/\\/manifest\\.webmanifest" service-worker.js
-          grep -q "launch=231" service-worker.js
-          grep -q "pwa-update.js?v=20260922-pwa231" index.html
+          grep -q "launch=258" service-worker.js
+          grep -q "pwa-update.js?v=20260922-pwa257" index.html
           grep -q "BUILD_VERSION = '2026.09.22.231'" pwa-update.js
           grep -q "url.searchParams.set('launch','231')" pwa-update.js
           ! grep -q "20260922-pwa227" index.html
@@ -64,6 +64,6 @@ jobs:
           ! grep -q "launch=227" hotb-fresh.html
           grep -q '"start_url": "./?source=pwa&launch=231"' manifest.webmanifest
           ! grep -q 'launch=227' manifest.webmanifest
-          grep -q "manifest.webmanifest?v=20260922-launch231" index.html
+          grep -q "manifest.webmanifest?v=20260922-launch257" index.html
           ! grep -q "manifest.webmanifest?v=20260922-launch227" index.html
           ! grep -q "Finalizing Resolution" app.js
