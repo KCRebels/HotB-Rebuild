@@ -4565,15 +4565,22 @@ function bind(){
     if(!resolutionPostcondition(expected))throw new Error('Verified Practice Resolution candidate failed its immutable postcondition.');
     if(!transactionOwnsToken())throw new Error('Practice Resolution lost apply ownership before commit.');
 
-    practiceSetupState.selectedNames=(plan.players||[]).map(player=>player.name);
-    practiceSetupState.startTime=plan.startTime;
-    practiceSetupState.durationMinutes=plan.durationMinutes;
+    // Resolution 471: build a detached setup commit first. The live setup remains
+    // the exact failed 120-minute Resolution source until the candidate has passed
+    // build, audit and immutable postcondition. This also makes rollback cheaper:
+    // pre-commit failures have not changed setup at all.
+    let committedSetup;
+    try{committedSetup=structuredClone(rollbackState.setupState)}
+    catch(error){committedSetup=JSON.parse(JSON.stringify(rollbackState.setupState))}
+    committedSetup.selectedNames=(plan.players||[]).map(player=>player.name);
+    committedSetup.startTime=plan.startTime;
+    committedSetup.durationMinutes=plan.durationMinutes;
     // Resolution 468: commit the exact verified candidate back into setup recovery.
     // Role-only mirroring was insufficient for Block 11: a player with an explicit
     // 120-minute departure kept that old clock in setup even though the verified
     // 132-minute candidate extended her through Block 11. Resume/edit could then
     // reconstruct a different practice than the one we had just audited.
-    const roster=practiceAttendanceRoster(),nextAccommodations={...(practiceSetupState.accommodations||{})};
+    const roster=practiceAttendanceRoster(),nextAccommodations={...(committedSetup.accommodations||{})};
     const candidateNames=(plan.players||[]).map(player=>player.name);
     if(candidateNames.length!==new Set(candidateNames).size)throw new Error('Resolved practice contained duplicate attendee names at setup commit.');
     for(const player of plan.players||[]){
@@ -4592,7 +4599,7 @@ function bind(){
      existing.prePracticeComplete=player.prePracticeComplete===true;
      nextAccommodations[player.name]=existing;
     }
-    practiceSetupState.accommodations=nextAccommodations;
+    committedSetup.accommodations=nextAccommodations;
     // Resolution 469: prove recovery field-by-field, not by the compact Resolution
     // signature alone. This catches late/early clocks, guest identity, Jenkins/guest
     // pre-practice state and role flags before any resolved session reaches storage.
@@ -4604,6 +4611,8 @@ function bind(){
     if(recoveredPlayers.some((player,index)=>!player||recoveryFields.some(field=>player[field]!==plan.players[index][field])))throw new Error('Resolved setup recovery did not reproduce the verified candidate exactly.');
     const recoverySignature=practiceResolutionSignature(recoveredPlayers,plan.startTime,plan.durationMinutes);
     if(recoverySignature!==practiceResolutionSignature(plan.players,plan.startTime,plan.durationMinutes))throw new Error('Resolved setup recovery signature drifted from the verified candidate.');
+    if(!transactionOwnsToken())throw new Error('Practice Resolution lost apply ownership before setup commit.');
+    practiceSetupState=committedSetup;
 
     if(persistPracticeSession()!==true)throw new Error('Resolved practice could not be committed to restart recovery.');
     const committed=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
@@ -4625,11 +4634,13 @@ function bind(){
     return fail('HotB Practice Resolution direct apply failed',error);
    }
   };
-  const startVerifiedResolutionApply=(expectedFactory,mutate)=>{
+  const startVerifiedResolutionApply=(expectedFactory,authorize)=>{
    // One gate owns the full apply transition: snapshot -> lock UI -> derive immutable
    // expected state -> mutate -> rebuild. Return a reason, not a boolean: a verified
    // choice that hits an internal apply failure must roll back quietly and remain
    // available instead of being mislabeled as an unverified coaching choice.
+   // Resolution 471: this gate is now read-only until rebuildResolvedPractice owns
+   // the commit. No live setup mutation is permitted between rollback capture and build.
    if(!practiceResolutionSnapshotIsCurrentAndValid())return {started:false,reason:'stale'};
    let rollbackState=null;
    try{
@@ -4646,8 +4657,10 @@ function bind(){
     const expected=expectedFactory(rollbackState.resolution);
     if(!expected)throw new Error('Practice Resolution expected state could not be derived.');
     if(JSON.stringify(rollbackState.resolution)!==lockedResolutionBytes)throw new Error('Practice Resolution expected-state derivation changed the locked snapshot.');
-    if(mutate(rollbackState.resolution)!==true)throw new Error('Practice Resolution mutation was rejected.');
-    if(JSON.stringify(rollbackState.resolution)!==lockedResolutionBytes)throw new Error('Practice Resolution mutation changed the locked snapshot.');
+    const liveSetupBytes=JSON.stringify(practiceSetupState),liveResolutionBytes=JSON.stringify(practiceResolution),liveSessionBytes=JSON.stringify(db.activePracticeSession);
+    if(authorize(rollbackState.resolution)!==true)throw new Error('Practice Resolution authorization was rejected.');
+    if(JSON.stringify(rollbackState.resolution)!==lockedResolutionBytes)throw new Error('Practice Resolution authorization changed the locked snapshot.');
+    if(JSON.stringify(practiceSetupState)!==liveSetupBytes||JSON.stringify(practiceResolution)!==liveResolutionBytes||JSON.stringify(db.activePracticeSession)!==liveSessionBytes)throw new Error('Practice Resolution authorization mutated live state.');
     const rebuilt=rebuildResolvedPractice(rollbackState,expected);
     if(rebuilt!==true)return {started:false,reason:'handled'};
     return {started:true,reason:'started'};
@@ -4657,8 +4670,8 @@ function bind(){
     return {started:false,reason:'apply'};
    }
   };
-  const runVerifiedResolutionApply=(expectedFactory,mutate)=>{
-   const result=startVerifiedResolutionApply(expectedFactory,mutate);
+  const runVerifiedResolutionApply=(expectedFactory,authorize)=>{
+   const result=startVerifiedResolutionApply(expectedFactory,authorize);
    if(result.started)return true;
    if(result.reason==='stale')rejectUnverifiedResolution();
    else if(result.reason==='busy')console.warn('HotB ignored a duplicate Practice Resolution apply while another apply is running.');
