@@ -6006,8 +6006,8 @@ function bindPractice(){
    // structural deduplication, iPhone Safari fails closed instead of grinding
    // through an unbounded-looking Resolution search.
    const RESOLUTION_BUILD_BUDGET=9;
-   let resolutionBuildCount=0,resolutionBudgetExceeded=false;
-   // Candidate verification is intentionally single-build. buildSchedule already
+   let resolutionBuildCount=1,resolutionBudgetExceeded=false;
+   // The base scheduler attempt above is build #1. Candidate verification is intentionally single-build. buildSchedule already
    // returns fresh normalized player/schedule objects; cloning every 13-player
    // candidate before every scheduler pass added avoidable allocation/GC pressure
    // on iPhone Safari during the exact failure path we are trying to resolve.
@@ -6015,7 +6015,7 @@ function bindPractice(){
     if(resolutionBuildCount>=RESOLUTION_BUILD_BUDGET){
      if(!resolutionBudgetExceeded)resolutionAuditFailures.push('Practice Resolution stopped because its verified scheduler-build budget was exceeded.');
      resolutionBudgetExceeded=true;
-     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution426',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
+     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution436',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
      return false;
     }
     resolutionBuildCount++;
