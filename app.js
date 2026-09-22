@@ -6284,14 +6284,33 @@ function bindPractice(){
    return;
   }
   armBuildWatchdog('finalizing-plan');
-  practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();
-  // Draft identity is now authoritative. Stop the heartbeat only after that
-  // assignment succeeds; an exception before this point must remain diagnosable.
+  // Finalization is also protected by the immutable setup seal. Resolution
+  // verification may have taken several frames; never publish a valid schedule
+  // after the coach's live setup has diverged from the inputs that produced it.
+  if(!resolutionApplyBuild&&!buildSetupStillOwned()){
+   recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before HotB could publish the schedule. Nothing was committed. Please review the setup and build again.');
+   return;
+  }
+  try{
+   practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();
+   practicePlan.machineFocus='Standard';
+   practicePlan.frontTossFocus='Standard';
+  }catch(error){
+   console.error('HotB could not finalize the completed practice plan.',error);
+   if(resolutionApplyBuild){
+    stopBuildWatchdog();setPracticeBuildControlsLocked(false);practicePlan=null;
+    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-finalize-failed'}
+    return;
+   }
+   recoverPracticeBuildSetup('practice-plan-finalize-failed','HotB built the schedule but could not finalize the practice plan. Your setup was kept so you can build again.');
+   return;
+  }
+  // Draft identity is now authoritative. Stop the heartbeat only after all plan
+  // metadata required by the builder has been assigned successfully.
   stopBuildWatchdog();
   // The build authorization is consumed here, but the transaction token remains
   // alive until the outer Resolution verifier commits or rolls back this exact plan.
   practiceResolutionApplyDraftId=null;
-  practicePlan.machineFocus='Standard';practicePlan.frontTossFocus='Standard';
   // Validation remains available for audits, but do not run the full synchronous
   // validator on the iPhone build path. The scheduler already enforces these
   // constraints while constructing the plan, and this second pass can stall the UI.
@@ -6307,7 +6326,8 @@ function bindPractice(){
   // (or roll back). Never expose this transient plan or its notice as interactive UI.
   if(resolutionApplyBuild){
    // The outer Resolution transaction owns verification and final publication from
-   // this point forward. This click handler must leave no local watchdog behind.
+   // this point forward. Keep setup controls locked until that transaction either
+   // commits or rolls back; exposing them here reopens the race we sealed above.
    stopBuildWatchdog();
    return;
   }
