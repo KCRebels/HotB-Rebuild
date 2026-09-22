@@ -5952,32 +5952,36 @@ function bindPractice(){
    }
 
    if(!canExtend&&!identityBlocked){
-    // Resolution 463: prove the complete same-duration choice set. The old search
-    // stopped at the first safe pitcher, and skipped catchers entirely once any
-    // pitcher worked. That made the modal depend on roster ordering instead of
-    // showing every independently verified coaching choice for this exact practice.
+    // Resolution 467: a verified same-duration solution is sufficient evidence.
+    // Search pitchers in deterministic roster order; if one works, publish that
+    // exact safe choice and stop. Only search catchers when no pitcher solution
+    // exists. Earlier completeness fan-out rebuilt every safe alternative on the
+    // same iPhone tap, which increased CPU/GC cost without improving schedule
+    // safety. Resolution's job is to provide a proven way forward, not enumerate
+    // every equivalent coaching option.
     const pitcherSpecs=availablePitchers.map(pitcher=>({players:practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:durationMinutes,label:'Hitting Only: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name},choiceName:pitcher.name}));
-    const pitcherResult=verifyOrderedCandidates(pitcherSpecs,'practice-resolution-pitcher','Hitting Only',spec=>solvingPitchers.push(spec.choiceName),true);
+    const pitcherResult=verifyOrderedCandidates(pitcherSpecs,'practice-resolution-pitcher','Hitting Only',spec=>solvingPitchers.push(spec.choiceName));
     if(pitcherResult==='aborted')return;
 
-    const catcherSpecs=availableCatchers.map(catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name},choiceName:catcher.name}));
-    const catcherResult=verifyOrderedCandidates(catcherSpecs,'practice-resolution-catcher','Not Catching',spec=>solvingCatchers.push(spec.choiceName),true);
-    if(catcherResult==='aborted')return;
+    if(!solvingPitchers.length){
+     const catcherSpecs=availableCatchers.map(catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name},choiceName:catcher.name}));
+     const catcherResult=verifyOrderedCandidates(catcherSpecs,'practice-resolution-catcher','Not Catching',spec=>solvingCatchers.push(spec.choiceName));
+     if(catcherResult==='aborted')return;
+    }
    }
 
    if(!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded){
-    // Resolution 464: if the practice needs a two-part emergency adjustment, prove
-    // the complete combined choice set just as we do for same-duration choices.
-    // Previously the first safe combined pitcher prevented every other pitcher and
-    // every catcher combination from being checked.
+    // Resolution 467: combined emergency search follows the same first-safe rule.
+    // Try Hitting Only + Block 11 in roster order, then Not Catching + Block 11
+    // only if no pitcher combination is safe.
     const combinedPitcherSpecs=extendedPlayers.filter(player=>player.canPitch).map(pitcher=>({players:extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:132,label:'Hitting Only + Block 11: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name},choiceName:pitcher.name}));
-    const combinedPitcherResult=verifyOrderedCandidates(combinedPitcherSpecs,'practice-resolution-pitcher-block11','Hitting Only + Block 11',spec=>combinedPitchers.push(spec.choiceName),true);
+    const combinedPitcherResult=verifyOrderedCandidates(combinedPitcherSpecs,'practice-resolution-pitcher-block11','Hitting Only + Block 11',spec=>combinedPitchers.push(spec.choiceName));
     if(combinedPitcherResult==='aborted')return;
     if(combinedPitcherResult==='budget')resolutionBudgetExceeded=true;
 
-    if(!resolutionBudgetExceeded){
+    if(!combinedPitchers.length&&!resolutionBudgetExceeded){
      const combinedCatcherSpecs=extendedPlayers.filter(player=>player.canCatch).map(catcher=>({players:extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name},choiceName:catcher.name}));
-     const combinedCatcherResult=verifyOrderedCandidates(combinedCatcherSpecs,'practice-resolution-catcher-block11','Not Catching + Block 11',spec=>combinedCatchers.push(spec.choiceName),true);
+     const combinedCatcherResult=verifyOrderedCandidates(combinedCatcherSpecs,'practice-resolution-catcher-block11','Not Catching + Block 11',spec=>combinedCatchers.push(spec.choiceName));
      if(combinedCatcherResult==='aborted')return;
      if(combinedCatcherResult==='budget')resolutionBudgetExceeded=true;
     }
