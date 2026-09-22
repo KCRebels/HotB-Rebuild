@@ -47,6 +47,13 @@ const pitchingStatUpdatesV1={
  'Lakyn Farley':{pitcherIP:'2',pitcherERA:'0',pitcherWHIP:'.5',pitcherKBB:'0',pitcherOBA:'.000',pitcherStrikePct:'52.38%'},
  'Makenna Whitaker':{pitcherIP:'2',pitcherERA:'7',pitcherWHIP:'2.5',pitcherKBB:'0',pitcherOBA:'.286',pitcherStrikePct:'44.12%'}
 };
+const pitchingStatUpdatesV2={
+ 'Lakyn Farley':{pitcherIP:'9.1',pitcherERA:'4.5',pitcherWHIP:'1.393',pitcherKBB:'0.75',pitcherOBA:'.250',pitcherStrikePct:'60.87%'},
+ 'Aniesa Rohleder':{pitcherIP:'8',pitcherERA:'5.25',pitcherWHIP:'1.75',pitcherKBB:'1',pitcherOBA:'.263',pitcherStrikePct:'57.75%'},
+ 'Makenna Whitaker':{pitcherIP:'2',pitcherERA:'7',pitcherWHIP:'2.5',pitcherKBB:'0',pitcherOBA:'.286',pitcherStrikePct:'44.12%'},
+ 'Brooklyn Gering':{pitcherIP:'6',pitcherERA:'9.333',pitcherWHIP:'2.167',pitcherKBB:'0.25',pitcherOBA:'.227',pitcherStrikePct:'52.17%'},
+ 'Megan Ryan':{pitcherIP:'7',pitcherERA:'5',pitcherWHIP:'2.143',pitcherKBB:'1.667',pitcherOBA:'.364',pitcherStrikePct:'58.45%'}
+};
 
 const defaultCoaches = [
  {
@@ -899,6 +906,12 @@ if((db.playerPhotoVersion||0)<1){
 if((db.pitchingStatsVersion||0)<1){
  db.roster.forEach(player=>{if(pitchingStatUpdatesV1[player.name])Object.assign(player,pitchingStatUpdatesV1[player.name])});
  db.pitchingStatsVersion=1;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+ if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+}
+if((db.pitchingStatsVersion||0)<2){
+ db.roster.forEach(player=>{if(pitchingStatUpdatesV2[player.name])Object.assign(player,pitchingStatUpdatesV2[player.name])});
+ db.pitchingStatsVersion=2;
  localStorage.setItem(DBKEY,JSON.stringify(db));
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
 }
