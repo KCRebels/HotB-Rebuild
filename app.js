@@ -6019,7 +6019,7 @@ function bindPractice(){
      // verified 132-minute availability extension. Otherwise every player whose
      // availability legitimately reaches Block 11 is falsely counted as a role
      // mutation and the combined solution can never verify.
-     const comparisonPlayers=expectedChange&&Number(duration)===132&&Number(durationMinutes)===120?practiceResolutionExtendedPlayers(practicePlayers,startTime):practicePlayers;
+     const comparisonPlayers=expectedChange&&Number(duration)===132&&Number(durationMinutes)===120?(extendedPlayers||practiceResolutionExtendedPlayers(practicePlayers,startTime)):practicePlayers;
      const baselineBlockCount=Number(duration)===132?11:10;
      if(comparisonPlayers.length!==practicePlayers.length||comparisonPlayers.some(player=>!Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>baselineBlockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock))){
       resolutionAuditFailures.push(label+' could not verify its comparison baseline.');return false;
@@ -6076,7 +6076,7 @@ function bindPractice(){
       // Block 11 is the only duration-only Resolution. It may extend availability
       // only for players who were present through the original practice end.
       if(Number(duration)!==132||Number(durationMinutes)!==120)return false;
-      const extended=practiceResolutionExtendedPlayers(practicePlayers,startTime);
+      const extended=extendedPlayers||practiceResolutionExtendedPlayers(practicePlayers,startTime);
       if(extended.length!==practicePlayers.length||extended.some(player=>Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)<0)){resolutionAuditFailures.push(label+' could not verify the Block 11 extension baseline.');return false}
       const extendedByName=new Map(extended.map(player=>[player.name,player]));
       if(players.some(player=>{
