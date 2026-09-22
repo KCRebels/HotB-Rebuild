@@ -348,3 +348,31 @@ assert.ok(guestBudget.budget>guestBudget.capacity,'finite Resolution budget must
 const ordinaryBudget=resolutionBudgetFor(base);
 assert.ok(ordinaryBudget.budget>=9,'ordinary roster retains the conservative minimum budget');
 
+
+
+/* Resolution 464 combined-choice completeness regression.
+   When Block 11 alone and all one-part role changes fail, combined emergency
+   search must not stop at the first safe named player or skip the catcher class. */
+function collectCombinedSafe(players){
+ const extended=extendPlayers(players);
+ const pitcherChoices=[],catcherChoices=[];
+ for(const pitcher of extended.filter(player=>player.canPitch)){
+  const candidate=extended.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
+  const plan=scheduler.buildSchedule(candidate,'18:00',132);
+  if(!plan.feasibilityErrors.length&&!scheduler.validate(plan).length)pitcherChoices.push(pitcher.name);
+ }
+ for(const catcher of extended.filter(player=>player.canCatch)){
+  const candidate=extended.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
+  const plan=scheduler.buildSchedule(candidate,'18:00',132);
+  if(!plan.feasibilityErrors.length&&!scheduler.validate(plan).length)catcherChoices.push(catcher.name);
+ }
+ return {pitcherChoices,catcherChoices};
+}
+for(const fixture of [base,...matrix]){
+ if(!Array.isArray(fixture)||!fixture.length)continue;
+ const combined=collectCombinedSafe(fixture);
+ assert.equal(combined.pitcherChoices.length,new Set(combined.pitcherChoices).size,'combined pitcher choices must be unique');
+ assert.equal(combined.catcherChoices.length,new Set(combined.catcherChoices).size,'combined catcher choices must be unique');
+ for(const name of combined.pitcherChoices)assert.ok(fixture.some(player=>player.name===name&&player.canPitch),'combined pitcher choice must originate from an enabled pitcher');
+ for(const name of combined.catcherChoices)assert.ok(fixture.some(player=>player.name===name&&player.canCatch),'combined catcher choice must originate from an enabled catcher');
+}
