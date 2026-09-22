@@ -5807,7 +5807,12 @@ function bindPractice(){
    // those passes so iPhone Safari can repaint without falsely reporting a stuck build.
    clearTimeout(buildWatchdog);
    if(buildButton)buildButton.dataset.buildStage='practice-resolution';
-   const yieldResolutionUI=()=>new Promise(resolve=>setTimeout(resolve,0));
+   // Give iPhone Safari a real frame between expensive candidate builds. A zero-ms
+   // timer can be coalesced and immediately re-enter JavaScript without painting.
+   const yieldResolutionUI=()=>new Promise(resolve=>{
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(resolve,0));
+    else setTimeout(resolve,16);
+   });
    // Keep the build state visible and make every long Resolution phase identifiable.
    // This also prevents a second tap from starting a competing build while the first
    // asynchronous verification transaction is still alive.
@@ -5816,6 +5821,7 @@ function bindPractice(){
     if(button){button.disabled=true;button.textContent='Building Practice…';button.dataset.buildStage=stage}
    };
    setResolutionStage('practice-resolution-start');
+   await yieldResolutionUI();
    // A failed automatic Resolution rebuild must not create a second Resolution on
    // top of the coaching choice being applied. Leave transaction ownership intact;
    // the outer verifier will see this infeasible plan and roll back atomically.
@@ -6107,7 +6113,15 @@ function bindPractice(){
    }
    setResolutionStage('practice-resolution-publish');
    await yieldResolutionUI();
-   modal='practiceResolution';render();return;
+   modal='practiceResolution';
+   try{render();window.scrollTo(0,0)}
+   catch(error){
+    console.error('HotB Practice Resolution screen failed',error);
+    practiceResolution=null;modal=null;persistPracticeDraft();
+    const button=$('#generatePractice');if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage='practice-resolution-render-failed'}
+    alert('HotB verified the Practice Resolution but could not open its decision screen: '+String(error?.message||error||'unknown'));
+   }
+   return;
   }
   if(practicePlan.fallbackWarnings?.length){
    practicePlan.buildNotices=practicePlan.fallbackWarnings.slice();
