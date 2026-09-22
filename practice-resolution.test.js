@@ -244,6 +244,9 @@ mustInclude("rollback whose recovery equality proof could not be sealed.","rollb
 mustInclude("refused to clear a practice recovery session that could not be sealed.","practice-session clear must seal its rollback authority before mutation");
 mustInclude("could not restore the previous practice recovery session after clear failure.","practice-session clear failure must restore and persist the previous recovery authority");
 mustInclude("document.querySelectorAll('[data-accommodation-arrival],[data-accommodation-departure],[data-accommodation-pitch],[data-accommodation-warmup],[data-accommodation-catch],[data-accommodation-prepractice],[data-accommodation-limitations]').forEach","Practice Builder must bind accommodation controls as a collection so setup binding reaches Build Practice Schedule");
-mustInclude("bundle:'resolution420'","mobile Resolution diagnostics must identify the current bounded candidate implementation");
+mustInclude("bundle:'resolution422'","mobile Resolution diagnostics must identify the current bounded candidate implementation");
+mustInclude("const RESOLUTION_BUILD_BUDGET=9","production Resolution must hard-cap scheduler builds at the verified mobile budget");
+mustInclude("resolutionBuildCount>=RESOLUTION_BUILD_BUDGET","production Resolution must fail closed before exceeding its scheduler-build budget");
+mustInclude("practice-resolution-budget","budget exhaustion must leave a real-device diagnostic instead of appearing frozen");
 mustInclude("+'/'+unique.length+' — '","completed candidate status must report the deduplicated candidate count, not the pre-collapse source count");
 console.log('practice-resolution static contract tests passed');
