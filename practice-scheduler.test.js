@@ -437,7 +437,7 @@ assert.equal(rebels12NoCatchMakennaLatePlan.schedule['Makenna Whitaker'][makenna
 assert.ok(rebels12NoCatchMakennaLatePlan.schedule['Lydia Copeland'].every(entry=>entry.activity!=='Catch Live'&&entry.activity!=='Catch Warm-Up'),'Lydia Not Catching must remain out of all catcher work');
 
 
-// Resolution 498: exact phone setup after adding Brooklyn 30-minute early departure
+// Resolution 498 deployment regression: exact phone setup after adding Brooklyn 30-minute early departure
 // to the verified Resolution 496 case. This is the configuration that surfaced the
 // Front Toss failure on-device. Preserve it as an exact regression before changing
 // the production search.
