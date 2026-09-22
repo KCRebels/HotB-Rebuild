@@ -4264,9 +4264,14 @@ function bind(){
    alert('HotB will not apply that choice because it is not one of the verified solutions for this practice. Return to Practice Setup and build again.');
   };
   const findResolutionRosterIndex=(name,roleLabel)=>{
-   const roster=practiceAttendanceRoster(),index=roster.findIndex(player=>player.name===name);
-   if(index<0){alert('HotB could not find that '+roleLabel+' in this practice. Return to Practice Setup and build again.');return null}
-   return {roster,index};
+   // Resolution 474: authorization must be a pure verifier. The previous helper
+   // alerted from inside authorization and accepted the first duplicate match.
+   // Resolution snapshots already require unique identity; re-prove exactly one
+   // live roster match here and let the outer apply gate own all user messaging.
+   const roster=practiceAttendanceRoster(),matches=[];
+   for(let index=0;index<roster.length;index++)if(roster[index]?.name===name)matches.push(index);
+   if(matches.length!==1)return null;
+   return {roster,index:matches[0]};
   };
   const endResolutionApply=()=>{
    resolutionApplying=false;
@@ -4661,6 +4666,10 @@ function bind(){
     if(authorize(rollbackState.resolution)!==true)throw new Error('Practice Resolution authorization was rejected.');
     if(JSON.stringify(rollbackState.resolution)!==lockedResolutionBytes)throw new Error('Practice Resolution authorization changed the locked snapshot.');
     if(JSON.stringify(practiceSetupState)!==liveSetupBytes||JSON.stringify(practiceResolution)!==liveResolutionBytes||JSON.stringify(db.activePracticeSession)!==liveSessionBytes)throw new Error('Practice Resolution authorization mutated live state.');
+    // Re-prove the live Resolution after authorization. This closes the gap where
+    // a roster/setup mutation could leave serialized globals unchanged enough to
+    // pass the local byte guard but no longer correspond to the current attendance.
+    if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution))throw new Error('Practice Resolution became stale during authorization.');
     const rebuilt=rebuildResolvedPractice(rollbackState,expected);
     if(rebuilt!==true)return {started:false,reason:'handled'};
     return {started:true,reason:'started'};
