@@ -4548,7 +4548,14 @@ function bind(){
     if(expected.role&&changedRoleCount!==1)throw new Error('Practice Resolution candidate did not contain exactly one authorized role change.');
     if(!expected.role&&changedRoleCount!==0)throw new Error('Practice Resolution extension unexpectedly changed a role.');
 
+    // Resolution 482: seal the detached candidate before the scheduler call. The
+    // scheduler is expected to be pure with respect to its input roster; if a future
+    // allocator mutates canCatch/canPitch/availability in place, applying a verified
+    // Resolution could silently change the recovery source and strand the UI.
+    let candidateBytes='';
+    try{candidateBytes=JSON.stringify(candidate)}catch(error){throw new Error('Practice Resolution candidate could not be sealed before rebuild.')}
     const plan=window.HotBPracticeScheduler.buildSchedule(candidate,expected.startTime,expected.durationMinutes,{noPitchersMode:null});
+    if(JSON.stringify(candidate)!==candidateBytes)throw new Error('Practice scheduler mutated the verified Resolution candidate during rebuild.');
     if(!plan||plan.feasibilityErrors?.length)throw new Error('Verified Practice Resolution candidate no longer builds safely.');
     const audit=window.HotBPracticeScheduler.validate(plan);
     if(!Array.isArray(audit)||audit.length)throw new Error('Verified Practice Resolution candidate failed its final rules audit: '+(audit||[]).join(' | '));
@@ -4626,6 +4633,11 @@ function bind(){
     if(!committedSafe||JSON.stringify(committed.plan)!==JSON.stringify(livePlan))throw new Error('Resolved restart copy failed the immutable postcondition.');
     if(!transactionOwnsToken())throw new Error('Practice Resolution lost apply ownership at commit.');
 
+    // Resolution 482: the failed Resolution has no authority after the resolved
+    // session has passed restart verification. Clear it at the same commit boundary
+    // as the modal transition so a later render/bind cannot expose stale Apply
+    // controls over a successfully committed practice.
+    practiceResolution=null;
     modal=plan?.buildNotices?.length?'practiceBuildNotice':null;
     // Rendering is presentation only; the resolved practice is already durably
     // committed. A render failure must not roll the verified practice back to the
