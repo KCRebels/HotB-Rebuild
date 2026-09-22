@@ -4740,117 +4740,54 @@ function bind(){
    }
    return true;
   };
-  const awaitPracticeResolutionPaint=callback=>{
-   const run=()=>{try{callback()}catch(error){console.error('HotB Practice Resolution paint callback failed',error)}};
-   if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(run,0));
-   else setTimeout(run,16);
-  };
   const restoreResolutionRollback=state=>{
-   const releaseFailedRollback=message=>{
+   // Resolution 461: rollback is the inverse of direct apply and is therefore
+   // synchronous too. The sealed failed-practice snapshot has already been fully
+   // validated by resolutionRollbackStateIsValid; install it atomically, persist,
+   // re-prove it, then render. No rAF/timer callback may retain authority after a
+   // failed apply.
+   const normalizeFailure=message=>{
     console.error(message);
-    // If exact rollback recovery is impossible, never release the transaction with
-    // its temporary Block 11 or role mutation still installed. Prefer reconstructing
-    // the ordinary 120-minute setup from the sealed rollback source; if even that
-    // cannot be cloned, clear recovery authority rather than exposing partial state.
-    // Invalidate transaction ownership first so any already-queued iPhone frame or
-    // verification callback becomes stale before rollback touches live state.
     let safeSetup=null;
-    try{safeSetup=state?.setupState?structuredClone(state.setupState):null}catch(error){console.error('HotB could not reconstruct the ordinary setup after rollback failure.',error)}
-    practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;
-    practiceResolution=null;modal=null;
+    try{safeSetup=state?.setupState?structuredClone(state.setupState):null}catch(error){
+     try{safeSetup=state?.setupState?JSON.parse(JSON.stringify(state.setupState)):null}catch(_){}
+    }
+    practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;
+    practicePlan=null;practiceResolution=null;modal=null;
     if(safeSetup&&Number(safeSetup.durationMinutes)===120)practiceSetupState=safeSetup;
     else if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
     db.activePracticeSession=null;
-    try{save()}catch(error){console.error('HotB could not clear failed Practice Resolution recovery authority.',error)}
+    try{save()}catch(error){console.error('HotB could not persist normalized Practice Resolution recovery.',error)}
     endResolutionApply();
+    try{render()}catch(error){console.error('HotB could not render normalized Practice Resolution recovery.',error)}
+    return false;
    };
-   if(!resolutionRollbackStateIsValid(state)){releaseFailedRollback('HotB refused an invalid Practice Resolution rollback snapshot');return false}
-   let restoredSetup,restoredResolution,restoredSession;
+   if(!resolutionRollbackStateIsValid(state))return normalizeFailure('HotB refused an invalid Practice Resolution rollback snapshot');
+   let restored;
+   try{restored=structuredClone({setupState:state.setupState,resolution:state.resolution,activePracticeSession:state.activePracticeSession})}
+   catch(error){
+    console.error('HotB Practice Resolution rollback structured clone failed; using sealed JSON snapshot.',error);
+    try{restored=JSON.parse(state.rollbackSignature)}
+    catch(parseError){return normalizeFailure('HotB could not decode the sealed Practice Resolution rollback snapshot')}
+   }
    try{
-    restoredSetup=structuredClone(state.setupState);restoredResolution=structuredClone(state.resolution);restoredSession=structuredClone(state.activePracticeSession);
-   }catch(error){
-    console.error('HotB Practice Resolution rollback clone failed; attempting sealed JSON recovery',error);
-    // rollbackSignature is already proven byte-identical to the snapshot above.
-    // It is therefore a safe, deterministic fallback when structuredClone itself
-    // is unavailable or fails on a device.
-    try{
-     const sealed=JSON.parse(state.rollbackSignature);
-     if(JSON.stringify(sealed)!==state.rollbackSignature||!sealed?.setupState||!sealed?.resolution)throw new Error('rollback-signature-roundtrip-failed');
-     restoredSetup=sealed.setupState;restoredResolution=sealed.resolution;restoredSession=sealed.activePracticeSession;
-    }catch(sealedError){
-     console.error('HotB Practice Resolution sealed rollback recovery failed',sealedError);
-     releaseFailedRollback('HotB could not recover the sealed Practice Resolution rollback snapshot');
-     return false;
-    }
-   }
-   // Validate the clones that will actually become live state. A rollback is atomic
-   // only if cloning itself preserves the sealed failed-practice snapshot.
-   try{
-    if(JSON.stringify(restoredSetup)!==JSON.stringify(state.setupState)||JSON.stringify(restoredResolution)!==JSON.stringify(state.resolution)||JSON.stringify(restoredSession)!==JSON.stringify(state.activePracticeSession)){releaseFailedRollback('HotB refused a Practice Resolution rollback that changed during cloning');return false}
-   }catch(error){
-    console.error('HotB Practice Resolution rollback clone equality proof failed.',error);
-    releaseFailedRollback('HotB refused a Practice Resolution rollback whose cloned recovery state could not be sealed');
-    return false;
-   }
-   // Revoke the apply identities before installing rollback state. Deferred build
-   // and verification callbacks check these identities and therefore cannot race
-   // the restored Resolution once this atomic handoff begins.
-   practiceResolutionApplyDraftId=null;
-   practiceResolutionApplyOwnedDraftId=null;
-   practiceResolutionApplyToken=null;
-   practicePlan=null;
-   practiceSetupState=restoredSetup;
-   practiceResolution=restoredResolution;
-   modal='practiceResolution';
-   db.activePracticeSession=restoredSession;
-   try{save()}catch(error){
-    releaseFailedRollback('HotB could not save the restored Practice Resolution rollback state');
-    // releaseFailedRollback has already normalized and unlocked state. Publish that
-    // safe setup on a fresh frame instead of synchronously rewriting #app here.
-    awaitPracticeResolutionPaint(()=>render());
-    return false;
-   }
-   // save() must not mutate the rollback object or its persisted recovery record.
-   let restoredRollbackSession=null,rollbackPostSaveExact=false;
-   try{
-    restoredRollbackSession=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
-    rollbackPostSaveExact=!!restoredRollbackSession&&JSON.stringify(db.activePracticeSession)===JSON.stringify(restoredSession)&&JSON.stringify(restoredRollbackSession)===JSON.stringify(restoredSession);
-   }catch(error){console.error('HotB Practice Resolution rollback post-save restore or equality proof failed.',error)}
-   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)||!rollbackPostSaveExact){
-    console.error('HotB Practice Resolution rollback failed post-save verification');
-    // Do not keep displaying a Resolution whose recovery record no longer proves
-    // the same transaction. Normalize the live setup before releasing control.
-    practiceResolution=null;modal=null;practicePlan=null;
-    if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
-    // Never leave a failed/partially restored Resolution session as restart
-    // authority after exact rollback verification fails.
-    if(db.activePracticeSession?.resolution||db.activePracticeSession?.plan){
-     db.activePracticeSession=null;
-     try{save()}catch(error){console.error('HotB could not clear invalid Practice Resolution rollback recovery.',error)}
-    }
-    // Keep the apply lock through the recovery render. A real paint-frame handoff
-    // prevents the same iPhone tap/async turn from tearing down and rebuilding #app
-    // while rollback persistence is still settling.
-    awaitPracticeResolutionPaint(()=>{
-     try{render()}
-     finally{endResolutionApply()}
-    });
-    return false
-   }
-   // Keep the apply lock through post-save restart verification and rendering.
-   // Publish rollback on a real browser frame for the same reason as successful
-   // Resolution publication: iPhone Safari must finish the current event turn first.
-   awaitPracticeResolutionPaint(()=>{
-    try{render()}
-    catch(error){
-     releaseFailedRollback('HotB could not render the restored Practice Resolution rollback state');
-     // releaseFailedRollback clears transaction ownership; show the normalized
-     // setup on the following frame so a broken Resolution modal cannot remain.
-     awaitPracticeResolutionPaint(()=>render());
-     return;
-    }
-    endResolutionApply();
-   });
+    const expectedBytes=JSON.stringify({setupState:state.setupState,resolution:state.resolution,activePracticeSession:state.activePracticeSession});
+    if(JSON.stringify(restored)!==expectedBytes)return normalizeFailure('HotB refused a Practice Resolution rollback that changed during cloning');
+   }catch(error){return normalizeFailure('HotB could not prove Practice Resolution rollback equality')}
+
+   // Revoke the failed apply before restoring. With the asynchronous apply path
+   // removed there is no legitimate callback that should survive this point.
+   practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;
+   practicePlan=null;practiceSetupState=restored.setupState;practiceResolution=restored.resolution;modal='practiceResolution';db.activePracticeSession=restored.activePracticeSession;
+   try{save()}catch(error){return normalizeFailure('HotB could not save the restored Practice Resolution rollback state')}
+   let persisted=null;
+   try{persisted=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
+   catch(error){console.error('HotB Practice Resolution rollback restart proof failed.',error)}
+   if(!persisted||JSON.stringify(persisted)!==JSON.stringify(restored.activePracticeSession)||!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution))return normalizeFailure('HotB Practice Resolution rollback failed its final restart proof');
+   endResolutionApply();
+   try{render();window.scrollTo(0,0)}
+   catch(error){return normalizeFailure('HotB could not render the restored Practice Resolution')}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution461',stage:'resolution-rollback',state:'restored',at:new Date().toISOString()}))}catch(error){}
    return true;
   };
   const expectedResolutionState=(role=null,name=null,withBlock11=false,resolutionSnapshot=practiceResolution)=>{
