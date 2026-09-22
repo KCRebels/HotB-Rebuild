@@ -101,7 +101,8 @@ mustInclude("const audit=window.HotBPracticeScheduler.validate(plan);","candidat
 mustInclude("verifiedCandidateNotices[label]=candidateNotices.slice();","candidate notice evidence must publish only after all candidate checks pass");
 mustInclude("if(stopAfterFirst)return true;","Resolution role searches must stop after the first verified option instead of exhausting equivalent permutations");
 mustInclude("combinedPitchers.push(pitcher.name),\n      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true","combined pitcher + Block 11 search must stop after its first verified solution");
-mustInclude("combinedCatchers.push(catcher.name),\n      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true","combined catcher + Block 11 search must stop after its first verified solution");
+mustInclude("if(!combinedPitchers.length){","combined catcher + Block 11 search must be skipped after a verified combined pitcher solution");
+mustInclude("combinedCatchers.push(catcher.name),\n       'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true","combined catcher + Block 11 search must stop after its first verified solution");
 mustInclude("if(!canExtend){","Resolution must skip role permutation searches when Block 11 already resolves the failed practice");
 mustNotInclude("Finalizing Resolution","production Resolution path must not expose the retired Finalizing Resolution state");
 mustNotInclude("practice-resolution-session-restore","production Resolution path must not reintroduce full-session restore finalization");
