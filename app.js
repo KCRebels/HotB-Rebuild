@@ -1487,6 +1487,22 @@ async function syncPlayerEvaluationPortals(){
   return true;
  }catch(error){console.warn('Evaluation portal sync failed',error);return false}
 }
+async function setupJenkinsPortals(){
+ if(!cloudUser||!cloudStore||cloudBusy)return;
+ const players=db.roster.filter(item=>item.isTeamJenkins),originals=players.map(player=>({player,portalId:player.portalId,portalSecret:player.portalSecret}));
+ cloudBusy=true;portalMessage='Creating Team Jenkins practice portals…';render();
+ try{
+  for(const player of players)await createPendingGuestPortal(player,'jenkinsPlayer');
+  const verification=await Promise.all(players.map(async player=>{const snapshot=await portalDoc(player.portalId).get(),remote=snapshot.exists?snapshot.data():null;return !!remote&&remote.portalType==='jenkinsPlayer'&&remote.playerName===player.name&&remote.expired===false}));
+  if(verification.some(ok=>!ok))throw new Error('jenkins-portal-verification-failed');
+  db.route=route;localStorage.setItem(DBKEY,JSON.stringify(db));if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');scheduleCloudBackup();
+  portalMessage='Team Jenkins practice portals are ready. These links stay the same from practice to practice.';
+ }catch(error){
+  originals.forEach(({player,portalId,portalSecret})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalSecret===undefined)delete player.portalSecret;else player.portalSecret=portalSecret});
+  console.error('Team Jenkins portal setup failed',error);portalMessage='Team Jenkins practice portals could not be created. Nothing else was changed.';
+ }
+ cloudBusy=false;render();
+}
 async function setupPlayerPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return;
  cloudBusy=true;portalMessage='Creating private player portals…';render();
@@ -5578,13 +5594,16 @@ function bindPlayerPortal(){
  // Player/PIN portal startup must not depend on the optional evaluation module.
  if(portalData?.portalType==='coach'&&portalView==='evaluation'&&typeof bindEval==='function')bindEval();
  $('#setupPlayerPortals')?.addEventListener('click',setupPlayerPortals);
+ $('#setupJenkinsPortals')?.addEventListener('click',setupJenkinsPortals);
  $('#setupCoachPortal')?.addEventListener('click',setupCoachPortal);
  $('#resetCoachPortal')?.addEventListener('click',resetCoachPortal);
  // Bind delivery in app.js as the authoritative path. The capture-phase helper
  // remains only as an early-startup fallback and marks handled taps so these
  // listeners cannot duplicate an iOS Share/Messages handoff.
  $$('[data-share-portal]').forEach(button=>button.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBPortalShare?.(button.dataset.sharePortal)}));
- $$('[data-text-portal]').forEach(button=>button.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBPortalText?.(button.dataset.textPortal)}));
+ $('[data-text-portal]').forEach(button=>button.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBPortalText?.(button.dataset.textPortal)}));
+ $('[data-share-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamJenkins&&player.name===button.dataset.sharePracticeJenkins))));
+ $('[data-text-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamJenkins&&item.name===button.dataset.textPracticeJenkins),url=guestPortalTextUrl(player);if(url)openSmsComposer(url);else{portalMessage='Create Team Jenkins Portals first.';render()}}));
  $('#shareCoachPortal')?.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBCoachPortalShare?.()});
  $('#textCoachPortal')?.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBCoachPortalText?.()});
  $$('[data-reset-portal]').forEach(button=>button.addEventListener('click',()=>resetPlayerPortal(db.roster.find(item=>item.name===button.dataset.resetPortal))));
