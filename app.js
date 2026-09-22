@@ -4618,10 +4618,17 @@ function bind(){
     const recoverySignature=practiceResolutionSignature(recoveredPlayers,plan.startTime,plan.durationMinutes);
     if(recoverySignature!==practiceResolutionSignature(plan.players,plan.startTime,plan.durationMinutes))throw new Error('Resolved setup recovery signature drifted from the verified candidate.');
     if(!transactionOwnsToken())throw new Error('Practice Resolution lost apply ownership before setup commit.');
+    // Resolution 477: setup + plan publication is the commit boundary. Seal the
+    // exact pre-commit live values so persistence failure can restore them directly
+    // before invoking the broader Resolution rollback transaction.
+    const preCommitSetup=practiceSetupState,preCommitPlan=practicePlan;
     practiceSetupState=committedSetup;
     practicePlan=plan;
 
-    if(persistPracticeSession()!==true)throw new Error('Resolved practice could not be committed to restart recovery.');
+    if(persistPracticeSession()!==true){
+     practiceSetupState=preCommitSetup;practicePlan=preCommitPlan;
+     throw new Error('Resolved practice could not be committed to restart recovery.');
+    }
     const committed=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
     if(!committed||JSON.stringify(committed)!==JSON.stringify(db.activePracticeSession)||committed.plan?.portalDraftId!==resolutionDraftId)throw new Error('Resolved practice did not survive restart recovery exactly.');
     const livePlan=practicePlan;
@@ -4630,8 +4637,12 @@ function bind(){
     if(!transactionOwnsToken())throw new Error('Practice Resolution lost apply ownership at commit.');
 
     modal=plan?.buildNotices?.length?'practiceBuildNotice':null;
-    render();window.scrollTo(0,0);
-    if(!transactionOwnsToken())throw new Error('Practice Resolution lost apply ownership during final render.');
+    // Rendering is presentation only; the resolved practice is already durably
+    // committed. A render failure must not roll the verified practice back to the
+    // failed Resolution after storage has succeeded.
+    try{render();window.scrollTo(0,0)}
+    catch(renderError){console.error('HotB resolved practice committed but final render failed.',renderError)}
+    if(!transactionOwnsToken())throw new Error('Practice Resolution lost apply ownership during final publication.');
     practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;
     endResolutionApply();
     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution460',stage:'resolution-apply',state:'committed',draftId:resolutionDraftId,duration:plan.durationMinutes,role:expected.role||'extension',name:expected.name||'',at:new Date().toISOString()}))}catch(error){}
