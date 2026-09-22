@@ -6144,14 +6144,14 @@ function bindPractice(){
       combinedPitcherCandidates,'practice-resolution-pitcher-block11',
       pitcher=>({players:extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:132,label:'Hitting Only + Block 11: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name}}),
       pitcher=>combinedPitchers.push(pitcher.name),
-      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.'
+      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
      ))return;
      const combinedCatcherCandidates=extendedPlayers.filter(player=>player.canCatch);
      if(!runResolutionCandidates(
       combinedCatcherCandidates,'practice-resolution-catcher-block11',
       catcher=>({players:extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
       catcher=>combinedCatchers.push(catcher.name),
-      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.'
+      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
      ))return;
     }
    }
