@@ -449,5 +449,9 @@ const rebels12NoCatchMakennaLateBrooklynEarly=rebels13.filter(player=>player.nam
 });
 const rebels12NoCatchMakennaLateBrooklynEarlyPlan=scheduler.buildSchedule(rebels12NoCatchMakennaLateBrooklynEarly,'18:00',120);
 assert.deepEqual(rebels12NoCatchMakennaLateBrooklynEarlyPlan.feasibilityErrors,['Front toss cannot be scheduled exactly once per player while keeping at least 2 players at every station, even after using the one allowed 4-player Front Toss block.'],'exact phone setup must preserve the reproduced Front Toss conflict until a complete cross-stage solution is proven');
+const rebels12NoCatchMakennaLateBrooklynEarly11=rebels12NoCatchMakennaLateBrooklynEarly.map(player=>({...player,availableUntilBlock:player.name==='Brooklyn Gering'?7:11}));
+const rebels12NoCatchMakennaLateBrooklynEarly11Plan=scheduler.buildSchedule(rebels12NoCatchMakennaLateBrooklynEarly11,'18:00',132);
+assert.deepEqual(rebels12NoCatchMakennaLateBrooklynEarly11Plan.feasibilityErrors,[],'Block 11 should provide a verified resolution for the exact opposite-availability phone setup');
+assert.deepEqual(scheduler.validate(rebels12NoCatchMakennaLateBrooklynEarly11Plan),[],'Block 11 resolution for the exact phone setup must pass the full audit');
 
 console.log('practice-scheduler tests passed');
