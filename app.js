@@ -6232,62 +6232,23 @@ function bindPractice(){
     recoverPracticeBuildSetup('practice-resolution-snapshot-invalid','HotB could not verify the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
     return;
    }
-   // Seal once at the pre-persist boundary and reuse the exact bytes through persistence.
-   setResolutionStage('practice-resolution-prepersist-verify');
-   let prepersistResolutionBytes='';
-   try{prepersistResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not seal Practice Resolution before persistence.',error)}
-   if(!prepersistResolutionBytes||prepersistResolutionBytes!==generatedResolutionBytes){
-    console.error('HotB refused a Practice Resolution that changed before persistence.');
-    persistPracticeDraft();
-    recoverPracticeBuildSetup('practice-resolution-mutated','HotB stopped because the verified Practice Resolution changed before it could be saved. Please build the practice again.');
-    return;
-   }
+   // The Resolution object is fully verified above. Do not synchronously serialize,
+   // save, restore, stringify and compare the entire active practice session inside
+   // the same iPhone tap. That redundant publication transaction was the remaining
+   // long main-thread section after candidate generation and could leave Safari
+   // visibly stranded at the finalization stage even though the decision was ready.
+   // Persist one canonical recovery draft, then do a lightweight identity check.
    setResolutionStage('practice-resolution-persist');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be saved. Nothing was committed. Please review the setup and build again.');return}
    practicePlan=null;
    if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');recoverPracticeBuildSetup('practice-resolution-persist-failed','HotB could not save the verified Practice Resolution. Your practice setup was kept so you can build again.');return}
-   // Persistence is immediately followed by byte-for-byte restore verification.
-   
-   setResolutionStage('practice-resolution-session-seal');
-   let publishedSessionBytes='',publishedResolutionBytes='';
-   try{
-    publishedSessionBytes=JSON.stringify(db.activePracticeSession);
-    publishedResolutionBytes=JSON.stringify(db.activePracticeSession?.resolution);
-   }catch(error){console.error('HotB could not seal the published Practice Resolution recovery session.',error)}
-   if(!publishedSessionBytes||publishedResolutionBytes!==generatedResolutionBytes){
-    console.error('HotB refused Practice Resolution persistence bytes that did not match the verified decision.');
-    practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-publication-invalid','HotB stopped because the saved Practice Resolution did not exactly match the verified decision. Please build the practice again.');return;
+   const savedResolution=db.activePracticeSession?.resolution;
+   if(!savedResolution||savedResolution.signature!==practiceResolution.signature||savedResolution.decisionSignature!==practiceResolution.decisionSignature){
+    console.error('HotB refused Practice Resolution persistence that did not retain the verified identity.');
+    recoverPracticeBuildSetup('practice-resolution-publication-invalid','HotB stopped because the saved Practice Resolution did not retain the verified decision. Please build the practice again.');return;
    }
-   setResolutionStage('practice-resolution-session-restore');
-   let publishedRestored=null;
-   try{publishedRestored=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
-   catch(error){console.error('HotB could not restore the published Practice Resolution recovery session.',error)}
-   
-   setResolutionStage('practice-resolution-session-compare');
-   let restoredSessionBytes='',liveResolutionBytes='';
-   try{
-    restoredSessionBytes=publishedRestored?JSON.stringify(publishedRestored):'';
-    liveResolutionBytes=practiceResolution?JSON.stringify(practiceResolution):'';
-   }catch(error){console.error('HotB could not seal the restored Practice Resolution session.',error)}
-   if(!practiceResolution||liveResolutionBytes!==generatedResolutionBytes||!publishedRestored||restoredSessionBytes!==publishedSessionBytes){
-    console.error('HotB refused a Practice Resolution that changed during publication.');
-    practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-publication-invalid','HotB stopped because the saved Practice Resolution did not exactly match the verified decision. Please build the practice again.');return;
-   }
-   if(!buildSetupStillOwned()){
-    recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed during Practice Resolution publication verification. Nothing was committed. Please review the setup and build again.');
-    return;
-   }
-   setResolutionStage('practice-resolution-final-snapshot');
-   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
-    console.error('HotB refused a Practice Resolution that was stale at modal publication.');
-    practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-stale','HotB stopped because the Practice Resolution was no longer current. Please build the practice again.');return;
-   }
-   // Snapshot validation is the final object/roster proof before the byte seal.
    setResolutionStage('practice-resolution-publish');
-   // Re-prove both setup ownership and exact bytes immediately before exposing any coaching choice.
-   let prepublishResolutionBytes='';
-   try{prepublishResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not seal Practice Resolution at publication.',error)}
-   if(!buildSetupStillOwned()||prepublishResolutionBytes!==generatedResolutionBytes){
+   if(!buildSetupStillOwned()||!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
     recoverPracticeBuildSetup('practice-resolution-prepublish-changed','HotB stopped because the verified Practice Resolution changed immediately before it could open. Please build the practice again.');
     return;
    }
