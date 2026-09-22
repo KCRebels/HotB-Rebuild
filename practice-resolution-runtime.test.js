@@ -109,7 +109,7 @@ if(safe(block11CapacityPlan)){
  // source contract below separately guarantees the added block is eligible.
 }
 const schedulerSource=require('node:fs').readFileSync(require('node:path').join(__dirname,'practice-scheduler.js'),'utf8');
-assert.match(schedulerSource,/Array\.from\(\{length:Math\.max\(0,BLOCK_COUNT-3\)\},\(_,index\)=>index\+3\)/,'132-minute scheduling must include Block 11 in the legal Live pool');
+assert.match(schedulerSource,/BLOCK_COUNT===MAX_BLOCK_COUNT\?\[9,10\]:\[\]/,'132-minute scheduling must explicitly add Blocks 10 and 11 to the legal Live pool');
 assert.doesNotMatch(schedulerSource,/const liveBlocks=\[3,4,5,6,7,8,9\]/,'scheduler must not hard-cap Live at Block 10');
 
 const exercised=new Set();
