@@ -48,8 +48,7 @@ function candidates(source){
 function prioritizedResolution(source){
  let builds=0;
  const verify=(players,duration)=>{builds++;const plan=scheduler.buildSchedule(players,'18:00',duration);return safe(plan)?plan:null};
- const ext=extended(source),extension=verify(ext,132);
- if(extension)return {kind:'block-11',builds,plan:extension};
+ // Production order: preserve 120 minutes when one role adjustment is enough.
  for(const player of source.filter(p=>p.canPitch)){
   const changed=source.map(p=>p.name===player.name?{...p,canPitch:false,requiresPitchWarmup:false}:p),plan=verify(changed,120);
   if(plan)return {kind:'hitting-only',builds,plan,name:player.name};
@@ -58,6 +57,8 @@ function prioritizedResolution(source){
   const changed=source.map(p=>p.name===player.name?{...p,canCatch:false}:p),plan=verify(changed,120);
   if(plan)return {kind:'not-catching',builds,plan,name:player.name};
  }
+ const ext=extended(source),extension=verify(ext,132);
+ if(extension)return {kind:'block-11',builds,plan:extension};
  for(const player of ext.filter(p=>p.canPitch)){
   const changed=ext.map(p=>p.name===player.name?{...p,canPitch:false,requiresPitchWarmup:false}:p),plan=verify(changed,132);
   if(plan)return {kind:'hitting-only+block-11',builds,plan,name:player.name};
@@ -68,6 +69,15 @@ function prioritizedResolution(source){
  }
  return {kind:null,builds,plan:null};
 }
+
+// Exact controlled phone test: 6 attendees, 4 pitchers, 1 catcher, 1 hitter.
+// It must fail normally and resolve via Hitting Only before any Block 11 search.
+const controlledSix=roster(6,4,1);
+const controlledBase=scheduler.buildSchedule(controlledSix,'18:00',120);
+assert.ok(controlledBase.feasibilityErrors.length,'controlled 6-player fixture must naturally fail the base build');
+const controlledResolution=prioritizedResolution(controlledSix);
+assert.equal(controlledResolution.kind,'hitting-only','controlled 6-player fixture must resolve with Hitting Only');
+assert.equal(controlledResolution.builds,1,'controlled 6-player fixture must resolve on the first candidate build');
 
 const fixtures=[];
 for(let count=6;count<=15;count++){
