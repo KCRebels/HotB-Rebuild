@@ -758,7 +758,7 @@ console.log('Resolution 530 route-interference regression passed.');
  const start=source.indexOf('const finalizeCandidates=()=>');
  const publish=source.indexOf('// Publish the already-verified decision directly',start);
  const branch=source.slice(start,publish);
- assert.match(branch,/if\(persistPracticeDraft\(\)!==true\)/,'verified Resolution must persist its recovery draft before publication');
+ assert.match(branch,/HotBPracticeSession\?\.createDraft\?\.\(\{setupState:practiceSetupState,resolution:practiceResolution\}\)/,'verified Resolution must create recovery directly from sealed setup state');
  assert.match(branch,/const savedResolution=db\.activePracticeSession\?\.resolution/,'publication must read back the persisted Resolution');
  assert.match(branch,/JSON\.stringify\(savedResolution\)!==JSON\.stringify\(practiceResolution\)/,'publication must prove persisted decision equality');
 }
@@ -778,3 +778,18 @@ console.log('Resolution 531 recovery-publication regression passed.');
  assert.doesNotMatch(branch,/resolutionToPersist=structuredClone\(practiceResolution\)/,'recovery persistence must not require structuredClone');
 }
 console.log('Resolution 532 WebKit recovery-clone regression passed.');
+
+
+/* Resolution 533 post-Build persistence regression.
+   Candidate verification runs after setup controls have been replaced by the
+   checking shell. Publication therefore must not call the DOM-reading draft helper. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('const finalizeCandidates=()=>');
+ const publish=source.indexOf('// Publish the already-verified decision directly',start);
+ const branch=source.slice(start,publish);
+ assert.doesNotMatch(branch,/persistPracticeDraft\(\)/,'post-Build Resolution publication must not reread missing setup controls');
+ assert.match(branch,/resolutionRecoveryDraft=window\.HotBPracticeSession\?\.createDraft/,'publication must create recovery from sealed in-memory setup');
+ assert.match(branch,/db\.activePracticeSession=resolutionRecoveryDraft/,'publication must install the exact sealed recovery draft');
+}
+console.log('Resolution 533 post-Build persistence regression passed.');
