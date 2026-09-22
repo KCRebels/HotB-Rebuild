@@ -30,3 +30,9 @@ jobs:
         run: node practice-resolution.test.js
       - name: Run Practice Resolution runtime regression
         run: node practice-resolution-runtime.test.js
+      - name: Verify deployed bundle markers
+        run: |
+          grep -q "app.js?v=20260921-resolution387" index.html
+          grep -q "BUILD_VERSION = '2026.09.21.223'" service-worker.js
+          grep -q "launch=223" service-worker.js
+          ! grep -q "Finalizing Resolution" app.js
