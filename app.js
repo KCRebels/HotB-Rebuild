@@ -6242,6 +6242,12 @@ function bindPractice(){
     for(const label of Object.keys(verifiedCandidateNotices))delete verifiedCandidateNotices[label];
    }
    const hasVerifiedResolution=!!(solvingPitchers.length||solvingCatchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
+   // Final sealing/persistence/restore verification is expensive enough to block a
+   // mobile paint. Give Safari a frame after candidate fan-out before entering the
+   // publication transaction, then re-prove that the owned setup did not change.
+   setResolutionStage('practice-resolution-seal');
+   await yieldResolutionUI();
+   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be sealed. Nothing was committed. Please review the setup and build again.');return}
    const rosterGuidance=identityBlocked?'HotB found attendee identity or availability information that must be corrected before resolution. Fix the roster/guest or arrival/departure entry and build again; HotB will not guess or silently normalize it.':resolutionAuditFailures.length&&!hasVerifiedResolution?'HotB could not verify a safe automatic resolution because one or more verification builds/audits did not complete. Change attendance or availability, or build again after correcting the reported verification problem.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
    const cleanResolutionText=value=>String(value??'').trim();
@@ -6290,7 +6296,12 @@ function bindPractice(){
     recoverPracticeBuildSetup('practice-resolution-mutated','HotB stopped because the verified Practice Resolution changed before it could be saved. Please build the practice again.');
     return;
    }
+   setResolutionStage('practice-resolution-persist');
+   await yieldResolutionUI();
+   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be saved. Nothing was committed. Please review the setup and build again.');return}
    practicePlan=null;if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');recoverPracticeBuildSetup('practice-resolution-persist-failed','HotB could not save the verified Practice Resolution. Your practice setup was kept so you can build again.');return}
+   setResolutionStage('practice-resolution-restore-verify');
+   await yieldResolutionUI();
    let publishedSessionBytes='',publishedResolutionBytes='',publishedRestored=null;
    try{
     publishedSessionBytes=JSON.stringify(db.activePracticeSession);
@@ -6304,6 +6315,10 @@ function bindPractice(){
    // Modal publication is the final handoff from generation into coach interaction.
    // Re-prove the live snapshot after persistence/restore so no stale decision can
    // become clickable merely because its saved bytes looked correct.
+   if(!buildSetupStillOwned()){
+    recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed during Practice Resolution publication verification. Nothing was committed. Please review the setup and build again.');
+    return;
+   }
    if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
     console.error('HotB refused a Practice Resolution that was stale at modal publication.');
     practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-stale','HotB stopped because the Practice Resolution was no longer current. Please build the practice again.');return;
