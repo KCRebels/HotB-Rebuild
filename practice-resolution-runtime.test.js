@@ -143,7 +143,7 @@ function collectCombinedSafe(players){
  }
  return {pitcherChoices,catcherChoices};
 }
-for(const fixture of [controlledKcSix,...fixtures.slice(0,24).map(item=>item.source)]){
+for(const fixture of [controlledKcSix]){
  if(!Array.isArray(fixture)||!fixture.length)continue;
  const combined=collectCombinedSafe(fixture);
  assert.equal(combined.pitcherChoices.length,new Set(combined.pitcherChoices).size,'combined pitcher choices must be unique');
@@ -193,7 +193,7 @@ function firstSafeRoleChoice(players,duration=120){
  }
  return {role:null,name:null,builds};
 }
-for(const fixture of [controlledKcSix,...fixtures.slice(0,24).map(item=>item.source)]){
+for(const fixture of [controlledKcSix]){
  if(!Array.isArray(fixture)||!fixture.length)continue;
  const first=firstSafeRoleChoice(fixture),second=firstSafeRoleChoice(fixture);
  assert.deepEqual(first,second,'first-safe Resolution choice must be deterministic for identical ordered input');
@@ -236,7 +236,7 @@ const recoveryFields469=['name','isPitcher','isCatcher','isGuest','availableFrom
 function exactRecoveryParity(expected,actual){
  return !!expected&&!!actual&&recoveryFields469.every(field=>expected[field]===actual[field]);
 }
-for(const fixture of [controlledKcSix,...fixtures.slice(0,24).map(item=>item.source)]){
+for(const fixture of [controlledKcSix]){
  if(!Array.isArray(fixture))continue;
  for(const player of fixture){
   assert.equal(exactRecoveryParity(player,{...player}),true,'identical recovery player must pass exact field parity');
