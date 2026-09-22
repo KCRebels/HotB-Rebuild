@@ -988,3 +988,31 @@ console.log('Resolution 549 immutable choice postcondition regression passed.');
  assert.match(branch,/resolutionPostcondition\(expected,committed\.plan\)/,'restored plan must pass the immutable postcondition again before commit completes');
 }
 console.log('Resolution 549 restart-recovery parity regression passed.');
+
+/* Resolution 553 Block 11 fail-closed presentation contract.
+   Block 11 families remain supported and fully audited, but the UI may expose them
+   only after the actual 132-minute candidate independently builds and validates.
+   Combined duplicates that already work at 120 minutes must stay hidden. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const queueStart=source.indexOf('const candidateQueue=[];');
+ const queueEnd=source.indexOf('const verified={',queueStart);
+ const queue=source.slice(queueStart,queueEnd);
+ assert.match(queue,/kind:'extension',name:null,duration:132/,'Block 11 candidate must remain explicitly supported');
+ assert.match(queue,/kind:'pitcher',name:player\.name,duration:132/,'combined Hitting Only + Block 11 must remain supported');
+ assert.match(queue,/kind:'catcher',name:player\.name,duration:132/,'combined Not Catching + Block 11 must remain supported');
+ const verifyStart=source.indexOf('const verifyCandidate=item=>',queueEnd);
+ const verifyEnd=source.indexOf('const finalizeCandidates=',verifyStart);
+ const verify=source.slice(verifyStart,verifyEnd);
+ assert.match(verify,/item\.duration===132\?practiceResolutionExtendedPlayers/,'132-minute choices must use production extension semantics');
+ assert.match(verify,/if\(!plan\|\|plan\.feasibilityErrors\?\.length\)return null/,'candidate with scheduler feasibility errors must never be displayed');
+ assert.match(verify,/HotBPracticeScheduler\.validate\(plan\)/,'candidate must pass the full validator before display');
+ assert.match(verify,/if\(!Array\.isArray\(audit\)\|\|audit\.length\)return null/,'validator failure must suppress the candidate');
+ const finalStart=source.indexOf('const finalizeCandidates=',verifyEnd);
+ const finalEnd=source.indexOf('const sealAudit=',finalStart);
+ const final=source.slice(finalStart,finalEnd);
+ assert.match(final,/combinedPitchers=verified\.combinedPitchers\.filter\(name=>!verified\.pitchers\.includes\(name\)\)/,'combined pitcher duplicate must be hidden when 120-minute role change already works');
+ assert.match(final,/combinedCatchers=verified\.combinedCatchers\.filter\(name=>!verified\.catchers\.includes\(name\)\)/,'combined catcher duplicate must be hidden when 120-minute role change already works');
+}
+console.log('Resolution 553 Block 11 fail-closed presentation regression passed.');
+
