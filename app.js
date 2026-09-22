@@ -4139,8 +4139,9 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  if((r.combinedPitchers||[]).some(name=>(r.pitchers||[]).includes(name))||(r.combinedCatchers||[]).some(name=>(r.catchers||[]).includes(name)))return false;
  if(r.canExtend===true&&duration!==120)return false;
  if(duration!==120&&((r.combinedPitchers||[]).length||(r.combinedCatchers||[]).length))return false;
- if((r.pitchers||[]).some(name=>!players.find(player=>player.name===name)?.canPitch)||(r.combinedPitchers||[]).some(name=>!players.find(player=>player.name===name)?.canPitch))return false;
- if((r.catchers||[]).some(name=>!players.find(player=>player.name===name)?.canCatch)||(r.combinedCatchers||[]).some(name=>!players.find(player=>player.name===name)?.canCatch))return false;
+ // The source snapshot must show the capability as available before the coach
+ // authorizes turning it off; roleCorrect above already proves that for every
+ // named alternative. Do not revalidate against a mutated candidate here.
  return true;
 }
 function practiceResolutionModal(){
