@@ -339,13 +339,18 @@ function resolutionBudgetFor(players,duration=120){
  return {capacity,budget:Math.min(64,Math.max(9,capacity+1))};
 }
 const guestHeavy=[
- ...base,
- ...Array.from({length:8},(_,index)=>player('Guest '+(index+1),{isPitcher:index<3,canPitch:index<3,requiresPitchWarmup:index<3,isCatcher:index>=3&&index<5,canCatch:index>=3&&index<5}))
+ ...controlledKcSix,
+ ...Array.from({length:8},(_,index)=>({
+  name:'Guest '+(index+1),isPitcher:index<3,isCatcher:index>=3&&index<5,isGuest:true,
+  canPitch:index<3,requiresPitchWarmup:index<3,canCatch:index>=3&&index<5,
+  prePracticeComplete:false,availableFromBlock:0,availableUntilBlock:10,
+  arrivalTime:'18:00',departureTime:'20:00',limitations:''
+ }))
 ];
 const guestBudget=resolutionBudgetFor(guestHeavy);
 assert.ok(guestBudget.capacity>9,'guest-heavy fixture must exceed the old fixed Resolution budget');
 assert.ok(guestBudget.budget>guestBudget.capacity,'finite Resolution budget must cover the complete normal candidate search');
-const ordinaryBudget=resolutionBudgetFor(base);
+const ordinaryBudget=resolutionBudgetFor(controlledKcSix);
 assert.ok(ordinaryBudget.budget>=9,'ordinary roster retains the conservative minimum budget');
 
 
@@ -353,8 +358,9 @@ assert.ok(ordinaryBudget.budget>=9,'ordinary roster retains the conservative min
 /* Resolution 464 combined-choice completeness regression.
    When Block 11 alone and all one-part role changes fail, combined emergency
    search must not stop at the first safe named player or skip the catcher class. */
+function extendedForRegression464(players){return extended(players)}
 function collectCombinedSafe(players){
- const extended=extendPlayers(players);
+ const extended=extendedForRegression464(players);
  const pitcherChoices=[],catcherChoices=[];
  for(const pitcher of extended.filter(player=>player.canPitch)){
   const candidate=extended.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
@@ -368,7 +374,7 @@ function collectCombinedSafe(players){
  }
  return {pitcherChoices,catcherChoices};
 }
-for(const fixture of [base,...matrix]){
+for(const fixture of [controlledKcSix,...fixtures.slice(0,24).map(item=>item.source)]){
  if(!Array.isArray(fixture)||!fixture.length)continue;
  const combined=collectCombinedSafe(fixture);
  assert.equal(combined.pitcherChoices.length,new Set(combined.pitcherChoices).size,'combined pitcher choices must be unique');
@@ -418,7 +424,7 @@ function firstSafeRoleChoice(players,duration=120){
  }
  return {role:null,name:null,builds};
 }
-for(const fixture of [base,...matrix]){
+for(const fixture of [controlledKcSix,...fixtures.slice(0,24).map(item=>item.source)]){
  if(!Array.isArray(fixture)||!fixture.length)continue;
  const first=firstSafeRoleChoice(fixture),second=firstSafeRoleChoice(fixture);
  assert.deepEqual(first,second,'first-safe Resolution choice must be deterministic for identical ordered input');
