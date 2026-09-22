@@ -10,6 +10,9 @@ on:
       - 'practice-scheduler.test.js'
       - 'practice-session.js'
       - 'index.html'
+      - 'recruiting-workflow.js'
+      - 'player-recruiting-profile.html'
+      - 'scouting-report.test.js'
       - 'service-worker.js'
       - 'pwa-update.js'
       - 'pwa-update.test.js'
@@ -32,6 +35,9 @@ jobs:
           node --check practice-session.js
           node --check service-worker.js
           node --check pwa-update.js
+          node --check recruiting-workflow.js
+      - name: Run scouting report regression
+        run: node scouting-report.test.js
       - name: Run Practice Resolution contracts
         run: node practice-resolution.test.js
       - name: Run Practice Resolution runtime regression
