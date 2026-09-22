@@ -4442,7 +4442,7 @@ function bind(){
        const allEligibleCatchers=(plan.players||[]).filter(player=>player.isCatcher===true&&player.canCatch===true);
        const safePlayerCatcherCapacity=allEligibleCatchers.length*2;
        const playerCaughtSessions=plan.liveSessions.filter(session=>session.catcher&&session.catcher!=='9Square').length;
-       if(playerCaughtSessions<Math.min(plan.liveSessions.length,safePlayerCatcherCapacity))return failProof('9square-before-safe-catcher-capacity');
+       if(playerCaughtSessions<Math.min(plan.liveSessions.length,safePlayerCatcherCapacity))return failProof('9square-capacity-live-'+plan.liveSessions.length+'-caught-'+playerCaughtSessions+'-capacity-'+safePlayerCatcherCapacity+'-block-'+(block+1));
       }
      }
      if(plan.schedule?.[pitcher]?.[block]?.activity!=='Pitch Live')return failProof('postcondition-clause-32');
