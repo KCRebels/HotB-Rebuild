@@ -6289,17 +6289,29 @@ function bindPractice(){
      ))return;
     }
    }
-   setResolutionStage('practice-resolution-finalize');
-   await yieldResolutionUI();
+   // Candidate fan-out is complete. Do not arm a watchdog on the transitional
+   // "finalize" label itself: on iPhone Safari a timer from the last candidate task
+   // can become runnable before this continuation crosses its first paint boundary.
+   // Show the label, invalidate the previous watchdog generation, and let the next
+   // concrete evidence phase arm a fresh watchdog after the browser has painted.
+   buildWatchdogStage='practice-resolution-finalize';
+   if(buildButton){buildButton.dataset.buildStage='practice-resolution-finalize';buildButton.textContent='Finalizing Resolution…'}
+   markBuildProgress();
+   clearTimeout(buildWatchdog);buildWatchdog=null;
+   clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
+   await new Promise(resolve=>{
+    const resume=()=>{markBuildProgress();resolve()};
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(resume,0));
+    else setTimeout(resume,16);
+   });
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be finalized. Nothing was committed. Please review the setup and build again.');return}
-   // Finalization used to hold one 20-second heartbeat across every evidence
-   // cleanup/seal operation. On the 13-player path Safari can queue that watchdog
-   // while the work is still legitimately progressing. Split finalization into
-   // observable frame-sized phases and refresh ownership between them.
+   // Finalization is intentionally tiny and synchronous. Normalize the verified
+   // candidate lists, then immediately enter a concrete heartbeat stage.
    solvingPitchers=[...new Set(solvingPitchers)].sort();
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
+   markBuildProgress();
    setResolutionStage('practice-resolution-evidence');
    await yieldResolutionUI();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was finalizing Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
