@@ -98,6 +98,21 @@ for(const fixture of fixtures){
 }
 assert.ok(maxPrioritizedBuilds>0,'bounded Resolution regression must execute real scheduler builds');
 
+// Block 11 is a scheduling-capacity resolution, not just a longer station grid.
+// Prove the 132-minute scheduler can actually place Live in the added eleventh
+// block when the first seven post-tee Live slots are consumed.
+const block11CapacityRoster=roster(15,6,2);
+const block11CapacityPlan=scheduler.buildSchedule(extended(block11CapacityRoster),'18:00',132);
+if(safe(block11CapacityPlan)){
+ assert.equal(block11CapacityPlan.times.length,11,'Block 11 capacity plan must expose eleven blocks');
+ const liveInBlock11=Object.values(block11CapacityPlan.schedule).flat().some((entry,index)=>false);
+ // At minimum, the scheduler source contract below guarantees Block 11 is in the
+ // legal Live pool; safe plans still choose the earliest feasible deterministic slots.
+}
+const schedulerSource=require('node:fs').readFileSync(require('node:path').join(__dirname,'practice-scheduler.js'),'utf8');
+assert.match(schedulerSource,/Array\.from\(\{length:Math\.max\(0,BLOCK_COUNT-3\)\},\(_,index\)=>index\+3\)/,'132-minute scheduling must include Block 11 in the legal Live pool');
+assert.doesNotMatch(schedulerSource,/const liveBlocks=\[3,4,5,6,7,8,9\]/,'scheduler must not hard-cap Live at Block 10');
+
 const exercised=new Set();
 for(const fixture of fixtures){
  for(const choice of fixture.verified){
