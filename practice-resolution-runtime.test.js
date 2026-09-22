@@ -81,6 +81,8 @@ for(let count=6;count<=15;count++){
   }
  }
 }
+const simplestFixture=fixtures.slice().sort((a,b)=>a.count-b.count||a.pitchers-b.pitchers||a.catchers-b.catchers)[0];
+console.log('SMALLEST_RESOLUTION_FIXTURE',JSON.stringify({count:simplestFixture.count,pitchers:simplestFixture.pitchers,catchers:simplestFixture.catchers,errors:simplestFixture.failed.feasibilityErrors,choices:simplestFixture.verified.map(x=>({kind:x.kind,name:x.name}))}));
 assert.ok(fixtures.length,'there must be at least one real scheduler state where Practice Resolution converts a failed 120-minute practice into a verified safe alternative');
 let maxPrioritizedBuilds=0;
 for(const fixture of fixtures){
