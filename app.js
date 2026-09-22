@@ -4004,7 +4004,10 @@ function practiceResolutionDecisionSignature(r){
 }
 function currentPracticeResolutionSignature(){
  if(!practiceResolution)return'';
- const roster=practiceAttendanceRoster(),expectedNames=practiceResolution.practicePlayers?.map(player=>player.name)||[],byName=new Map(roster.map(player=>[player.name,player]));
+ const roster=practiceAttendanceRoster(),expectedNames=practiceResolution.practicePlayers?.map(player=>player.name)||[];
+ // Resolution 479: never construct the name lookup until roster identity has been
+ // proved unique. Map() silently keeps the last duplicate and can hide which live
+ // roster record would be used to rebuild the verified player model.
  // The verified attendee set is part of the resolution. Fail closed if someone is
  // removed OR another player/guest is added before the coaching choice is applied.
  const selectedNames=Array.isArray(practiceSetupState.selectedNames)?practiceSetupState.selectedNames:[];
@@ -4014,6 +4017,7 @@ function currentPracticeResolutionSignature(){
  const rosterNames=roster.map(player=>player.name),rosterNameSet=new Set(rosterNames);
  if(rosterNames.some(name=>!String(name||'').trim()||String(name)!==String(name).trim()))return'__practice_invalid_roster_name__';
  if(rosterNames.length!==rosterNameSet.size)return'__practice_duplicate_roster_name__';
+ const byName=new Map(roster.map(player=>[player.name,player]));
  if(expectedNames.length!==expectedSet.size)return'__practice_duplicate_verified_name__';
  if(selectedNames.some(name=>!String(name||'').trim()||String(name)!==String(name).trim()))return'__practice_invalid_selected_name__';
  if(selectedNames.length!==selectedSet.size)return'__practice_duplicate_selected_name__';
@@ -4094,6 +4098,12 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  if(candidateNoticeEntries.some(([label],index)=>index>0&&candidateNoticeEntries[index-1][0].localeCompare(label)>0))return false;
  const choiceKeys=['pitchers','catchers','combinedPitchers','combinedCatchers'];
  if(!choiceKeys.every(key=>canonicalStringList(r[key])&&r[key].every(name=>verifiedNames.has(name))))return false;
+ // Each named alternative must also have exactly one verified player and exactly
+ // one live attendance record. This is intentionally repeated at snapshot load so
+ // persisted/reloaded Resolution data cannot rely on a later Apply-time lookup.
+ const liveRoster=practiceAttendanceRoster();
+ const exactIdentity=name=>players.filter(player=>player.name===name).length===1&&liveRoster.filter(player=>player.name===name).length===1;
+ if(!choiceKeys.every(key=>r[key].every(exactIdentity)))return false;
  // Block 11 is an emergency extension from the normal 120-minute practice only.
  // A Resolution snapshot itself is always the failed base attempt; 132 minutes may
  // exist only after a verified apply has begun, never as a fresh Resolution source.
