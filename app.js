@@ -6154,14 +6154,19 @@ function bindPractice(){
   if(practiceResolutionApplyToken&&(!resolutionBuildDraftId||!practiceResolutionApplyOwnedDraftId||resolutionBuildDraftId!==practiceResolutionApplyOwnedDraftId)){
    console.error('HotB refused mismatched Practice Resolution transaction identities');
    // Keep transaction ownership intact. The outer verifier owns the immutable
-   // rollback snapshot and must be allowed to restore it atomically.
+   // rollback snapshot and must be allowed to restore it atomically. Stop this
+   // build's heartbeat before returning; otherwise its timer can later fire over
+   // the restored Resolution modal and falsely report a stranded build.
+   clearTimeout(buildWatchdog);
    practicePlan=null;
-   if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Plan'}
+   if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-identity-mismatch'}
    return;
   }
   armBuildWatchdog('finalizing-plan');
-  clearTimeout(buildWatchdog);
   practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();
+  // Draft identity is now authoritative. Stop the heartbeat only after that
+  // assignment succeeds; an exception before this point must remain diagnosable.
+  clearTimeout(buildWatchdog);
   // The build authorization is consumed here, but the transaction token remains
   // alive until the outer Resolution verifier commits or rolls back this exact plan.
   practiceResolutionApplyDraftId=null;
@@ -6179,7 +6184,12 @@ function bindPractice(){
   // Automatic Resolution rebuilds are still uncommitted here. The owning
   // transaction will audit persistence/recovery and then render the final builder
   // (or roll back). Never expose this transient plan or its notice as interactive UI.
-  if(resolutionApplyBuild)return;
+  if(resolutionApplyBuild){
+   // The outer Resolution transaction owns verification and final publication from
+   // this point forward. This click handler must leave no local watchdog behind.
+   clearTimeout(buildWatchdog);
+   return;
+  }
   if(practicePlan.buildNotices?.length){clearTimeout(buildWatchdog);modal='practiceBuildNotice';render();return}
   clearTimeout(buildWatchdog);
   setTimeout(()=>{
