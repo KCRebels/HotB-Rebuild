@@ -5808,6 +5808,14 @@ function bindPractice(){
    clearTimeout(buildWatchdog);
    if(buildButton)buildButton.dataset.buildStage='practice-resolution';
    const yieldResolutionUI=()=>new Promise(resolve=>setTimeout(resolve,0));
+   // Keep the build state visible and make every long Resolution phase identifiable.
+   // This also prevents a second tap from starting a competing build while the first
+   // asynchronous verification transaction is still alive.
+   const setResolutionStage=stage=>{
+    const button=$('#generatePractice');
+    if(button){button.disabled=true;button.textContent='Building Practice…';button.dataset.buildStage=stage}
+   };
+   setResolutionStage('practice-resolution-start');
    // A failed automatic Resolution rebuild must not create a second Resolution on
    // top of the coaching choice being applied. Leave transaction ownership intact;
    // the outer verifier will see this infeasible plan and roll back atomically.
@@ -5962,6 +5970,7 @@ function bindPractice(){
    };
    // Only offer a pitcher decision after proving that exact one-practice change builds cleanly.
    for(const pitcher of availablePitchers){
+    setResolutionStage('practice-resolution-pitcher');
     await yieldResolutionUI();
     const testPlayers=practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
     if(verifyResolutionBuild(testPlayers,durationMinutes,'Hitting Only: '+pitcher.name,{role:'pitcher',name:pitcher.name}))solvingPitchers.push(pitcher.name)
@@ -5969,6 +5978,7 @@ function bindPractice(){
    let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
    const availableCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
    for(const catcher of availableCatchers){
+    setResolutionStage('practice-resolution-catcher');
     await yieldResolutionUI();
     const testPlayers=practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
     if(verifyResolutionBuild(testPlayers,durationMinutes,'Not Catching: '+catcher.name,{role:'catcher',name:catcher.name}))solvingCatchers.push(catcher.name)
@@ -5980,22 +5990,26 @@ function bindPractice(){
     // The extension helper marks any production-availability disagreement invalid.
     // Do not fan out combined candidates from a poisoned Block 11 baseline.
     const extensionBaselineValid=extendedPlayers.length===practicePlayers.length&&extendedPlayers.every(player=>Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=11&&Number(player.availableFromBlock)<Number(player.availableUntilBlock));
-    if(extensionBaselineValid)await yieldResolutionUI();
+    if(extensionBaselineValid){setResolutionStage('practice-resolution-block11');await yieldResolutionUI()}
     canExtend=extensionBaselineValid&&verifyResolutionBuild(extendedPlayers,132,'Block 11');
     if(!extensionBaselineValid)resolutionAuditFailures.push('Block 11 availability could not be verified against the production availability rules.');
     if(!canExtend&&extensionBaselineValid){
      for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
+      setResolutionStage('practice-resolution-pitcher-block11');
       await yieldResolutionUI();
       const label='Hitting Only + Block 11: '+pitcher.name,testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
       if(verifyResolutionBuild(testPlayers,132,label,{role:'pitcher',name:pitcher.name}))combinedPitchers.push(pitcher.name);
      }
      for(const catcher of extendedPlayers.filter(player=>player.canCatch)){
+      setResolutionStage('practice-resolution-catcher-block11');
       await yieldResolutionUI();
       const label='Not Catching + Block 11: '+catcher.name,testPlayers=extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
       if(verifyResolutionBuild(testPlayers,132,label,{role:'catcher',name:catcher.name}))combinedCatchers.push(catcher.name);
      }
     }
    }
+   setResolutionStage('practice-resolution-finalize');
+   await yieldResolutionUI();
    solvingPitchers=[...new Set(solvingPitchers)].sort();
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    // A combined option is meaningful only when the same role change cannot solve
@@ -6091,6 +6105,8 @@ function bindPractice(){
     console.error('HotB refused a Practice Resolution that was stale at modal publication.');
     practiceResolution=null;modal=null;persistPracticeDraft();render();return;
    }
+   setResolutionStage('practice-resolution-publish');
+   await yieldResolutionUI();
    modal='practiceResolution';render();return;
   }
   if(practicePlan.fallbackWarnings?.length){
