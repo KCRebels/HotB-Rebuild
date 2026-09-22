@@ -5788,24 +5788,26 @@ function bindPractice(){
   if(!practicePlayers.some(player=>player.canPitch))noPitchersMode=null;
   stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
   const buildButton=$('#generatePractice');if(buildButton){buildButton.disabled=true;buildButton.textContent='Building Practice…'}
-  // Fail-safe for the exact iPhone symptom where this handler returns but the setup
-  // screen remains with a disabled Build button. A timer cannot run while the
-  // synchronous scheduler is working, so this only acts after the build path yields.
-  const buildWatchdog=setTimeout(()=>{
-   const stuckButton=$('#generatePractice');
-   if(!stuckButton||!stuckButton.disabled)return;
-   // A completed plan still belongs to the normal build transaction below. The
-   // watchdog must never render/commit it early: doing so races draft-ID assignment,
-   // notices, and automatic Practice Resolution ownership.
-   if(practicePlan&&!practicePlan.feasibilityErrors?.length){
-    console.warn('HotB build watchdog observed a completed scheduler result; normal build handoff still owns publication.');
-    return;
-   }
-   const stage=String(stuckButton.dataset.buildStage||'pre-scheduler');
-   stuckButton.disabled=false;stuckButton.textContent='Build Practice Schedule';
-   alert('HotB practice build stopped at '+stage+'. Please tell me this exact stage.');
-  },250);
-  if(buildButton)buildButton.dataset.buildStage='scheduler';
+  // The build handler now has intentional async frame yields during Practice
+  // Resolution. A short timer cannot distinguish those healthy yields from a stall,
+  // so use an explicit stage heartbeat and only recover after a real quiet period.
+  let buildWatchdog=null,buildWatchdogStage='pre-scheduler';
+  const armBuildWatchdog=(stage,timeout=12000)=>{
+   buildWatchdogStage=stage;
+   if(buildButton)buildButton.dataset.buildStage=stage;
+   clearTimeout(buildWatchdog);
+   buildWatchdog=setTimeout(()=>{
+    const stuckButton=$('#generatePractice');
+    if(!stuckButton||!stuckButton.disabled)return;
+    if(practicePlan&&!practicePlan.feasibilityErrors?.length){
+     console.warn('HotB build watchdog observed a completed scheduler result; normal build handoff still owns publication.');
+     return;
+    }
+    stuckButton.disabled=false;stuckButton.textContent='Build Practice Schedule';
+    alert('HotB practice build stopped at '+String(stuckButton.dataset.buildStage||buildWatchdogStage)+'. Please tell me this exact stage.');
+   },timeout);
+  };
+  armBuildWatchdog('scheduler');
   try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});if(buildButton)buildButton.dataset.buildStage='scheduler-returned'}catch(error){
    console.error('HotB practice scheduler failed',error);clearTimeout(buildWatchdog);practicePlan=null;
    // During an automatic Resolution rebuild, the outer transaction owns rollback.
@@ -5818,10 +5820,9 @@ function bindPractice(){
   if(buildButton)buildButton.dataset.buildStage='post-scheduler';
   if(practicePlan.feasibilityErrors?.length){
    // The base scheduler has returned. Practice Resolution can require many additional
-   // scheduler/audit passes; stop the short build watchdog before yielding between
-   // those passes so iPhone Safari can repaint without falsely reporting a stuck build.
-   clearTimeout(buildWatchdog);
-   if(buildButton)buildButton.dataset.buildStage='practice-resolution';
+   // scheduler/audit passes; the stage heartbeat below is re-armed around each
+   // intentional frame yield so Safari repaint time is never mistaken for a stall.
+   armBuildWatchdog('practice-resolution',20000);
    // Give iPhone Safari a real frame between expensive candidate builds. A zero-ms
    // timer can be coalesced and immediately re-enter JavaScript without painting.
    const yieldResolutionUI=()=>new Promise(resolve=>{
@@ -5833,7 +5834,8 @@ function bindPractice(){
    // asynchronous verification transaction is still alive.
    const setResolutionStage=stage=>{
     const button=$('#generatePractice');
-    if(button){button.disabled=true;button.textContent='Building Practice…';button.dataset.buildStage=stage}
+    if(button){button.disabled=true;button.textContent='Building Practice…'}
+    armBuildWatchdog(stage,20000);
    };
    setResolutionStage('practice-resolution-start');
    await yieldResolutionUI();
