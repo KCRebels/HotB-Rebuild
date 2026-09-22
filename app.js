@@ -5947,7 +5947,8 @@ function bindPractice(){
      return;
     }
     if(practicePlan&&!practicePlan.feasibilityErrors?.length){
-     console.warn('HotB build watchdog observed a completed scheduler result; normal build handoff still owns publication.');
+     console.warn('HotB build watchdog observed a completed scheduler result; waiting for publication handoff.');
+     armBuildWatchdog(stuckButton.dataset.buildStage||'practice-plan-publication-wait',timeout);
      return;
     }
     stopBuildWatchdog();
@@ -6424,9 +6425,11 @@ function bindPractice(){
    recoverPracticeBuildSetup('practice-plan-finalize-failed','HotB built the schedule but could not finalize the practice plan. Your setup was kept so you can build again.');
    return;
   }
-  // Draft identity is now authoritative. Stop the heartbeat only after all plan
-  // metadata required by the builder has been assigned successfully.
-  stopBuildWatchdog();
+  // Draft identity is authoritative, but a normal build is not complete until
+  // its destination screen actually paints. Keep its heartbeat alive through the
+  // deferred publication frame. Resolution apply builds remain owned externally.
+  if(!resolutionApplyBuild)armBuildWatchdog('practice-plan-publication-wait',20000);
+  else stopBuildWatchdog();
   // The build authorization is consumed here, but the transaction token remains
   // alive until the outer Resolution verifier commits or rolls back this exact plan.
   practiceResolutionApplyDraftId=null;
@@ -6452,9 +6455,11 @@ function bindPractice(){
   }
   if(practicePlan.buildNotices?.length){
    modal='practiceBuildNotice';
+   armBuildWatchdog('practice-build-notice',20000);
    publishPracticeBuildFrame('practice-build-notice',()=>{render();setPracticeBuildControlsLocked(false);stopBuildWatchdog();window.scrollTo(0,0)});
    return;
   }
+  armBuildWatchdog('practice-plan-publish',20000);
   publishPracticeBuildFrame('practice-plan-publish',()=>{render();setPracticeBuildControlsLocked(false);stopBuildWatchdog();window.scrollTo(0,0)});
  });
  $('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',limitations:practiceSetupState.accommodations?.[player.name]?.limitations||'',prePracticeComplete:!!player.prePracticeComplete,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={...practiceSetupState,selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;practiceSection='setup';persistPracticeDraft();render();window.scrollTo(0,0)});
