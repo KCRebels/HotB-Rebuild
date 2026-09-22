@@ -481,9 +481,11 @@ const brooklynEarlyPitch=rebels12NoCatchMakennaLateBrooklynEarlyPlan.schedule['B
 const brooklynEarlyWarm=rebels12NoCatchMakennaLateBrooklynEarlyPlan.schedule['Brooklyn Gering'].findIndex(entry=>entry.activity==='Pitch Warm-Up');
 assert.ok(brooklynEarlyPitch>=0&&brooklynEarlyPitch<7,'Brooklyn must pitch before her 30-minute-early departure');
 assert.ok(brooklynEarlyWarm>=0&&brooklynEarlyPitch-brooklynEarlyWarm>=1&&brooklynEarlyPitch-brooklynEarlyWarm<=2,'Brooklyn must retain a legal pitching warm-up without consuming her only Front Toss opportunity');
-const rebels12NoCatchMakennaLateBrooklynEarly11=rebels12NoCatchMakennaLateBrooklynEarly.map(player=>({...player,availableUntilBlock:player.name==='Brooklyn Gering'?7:11}));
+// Resolution 552: production Block 11 extends only players who stayed through
+// the original end. Preserve Brooklyn's early departure and Makenna's late arrival.
+const rebels12NoCatchMakennaLateBrooklynEarly11=rebels12NoCatchMakennaLateBrooklynEarly.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock}));
 const rebels12NoCatchMakennaLateBrooklynEarly11Plan=scheduler.buildSchedule(rebels12NoCatchMakennaLateBrooklynEarly11,'18:00',132);
-assert.deepEqual(rebels12NoCatchMakennaLateBrooklynEarly11Plan.feasibilityErrors,[],'Block 11 should provide a verified resolution for the exact opposite-availability phone setup');
-assert.deepEqual(scheduler.validate(rebels12NoCatchMakennaLateBrooklynEarly11Plan),[],'Block 11 resolution for the exact phone setup must pass the full audit');
+assert.deepEqual(rebels12NoCatchMakennaLateBrooklynEarly11Plan.feasibilityErrors,[],'production-faithful Block 11 extension of exact phone setup must build safely');
+assert.deepEqual(scheduler.validate(rebels12NoCatchMakennaLateBrooklynEarly11Plan),[],'production-faithful Block 11 extension must pass the full audit');
 
 console.log('practice-scheduler tests passed');
