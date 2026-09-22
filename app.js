@@ -5792,7 +5792,7 @@ function bindPractice(){
   // Resolution. A short timer cannot distinguish those healthy yields from a stall,
   // so use an explicit stage heartbeat and only recover after a real quiet period.
   let buildWatchdog=null,buildWatchdogStage='pre-scheduler',buildWatchdogGeneration=0,buildFinished=false;
-  const stopBuildWatchdog=()=>{buildFinished=true;buildWatchdogGeneration++;stopBuildWatchdog();buildWatchdog=null};
+  const stopBuildWatchdog=()=>{buildFinished=true;buildWatchdogGeneration++;clearTimeout(buildWatchdog);buildWatchdog=null};
   const armBuildWatchdog=(stage,timeout=12000)=>{
    buildFinished=false;buildWatchdogStage=stage;
    const generation=++buildWatchdogGeneration;
