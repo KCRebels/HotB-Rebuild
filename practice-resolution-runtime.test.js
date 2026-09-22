@@ -893,7 +893,9 @@ console.log('Resolution 539 postcondition diagnostic regression passed.');
  const start=source.indexOf('const resolutionPostcondition=');
  const end=source.indexOf('const rebuildResolvedPractice=',start);
  const branch=source.slice(start,end);
- assert.match(branch,/const failProof=reason=>/,'diagnostic helper must exist');\n assert.match(branch,/return false/,'diagnostic helper must terminate with false');\n assert.doesNotMatch(branch,/const failProof=reason=>[\\s\\S]{0,500}?return failProof\(/,'diagnostic helper must not recursively call itself');
+ assert.match(branch,/const failProof=reason=>/,'diagnostic helper must exist');
+ assert.match(branch,/return false/,'diagnostic helper must terminate with false');
+ assert.doesNotMatch(branch,/const failProof=reason=>[\\s\\S]{0,500}?return failProof\(/,'diagnostic helper must not recursively call itself');
  assert.doesNotMatch(branch,/const failProof=reason=>[^;]*failProof\(/,'diagnostic helper must never recurse');
  assert.match(branch,/postcondition-clause-\d+/,'postcondition must contain exhaustive numbered diagnostics');
 }
