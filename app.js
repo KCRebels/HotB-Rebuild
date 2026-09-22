@@ -4889,6 +4889,10 @@ function bind(){
    }
    return true;
   };
+  const awaitPracticeResolutionPaint=callback=>{
+   if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(callback,0));
+   else setTimeout(callback,16);
+  };
   const restoreResolutionRollback=state=>{
    const releaseFailedRollback=message=>{
     console.error(message);
@@ -4896,6 +4900,8 @@ function bind(){
     // its temporary Block 11 or role mutation still installed. Prefer reconstructing
     // the ordinary 120-minute setup from the sealed rollback source; if even that
     // cannot be cloned, clear recovery authority rather than exposing partial state.
+    // Invalidate transaction ownership first so any already-queued iPhone frame or
+    // verification callback becomes stale before rollback touches live state.
     let safeSetup=null;
     try{safeSetup=state?.setupState?structuredClone(state.setupState):null}catch(error){console.error('HotB could not reconstruct the ordinary setup after rollback failure.',error)}
     practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practicePlan=null;
@@ -4934,6 +4940,9 @@ function bind(){
     releaseFailedRollback('HotB refused a Practice Resolution rollback whose cloned recovery state could not be sealed');
     return false;
    }
+   // Revoke the apply identities before installing rollback state. Deferred build
+   // and verification callbacks check these identities and therefore cannot race
+   // the restored Resolution once this atomic handoff begins.
    practiceResolutionApplyDraftId=null;
    practiceResolutionApplyOwnedDraftId=null;
    practiceResolutionApplyToken=null;
@@ -4965,14 +4974,25 @@ function bind(){
      db.activePracticeSession=null;
      try{save()}catch(error){console.error('HotB could not clear invalid Practice Resolution rollback recovery.',error)}
     }
-    endResolutionApply();render();return false
+    // Keep the apply lock through the recovery render. A real paint-frame handoff
+    // prevents the same iPhone tap/async turn from tearing down and rebuilding #app
+    // while rollback persistence is still settling.
+    try{
+     awaitPracticeResolutionPaint(()=>{try{render()}finally{endResolutionApply()}});
+    }catch(error){console.error('HotB could not queue the failed rollback recovery render.',error);endResolutionApply()}
+    return false
    }
    // Keep the apply lock through post-save restart verification and rendering.
-   // Releasing it earlier lets another Resolution action begin against state that
-   // has not yet completed rollback recovery.
-   try{render()}
-   catch(error){releaseFailedRollback('HotB could not render the restored Practice Resolution rollback state');return false}
-   endResolutionApply();return true;
+   // Publish rollback on a real browser frame for the same reason as successful
+   // Resolution publication: iPhone Safari must finish the current event turn first.
+   try{
+    awaitPracticeResolutionPaint(()=>{
+     try{render()}
+     catch(error){releaseFailedRollback('HotB could not render the restored Practice Resolution rollback state');return}
+     endResolutionApply();
+    });
+   }catch(error){releaseFailedRollback('HotB could not queue the restored Practice Resolution rollback render')}
+   return true;
   };
   const expectedResolutionState=(role=null,name=null,withBlock11=false,resolutionSnapshot=practiceResolution)=>{
    // Expected postconditions must come from the immutable pre-mutation snapshot.
