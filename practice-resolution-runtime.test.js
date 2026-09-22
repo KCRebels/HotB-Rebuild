@@ -606,3 +606,23 @@ assert.equal(sourceModelInvalid475(base.map((player,index)=>index?player:{...pla
 assert.equal(sourceModelInvalid475(base.map((player,index)=>index?player:{...player,canPitch:false,requiresPitchWarmup:true})),true,'warm-up without pitching must fail from source data');
 assert.equal(sourceModelInvalid475(base.map((player,index)=>index?player:{...player,availableFromBlock:8,availableUntilBlock:4})),true,'reversed availability must fail from source data');
 assert.equal(sourceModelInvalid475(base,144),true,'unsupported Resolution duration must fail from source data');
+
+
+/* Resolution 477 commit-boundary regression.
+   Failed persistence restores pre-commit live values; presentation failure after
+   durable persistence does not invalidate the committed resolved practice. */
+function commitBoundary477(state,persist,render){
+ const before={setup:state.setup,plan:state.plan};
+ state.setup='resolved-setup';state.plan='resolved-plan';
+ if(!persist()){state.setup=before.setup;state.plan=before.plan;return 'rolled-back-before-durable-commit'}
+ try{render()}catch(_){}
+ return 'committed';
+}
+const failedCommit477={setup:'failed-setup',plan:null};
+assert.equal(commitBoundary477(failedCommit477,()=>false,()=>{}),'rolled-back-before-durable-commit');
+assert.equal(failedCommit477.setup,'failed-setup');
+assert.equal(failedCommit477.plan,null);
+const durableCommit477={setup:'failed-setup',plan:null};
+assert.equal(commitBoundary477(durableCommit477,()=>true,()=>{throw new Error('presentation only')}),'committed');
+assert.equal(durableCommit477.setup,'resolved-setup');
+assert.equal(durableCommit477.plan,'resolved-plan');
