@@ -6008,7 +6008,7 @@ function bindPractice(){
     const button=$('#generatePractice');
     if(button){
      button.disabled=true;
-     const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-finalize':'Finalizing Resolution…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Preparing Resolution…','practice-resolution-byte-seal':'Sealing Resolution…','practice-resolution-snapshot-verify':'Validating Resolution…','practice-resolution-prepersist-verify':'Checking Final Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-restore-verify':'Verifying Saved Resolution…','practice-resolution-session-seal':'Checking Saved Session…','practice-resolution-session-restore':'Restoring Saved Session…','practice-resolution-session-compare':'Comparing Saved Session…','practice-resolution-final-snapshot':'Final Resolution Check…','practice-resolution-publish':'Opening Resolution…'};
+     const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Preparing Resolution…','practice-resolution-byte-seal':'Sealing Resolution…','practice-resolution-snapshot-verify':'Validating Resolution…','practice-resolution-prepersist-verify':'Checking Final Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-restore-verify':'Verifying Saved Resolution…','practice-resolution-session-seal':'Checking Saved Session…','practice-resolution-session-restore':'Restoring Saved Session…','practice-resolution-session-compare':'Comparing Saved Session…','practice-resolution-final-snapshot':'Final Resolution Check…','practice-resolution-publish':'Opening Resolution…'};
      button.textContent=labels[stage]||'Building Practice…';
     }
     markBuildProgress();
@@ -6274,12 +6274,8 @@ function bindPractice(){
      ))return;
     }
    }
-   // Candidate fan-out is complete. Do not create a separate asynchronous
-   // "finalize" handoff here. The prior implementation yielded on this label and
-   // iPhone Safari could strand the async continuation permanently at that exact
-   // boundary. Invalidate candidate timers and enter evidence finalization in the
-   // same JavaScript continuation; the evidence stage immediately below owns the
-   // next deliberate paint/yield.
+   // Candidate fan-out is complete. Enter evidence finalization synchronously;
+   // there is no intermediate Finalizing Resolution state or async boundary.
    buildWatchdogStage='practice-resolution-evidence';
    markBuildProgress();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be finalized. Nothing was committed. Please review the setup and build again.');return}
