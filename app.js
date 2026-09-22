@@ -4783,15 +4783,16 @@ function bind(){
    // without a restart-safe copy of the original failed practice.
    const saved=state.activePracticeSession;
    if(!saved||saved.stage!=='setup'||saved.plan)return false;
-   // Validate the persisted recovery record through the same restore path startup
-   // will actually use. Raw object equality alone is not enough if restore rejects
-   // or migrates the session.
+   // Resolution 535: createDraft intentionally stores a minimal setup session.
+   // restore() normalizes optional runtime-only fields (draftDrills, picker flags,
+   // equipment flags), so byte-for-byte equality between raw saved and restored
+   // objects is not a valid safety invariant. Prove that restore accepts the draft,
+   // then compare the immutable recovery authority: setup + sealed Resolution.
    let restoredSaved;
    try{restoredSaved=window.HotBPracticeSession?.restore?.(saved)}
    catch(error){console.error('HotB rejected a Practice Resolution rollback whose saved recovery record could not be restored.',error);return false}
    if(!restoredSaved||restoredSaved.stage!=='setup'||restoredSaved.plan)return false;
    try{
-    if(JSON.stringify(restoredSaved)!==JSON.stringify(saved))return false;
     if(!saved.setupState||String(saved.setupState.startTime||'')!==String(setup.startTime||'')||Number(saved.setupState.durationMinutes)!==120)return false;
     const savedNames=Array.isArray(saved.setupState.selectedNames)?saved.setupState.selectedNames:[];
     if(savedNames.length!==names.length||new Set(savedNames).size!==savedNames.length||savedNames.some((name,index)=>name!==names[index]))return false;
@@ -4799,6 +4800,8 @@ function bind(){
     // carrying equivalent signatures. Reject restore/default/migration drift here.
     if(!saved.resolution||JSON.stringify(saved.resolution)!==JSON.stringify(r))return false;
     if(JSON.stringify(saved.setupState)!==JSON.stringify(setup))return false;
+    if(JSON.stringify(restoredSaved.resolution)!==JSON.stringify(saved.resolution))return false;
+    if(JSON.stringify(restoredSaved.setupState)!==JSON.stringify(saved.setupState))return false;
    }catch(error){
     console.error('HotB rejected a Practice Resolution rollback whose recovery equality proof could not be sealed.',error);
     return false;
