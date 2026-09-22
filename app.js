@@ -5835,6 +5835,11 @@ function bindPractice(){
    const canExtend=false;
    [pitchers,catchers,combinedPitchers,combinedCatchers].forEach(list=>list.sort());
    const sortedCandidateNotices=Object.fromEntries(Object.entries(candidateNotices).sort(([a],[b])=>a.localeCompare(b)));
+   // Resolution 504: canonical snapshot validation requires errors/notices/audit
+   // collections to be sorted. The base scheduler emits errors in discovery order,
+   // so a multi-error constrained practice could build a correct Resolution object
+   // and then have the display validator reject it before the modal mounted.
+   resolutionErrors.sort((a,b)=>a.localeCompare(b));
    const hasVerifiedChoice=!!(pitchers.length||catchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
    const rosterGuidance=identityBlocked
     ?'HotB found attendee identity or availability information that must be corrected. Fix the roster/guest or arrival/departure entry and build again.'
@@ -5850,7 +5855,7 @@ function bindPractice(){
    practiceResolution={
     errors:resolutionErrors,pitchers,catchers,canExtend,combinedPitchers,combinedCatchers,
     rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,
-    notices:Array.isArray(practicePlan.fallbackWarnings)?[...new Set(practicePlan.fallbackWarnings.map(value=>String(value||'').trim()).filter(Boolean))].sort():[],
+    notices:Array.isArray(practicePlan.fallbackWarnings)?[...new Set(practicePlan.fallbackWarnings.map(value=>String(value||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)):[],
     auditFailures:[],candidateNotices:sortedCandidateNotices,
     signature:practiceResolutionSignature(practicePlayers,startTime,durationMinutes),decisionSignature:''
    };
