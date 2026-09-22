@@ -943,3 +943,21 @@ console.log('Resolution 487 infeasible-candidate short-circuit regression passed
  }
 }
 console.log('Resolution 488 mobile long-task regression passed.');
+
+
+/* Resolution 489 setup-tap combined-search bypass regression.
+   The setup Build tap must never execute a speculative role + Block 11 candidate.
+   Those were the repeatedly observed mobile stall stages. */
+{
+ const appSource489=require('node:fs').readFileSync('./app.js','utf8');
+ const bypassStart=appSource489.indexOf("stage:'practice-resolution-combined-bypassed'");
+ assert.ok(bypassStart>=0,'production must record the combined-search bypass');
+ const combinedBranchStart=appSource489.lastIndexOf('if(!identityBlocked&&!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded)',bypassStart);
+ const fanoutEnd=appSource489.indexOf('// Candidate fan-out is complete.',bypassStart);
+ const combinedBody=appSource489.slice(combinedBranchStart,fanoutEnd);
+ assert.ok(combinedBody.includes('combinedPitchers=[]')&&combinedBody.includes('combinedCatchers=[]'),'combined choices must remain empty on setup tap');
+ assert.ok(!combinedBody.includes('verifyOrderedCandidates('),'combined setup branch must not call scheduler candidate verifier');
+ assert.ok(!combinedBody.includes('buildSchedule('),'combined setup branch must not call scheduler directly');
+ assert.ok(appSource489.includes('candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?3:2)'),'build budget must exclude removed combined candidates');
+}
+console.log('Resolution 489 setup-tap combined-search bypass regression passed.');
