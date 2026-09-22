@@ -5947,6 +5947,27 @@ function bindPractice(){
    return
   }
   if(practicePlan.feasibilityErrors?.length){
+   // Prove the exact unchanged roster once more before emergency Resolution. The
+   // scheduler is deterministic; this boundary prevents a transient/mutated result
+   // from sending the normal full 13-player practice through the expensive fan-out.
+   const initialFeasibilityErrors=[...practicePlan.feasibilityErrors];
+   try{
+    const exactRetry=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});
+    const retryErrors=Array.isArray(exactRetry?.feasibilityErrors)?exactRetry.feasibilityErrors:[];
+    const retryAudit=!retryErrors.length&&exactRetry?window.HotBPracticeScheduler.validate(exactRetry):[];
+    if(!retryErrors.length&&Array.isArray(retryAudit)&&!retryAudit.length){
+     console.warn('HotB recovered the unchanged practice at the Resolution boundary; using the verified exact retry.');
+     practicePlan=exactRetry;
+    }else if(JSON.stringify(retryErrors)!==JSON.stringify(initialFeasibilityErrors)){
+     console.error('HotB detected nondeterministic scheduler errors for the unchanged practice.',{initialFeasibilityErrors,retryErrors});
+     recoverPracticeBuildSetup('practice-scheduler-nondeterministic','HotB detected inconsistent scheduler results for the unchanged practice. Nothing was committed. Please build again.');
+     return;
+    }
+   }catch(error){
+    console.error('HotB exact-roster scheduler retry failed at the Resolution boundary',error);
+   }
+  }
+  if(practicePlan.feasibilityErrors?.length){
    // The base scheduler has returned. Practice Resolution now runs as one synchronous verified transaction.
    buildStage='practice-resolution';
    // Keep the build state visible and make every long Resolution phase identifiable.
