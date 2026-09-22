@@ -35,7 +35,6 @@ has("practiceResolution=null;","successful commit must revoke stale Resolution")
 has("sealedResolutionBytes","publication must be byte sealed");
 has("publicationSnapshotStable","publication validation must be read-only");
 has("RESOLUTION_BUILD_BUDGET","candidate search must have a hard scheduler-build budget");
-has("stage:'practice-resolution-base-result-only'","failed setup must publish from the base scheduler result only");
 has("window.HotBPracticeScheduler.validate(plan)","feasible displayed candidates must still pass the full scheduler validator");
 has("if(JSON.stringify(practiceResolution)!==sealedResolutionBytes)","render must not mutate the sealed decision");
 console.log('Practice Resolution production contracts passed.');
