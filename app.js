@@ -5885,6 +5885,22 @@ function bindPractice(){
     }
     practiceResolution={errors:resolutionErrors,pitchers:verified.pitchers,catchers:verified.catchers,canExtend:verified.canExtend,combinedPitchers:verified.combinedPitchers,combinedCatchers:verified.combinedCatchers,rosterGuidance:'You can use one of the verified choices above, or return to setup and make a different attendance/availability change.',practicePlayers:sourcePlayers,startTime,durationMinutes,noPitchersMode:null,notices,auditFailures:[],candidateNotices,signature:practiceResolutionSignature(sourcePlayers,startTime,durationMinutes),decisionSignature:''};
     practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
+    // Resolution 510: a candidate that works in 120 minutes supersedes the same
+    // role change + Block 11 candidate. The persisted Resolution contract forbids
+    // presenting a strictly worse duplicate choice, so canonicalize before sealing.
+    verified.combinedPitchers=verified.combinedPitchers.filter(name=>!verified.pitchers.includes(name));
+    verified.combinedCatchers=verified.combinedCatchers.filter(name=>!verified.catchers.includes(name));
+    const allowedLabels=new Set([
+     ...verified.pitchers.map(name=>'Hitting Only: '+name),
+     ...verified.catchers.map(name=>'Not Catching: '+name),
+     ...(verified.canExtend?['Block 11']:[]),
+     ...verified.combinedPitchers.map(name=>'Hitting Only + Block 11: '+name),
+     ...verified.combinedCatchers.map(name=>'Not Catching + Block 11: '+name)
+    ]);
+    for(const label of Object.keys(practiceResolution.candidateNotices))if(!allowedLabels.has(label))delete practiceResolution.candidateNotices[label];
+    practiceResolution.combinedPitchers=verified.combinedPitchers;
+    practiceResolution.combinedCatchers=verified.combinedCatchers;
+    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
     if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
      console.error('HotB rejected the completed cooperative Practice Resolution snapshot.');
      practiceResolution=null;shell.innerHTML=basePanel('HotB checked possible coaching compromises but could not seal the result safely. Change attendance or availability and build again.');bindInfoReturn(shell);return;
