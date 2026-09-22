@@ -40,5 +40,7 @@ jobs:
           ! grep -q "app.js?v=20260921-resolution357" index.html
           grep -q "app.js?v=20260921-resolution416" index.html
           grep -q "BUILD_VERSION = '2026.09.21.225'" service-worker.js
+          grep -q "'./practice-scheduler.js'" service-worker.js
+          grep -q "/\\/practice-scheduler\\.js" service-worker.js
           grep -q "launch=225" service-worker.js
           ! grep -q "Finalizing Resolution" app.js
