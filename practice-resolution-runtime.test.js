@@ -89,9 +89,12 @@ for(const fixture of fixtures){
  assert.deepEqual(prioritized.plan.feasibilityErrors,[],'bounded production-priority Resolution must return no feasibility errors');
  assert.deepEqual(scheduler.validate(prioritized.plan),[],'bounded production-priority Resolution must pass the full validator');
  maxPrioritizedBuilds=Math.max(maxPrioritizedBuilds,prioritized.builds);
- // Production stops after the first safe category, so it can never execute more
- // than Block 11 + every pitcher + every catcher candidate in the source roster.
- assert.ok(prioritized.builds<=1+fixture.pitchers+fixture.catchers,'bounded Resolution search exceeded its strict category fan-out');
+ // The bounded search may exhaust all pitchers and catchers before reaching a
+ // combined Block 11 fallback. It must still remain within the exact production
+ // search envelope: Block 11 + 120m pitcher/catcher candidates + 132m
+ // pitcher/catcher candidates.
+ const strictBound=1+(fixture.pitchers+fixture.catchers)*2;
+ assert.ok(prioritized.builds<=strictBound,'bounded Resolution search exceeded its strict production fan-out');
 }
 assert.ok(maxPrioritizedBuilds>0,'bounded Resolution regression must execute real scheduler builds');
 
