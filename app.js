@@ -5993,19 +5993,19 @@ function bindPractice(){
    // Give iPhone Safari a real frame between expensive candidate builds. A zero-ms
    // timer can be coalesced and immediately re-enter JavaScript without painting.
    const yieldResolutionUI=()=>new Promise(resolve=>{
-    const resume=()=>{
-     // Crossing a paint boundary is positive proof that the Resolution transaction
-     // is alive. Invalidate any timer that WebKit may already have queued for the
-     // stage we just yielded from, then start a fresh quiet-period window before
-     // synchronous verification resumes. This prevents a stale watchdog callback
-     // from winning the event-loop race at practice-resolution-finalize on the
-     // full 13-player build.
+    // Resolution only needs to relinquish the JavaScript task; it does not read
+    // post-paint geometry. A timer task is more reliable than requestAnimationFrame
+    // on iPhone when the page is busy, transitioning, or temporarily throttled.
+    // Re-arm liveness from inside the resumed task so no watchdog owns the gap.
+    clearTimeout(buildWatchdog);buildWatchdog=null;
+    clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
+    const generation=++buildWatchdogGeneration;
+    setTimeout(()=>{
+     if(buildFinished||generation!==buildWatchdogGeneration){resolve();return}
      markBuildProgress();
-     if(!buildFinished&&String(buildWatchdogStage||'').startsWith('practice-resolution'))armBuildWatchdog(buildWatchdogStage,20000);
+     if(String(buildWatchdogStage||'').startsWith('practice-resolution'))armBuildWatchdog(buildWatchdogStage,20000);
      resolve();
-    };
-    if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(resume,0));
-    else setTimeout(resume,16);
+    },0);
    });
    // Keep the build state visible and make every long Resolution phase identifiable.
    // This also prevents a second tap from starting a competing build while the first
