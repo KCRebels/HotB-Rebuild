@@ -847,54 +847,16 @@ assert.equal(publicationSeal484(structuredClone(publication484),[value=>{value.p
 console.log('Resolution 484 publication immutability regression passed.');
 
 
-/* Resolution 485 bounded combined-search regression.
-   Production deliberately tests at most one pitcher and one catcher in the expensive
-   role + Block 11 branch. This keeps a single iPhone tap bounded while preserving
-   full verification of every option that is actually shown to the coach. */
-function boundedCombined485(players,verify){
- const attempted=[];
- const pitcher=players.find(player=>player.canPitch);
- if(pitcher){
-  attempted.push('pitcher:'+pitcher.name);
-  if(verify('pitcher',pitcher))return {attempted,choice:'pitcher:'+pitcher.name};
- }
- const catcher=players.find(player=>player.canCatch);
- if(catcher){
-  attempted.push('catcher:'+catcher.name);
-  if(verify('catcher',catcher))return {attempted,choice:'catcher:'+catcher.name};
- }
- return {attempted,choice:null};
-}
-{
- const fixture=[
-  {name:'P1',canPitch:true,canCatch:false},
-  {name:'P2',canPitch:true,canCatch:false},
-  {name:'C1',canPitch:false,canCatch:true},
-  {name:'C2',canPitch:false,canCatch:true}
- ];
- const none=boundedCombined485(fixture,()=>false);
- assert.deepEqual(none.attempted,['pitcher:P1','catcher:C1'],'combined fallback is bounded to two scheduler candidates');
- const first=boundedCombined485(fixture,(role)=>role==='pitcher');
- assert.deepEqual(first.attempted,['pitcher:P1'],'safe first pitcher stops combined search immediately');
- const catcher=boundedCombined485(fixture,(role)=>role==='catcher');
- assert.deepEqual(catcher.attempted,['pitcher:P1','catcher:C1'],'catcher is checked only after first pitcher fails');
-}
-console.log('Resolution 485 bounded combined-search regression passed.');
-
-
-/* Resolution 486 global bounded-search regression.
-   The phone path may perform no more than five candidate scheduler builds after the
-   failed base build: Block 11, one pitcher, one catcher, one combined pitcher, one
-   combined catcher. Large rosters must not increase that bound. */
-function boundedSearch486(players,{block11=false,samePitcher=false,sameCatcher=false,combinedPitcher=false,combinedCatcher=false}={}){
+/* Resolution 485/486 historical note.
+   Combined role + Block 11 speculation was first bounded, then removed entirely
+   from the setup tap by Resolution 489. Same-duration search remains bounded. */
+function boundedSearch486(players,{block11=false,samePitcher=false,sameCatcher=false}={}){
  const attempts=[];
  attempts.push('Block 11'); if(block11)return attempts;
  const pitcher=players.find(player=>player.canPitch);
  if(pitcher){attempts.push('Hitting Only: '+pitcher.name);if(samePitcher)return attempts}
  const catcher=players.find(player=>player.canCatch);
  if(catcher){attempts.push('Not Catching: '+catcher.name);if(sameCatcher)return attempts}
- if(pitcher){attempts.push('Hitting Only + Block 11: '+pitcher.name);if(combinedPitcher)return attempts}
- if(catcher){attempts.push('Not Catching + Block 11: '+catcher.name);if(combinedCatcher)return attempts}
  return attempts;
 }
 {
@@ -902,13 +864,13 @@ function boundedSearch486(players,{block11=false,samePitcher=false,sameCatcher=f
  for(let i=1;i<=20;i++)many.push({name:'P'+i,canPitch:true,canCatch:false});
  for(let i=1;i<=20;i++)many.push({name:'C'+i,canPitch:false,canCatch:true});
  const exhausted=boundedSearch486(many);
- assert.equal(exhausted.length,5,'candidate count is bounded independently of roster size');
- assert.deepEqual(exhausted,['Block 11','Hitting Only: P1','Not Catching: C1','Hitting Only + Block 11: P1','Not Catching + Block 11: C1']);
+ assert.equal(exhausted.length,3,'setup candidate count is bounded independently of roster size');
+ assert.deepEqual(exhausted,['Block 11','Hitting Only: P1','Not Catching: C1']);
  assert.deepEqual(boundedSearch486(many,{block11:true}),['Block 11'],'safe Block 11 ends search');
  assert.deepEqual(boundedSearch486(many,{samePitcher:true}),['Block 11','Hitting Only: P1'],'safe same-duration pitcher ends search');
  assert.deepEqual(boundedSearch486(many,{sameCatcher:true}),['Block 11','Hitting Only: P1','Not Catching: C1'],'safe same-duration catcher ends search');
 }
-console.log('Resolution 486 global bounded-search regression passed.');
+console.log('Resolution 486 bounded setup-search regression passed.');
 
 
 /* Resolution 487 infeasible-candidate short-circuit regression.
