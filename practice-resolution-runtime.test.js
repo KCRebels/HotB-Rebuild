@@ -794,3 +794,17 @@ console.log('Resolution 532 WebKit recovery-clone regression passed.');
  assert.match(branch,/db\.activePracticeSession=resolutionRecoveryDraft/,'publication must install the exact sealed recovery draft');
 }
 console.log('Resolution 533 post-Build persistence regression passed.');
+
+
+/* Resolution 534 Apply rollback capture regression.
+   The Apply gate must capture its rollback authority in the same JSON format as
+   persisted Practice Sessions and must not depend on WebKit structuredClone. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('const resolutionRollbackState=()=>');
+ const end=source.indexOf('const resolutionRollbackStateIsValid=',start);
+ const branch=source.slice(start,end);
+ assert.match(branch,/JSON\.stringify\(\{setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db\.activePracticeSession\}\)/,'rollback must be captured as one canonical JSON envelope');
+ assert.doesNotMatch(branch,/structuredClone\(/,'Apply rollback capture must not depend on structuredClone');
+}
+console.log('Resolution 534 Apply rollback-capture regression passed.');
