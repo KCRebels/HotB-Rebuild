@@ -218,3 +218,23 @@ const roleSpecs=[...rebels13.filter(p=>p.canPitch).map(p=>({players:rebels13.map
 assert.equal(roleSpecs.length,14,'Rebels 13-player stress shape must contain the historical fourteen role permutations');
 assert.equal(new Set(roleSpecs.map(spec=>anonymousShape(spec.players,spec.duration))).size,4,'structural candidate collapse must reduce fourteen equivalent role permutations to four scheduler proofs');
 console.log('Practice Resolution runtime verification passed; structural mobile candidate fan-out is bounded.');
+// Exercise the actual 13-player KC Rebels role shape used by the app: five
+// pitchers and two catchers, all attending. This is the phone path that previously
+// stalled during Catcher + Block 11. It must complete as a normal schedule or as a
+// strictly bounded Resolution search, and every returned plan must pass validation.
+const actualRebelsNames=['Aniesa Rohleder','Brooklyn Gering','Brynna Peter','Claire Jack','Hailey Marsh','Lakyn Farley','Lydia Copeland','Maia Waddell','Makenna Whitaker','Maleah Pena','Mattingly Hardy','Megan Ryan','Tayte Stepps'];
+const actualPitchers=new Set(['Aniesa Rohleder','Brooklyn Gering','Lakyn Farley','Makenna Whitaker','Megan Ryan']);
+const actualCatchers=new Set(['Lydia Copeland','Tayte Stepps']);
+const actualRebels=actualRebelsNames.map(name=>({name,isPitcher:actualPitchers.has(name),isCatcher:actualCatchers.has(name),canPitch:actualPitchers.has(name),requiresPitchWarmup:actualPitchers.has(name),canCatch:actualCatchers.has(name),availableFromBlock:0,availableUntilBlock:10}));
+const actualBase=scheduler.buildSchedule(actualRebels,'18:00',120);
+if(actualBase.feasibilityErrors.length){
+ const actualResolution=prioritizedResolution(actualRebels);
+ assert.ok(actualResolution.plan,'actual 13-player Rebels practice must either build normally or have a verified bounded Resolution');
+ assert.ok(actualResolution.builds<=9,'actual 13-player Rebels Resolution must remain within the mobile build bound');
+ assert.deepEqual(actualResolution.plan.feasibilityErrors,[],'actual 13-player Rebels Resolution must be feasible');
+ assert.deepEqual(scheduler.validate(actualResolution.plan),[],'actual 13-player Rebels Resolution must pass the full validator');
+}else{
+ assert.deepEqual(scheduler.validate(actualBase),[],'actual 13-player Rebels normal practice must pass the full validator');
+}
+console.log('Actual 13-player KC Rebels production-role regression passed.');
+
