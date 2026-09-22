@@ -5855,6 +5855,20 @@ function bindPractice(){
    if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(run,0));
    else setTimeout(run,16);
   };
+  const recoverPracticeBuildSetup=(stage,message=null)=>{
+   stopBuildWatchdog();
+   practicePlan=null;practiceResolution=null;modal=null;
+   const button=$('#generatePractice');
+   if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage=stage}
+   // Error recovery is also a screen publication. Defer it to a paint frame so
+   // Safari never tears down #app synchronously from the failed build turn.
+   publishPracticeBuildFrame(stage,()=>{
+    render();
+    const restored=$('#generatePractice');
+    if(restored){restored.disabled=false;restored.textContent='Build Practice Schedule';restored.dataset.buildStage=stage}
+    if(message)alert(message);
+   });
+  };
   const armBuildWatchdog=(stage,timeout=12000)=>{
    buildFinished=false;buildWatchdogStage=stage;
    const generation=++buildWatchdogGeneration;
@@ -6153,11 +6167,8 @@ function bindPractice(){
    let generatedResolutionBytes='';
    try{generatedResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not serialize the generated Practice Resolution.',error)}
    if(!generatedResolutionBytes){
-    stopBuildWatchdog();
-    practiceResolution=null;practicePlan=null;
-    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-seal-failed'}
-    alert('HotB could not seal the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
-    render();return;
+    recoverPracticeBuildSetup('practice-resolution-seal-failed','HotB could not seal the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
+    return;
    }
    // The generated decision object must pass the same complete validator used by
    // display, apply, persistence and resume before it can replace the failed build.
@@ -6168,21 +6179,18 @@ function bindPractice(){
    practiceSetupState.durationMinutes=durationMinutes;
    if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
     console.error('HotB refused to publish an internally inconsistent Practice Resolution.');
-    stopBuildWatchdog();
-    practiceResolution=null;practicePlan=null;persistPracticeDraft();
-    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-snapshot-invalid'}
-    alert('HotB could not verify the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
-    render();return;
+    persistPracticeDraft();
+    recoverPracticeBuildSetup('practice-resolution-snapshot-invalid','HotB could not verify the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
+    return;
    }
 
    if(JSON.stringify(practiceResolution)!==generatedResolutionBytes){
     console.error('HotB refused a Practice Resolution that changed before persistence.');
-    stopBuildWatchdog();
-    practiceResolution=null;practicePlan=null;persistPracticeDraft();
-    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-mutated'}
-    render();return;
+    persistPracticeDraft();
+    recoverPracticeBuildSetup('practice-resolution-mutated','HotB stopped because the verified Practice Resolution changed before it could be saved. Please build the practice again.');
+    return;
    }
-   practicePlan=null;if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');stopBuildWatchdog();practiceResolution=null;modal=null;if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-persist-failed'}render();return}
+   practicePlan=null;if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');recoverPracticeBuildSetup('practice-resolution-persist-failed','HotB could not save the verified Practice Resolution. Your practice setup was kept so you can build again.');return}
    let publishedSessionBytes='',publishedResolutionBytes='',publishedRestored=null;
    try{
     publishedSessionBytes=JSON.stringify(db.activePracticeSession);
@@ -6191,14 +6199,14 @@ function bindPractice(){
    }catch(error){console.error('HotB could not verify the published Practice Resolution recovery session.',error)}
    if(!practiceResolution||JSON.stringify(practiceResolution)!==generatedResolutionBytes||publishedResolutionBytes!==generatedResolutionBytes||!publishedSessionBytes||!publishedRestored||JSON.stringify(publishedRestored)!==publishedSessionBytes){
     console.error('HotB refused a Practice Resolution that changed during publication.');
-    stopBuildWatchdog();practiceResolution=null;modal=null;persistPracticeDraft();if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-publication-invalid'}render();return;
+    practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-publication-invalid','HotB stopped because the saved Practice Resolution did not exactly match the verified decision. Please build the practice again.');return;
    }
    // Modal publication is the final handoff from generation into coach interaction.
    // Re-prove the live snapshot after persistence/restore so no stale decision can
    // become clickable merely because its saved bytes looked correct.
    if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
     console.error('HotB refused a Practice Resolution that was stale at modal publication.');
-    stopBuildWatchdog();practiceResolution=null;modal=null;persistPracticeDraft();if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-stale'}render();return;
+    practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-stale','HotB stopped because the Practice Resolution was no longer current. Please build the practice again.');return;
    }
    setResolutionStage('practice-resolution-publish');
    await yieldResolutionUI();
