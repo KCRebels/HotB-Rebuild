@@ -376,3 +376,23 @@ for(const fixture of [base,...matrix]){
  for(const name of combined.pitcherChoices)assert.ok(fixture.some(player=>player.name===name&&player.canPitch),'combined pitcher choice must originate from an enabled pitcher');
  for(const name of combined.catcherChoices)assert.ok(fixture.some(player=>player.name===name&&player.canCatch),'combined catcher choice must originate from an enabled catcher');
 }
+
+
+/* Resolution 466 source-failure classification regression.
+   Identity/availability corruption cannot be repaired by changing pitching,
+   catching, or adding Block 11, so production must skip candidate fan-out. */
+function resolutionSourceBlocked(errors){
+ return errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(String(error||'')));
+}
+assert.equal(resolutionSourceBlocked(['Duplicate player names are not allowed.']),true);
+assert.equal(resolutionSourceBlocked(['Every attending player must have a name.']),true);
+assert.equal(resolutionSourceBlocked(['Invalid availability for Guest 1.']),true);
+assert.equal(resolutionSourceBlocked(['Need another live-capable block.']),false);
+assert.equal(resolutionSourceBlocked(['Catcher coverage is insufficient.']),false);
+function candidateCapacityFor(players,errors,duration=120){
+ if(resolutionSourceBlocked(errors))return 0;
+ const pitchers=players.filter(player=>player.canPitch),catchers=players.filter(player=>player.canCatch);
+ return (duration===120?1:0)+pitchers.length+catchers.length+(duration===120?pitchers.length+catchers.length:0);
+}
+assert.equal(candidateCapacityFor(base,['Invalid availability for Guest 1.']),0,'malformed source must schedule zero Resolution candidates');
+assert.ok(candidateCapacityFor(base,['Catcher coverage is insufficient.'])>0,'ordinary feasibility failures retain automatic Resolution search');
