@@ -5950,51 +5950,27 @@ function bindPractice(){
     if(buildFinished||generation!==buildWatchdogGeneration)return;
     const stuckButton=$('#generatePractice');
     if(!stuckButton||!stuckButton.disabled)return;
-    if(buildWatchdogProgress!==progressAtArm||buildWatchdogStage!==stageAtArm){
-     armBuildWatchdog(buildWatchdogStage,timeout);
-     return;
-    }
-    if(practicePlan&&!practicePlan.feasibilityErrors?.length){
-     console.warn('HotB build watchdog observed a completed scheduler result; waiting for publication handoff.');
-     armBuildWatchdog(stuckButton.dataset.buildStage||'practice-plan-publication-wait',timeout);
-     return;
-    }
-    // WebKit may have queued this expired timer before a healthy Resolution
-    // continuation. First timeout is only a probe; require the exact same build
-    // generation/stage/progress after another browser paint/task turn.
+    // A timeout only belongs to the exact stage/progress generation that armed it.
+    // If anything advanced, this callback is stale and must die silently.
+    if(buildWatchdogProgress!==progressAtArm||buildWatchdogStage!==stageAtArm)return;
+    // A completed feasible plan is never a scheduler stall. Publication/recovery
+    // owns the next UI transition and has its own exception handling.
+    if(practicePlan&&!practicePlan.feasibilityErrors?.length)return;
     const confirmGeneration=generation,confirmProgress=buildWatchdogProgress,confirmStage=buildWatchdogStage;
     const confirm=()=>{
      buildWatchdogConfirm=null;
      if(buildFinished||confirmGeneration!==buildWatchdogGeneration)return;
      const confirmedButton=$('#generatePractice');
      if(!confirmedButton||!confirmedButton.disabled)return;
-     if(buildWatchdogProgress!==confirmProgress||buildWatchdogStage!==confirmStage){
-      // A newer phase owns liveness now. Never let an old confirmation callback
-      // re-arm itself against the newer stage; that can manufacture a false stall.
-      return;
-     }
-     if(practicePlan&&!practicePlan.feasibilityErrors?.length){
-      armBuildWatchdog(confirmedButton.dataset.buildStage||'practice-plan-publication-wait',timeout);
-      return;
-     }
-     const confirmedStage=String(confirmedButton.dataset.buildStage||confirmStage);
-     if(confirmedStage.startsWith('practice-resolution')){
-      // Resolution deliberately crosses many browser task/paint boundaries. Safari
-      // can defer those continuations long enough for a timer to look expired even
-      // though the transaction is still owned and progressing. Never let the
-      // diagnostic watchdog terminate Resolution; refresh the quiet-period probe.
-      console.warn('HotB Resolution watchdog observed a quiet period at '+confirmedStage+'; continuing transaction.');
-      markBuildProgress();
-      armBuildWatchdog(confirmedStage,30000);
-      return;
-     }
+     if(buildWatchdogProgress!==confirmProgress||buildWatchdogStage!==confirmStage)return;
      stopBuildWatchdog();
      setPracticeBuildControlsLocked(false);
      confirmedButton.disabled=false;confirmedButton.textContent='Build Practice Schedule';
-     alert('HotB practice build stopped at '+confirmedStage+'. Please tell me this exact stage.');
+     alert('HotB practice build stopped at '+String(confirmedButton.dataset.buildStage||confirmStage)+'. Please tell me this exact stage.');
     };
-    if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{buildWatchdogConfirm=setTimeout(confirm,100)});
-    else buildWatchdogConfirm=setTimeout(confirm,150);
+    // Confirm in a later task. Do not use rAF here: a backgrounded/throttled iPhone
+    // can defer rAF and leave the Build button stranded even though timers resume.
+    buildWatchdogConfirm=setTimeout(confirm,250);
    },timeout);
   };
   armBuildWatchdog('scheduler');
