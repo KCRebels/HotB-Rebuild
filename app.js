@@ -5873,9 +5873,13 @@ function bindPractice(){
   // The build handler now has intentional async frame yields during Practice
   // Resolution. A short timer cannot distinguish those healthy yields from a stall,
   // so use an explicit stage heartbeat and only recover after a real quiet period.
-  let buildWatchdog=null,buildWatchdogStage='pre-scheduler',buildWatchdogGeneration=0,buildFinished=false,buildWatchdogProgress=0;
+  let buildWatchdog=null,buildWatchdogConfirm=null,buildWatchdogStage='pre-scheduler',buildWatchdogGeneration=0,buildFinished=false,buildWatchdogProgress=0;
   const markBuildProgress=()=>++buildWatchdogProgress;
-  const stopBuildWatchdog=()=>{buildFinished=true;buildWatchdogGeneration++;clearTimeout(buildWatchdog);buildWatchdog=null};
+  const stopBuildWatchdog=()=>{
+   buildFinished=true;buildWatchdogGeneration++;
+   clearTimeout(buildWatchdog);buildWatchdog=null;
+   clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
+  };
   const publishPracticeBuildFrame=(stage,callback)=>{
    if(buildButton)buildButton.dataset.buildStage=stage;
    const run=()=>{
@@ -5933,470 +5937,46 @@ function bindPractice(){
    const generation=++buildWatchdogGeneration,progressAtArm=buildWatchdogProgress,stageAtArm=stage;
    if(buildButton)buildButton.dataset.buildStage=stage;
    clearTimeout(buildWatchdog);
+   clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
    buildWatchdog=setTimeout(()=>{
-    // Timers already queued by WebKit can still execute after clearTimeout. Only
-    // the newest live heartbeat generation may recover the UI.
     if(buildFinished||generation!==buildWatchdogGeneration)return;
     const stuckButton=$('#generatePractice');
     if(!stuckButton||!stuckButton.disabled)return;
-    // Treat the watchdog as a true stall detector. A 13-player Resolution may
-    // legitimately take longer than one wall-clock window while still yielding
-    // frames and advancing transaction state.
     if(buildWatchdogProgress!==progressAtArm||buildWatchdogStage!==stageAtArm){
      armBuildWatchdog(buildWatchdogStage,timeout);
      return;
     }
     if(practicePlan&&!practicePlan.feasibilityErrors?.length){
-     console.warn('HotB build watchdog observed a completed scheduler result; waiting for publication handoff.');
-     armBuildWatchdog(stuckButton.dataset.buildStage||'practice-plan-publication-wait',timeout);
+     console.warn('HotB build watchdog observed a completed scheduler result; normal build handoff still owns publication.');
      return;
     }
-    stopBuildWatchdog();
-    setPracticeBuildControlsLocked(false);
-    stuckButton.disabled=false;stuckButton.textContent='Build Practice Schedule';
-    alert('HotB practice build stopped at '+String(stuckButton.dataset.buildStage||buildWatchdogStage)+'. Please tell me this exact stage.');
+    // Safari can queue an expired timer before a healthy Resolution paint/yield
+    // continuation. The first timeout is therefore only a probe. Confirm the same
+    // generation, stage, and progress after one browser paint/task turn before
+    // recovering. Any live continuation invalidates this probe automatically.
+    const confirmGeneration=generation,confirmProgress=buildWatchdogProgress,confirmStage=buildWatchdogStage;
+    const confirm=()=>{
+     buildWatchdogConfirm=null;
+     if(buildFinished||confirmGeneration!==buildWatchdogGeneration)return;
+     const confirmedButton=$('#generatePractice');
+     if(!confirmedButton||!confirmedButton.disabled)return;
+     if(buildWatchdogProgress!==confirmProgress||buildWatchdogStage!==confirmStage){
+      armBuildWatchdog(buildWatchdogStage,timeout);
+      return;
+     }
+     if(practicePlan&&!practicePlan.feasibilityErrors?.length){
+      console.warn('HotB build watchdog confirmation observed a completed scheduler result; normal build handoff still owns publication.');
+      return;
+     }
+     stopBuildWatchdog();
+     setPracticeBuildControlsLocked(false);
+     confirmedButton.disabled=false;confirmedButton.textContent='Build Practice Schedule';
+     alert('HotB practice build stopped at '+String(confirmedButton.dataset.buildStage||confirmStage)+'. Please tell me this exact stage.');
+    };
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{buildWatchdogConfirm=setTimeout(confirm,100)});
+    else buildWatchdogConfirm=setTimeout(confirm,150);
    },timeout);
   };
-  armBuildWatchdog('scheduler');
-  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});markBuildProgress();armBuildWatchdog('scheduler-returned')}catch(error){
-   console.error('HotB practice scheduler failed',error);stopBuildWatchdog();practicePlan=null;
-   setPracticeBuildControlsLocked(false);
-   // During an automatic Resolution rebuild, the outer transaction owns rollback.
-   // Preserve its token + draft authorization so the queued verifier can restore
-   // the original verified Resolution instead of mistaking this failure for stale work.
-   if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
-   if(!resolutionApplyBuild)alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));
-   return
-  }
-  armBuildWatchdog('post-scheduler');
-  if(practicePlan.feasibilityErrors?.length){
-   // The base scheduler has returned. Practice Resolution can require many additional
-   // scheduler/audit passes; the stage heartbeat below is re-armed around each
-   // intentional frame yield so Safari repaint time is never mistaken for a stall.
-   armBuildWatchdog('practice-resolution',20000);
-   // Give iPhone Safari a real frame between expensive candidate builds. A zero-ms
-   // timer can be coalesced and immediately re-enter JavaScript without painting.
-   const yieldResolutionUI=()=>new Promise(resolve=>{
-    const resume=()=>{
-     // Crossing a paint boundary is positive proof that the Resolution transaction
-     // is alive. Invalidate any timer that WebKit may already have queued for the
-     // stage we just yielded from, then start a fresh quiet-period window before
-     // synchronous verification resumes. This prevents a stale watchdog callback
-     // from winning the event-loop race at practice-resolution-finalize on the
-     // full 13-player build.
-     markBuildProgress();
-     if(!buildFinished&&String(buildWatchdogStage||'').startsWith('practice-resolution'))armBuildWatchdog(buildWatchdogStage,20000);
-     resolve();
-    };
-    if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(resume,0));
-    else setTimeout(resume,16);
-   });
-   // Keep the build state visible and make every long Resolution phase identifiable.
-   // This also prevents a second tap from starting a competing build while the first
-   // asynchronous verification transaction is still alive.
-   const setResolutionStage=stage=>{
-    const button=$('#generatePractice');
-    if(button){
-     button.disabled=true;
-     const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-finalize':'Finalizing Resolution…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Preparing Resolution…','practice-resolution-byte-seal':'Sealing Resolution…','practice-resolution-snapshot-verify':'Validating Resolution…','practice-resolution-prepersist-verify':'Checking Final Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-restore-verify':'Verifying Saved Resolution…','practice-resolution-session-seal':'Checking Saved Session…','practice-resolution-session-restore':'Restoring Saved Session…','practice-resolution-session-compare':'Comparing Saved Session…','practice-resolution-final-snapshot':'Final Resolution Check…','practice-resolution-publish':'Opening Resolution…'};
-     button.textContent=labels[stage]||'Building Practice…';
-    }
-    markBuildProgress();
-    armBuildWatchdog(stage,20000);
-   };
-   setResolutionStage('practice-resolution-start');
-   await yieldResolutionUI();
-   if(!resolutionApplyBuild&&!buildSetupStillOwned()){
-    recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was building. Nothing was committed. Please review the setup and tap Build Practice Schedule again.');
-    return;
-   }
-   // A failed automatic Resolution rebuild must not create a second Resolution on
-   // top of the coaching choice being applied. Leave transaction ownership intact;
-   // the outer verifier will see this infeasible plan and roll back atomically.
-   if(resolutionApplyBuild){
-    stopBuildWatchdog();
-    setPracticeBuildControlsLocked(false);
-    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-rebuild-infeasible'}
-    return;
-   }
-   const errors=practicePlan.feasibilityErrors.slice(),identityBlocked=errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(error)),availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
-   // Practice Resolution is intentionally stricter than the normal build path. It is rare,
-   // so every choice shown to the coach must pass both scheduler feasibility and the full
-   // rules validator before HotB is allowed to call that choice a verified solution.
-   const resolutionAuditFailures=[];
-   const resolutionPlanIsSafe=(plan,label)=>{
-    if(!plan){resolutionAuditFailures.push(label+' did not return a schedule.');return false}
-    let planBefore='';
-    try{planBefore=JSON.stringify(plan)}catch(error){resolutionAuditFailures.push(label+' returned schedule data that could not be sealed.');return false}
-    const finishSafety=result=>{
-     if(!result)return false;
-     try{return JSON.stringify(plan)===planBefore}catch(_){return false}
-    };
-    if(plan.feasibilityErrors?.length){resolutionAuditFailures.push(label+' remained infeasible: '+[...new Set(plan.feasibilityErrors.map(error=>String(error||'').trim()).filter(Boolean))].join(' | '));return false}
-    if(!Array.isArray(plan.players)||!plan.schedule||!Array.isArray(plan.times)){resolutionAuditFailures.push(label+' returned incomplete schedule data.');return false}
-    const planNames=plan.players.map(player=>player.name),planNameSet=new Set(planNames),scheduleKeys=Object.keys(plan.schedule||{}),scheduleKeySet=new Set(scheduleKeys),expectedBlocks=Number(plan.durationMinutes)===132?11:10;
-    if(planNames.length!==planNameSet.size||scheduleKeys.length!==scheduleKeySet.size||planNameSet.size!==scheduleKeySet.size||scheduleKeys.some((name,index)=>name!==planNames[index])){resolutionAuditFailures.push(label+' returned inconsistent attendee schedule ownership.');return false}
-    if(Number(plan.durationMinutes)!==120&&Number(plan.durationMinutes)!==132){resolutionAuditFailures.push(label+' returned an unsupported practice duration.');return false}
-    if(Number(plan.times.length)!==expectedBlocks){resolutionAuditFailures.push(label+' returned schedule timing that does not match its duration.');return false}
-    if(planNames.some(name=>!Array.isArray(plan.schedule[name])||plan.schedule[name].length!==expectedBlocks)){resolutionAuditFailures.push(label+' returned incomplete player block coverage.');return false}
-    // Candidate verification must prove the same exact clock contract as final
-    // Resolution commit; otherwise an option could be advertised as verified and
-    // only fail later when the coach applies it.
-    const clockMinutes=value=>{const match=String(value||'').trim().match(/^(\d{1,2}):(\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null};
-    const verifiedStart=clockMinutes(plan.startTime);
-    if(verifiedStart===null||!plan.times.every((time,index)=>time&&Number(time.block)===index+1&&clockMinutes(time.start)===(verifiedStart+index*12)%(24*60)&&clockMinutes(time.end)===(verifiedStart+(index+1)*12)%(24*60))){resolutionAuditFailures.push(label+' returned an invalid block clock.');return false}
-    try{
-     const audit=window.HotBPracticeScheduler.validate(plan);
-     if(!Array.isArray(audit)){resolutionAuditFailures.push(label+' returned an invalid safety audit.');return false}
-     if(audit.length){resolutionAuditFailures.push(label+' failed the safety audit: '+[...new Set(audit.map(error=>String(error||'').trim()).filter(Boolean))].join(' | '));return false}
-     if(!finishSafety(true)){resolutionAuditFailures.push(label+' changed during its safety audit.');return false}
-     return true;
-    }catch(error){
-     console.error('HotB Practice Resolution audit failed',label,error);
-     resolutionAuditFailures.push(label+' could not complete the safety audit.');
-     return false;
-    }
-   };
-   const verifiedCandidateNotices={};
-   const verifyResolutionBuild=(players,duration,label,expectedChange=null)=>{
-    try{
-     // Candidate verification must be observational. The production scheduler may
-     // evolve, so never let a verification build mutate the sealed failed-practice
-     // player objects that later candidates, rollback, and signatures depend on.
-     let sourceBefore='';
-     try{sourceBefore=JSON.stringify({practicePlayers,players})}catch(error){resolutionAuditFailures.push(label+' source data could not be sealed before verification.');return false}
-     const buildPlayers=structuredClone(players);
-     const plan=window.HotBPracticeScheduler.buildSchedule(buildPlayers,startTime,duration,{noPitchersMode:null});
-     if(JSON.stringify({practicePlayers,players})!==sourceBefore){resolutionAuditFailures.push(label+' mutated sealed candidate source data during verification.');return false}
-     if(!resolutionPlanIsSafe(plan,label))return false;
-     if(JSON.stringify({practicePlayers,players})!==sourceBefore){resolutionAuditFailures.push(label+' mutated sealed candidate source data during safety audit.');return false}
-     const candidateNotices=[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort();
-     const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
-     const candidateBlockCount=Number(duration)===132?11:Number(duration)===120?10:0;
-     // Combined role + Block 11 candidates must be compared with the already
-     // verified 132-minute availability extension. Otherwise every player whose
-     // availability legitimately reaches Block 11 is falsely counted as a role
-     // mutation and the combined solution can never verify.
-     const comparisonPlayers=expectedChange&&Number(duration)===132&&Number(durationMinutes)===120?practiceResolutionExtendedPlayers(practicePlayers,startTime):practicePlayers;
-     const baselineBlockCount=Number(duration)===132?11:10;
-     if(comparisonPlayers.length!==practicePlayers.length||comparisonPlayers.some(player=>!Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>baselineBlockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock))){
-      resolutionAuditFailures.push(label+' could not verify its comparison baseline.');return false;
-     }
-     const baselineByName=new Map(comparisonPlayers.map(player=>[player.name,player]));
-     const changedNames=players.filter(player=>{
-      const base=baselineByName.get(player.name);
-      return !base||player.canPitch!==base.canPitch||player.requiresPitchWarmup!==base.requiresPitchWarmup||player.canCatch!==base.canCatch||
-       player.availableFromBlock!==base.availableFromBlock||player.availableUntilBlock!==base.availableUntilBlock||
-       player.arrivalTime!==base.arrivalTime||player.departureTime!==base.departureTime||player.limitations!==base.limitations||
-       player.prePracticeComplete!==base.prePracticeComplete||player.isPitcher!==base.isPitcher||player.isCatcher!==base.isCatcher||player.isGuest!==base.isGuest;
-     }).map(player=>player.name);
-     if(!candidateBlockCount||!Array.isArray(players)||!players.length||!players.every(player=>{
-      if(!player||String(player.name||'').trim()!==String(player.name||'')||!String(player.name||'').length)return false;
-      if(typeof player.isPitcher!=='boolean'||typeof player.isCatcher!=='boolean'||typeof player.isGuest!=='boolean'||typeof player.prePracticeComplete!=='boolean')return false;
-      if(!Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>candidateBlockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock))return false;
-      if(typeof player.arrivalTime!=='string'||typeof player.departureTime!=='string'||typeof player.limitations!=='string'||player.limitations.trim()!==player.limitations)return false;
-      if(typeof player.canPitch!=='boolean'||typeof player.requiresPitchWarmup!=='boolean'||typeof player.canCatch!=='boolean')return false;
-      if(!player.isPitcher&&(player.canPitch||player.requiresPitchWarmup))return false;
-      if(!player.isCatcher&&player.canCatch)return false;
-      if(!player.canPitch&&player.requiresPitchWarmup)return false;
-      const availability=practiceAvailability(startTime,duration,player.arrivalTime,player.departureTime);
-      return Number(player.availableFromBlock)===Number(availability.availableFromBlock)&&Number(player.availableUntilBlock)===Number(availability.availableUntilBlock);
-     })){resolutionAuditFailures.push(label+' received malformed or internally inconsistent candidate player data.');return false}
-     if(expectedNames.length!==new Set(expectedNames).size||actualNames.length!==new Set(actualNames).size||expectedNames.length!==actualNames.length||actualNames.some((name,index)=>name!==expectedNames[index])){resolutionAuditFailures.push(label+' changed the verified attendee order.');return false}
-     if(String(plan.startTime||'')!==String(startTime)||Number(plan.durationMinutes)!==Number(duration)){resolutionAuditFailures.push(label+' changed verified practice timing.');return false}
-     for(let playerIndex=0;playerIndex<players.length;playerIndex++){
-      const expectedPlayer=players[playerIndex],actualPlayer=(plan.players||[])[playerIndex];
-      if(actualPlayer?.name!==expectedPlayer.name){resolutionAuditFailures.push(label+' changed verified player ordering during candidate generation.');return false}
-      if(!actualPlayer||Number(actualPlayer.availableFromBlock)!==Number(expectedPlayer.availableFromBlock)||Number(actualPlayer.availableUntilBlock)!==Number(expectedPlayer.availableUntilBlock)||String(actualPlayer.arrivalTime||'')!==String(expectedPlayer.arrivalTime||'')||String(actualPlayer.departureTime||'')!==String(expectedPlayer.departureTime||'')||String(actualPlayer.limitations||'')!==String(expectedPlayer.limitations||'')){resolutionAuditFailures.push(label+' changed verified player availability or limitations.');return false}
-      if(actualPlayer.canPitch!==expectedPlayer.canPitch||actualPlayer.requiresPitchWarmup!==expectedPlayer.requiresPitchWarmup||actualPlayer.canCatch!==expectedPlayer.canCatch||actualPlayer.prePracticeComplete!==expectedPlayer.prePracticeComplete||actualPlayer.isPitcher!==expectedPlayer.isPitcher||actualPlayer.isCatcher!==expectedPlayer.isCatcher||actualPlayer.isGuest!==expectedPlayer.isGuest){resolutionAuditFailures.push(label+' changed verified player role or practice identity state.');return false}
-     }
-     if(expectedChange?.role&&expectedChange?.name){
-      // A role Resolution may alter exactly one verified player and exactly the
-      // approved role fields. For combined Block 11 options the comparison baseline
-      // already includes only the legitimate availability extension above.
-      if(changedNames.length!==1||changedNames[0]!==expectedChange.name){resolutionAuditFailures.push(label+' changed state outside the approved player.');return false}
-      const changed=(plan.players||[]).find(player=>player.name===expectedChange.name),base=baselineByName.get(expectedChange.name);
-      if(!changed||!base)return false;
-      // The generated plan must preserve the candidate input exactly; role proof is
-      // against the correct 10- or 11-block baseline, never against mutable setup.
-      const candidate=players.find(player=>player.name===expectedChange.name);
-      if(!candidate||changed.canPitch!==candidate.canPitch||changed.requiresPitchWarmup!==candidate.requiresPitchWarmup||changed.canCatch!==candidate.canCatch)return false;
-      if(expectedChange.role==='pitcher'){
-       if(base.canPitch!==true||changed.canPitch!==false||changed.requiresPitchWarmup!==false||changed.canCatch!==base.canCatch)return false;
-      }else if(expectedChange.role==='catcher'){
-       if(base.canCatch!==true||changed.canCatch!==false||changed.canPitch!==base.canPitch||changed.requiresPitchWarmup!==base.requiresPitchWarmup)return false;
-      }else return false;
-     }else if(Number(duration)===Number(durationMinutes)){
-      // A same-duration candidate with no declared coaching change must be
-      // byte-for-byte equivalent in player state to the failed base attempt.
-      if(changedNames.length){resolutionAuditFailures.push(label+' contained an undeclared player-state change.');return false}
-     }else{
-      // Block 11 is the only duration-only Resolution. It may extend availability
-      // only for players who were present through the original practice end.
-      if(Number(duration)!==132||Number(durationMinutes)!==120)return false;
-      const extended=practiceResolutionExtendedPlayers(practicePlayers,startTime);
-      if(extended.length!==practicePlayers.length||extended.some(player=>Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)<0)){resolutionAuditFailures.push(label+' could not verify the Block 11 extension baseline.');return false}
-      const extendedByName=new Map(extended.map(player=>[player.name,player]));
-      if(players.some(player=>{
-       const expected=extendedByName.get(player.name);
-       return !expected||player.availableFromBlock!==expected.availableFromBlock||player.availableUntilBlock!==expected.availableUntilBlock||
-        player.arrivalTime!==expected.arrivalTime||player.departureTime!==expected.departureTime||player.limitations!==expected.limitations||
-        player.canPitch!==expected.canPitch||player.requiresPitchWarmup!==expected.requiresPitchWarmup||player.canCatch!==expected.canCatch||
-        player.prePracticeComplete!==expected.prePracticeComplete||player.isPitcher!==expected.isPitcher||player.isCatcher!==expected.isCatcher||player.isGuest!==expected.isGuest;
-      })){resolutionAuditFailures.push(label+' changed player state beyond the verified Block 11 extension.');return false}
-     }
-     // Publish candidate metadata only after every identity/availability/role proof
-     // above succeeds. A failed candidate must leave no residue that can later be
-     // mistaken for a verified coaching choice.
-     if(JSON.stringify({practicePlayers,players})!==sourceBefore){resolutionAuditFailures.push(label+' changed sealed candidate source data before publication.');return false}
-     let candidateEvidence='';
-     try{candidateEvidence=JSON.stringify(candidateNotices)}catch(error){resolutionAuditFailures.push(label+' notice evidence could not be sealed.');return false}
-     verifiedCandidateNotices[label]=candidateNotices;
-     if(JSON.stringify(verifiedCandidateNotices[label])!==candidateEvidence||JSON.stringify({practicePlayers,players})!==sourceBefore){
-      delete verifiedCandidateNotices[label];
-      resolutionAuditFailures.push(label+' changed while publishing verified candidate evidence.');
-      return false;
-     }
-     return true;
-    }catch(error){
-     console.error('HotB Practice Resolution build failed',label,error);
-     resolutionAuditFailures.push(label+' could not complete the verification build.');
-     return false;
-    }
-   };
-   // Cache verification by the complete candidate input. The same combined
-   // Block 11 candidate can be reached through more than one Resolution branch;
-   // iPhone should never pay for an identical full scheduler + rules audit twice.
-   const resolutionVerificationCache=new Map();
-   const verifyResolutionCandidate=(players,candidateDuration,label,expectedChange=null)=>{
-    let key='';
-    try{key=JSON.stringify({players,duration:candidateDuration,expectedChange})}
-    catch(error){resolutionAuditFailures.push(label+' could not seal its verification cache key.');return false}
-    if(resolutionVerificationCache.has(key)){
-     markBuildProgress();
-     const cached=resolutionVerificationCache.get(key);
-     if(cached?.notices){
-      try{verifiedCandidateNotices[label]=structuredClone(cached.notices)}
-      catch(error){
-       resolutionAuditFailures.push(label+' cached notice evidence could not be cloned.');
-       return false;
-      }
-     }
-     return cached?.safe===true;
-    }
-    const safe=verifyResolutionBuild(players,candidateDuration,label,expectedChange);
-    markBuildProgress();
-    let notices=null;
-    if(safe&&verifiedCandidateNotices[label]){
-     try{notices=structuredClone(verifiedCandidateNotices[label])}
-     catch(error){
-      resolutionAuditFailures.push(label+' verified notice evidence could not be cached safely.');
-      delete verifiedCandidateNotices[label];
-      resolutionVerificationCache.set(key,{safe:false,notices:null});
-      return false;
-     }
-    }
-    resolutionVerificationCache.set(key,{safe,notices});
-    return safe;
-   };
-   // Only offer a pitcher decision after proving that exact one-practice change builds cleanly.
-   for(const pitcher of availablePitchers){
-    setResolutionStage('practice-resolution-pitcher');
-    await yieldResolutionUI();
-    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
-    const testPlayers=practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-    if(verifyResolutionCandidate(testPlayers,durationMinutes,'Hitting Only: '+pitcher.name,{role:'pitcher',name:pitcher.name}))solvingPitchers.push(pitcher.name)
-   }
-   let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
-   const availableCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
-   for(const catcher of availableCatchers){
-    setResolutionStage('practice-resolution-catcher');
-    await yieldResolutionUI();
-    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
-    const testPlayers=practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-    if(verifyResolutionCandidate(testPlayers,durationMinutes,'Not Catching: '+catcher.name,{role:'catcher',name:catcher.name}))solvingCatchers.push(catcher.name)
-   }
-   if(!identityBlocked&&Number(durationMinutes)===120){
-    // Block 11 extends only players who were actually available through the end
-    // of the original 120-minute practice. Explicit departures remain protected.
-    const extendedPlayers=practiceResolutionExtendedPlayers(practicePlayers,startTime);
-    // The extension helper marks any production-availability disagreement invalid.
-    // Do not fan out combined candidates from a poisoned Block 11 baseline.
-    const extensionBaselineValid=extendedPlayers.length===practicePlayers.length&&extendedPlayers.every(player=>Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=11&&Number(player.availableFromBlock)<Number(player.availableUntilBlock));
-    if(extensionBaselineValid){setResolutionStage('practice-resolution-block11');await yieldResolutionUI();if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Block 11. Nothing was committed. Please review the setup and build again.');return}}
-    canExtend=extensionBaselineValid&&verifyResolutionCandidate(extendedPlayers,132,'Block 11');
-    if(!extensionBaselineValid)resolutionAuditFailures.push('Block 11 availability could not be verified against the production availability rules.');
-    if(!canExtend&&extensionBaselineValid){
-     for(const pitcher of extendedPlayers.filter(player=>player.canPitch&&!solvingPitchers.includes(player.name))){
-      setResolutionStage('practice-resolution-pitcher-block11');
-      await yieldResolutionUI();
-      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
-      const label='Hitting Only + Block 11: '+pitcher.name,testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-      if(verifyResolutionCandidate(testPlayers,132,label,{role:'pitcher',name:pitcher.name}))combinedPitchers.push(pitcher.name);
-     }
-     for(const catcher of extendedPlayers.filter(player=>player.canCatch&&!solvingCatchers.includes(player.name))){
-      setResolutionStage('practice-resolution-catcher-block11');
-      await yieldResolutionUI();
-      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
-      const label='Not Catching + Block 11: '+catcher.name,testPlayers=extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-      if(verifyResolutionCandidate(testPlayers,132,label,{role:'catcher',name:catcher.name}))combinedCatchers.push(catcher.name);
-     }
-    }
-   }
-   setResolutionStage('practice-resolution-finalize');
-   await yieldResolutionUI();
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be finalized. Nothing was committed. Please review the setup and build again.');return}
-   // Finalization used to hold one 20-second heartbeat across every evidence
-   // cleanup/seal operation. On the 13-player path Safari can queue that watchdog
-   // while the work is still legitimately progressing. Split finalization into
-   // observable frame-sized phases and refresh ownership between them.
-   solvingPitchers=[...new Set(solvingPitchers)].sort();
-   solvingCatchers=[...new Set(solvingCatchers)].sort();
-   combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
-   combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
-   setResolutionStage('practice-resolution-evidence');
-   await yieldResolutionUI();
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was finalizing Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
-   const survivingCandidateLabels=new Set([
-    ...solvingPitchers.map(name=>'Hitting Only: '+name),
-    ...solvingCatchers.map(name=>'Not Catching: '+name),
-    ...(canExtend?['Block 11']:[]),
-    ...combinedPitchers.map(name=>'Hitting Only + Block 11: '+name),
-    ...combinedCatchers.map(name=>'Not Catching + Block 11: '+name)
-   ]);
-   for(const label of Object.keys(verifiedCandidateNotices)){if(!survivingCandidateLabels.has(label))delete verifiedCandidateNotices[label]}
-   const candidateEvidenceComplete=[...survivingCandidateLabels].every(label=>Object.prototype.hasOwnProperty.call(verifiedCandidateNotices,label)&&Array.isArray(verifiedCandidateNotices[label]))&&Object.keys(verifiedCandidateNotices).length===survivingCandidateLabels.size;
-   let finalCandidateEvidence='';
-   try{finalCandidateEvidence=JSON.stringify(verifiedCandidateNotices)}catch(error){resolutionAuditFailures.push('Practice Resolution candidate evidence could not be sealed after final filtering.')}
-   if(!candidateEvidenceComplete||!finalCandidateEvidence){
-    resolutionAuditFailures.push('Practice Resolution candidate evidence did not match the final verified choices.');
-    solvingPitchers=[];solvingCatchers=[];canExtend=false;combinedPitchers=[];combinedCatchers=[];
-    for(const label of Object.keys(verifiedCandidateNotices))delete verifiedCandidateNotices[label];
-   }
-   setResolutionStage('practice-resolution-evidence-complete');
-   await yieldResolutionUI();
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed after HotB finalized Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
-   const hasVerifiedResolution=!!(solvingPitchers.length||solvingCatchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
-   // Final sealing/persistence/restore verification is expensive enough to block a
-   // mobile paint. Give Safari a frame after candidate fan-out before entering the
-   // publication transaction, then re-prove that the owned setup did not change.
-   setResolutionStage('practice-resolution-seal');
-   await yieldResolutionUI();
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be sealed. Nothing was committed. Please review the setup and build again.');return}
-   const rosterGuidance=identityBlocked?'HotB found attendee identity or availability information that must be corrected before resolution. Fix the roster/guest or arrival/departure entry and build again; HotB will not guess or silently normalize it.':resolutionAuditFailures.length&&!hasVerifiedResolution?'HotB could not verify a safe automatic resolution because one or more verification builds/audits did not complete. Change attendance or availability, or build again after correcting the reported verification problem.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
-   const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
-   const cleanResolutionText=value=>String(value??'').trim();
-   const cleanResolutionList=values=>[...new Set((Array.isArray(values)?values:[]).map(cleanResolutionText).filter(Boolean))].sort();
-   practiceResolution={
-    errors:cleanResolutionList(errors),
-    pitchers:solvingPitchers,catchers:solvingCatchers,canExtend,combinedPitchers,combinedCatchers,rosterGuidance,
-    practicePlayers,startTime,durationMinutes,noPitchersMode,
-    notices:cleanResolutionList(practicePlan.fallbackWarnings),
-    auditFailures:cleanResolutionList(resolutionAuditFailures),
-    candidateNotices:Object.fromEntries(Object.entries(verifiedCandidateNotices).sort(([a],[b])=>a.localeCompare(b)).map(([key,value])=>[key,cleanResolutionList(value)])),
-    signature:resolutionSignature,
-    decisionSignature:''
-   };
-   // Persist a second seal over the verified alternatives themselves. A restored
-   // Resolution cannot add, remove, or swap a coaching choice without invalidating
-   // the transaction and forcing a fresh verification build.
-   practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
-   // Split byte sealing from the complete snapshot validator. The 13-player object
-   // is intentionally large and both operations walk it; doing both under one
-   // heartbeat can make a healthy iPhone build look stranded.
-   setResolutionStage('practice-resolution-byte-seal');
-   await yieldResolutionUI();
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be sealed. Nothing was committed. Please review the setup and build again.');return}
-   let generatedResolutionBytes='';
-   try{generatedResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not serialize the generated Practice Resolution.',error)}
-   if(!generatedResolutionBytes){
-    recoverPracticeBuildSetup('practice-resolution-seal-failed','HotB could not seal the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
-    return;
-   }
-   setResolutionStage('practice-resolution-snapshot-verify');
-   await yieldResolutionUI();
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution snapshot verification. Nothing was committed. Please review the setup and build again.');return}
-   practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
-   practiceSetupState.startTime=startTime;
-   practiceSetupState.durationMinutes=durationMinutes;
-   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
-    console.error('HotB refused to publish an internally inconsistent Practice Resolution.');
-    persistPracticeDraft();
-    recoverPracticeBuildSetup('practice-resolution-snapshot-invalid','HotB could not verify the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
-    return;
-   }
-   setResolutionStage('practice-resolution-prepersist-verify');
-   await yieldResolutionUI();
-   if(JSON.stringify(practiceResolution)!==generatedResolutionBytes){
-    console.error('HotB refused a Practice Resolution that changed before persistence.');
-    persistPracticeDraft();
-    recoverPracticeBuildSetup('practice-resolution-mutated','HotB stopped because the verified Practice Resolution changed before it could be saved. Please build the practice again.');
-    return;
-   }
-   setResolutionStage('practice-resolution-persist');
-   await yieldResolutionUI();
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be saved. Nothing was committed. Please review the setup and build again.');return}
-   practicePlan=null;if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');recoverPracticeBuildSetup('practice-resolution-persist-failed','HotB could not save the verified Practice Resolution. Your practice setup was kept so you can build again.');return}
-   setResolutionStage('practice-resolution-session-seal');
-   await yieldResolutionUI();
-   let publishedSessionBytes='',publishedResolutionBytes='';
-   try{
-    publishedSessionBytes=JSON.stringify(db.activePracticeSession);
-    publishedResolutionBytes=JSON.stringify(db.activePracticeSession?.resolution);
-   }catch(error){console.error('HotB could not seal the published Practice Resolution recovery session.',error)}
-   if(!publishedSessionBytes||publishedResolutionBytes!==generatedResolutionBytes){
-    console.error('HotB refused Practice Resolution persistence bytes that did not match the verified decision.');
-    practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-publication-invalid','HotB stopped because the saved Practice Resolution did not exactly match the verified decision. Please build the practice again.');return;
-   }
-   setResolutionStage('practice-resolution-session-restore');
-   await yieldResolutionUI();
-   let publishedRestored=null;
-   try{publishedRestored=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
-   catch(error){console.error('HotB could not restore the published Practice Resolution recovery session.',error)}
-   setResolutionStage('practice-resolution-session-compare');
-   await yieldResolutionUI();
-   let restoredSessionBytes='';
-   try{restoredSessionBytes=publishedRestored?JSON.stringify(publishedRestored):''}catch(error){console.error('HotB could not seal the restored Practice Resolution session.',error)}
-   if(!practiceResolution||JSON.stringify(practiceResolution)!==generatedResolutionBytes||!publishedRestored||restoredSessionBytes!==publishedSessionBytes){
-    console.error('HotB refused a Practice Resolution that changed during publication.');
-    practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-publication-invalid','HotB stopped because the saved Practice Resolution did not exactly match the verified decision. Please build the practice again.');return;
-   }
-   if(!buildSetupStillOwned()){
-    recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed during Practice Resolution publication verification. Nothing was committed. Please review the setup and build again.');
-    return;
-   }
-   setResolutionStage('practice-resolution-final-snapshot');
-   await yieldResolutionUI();
-   if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
-    console.error('HotB refused a Practice Resolution that was stale at modal publication.');
-    practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-stale','HotB stopped because the Practice Resolution was no longer current. Please build the practice again.');return;
-   }
-   setResolutionStage('practice-resolution-publish');
-   await yieldResolutionUI();
-   // The last yield is itself an asynchronous boundary. Re-prove both setup
-   // ownership and the exact verified Resolution bytes immediately before exposing
-   // any coaching choice. This closes the final gap between validation and render.
-   if(!buildSetupStillOwned()||JSON.stringify(practiceResolution)!==generatedResolutionBytes){
-    recoverPracticeBuildSetup('practice-resolution-prepublish-changed','HotB stopped because the verified Practice Resolution changed immediately before it could open. Please build the practice again.');
-    return;
-   }
-   modal='practiceResolution';
-   publishPracticeBuildFrame('practice-resolution-publish',()=>{
-    // Do not unlock setup controls until the Resolution DOM has rendered
-    // successfully. If render throws, the publication helper owns recovery.
-    render();
-    setPracticeBuildControlsLocked(false);
-    stopBuildWatchdog();
-    window.scrollTo(0,0);
-   });
-   return;
-  }
-  if(practicePlan.fallbackWarnings?.length){
-   practicePlan.buildNotices=practicePlan.fallbackWarnings.slice();
-  }
-  // A rebuilt Resolution must retain the same draft identity for the entire
-  // apply transaction. Ordinary builds get a fresh identity; Resolution rebuilds
-  // reuse the verified expected identity assigned before the automatic Build click.
   const resolutionBuildDraftId=practiceResolutionApplyDraftId;
   // All Resolution transaction identities must agree before the generated plan is
   // allowed to inherit the verified draft ID. This catches partial cleanup or a
