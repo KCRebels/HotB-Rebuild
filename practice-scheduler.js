@@ -284,6 +284,15 @@
     players.forEach((player,playerIndex)=>{if(eligible(player,slot,index,[]))mask|=(1<<playerIndex)});
     return mask>>>0;
    });
+   // Resolution 502: exact-cover search must have a hard work ceiling. The
+   // Front-Toss -> Machine continuation can otherwise enumerate a combinatorial
+   // number of valid Front Toss covers when availability is fragmented (late/early
+   // players), monopolizing iPhone's main thread before Practice Resolution can
+   // publish. A capped search is allowed to fail conservatively; it is never allowed
+   // to freeze the coach UI.
+   const SEARCH_NODE_LIMIT=12000;
+   let searchNodes=0,searchCapped=false;
+   const consumeSearchNode=()=>{searchNodes++;if(searchNodes>SEARCH_NODE_LIMIT){searchCapped=true;return false}return true};
    const fullMask=((1<<count)-1)>>>0,memo=new Set();
    const popcount=value=>{let n=value>>>0,c=0;while(n){n&=n-1;c++}return c};
    const combinations=(mask,size)=>{
@@ -293,6 +302,7 @@
     choose(0,size,0);return out;
    };
    const search=(remaining,usedSlots,fourUsed)=>{
+    if(!consumeSearchNode())return null;
     if(!remaining)return [];
     const key=remaining+'|'+usedSlots+'|'+(fourUsed?1:0);if(memo.has(key))return null;
     // Pick the most constrained remaining player. Slots are independent station
@@ -333,6 +343,7 @@
    // same bounded exact-cover tree while pruning rejected complete leaves.
    memo.clear();
    const searchAccepted=(remaining,usedSlots,fourUsed)=>{
+    if(!consumeSearchNode())return null;
     if(remaining===0){const value=current.slice();return acceptSolution(materialize(value))?value:null}
     const key=remaining+'|'+usedSlots+'|'+(fourUsed?1:0);if(memo.has(key))return null;
     let anchor=-1,anchorSlots=null;
