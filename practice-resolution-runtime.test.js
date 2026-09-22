@@ -684,3 +684,19 @@ console.log('Cooperative verified coaching-option regression passed.');
  assert.doesNotMatch(publish,/practiceResolution=null/,'a render failure must not destroy the already-verified Resolution evidence');
 }
 console.log('Resolution 526 atomic publication regression passed.');
+
+
+/* Resolution 527 render-purity regression.
+   Rendering an already-authorized decision must not call the live-state validator
+   or clear the transaction while app.innerHTML is being composed. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf("if(modal==='practiceResolution'){",source.indexOf('function modalView()'));
+ const end=source.indexOf("if(modal==='recoveryGuide')",start);
+ assert.ok(start>=0&&end>start,'Practice Resolution modal branch must exist');
+ const branch=source.slice(start,end);
+ assert.doesNotMatch(branch,/practiceResolutionSnapshotIsCurrentAndValid/,'modal rendering must not revalidate live Resolution state');
+ assert.doesNotMatch(branch,/practiceResolution=null/,'modal rendering must not revoke the verified transaction');
+ assert.match(branch,/return practiceResolutionModal\(\)/,'authorized Resolution renders as a pure consumer');
+}
+console.log('Resolution 527 render-purity regression passed.');
