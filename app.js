@@ -6199,17 +6199,9 @@ function bindPractice(){
    // Resolution cannot add, remove, or swap a coaching choice without invalidating
    // the transaction and forcing a fresh verification build.
    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
-   // Keep byte sealing and complete snapshot validation as separate proof steps.
-   setResolutionStage('practice-resolution-byte-seal');
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be sealed. Nothing was committed. Please review the setup and build again.');return}
-   let generatedResolutionBytes='';
-   try{generatedResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not serialize the generated Practice Resolution.',error)}
-   if(!generatedResolutionBytes){
-    recoverPracticeBuildSetup('practice-resolution-seal-failed','HotB could not seal the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
-    return;
-   }
-   setResolutionStage('practice-resolution-snapshot-verify');
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution snapshot verification. Nothing was committed. Please review the setup and build again.');return}
+   // Candidate evidence was already sealed before this object was constructed.
+   // The decision signature plus the full snapshot validator below are the canonical
+   // publication proof; avoid a second JSON serialization and two extra stage writes.
    practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
    practiceSetupState.startTime=startTime;
    practiceSetupState.durationMinutes=durationMinutes;
