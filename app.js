@@ -5873,9 +5873,7 @@ function bindPractice(){
   // The build handler runs synchronously through Practice Resolution and publication.
   // Resolution. A short timer cannot distinguish those healthy yields from a stall,
   // so use an explicit stage heartbeat and only recover after a real quiet period.
-  let buildWatchdogStage='pre-scheduler',buildFinished=false,buildWatchdogProgress=0;
-  const markBuildProgress=()=>++buildWatchdogProgress;
-  const stopBuildWatchdog=()=>{buildFinished=true};
+  let buildStage='pre-scheduler';
   // A completed build publishes synchronously. render() does not require painted
   // geometry, so deferring through rAF/timers only creates another iPhone Safari
   // continuation that can be throttled or stranded after all scheduler work is done.
@@ -5885,12 +5883,12 @@ function bindPractice(){
    const publicationGeneration=++buildPublicationGeneration;
    if(buildButton)buildButton.dataset.buildStage=stage;
    if(publicationGeneration!==buildPublicationGeneration)return;
-   markBuildProgress();
+   
    try{callback()}
    catch(error){
     if(publicationGeneration!==buildPublicationGeneration)return;
     console.error('HotB practice build publication failed at '+stage,error);
-    stopBuildWatchdog();
+    
     setPracticeBuildControlsLocked(false);
     const button=$('#generatePractice');
     if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage=stage+'-failed'}
@@ -5899,7 +5897,7 @@ function bindPractice(){
    }
   };
   const recoverPracticeBuildSetup=(stage,message=null)=>{
-   stopBuildWatchdog();
+   
    practicePlan=null;practiceResolution=null;modal=null;
    setPracticeBuildControlsLocked(false);
    const button=$('#generatePractice');
@@ -5931,16 +5929,16 @@ function bindPractice(){
    });
   };
   setPracticeBuildControlsLocked(true);
-  buildWatchdogStage='scheduler';
+  buildStage='scheduler';
   if(buildButton)buildButton.dataset.buildStage='scheduler';
-  markBuildProgress();
+  
   try{
    practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});
-   markBuildProgress();
-   buildWatchdogStage='post-scheduler';
+   
+   buildStage='post-scheduler';
    if(buildButton)buildButton.dataset.buildStage='post-scheduler';
   }catch(error){
-   console.error('HotB practice scheduler failed',error);stopBuildWatchdog();practicePlan=null;
+   console.error('HotB practice scheduler failed',error);practicePlan=null;
    setPracticeBuildControlsLocked(false);
    // During an automatic Resolution rebuild, the outer transaction owns rollback.
    // Preserve its token + draft authorization so the queued verifier can restore
@@ -5954,7 +5952,7 @@ function bindPractice(){
    // verified transaction. Retire the initial scheduler watchdog before entering it;
    // watchdog before entering it; Resolution itself no longer uses wall-clock
    // timers, eliminating false iPhone stalls during legitimate candidate work.
-   buildWatchdogStage='practice-resolution';
+   buildStage='practice-resolution';
    // Keep the build state visible and make every long Resolution phase identifiable.
    // This also keeps the Build control locked throughout the verification transaction.
    const setResolutionStage=stage=>{
@@ -5964,8 +5962,8 @@ function bindPractice(){
      const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Preparing Resolution…','practice-resolution-byte-seal':'Sealing Resolution…','practice-resolution-snapshot-verify':'Validating Resolution…','practice-resolution-prepersist-verify':'Checking Final Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-restore-verify':'Verifying Saved Resolution…','practice-resolution-session-seal':'Checking Saved Session…','practice-resolution-session-restore':'Restoring Saved Session…','practice-resolution-session-compare':'Comparing Saved Session…','practice-resolution-final-snapshot':'Final Resolution Check…','practice-resolution-publish':'Opening Resolution…'};
      button.textContent=labels[stage]||'Building Practice…';
     }
-    markBuildProgress();
-    buildWatchdogStage=stage;
+    
+    buildStage=stage;
    };
    setResolutionStage('practice-resolution-start');
    if(!resolutionApplyBuild&&!buildSetupStillOwned()){
@@ -5976,7 +5974,7 @@ function bindPractice(){
    // top of the coaching choice being applied. Leave transaction ownership intact;
    // the outer verifier will see this infeasible plan and roll back atomically.
    if(resolutionApplyBuild){
-    stopBuildWatchdog();
+    
     setPracticeBuildControlsLocked(false);
     if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-rebuild-infeasible'}
     return;
@@ -6135,7 +6133,7 @@ function bindPractice(){
     try{key=JSON.stringify({players,duration:candidateDuration,expectedChange})}
     catch(error){resolutionAuditFailures.push(label+' could not seal its verification cache key.');return false}
     if(resolutionVerificationCache.has(key)){
-     markBuildProgress();
+     
      const cached=resolutionVerificationCache.get(key);
      if(cached?.notices){
       try{verifiedCandidateNotices[label]=structuredClone(cached.notices)}
@@ -6147,7 +6145,7 @@ function bindPractice(){
      return cached?.safe===true;
     }
     const safe=verifyResolutionBuild(players,candidateDuration,label,expectedChange);
-    markBuildProgress();
+    
     let notices=null;
     if(safe&&verifiedCandidateNotices[label]){
      try{notices=structuredClone(verifiedCandidateNotices[label])}
@@ -6171,7 +6169,7 @@ function bindPractice(){
      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed',ownershipMessage);return false}
      const candidate=candidates[index],spec=buildCandidate(candidate);
      if(verifyResolutionCandidate(spec.players,spec.duration,spec.label,spec.expectedChange))onSafe(candidate,spec);
-     markBuildProgress();
+     
     }
     return true;
    };
@@ -6219,8 +6217,8 @@ function bindPractice(){
    }
    // Candidate fan-out is complete. Enter evidence finalization synchronously;
    // there is no intermediate Finalizing Resolution state.
-   buildWatchdogStage='practice-resolution-evidence';
-   markBuildProgress();
+   buildStage='practice-resolution-evidence';
+   
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be finalized. Nothing was committed. Please review the setup and build again.');return}
    // Finalization is intentionally tiny and synchronous. Normalize the verified
    // candidate lists, then immediately enter a concrete heartbeat stage.
@@ -6228,7 +6226,7 @@ function bindPractice(){
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
-   markBuildProgress();
+   
    setResolutionStage('practice-resolution-evidence');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was finalizing Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
    const survivingCandidateLabels=new Set([
@@ -6314,7 +6312,7 @@ function bindPractice(){
    // Persistence itself can synchronously serialize/save a large session. Yield
    // immediately afterward before restore verification so Safari gets a paint and
    // the build heartbeat advances between the two expensive operations.
-   markBuildProgress();
+   
    setResolutionStage('practice-resolution-session-seal');
    let publishedSessionBytes='',publishedResolutionBytes='';
    try{
@@ -6329,7 +6327,7 @@ function bindPractice(){
    let publishedRestored=null;
    try{publishedRestored=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
    catch(error){console.error('HotB could not restore the published Practice Resolution recovery session.',error)}
-   markBuildProgress();
+   
    setResolutionStage('practice-resolution-session-compare');
    let restoredSessionBytes='',liveResolutionBytes='';
    try{
@@ -6351,7 +6349,7 @@ function bindPractice(){
    }
    // Snapshot validation is a full object/roster proof. Yield after it before the
    // final byte seal so the last publication turn stays small and deterministic.
-   markBuildProgress();
+   
    setResolutionStage('practice-resolution-publish');
    // Re-prove both setup ownership and exact bytes immediately before exposing any coaching choice.
    let prepublishResolutionBytes='';
@@ -6365,7 +6363,7 @@ function bindPractice(){
    // Stop the stall watchdog now rather than leaving a timer alive while Safari is
    // waiting to execute the publication frame. The publication helper has its own
    // ownership token and exception recovery, so no build watchdog is needed here.
-   stopBuildWatchdog();
+   
    publishPracticeBuildFrame('practice-resolution-publish',()=>{
     render();
     setPracticeBuildControlsLocked(false);
@@ -6389,13 +6387,13 @@ function bindPractice(){
    // rollback snapshot and must be allowed to restore it atomically. Stop this
    // build's heartbeat before returning; otherwise its timer can later fire over
    // the restored Resolution modal and falsely report a stranded build.
-   stopBuildWatchdog();
+   
    setPracticeBuildControlsLocked(false);
    practicePlan=null;
    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-identity-mismatch'}
    return;
   }
-  buildWatchdogStage='finalizing-plan';
+  buildStage='finalizing-plan';
   if(buildButton)buildButton.dataset.buildStage='finalizing-plan';
   // Finalization is also protected by the immutable setup seal. Resolution
   // verification may have taken several frames; never publish a valid schedule
@@ -6411,7 +6409,7 @@ function bindPractice(){
   }catch(error){
    console.error('HotB could not finalize the completed practice plan.',error);
    if(resolutionApplyBuild){
-    stopBuildWatchdog();setPracticeBuildControlsLocked(false);practicePlan=null;
+    setPracticeBuildControlsLocked(false);practicePlan=null;
     if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-finalize-failed'}
     return;
    }
@@ -6420,8 +6418,8 @@ function bindPractice(){
   }
   // Draft identity is authoritative. Publication is synchronous now, so no
   // separate publication-wait timer or heartbeat is required.
-  buildWatchdogStage=resolutionApplyBuild?'resolution-apply-ready':'practice-plan-publication-ready';
-  if(buildButton)buildButton.dataset.buildStage=buildWatchdogStage;
+  buildStage=resolutionApplyBuild?'resolution-apply-ready':'practice-plan-publication-ready';
+  if(buildButton)buildButton.dataset.buildStage=buildStage;
   // The build authorization is consumed here, but the transaction token remains
   // alive until the outer Resolution verifier commits or rolls back this exact plan.
   practiceResolutionApplyDraftId=null;
@@ -6442,17 +6440,17 @@ function bindPractice(){
    // The outer Resolution transaction owns verification and final publication from
    // this point forward. Keep setup controls locked until that transaction either
    // commits or rolls back; exposing them here reopens the race we sealed above.
-   stopBuildWatchdog();
+   
    return;
   }
   if(practicePlan.buildNotices?.length){
    modal='practiceBuildNotice';
    // The completed plan no longer needs a scheduler watchdog during UI publication.
-   stopBuildWatchdog();
+   
    publishPracticeBuildFrame('practice-build-notice',()=>{render();setPracticeBuildControlsLocked(false);window.scrollTo(0,0)});
    return;
   }
-  stopBuildWatchdog();
+  
   publishPracticeBuildFrame('practice-plan-publish',()=>{render();setPracticeBuildControlsLocked(false);window.scrollTo(0,0)});
  });
  $('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',limitations:practiceSetupState.accommodations?.[player.name]?.limitations||'',prePracticeComplete:!!player.prePracticeComplete,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={...practiceSetupState,selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;practiceSection='setup';persistPracticeDraft();render();window.scrollTo(0,0)});
