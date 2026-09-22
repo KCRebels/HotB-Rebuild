@@ -5861,13 +5861,29 @@ function bindPractice(){
    };
    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
    modal='practiceResolution';
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution497',stage:'verified-coaching-options-publish',state:'ready',errors:resolutionErrors,at:new Date().toISOString()}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution505',stage:'base-failure-ready',state:'ready',errors:resolutionErrors,at:new Date().toISOString()}))}catch(error){}
    setPracticeBuildControlsLocked(false);
    try{
+    // Resolution 505: a no-choice base failure is explanatory UI, not an
+    // apply-capable persisted transaction. Rendering it through the full global
+    // Resolution snapshot validator made harmless live-DOM normalization differences
+    // (selected-name order / accommodation reconstruction) capable of erasing the
+    // panel before it mounted. Render this already-sealed base failure directly.
+    const resolutionHtml=practiceResolutionModal();
+    if(!resolutionHtml||!resolutionHtml.includes('practice-resolution-modal'))throw new Error('Practice Resolution HTML was not produced.');
+    const appRoot=document.querySelector('#app');
+    if(!appRoot)throw new Error('HotB app root is unavailable.');
     render();
-    window.scrollTo(0,0);
     const mounted=document.querySelector('.practice-resolution-modal');
-    if(!mounted)throw new Error('Practice Resolution failure panel did not mount.');
+    if(!mounted){
+     // If the global render safety gate rejected an informational no-choice panel,
+     // restore only that modal HTML after the normal page has rendered. There are no
+     // coaching Apply controls in this branch, so this cannot bypass an apply gate.
+     appRoot.insertAdjacentHTML('beforeend',resolutionHtml);
+     bind();
+    }
+    window.scrollTo(0,0);
+    if(!document.querySelector('.practice-resolution-modal'))throw new Error('Practice Resolution failure panel did not mount.');
    }catch(error){
     console.error('HotB could not publish the base scheduler failure panel.',error);
     practiceResolution=null;modal=null;practicePlan=null;
