@@ -400,8 +400,8 @@ function candidateCapacityFor(players,errors,duration=120){
  const pitchers=players.filter(player=>player.canPitch),catchers=players.filter(player=>player.canCatch);
  return (duration===120?1:0)+pitchers.length+catchers.length+(duration===120?pitchers.length+catchers.length:0);
 }
-assert.equal(candidateCapacityFor(base,['Invalid availability for Guest 1.']),0,'malformed source must schedule zero Resolution candidates');
-assert.ok(candidateCapacityFor(base,['Catcher coverage is insufficient.'])>0,'ordinary feasibility failures retain automatic Resolution search');
+assert.equal(candidateCapacityFor(controlledKcSix,['Invalid availability for Guest 1.']),0,'malformed source must schedule zero Resolution candidates');
+assert.ok(candidateCapacityFor(controlledKcSix,['Catcher coverage is insufficient.'])>0,'ordinary feasibility failures retain automatic Resolution search');
 
 
 /* Resolution 467 first-safe search policy regression.
@@ -467,7 +467,7 @@ const recoveryFields469=['name','isPitcher','isCatcher','isGuest','availableFrom
 function exactRecoveryParity(expected,actual){
  return !!expected&&!!actual&&recoveryFields469.every(field=>expected[field]===actual[field]);
 }
-for(const fixture of [controlledKcSix,...matrix]){
+for(const fixture of [controlledKcSix,...fixtures.slice(0,24).map(item=>item.source)]){
  if(!Array.isArray(fixture))continue;
  for(const player of fixture){
   assert.equal(exactRecoveryParity(player,{...player}),true,'identical recovery player must pass exact field parity');
