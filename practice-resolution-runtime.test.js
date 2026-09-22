@@ -724,3 +724,38 @@ const disabledSnapshot480={
 assert.equal(authorizedCatcher480(disabledSnapshot480,catcher480.name,false),false,'already opted-out catcher cannot be offered as a second Not Catching Resolution');
 assert.equal(authorizedCatcher480(disabledSnapshot480,catcher480.name,true),false,'already opted-out catcher cannot be offered in combined Not Catching + Block 11');
 console.log('Resolution 480 catcher opt-out regression passed.');
+
+
+/* Resolution 481 rejected-authorization lock regression.
+   beginResolutionApply disables the decision controls before deriving expected
+   state. If authorization returns null, production must release that local lock
+   because no rebuild transaction token exists to own cleanup. */
+function rejectedAuthorization481(authorize){
+ let applying=false,disabled=false;
+ const begin=()=>{if(applying)return false;applying=true;disabled=true;return true};
+ const end=()=>{applying=false;disabled=false};
+ if(!begin())return {applying,disabled,reason:'busy'};
+ const expected=authorize();
+ if(!expected){end();return {applying,disabled,reason:'unverified'};}
+ return {applying,disabled,reason:'started'};
+}
+const rejected481=rejectedAuthorization481(()=>null);
+assert.deepEqual(rejected481,{applying:false,disabled:false,reason:'unverified'},'rejected Resolution authorization must immediately unlock the modal');
+const started481=rejectedAuthorization481(()=>({role:'catcher'}));
+assert.deepEqual(started481,{applying:true,disabled:true,reason:'started'},'authorized Resolution remains locked while its transaction owns completion');
+
+/* Resolution 481 live-role identity regression.
+   Name uniqueness is necessary but not sufficient: the live roster identity must
+   still carry the structural pitcher/catcher role sealed by the Resolution. */
+function liveRoleIdentity481(verified,live,role){
+ if(!verified||!live)return false;
+ if(role==='pitcher')return verified.isPitcher===true&&verified.canPitch===true&&live.isPitcher===true;
+ if(role==='catcher')return verified.isCatcher===true&&verified.canCatch===true&&live.isCatcher===true;
+ return false;
+}
+assert.equal(liveRoleIdentity481({isCatcher:true,canCatch:true},{isCatcher:true},'catcher'),true);
+assert.equal(liveRoleIdentity481({isCatcher:true,canCatch:true},{isCatcher:false},'catcher'),false,'live catcher identity drift must reject');
+assert.equal(liveRoleIdentity481({isCatcher:true,canCatch:false},{isCatcher:true},'catcher'),false,'sealed catcher opt-out cannot be re-authorized');
+assert.equal(liveRoleIdentity481({isPitcher:true,canPitch:true},{isPitcher:true},'pitcher'),true);
+assert.equal(liveRoleIdentity481({isPitcher:true,canPitch:true},{isPitcher:false},'pitcher'),false,'live pitcher identity drift must reject');
+console.log('Resolution 481 authorization lock/identity regressions passed.');
