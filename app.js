@@ -5822,9 +5822,7 @@ function bindPractice(){
  $('#endPracticeDraft')?.addEventListener('click',endPracticeDraft);
  $('#generatePractice')?.addEventListener('click',()=>{
   const roster=practiceAttendanceRoster(),attendees=Array.from(document.querySelectorAll('[data-practice-player]:checked')).map(input=>roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
-  // Seal the exact setup that this build owns. Practice Resolution
-  // intentionally yields browser frames; controls can otherwise change underneath
-  // the candidate verification and produce a plan for a different setup.
+  // Seal the exact setup this build owns so candidate verification cannot publish a plan for different inputs.
   const buildSetupSignature=()=>{
    try{
     const checked=Array.from(document.querySelectorAll('[data-practice-player]:checked')).map(input=>roster[Number(input.dataset.practicePlayer)]?.name).filter(Boolean);
@@ -5871,8 +5869,6 @@ function bindPractice(){
   stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
   const buildButton=$('#generatePractice');if(buildButton){buildButton.disabled=true;buildButton.textContent='Building Practice…'}
   // The build handler runs synchronously through Practice Resolution and publication.
-  // Resolution. A short timer cannot distinguish those healthy yields from a stall,
-  // so use an explicit stage heartbeat and only recover after a real quiet period.
   let buildStage='pre-scheduler';
   // A completed build publishes synchronously. render() does not require painted
   // geometry, so deferring through rAF/timers only creates another iPhone Safari
@@ -6154,9 +6150,7 @@ function bindPractice(){
     return safe;
    };
    // Candidate fan-out is the expensive part of a 13-player Resolution. Run one
-   // complete candidate per browser task, then publish progress before starting the
-   // next one. This prevents a long chain of synchronous scheduler + validator work
-   // from starving Safari's paint queue while preserving exact verification order.
+   // Verify candidates in deterministic order against the same sealed setup.
    const runResolutionCandidates=(candidates,stage,buildCandidate,onSafe,ownershipMessage)=>{
     for(let index=0;index<candidates.length;index++){
      setResolutionStage(stage);
@@ -6263,9 +6257,7 @@ function bindPractice(){
    // Resolution cannot add, remove, or swap a coaching choice without invalidating
    // the transaction and forcing a fresh verification build.
    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
-   // Split byte sealing from the complete snapshot validator. The 13-player object
-   // is intentionally large and both operations walk it; doing both under one
-   // heartbeat can make a healthy iPhone build look stranded.
+   // Keep byte sealing and complete snapshot validation as separate proof steps.
    setResolutionStage('practice-resolution-byte-seal');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be sealed. Nothing was committed. Please review the setup and build again.');return}
    let generatedResolutionBytes='';
@@ -6285,9 +6277,7 @@ function bindPractice(){
     recoverPracticeBuildSetup('practice-resolution-snapshot-invalid','HotB could not verify the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
     return;
    }
-   // Seal once at the pre-persist boundary and reuse the exact bytes through the
-   // persistence transaction. Repeated full JSON walks of the 13-player Resolution
-   // were unnecessary work on iPhone and widened the watchdog race window.
+   // Seal once at the pre-persist boundary and reuse the exact bytes through persistence.
    setResolutionStage('practice-resolution-prepersist-verify');
    let prepersistResolutionBytes='';
    try{prepersistResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not seal Practice Resolution before persistence.',error)}
@@ -6337,9 +6327,7 @@ function bindPractice(){
     console.error('HotB refused a Practice Resolution that was stale at modal publication.');
     practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-stale','HotB stopped because the Practice Resolution was no longer current. Please build the practice again.');return;
    }
-   // Snapshot validation is a full object/roster proof. Yield after it before the
-   // final byte seal so the last publication turn stays small and deterministic.
-   
+   // Snapshot validation is the final object/roster proof before the byte seal.
    setResolutionStage('practice-resolution-publish');
    // Re-prove both setup ownership and exact bytes immediately before exposing any coaching choice.
    let prepublishResolutionBytes='';
@@ -6402,8 +6390,7 @@ function bindPractice(){
    recoverPracticeBuildSetup('practice-plan-finalize-failed','HotB built the schedule but could not finalize the practice plan. Your setup was kept so you can build again.');
    return;
   }
-  // Draft identity is authoritative. Publication is synchronous now, so no
-  // separate publication-wait timer or heartbeat is required.
+  // Draft identity is authoritative; publication follows immediately.
   buildStage=resolutionApplyBuild?'resolution-apply-ready':'practice-plan-publication-ready';
   if(buildButton)buildButton.dataset.buildStage=buildStage;
   // The build authorization is consumed here, but the transaction token remains
