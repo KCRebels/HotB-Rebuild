@@ -92,9 +92,9 @@ mustInclude("const candidatePrototype=Object.getPrototypeOf(r.candidateNotices);
 mustInclude("if(candidateNoticeEntries.length!==allowedCandidateLabels.size)return false;","Resolution candidate evidence cardinality must exactly match final choices");
 mustInclude("const hasVerifiedChoice=!!(r.pitchers.length||r.catchers.length||r.canExtend||r.combinedPitchers.length||r.combinedCatchers.length);","Resolution modal actionability must come from verified choice data rather than rendered HTML");
 
-mustInclude("const sourceSeal=practiceResolutionSignature(players,startTime,duration);","Resolution candidate verification must seal its source player state before scheduler execution");
+mustNotInclude("const sourceSeal=practiceResolutionSignature(players,startTime,duration);","production candidate verification must not serialize every source twice");
 mustNotInclude("const buildPlayers=structuredClone(players);","Resolution candidate verification must not deep-clone every roster candidate on the mobile build path");
-mustInclude("sourceSeal!==practiceResolutionSignature(players,startTime,duration)","Resolution candidate verification must reject scheduler mutation of its source state");
+mustInclude("const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode:null});","Resolution candidate verification must use the production scheduler directly");
 mustInclude("if(!resolutionPlanIsSafe(plan,label))return false;","Resolution candidate must pass the full safety audit before publication");
 mustInclude("verifiedCandidateNotices[label]=candidateNotices.slice();","Resolution candidate evidence must publish only after verification completes");
 mustInclude("const sourceSeal=practiceResolutionSignature(players,startTime,duration);","candidate verification must seal source identity before scheduler execution");
