@@ -6,8 +6,10 @@ const safe=(players,duration)=>{const p=scheduler.buildSchedule(players,'18:00',
 const extend=players=>players.map(p=>({...p,availableUntilBlock:p.availableUntilBlock===10?11:p.availableUntilBlock}));
 const pitcherIndexes=roster.map((p,i)=>p.isPitcher?i:-1).filter(i=>i>=0);
 const departures=[4,5,6,7,8,9,10],found={extension:null,combinedPitcher:null,combinedCatcher:null};
+let checks=0; const MAX_CHECKS=900;
 for(let mask=0;mask<(1<<pitcherIndexes.length);mask++){
  for(let early=-1;early<roster.length;early++)for(const until of departures){
+  if(++checks>MAX_CHECKS)break;
   const r=roster.map(p=>({...p}));
   pitcherIndexes.forEach((idx,bit)=>{if(mask&(1<<bit)){r[idx].canPitch=false;r[idx].requiresPitchWarmup=false}});
   if(early>=0)r[early].availableUntilBlock=until;
@@ -27,5 +29,6 @@ for(let mask=0;mask<(1<<pitcherIndexes.length);mask++){
   if(found.extension&&found.combinedPitcher&&found.combinedCatcher)break;
  }
  if(found.extension&&found.combinedPitcher&&found.combinedCatcher)break;
+ if(checks>MAX_CHECKS)break;
 }
-console.log(JSON.stringify(found));
+console.log(JSON.stringify({checks,found}));
