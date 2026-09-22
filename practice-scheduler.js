@@ -91,7 +91,8 @@
     // coach/catcher resource allocation across all pitchers.
     return [block-1,block-2].some(warmBlock=>warmBlock>=2&&isOpen(pitcher,warmBlock));
    };
-   const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&pitcherCanUseLiveBlock(pitcher,block+offset)));
+   const liveHitterCapacity=(pitcher,block)=>activeAttendees.reduce((n,player)=>n+(player.name!==pitcher?.name&&isOpen(player,block)?1:0),0);
+   const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&pitcherCanUseLiveBlock(pitcher,block+offset)&&liveHitterCapacity(pitcher,block+offset)>=2));
    // Resolution 498: pitcher placement is itself a bounded exact matching problem.
    // A greedy "first free Live block" can consume the only non-Live blocks shared
    // by a late arrival and an early departure, making Front Toss look impossible.
