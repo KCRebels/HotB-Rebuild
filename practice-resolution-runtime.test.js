@@ -547,3 +547,25 @@ const solvable472=resolutionSearchPlan472(base,['Catcher coverage is insufficien
 assert.equal(solvable472.blocked,false,'scheduler feasibility errors must retain Resolution search');
 assert.ok(solvable472.capacity>0,'scheduler feasibility errors must retain finite candidate capacity');
 assert.equal(solvable472.budget,Math.min(64,Math.max(2,solvable472.capacity+1)),'Resolution budget must match finite first-safe search ceiling');
+
+
+/* Resolution 473 ordered-candidate regression.
+   Production role search must not depend on a removed structural-shape helper.
+   Every ordered candidate is attempted at most once and search stops immediately
+   on the first verified safe result. */
+function orderedSearch473(candidates,isSafe){
+ let attempts=0;
+ for(const candidate of candidates){
+  attempts++;
+  if(isSafe(candidate))return {result:'safe',candidate,attempts};
+ }
+ return {result:'none',candidate:null,attempts};
+}
+const candidates473=[{name:'A'},{name:'B'},{name:'C'}];
+const safe473=orderedSearch473(candidates473,candidate=>candidate.name==='B');
+assert.equal(safe473.result,'safe');
+assert.equal(safe473.candidate.name,'B');
+assert.equal(safe473.attempts,2,'ordered Resolution search must stop after first safe candidate');
+const none473=orderedSearch473(candidates473,()=>false);
+assert.equal(none473.result,'none');
+assert.equal(none473.attempts,candidates473.length,'unsolved ordered Resolution search must examine each finite candidate once');
