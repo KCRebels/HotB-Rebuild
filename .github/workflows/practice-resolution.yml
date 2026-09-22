@@ -42,11 +42,11 @@ jobs:
         run: node pwa-update.test.js
       - name: Verify deployed bundle markers
         run: |
-          test "$(grep -o "app.js?v=20260922-resolution439" index.html | wc -l)" -eq 2
-          ! grep -q "app.js?v=20260921-resolution423" index.html
-          grep -q "app.js?v=20260922-resolution439" index.html
-          test "$(grep -o "practice-scheduler.js?v=20260922-resolution439" index.html | wc -l)" -eq 1
-          ! grep -q "practice-scheduler.js?v=20260921-resolution423" index.html
+          test "$(grep -o "app.js?v=20260922-resolution441" index.html | wc -l)" -eq 2
+          ! grep -q "app.js?v=20260922-resolution439" index.html
+          grep -q "app.js?v=20260922-resolution441" index.html
+          test "$(grep -o "practice-scheduler.js?v=20260922-resolution441" index.html | wc -l)" -eq 1
+          ! grep -q "practice-scheduler.js?v=20260922-resolution439" index.html
           grep -q "BUILD_VERSION = '2026.09.22.227'" service-worker.js
           grep -q "'./practice-scheduler.js'" service-worker.js
           grep -Fq "/\\/practice-scheduler\\.js" service-worker.js
