@@ -78,6 +78,26 @@ assert.ok(controlledBase.feasibilityErrors.length,'controlled 6-player fixture m
 const controlledResolution=prioritizedResolution(controlledSix);
 assert.equal(controlledResolution.kind,'hitting-only','controlled 6-player fixture must resolve with Hitting Only');
 assert.equal(controlledResolution.builds,1,'controlled 6-player fixture must resolve on the first candidate build');
+assert.match(controlledBase.feasibilityErrors.join(' | '),/Machine cannot be scheduled exactly once per player in groups of 2–3/,'controlled 6-player fixture must reproduce the same Machine grouping failure seen by the app');
+
+// Exact named KC Rebels phone reproduction. Keep the production attendee order and
+// role identities used in the manual test so a future scheduler/order change cannot
+// hide behind the anonymous 4P/1C/1H shape.
+const controlledKcSix=[
+ {name:'Brooklyn Gering',isPitcher:true,isCatcher:false,canPitch:true,requiresPitchWarmup:true,canCatch:false},
+ {name:'Lakyn Farley',isPitcher:true,isCatcher:false,canPitch:true,requiresPitchWarmup:true,canCatch:false},
+ {name:'Lydia Copeland',isPitcher:false,isCatcher:true,canPitch:false,requiresPitchWarmup:false,canCatch:true},
+ {name:'Maia Waddell',isPitcher:false,isCatcher:false,canPitch:false,requiresPitchWarmup:false,canCatch:false},
+ {name:'Makenna Whitaker',isPitcher:true,isCatcher:false,canPitch:true,requiresPitchWarmup:true,canCatch:false},
+ {name:'Megan Ryan',isPitcher:true,isCatcher:false,canPitch:true,requiresPitchWarmup:true,canCatch:false}
+].map(player=>({...player,isGuest:false,prePracticeComplete:false,availableFromBlock:0,availableUntilBlock:10,arrivalTime:'18:00',departureTime:'20:00',limitations:''}));
+const controlledKcBase=scheduler.buildSchedule(controlledKcSix,'18:00',120);
+assert.ok(controlledKcBase.feasibilityErrors.length,'named KC Rebels six-player phone fixture must naturally fail the base build');
+assert.match(controlledKcBase.feasibilityErrors.join(' | '),/Machine cannot be scheduled exactly once per player in groups of 2–3/,'named KC Rebels phone fixture must fail for the expected Machine grouping reason');
+const controlledKcResolution=prioritizedResolution(controlledKcSix);
+assert.equal(controlledKcResolution.kind,'hitting-only','named KC Rebels phone fixture must resolve with Hitting Only');
+assert.equal(controlledKcResolution.builds,1,'named KC Rebels phone fixture must resolve on the first candidate scheduler build');
+assert.deepEqual(scheduler.validate(controlledKcResolution.plan),[],'named KC Rebels first-safe solution must pass the production validator');
 
 const fixtures=[];
 for(let count=6;count<=15;count++){
