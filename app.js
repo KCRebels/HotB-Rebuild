@@ -5771,8 +5771,26 @@ function bindPractice(){
   if(!practicePlayers.some(player=>player.canPitch))noPitchersMode=null;
   stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
   const buildButton=$('#generatePractice');if(buildButton){buildButton.disabled=true;buildButton.textContent='Building Practice…'}
+  // Fail-safe for the exact iPhone symptom where this handler returns but the setup
+  // screen remains with a disabled Build button. A timer cannot run while the
+  // synchronous scheduler is working, so this only acts after the build path yields.
+  const buildWatchdog=setTimeout(()=>{
+   const stuckButton=$('#generatePractice');
+   if(!stuckButton||!stuckButton.disabled)return;
+   if(practicePlan&&!practicePlan.feasibilityErrors?.length){
+    practiceSection='builder';
+    try{render();window.scrollTo(0,0)}catch(error){
+     console.error('HotB practice build watchdog could not open the completed plan',error);
+     const button=$('#generatePractice');if(button){button.disabled=false;button.textContent='Build Practice Schedule'}
+     alert('The schedule was built, but HotB could not open the practice-plan screen: '+String(error?.message||error||'unknown'));
+    }
+    return;
+   }
+   stuckButton.disabled=false;stuckButton.textContent='Build Practice Schedule';
+   alert('HotB stopped before a practice schedule was created. Please tap Build Practice Schedule again.');
+  },250);
   try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){
-   console.error('HotB practice scheduler failed',error);practicePlan=null;
+   console.error('HotB practice scheduler failed',error);clearTimeout(buildWatchdog);practicePlan=null;
    // During an automatic Resolution rebuild, the outer transaction owns rollback.
    // Preserve its token + draft authorization so the queued verifier can restore
    // the original verified Resolution instead of mistaking this failure for stale work.
