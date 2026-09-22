@@ -11,6 +11,10 @@ on:
       - 'practice-session.js'
       - 'index.html'
       - 'service-worker.js'
+      - 'pwa-update.js'
+      - 'pwa-update.test.js'
+      - 'manifest.webmanifest'
+      - 'hotb-fresh.html'
       - '.github/workflows/practice-resolution.yml'
   workflow_dispatch:
 jobs:
@@ -33,17 +37,22 @@ jobs:
         run: node practice-resolution-runtime.test.js
       - name: Run full practice scheduler regression
         run: node practice-scheduler.test.js
-        continue-on-error: true
+      - name: Run installed-app update regression
+        run: node pwa-update.test.js
       - name: Verify deployed bundle markers
         run: |
-          test "$(grep -o "app.js?v=20260921-resolution423" index.html | wc -l)" -ge 2
+          test "$(grep -o "app.js?v=20260921-resolution423" index.html | wc -l)" -eq 2
           ! grep -q "app.js?v=20260921-resolution416" index.html
           grep -q "app.js?v=20260921-resolution423" index.html
-          grep -q "practice-scheduler.js?v=20260921-resolution423" index.html
+          test "$(grep -o "practice-scheduler.js?v=20260921-resolution423" index.html | wc -l)" -eq 1
           ! grep -q "practice-scheduler.js?v=20260921-resolution416" index.html
           grep -q "BUILD_VERSION = '2026.09.21.226'" service-worker.js
           grep -q "'./practice-scheduler.js'" service-worker.js
           grep -Fq "/\\/practice-scheduler\\.js" service-worker.js
+          grep -Fq "'./manifest.webmanifest'" service-worker.js
+          grep -Fq "'./pwa-update.js'" service-worker.js
+          grep -Fq "/\\/pwa-update\\.js" service-worker.js
+          grep -Fq "/\\/manifest\\.webmanifest" service-worker.js
           grep -q "launch=226" service-worker.js
           grep -q "pwa-update.js?v=20260921-pwa226" index.html
           grep -q "BUILD_VERSION = '2026.09.21.226'" pwa-update.js
