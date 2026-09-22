@@ -5975,7 +5975,7 @@ function bindPractice(){
     const button=$('#generatePractice');
     if(button){
      button.disabled=true;
-     const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-finalize':'Finalizing Resolution…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Preparing Resolution…','practice-resolution-byte-seal':'Sealing Resolution…','practice-resolution-snapshot-verify':'Validating Resolution…','practice-resolution-prepersist-verify':'Checking Final Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-restore-verify':'Verifying Saved Resolution…','practice-resolution-publish':'Opening Resolution…'};
+     const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-finalize':'Finalizing Resolution…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Preparing Resolution…','practice-resolution-byte-seal':'Sealing Resolution…','practice-resolution-snapshot-verify':'Validating Resolution…','practice-resolution-prepersist-verify':'Checking Final Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-restore-verify':'Verifying Saved Resolution…','practice-resolution-session-seal':'Checking Saved Session…','practice-resolution-session-restore':'Restoring Saved Session…','practice-resolution-session-compare':'Comparing Saved Session…','practice-resolution-final-snapshot':'Final Resolution Check…','practice-resolution-publish':'Opening Resolution…'};
      button.textContent=labels[stage]||'Building Practice…';
     }
     armBuildWatchdog(stage,20000);
@@ -6311,25 +6311,36 @@ function bindPractice(){
    await yieldResolutionUI();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be saved. Nothing was committed. Please review the setup and build again.');return}
    practicePlan=null;if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');recoverPracticeBuildSetup('practice-resolution-persist-failed','HotB could not save the verified Practice Resolution. Your practice setup was kept so you can build again.');return}
-   setResolutionStage('practice-resolution-restore-verify');
+   setResolutionStage('practice-resolution-session-seal');
    await yieldResolutionUI();
-   let publishedSessionBytes='',publishedResolutionBytes='',publishedRestored=null;
+   let publishedSessionBytes='',publishedResolutionBytes='';
    try{
     publishedSessionBytes=JSON.stringify(db.activePracticeSession);
     publishedResolutionBytes=JSON.stringify(db.activePracticeSession?.resolution);
-    publishedRestored=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
-   }catch(error){console.error('HotB could not verify the published Practice Resolution recovery session.',error)}
-   if(!practiceResolution||JSON.stringify(practiceResolution)!==generatedResolutionBytes||publishedResolutionBytes!==generatedResolutionBytes||!publishedSessionBytes||!publishedRestored||JSON.stringify(publishedRestored)!==publishedSessionBytes){
+   }catch(error){console.error('HotB could not seal the published Practice Resolution recovery session.',error)}
+   if(!publishedSessionBytes||publishedResolutionBytes!==generatedResolutionBytes){
+    console.error('HotB refused Practice Resolution persistence bytes that did not match the verified decision.');
+    practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-publication-invalid','HotB stopped because the saved Practice Resolution did not exactly match the verified decision. Please build the practice again.');return;
+   }
+   setResolutionStage('practice-resolution-session-restore');
+   await yieldResolutionUI();
+   let publishedRestored=null;
+   try{publishedRestored=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
+   catch(error){console.error('HotB could not restore the published Practice Resolution recovery session.',error)}
+   setResolutionStage('practice-resolution-session-compare');
+   await yieldResolutionUI();
+   let restoredSessionBytes='';
+   try{restoredSessionBytes=publishedRestored?JSON.stringify(publishedRestored):''}catch(error){console.error('HotB could not seal the restored Practice Resolution session.',error)}
+   if(!practiceResolution||JSON.stringify(practiceResolution)!==generatedResolutionBytes||!publishedRestored||restoredSessionBytes!==publishedSessionBytes){
     console.error('HotB refused a Practice Resolution that changed during publication.');
     practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-publication-invalid','HotB stopped because the saved Practice Resolution did not exactly match the verified decision. Please build the practice again.');return;
    }
-   // Modal publication is the final handoff from generation into coach interaction.
-   // Re-prove the live snapshot after persistence/restore so no stale decision can
-   // become clickable merely because its saved bytes looked correct.
    if(!buildSetupStillOwned()){
     recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed during Practice Resolution publication verification. Nothing was committed. Please review the setup and build again.');
     return;
    }
+   setResolutionStage('practice-resolution-final-snapshot');
+   await yieldResolutionUI();
    if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
     console.error('HotB refused a Practice Resolution that was stale at modal publication.');
     practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-stale','HotB stopped because the Practice Resolution was no longer current. Please build the practice again.');return;
