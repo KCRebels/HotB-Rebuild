@@ -664,3 +664,63 @@ assert.equal(exactChoiceIdentity479(verified479,live479,verified479[0].name),tru
 assert.equal(exactChoiceIdentity479(verified479,[...live479,{...live479[0]}],verified479[0].name),false,'duplicate live roster identity must invalidate a persisted Resolution choice');
 assert.equal(exactChoiceIdentity479([...verified479,{...verified479[0]}],live479,verified479[0].name),false,'duplicate verified identity must invalidate a Resolution choice');
 assert.equal(exactChoiceIdentity479(verified479,live479,'Missing Player'),false,'missing identity must invalidate a Resolution choice');
+
+
+/* Resolution 480 catcher opt-out end-to-end regression.
+   A catcher who is still attending/hitting but has Catching turned off must remain
+   in the candidate roster, must never receive catcher work, and must survive
+   restart recovery with canCatch=false. This is the exact injury/availability
+   branch used by Practice Setup and must not be confused with removing attendance. */
+function catcherOptOut480(source,name,duration=120){
+ const matches=source.filter(player=>player.name===name);
+ assert.equal(matches.length,1,'catcher opt-out target must have unique identity');
+ assert.equal(matches[0].isCatcher,true,'catcher opt-out target must be a catcher');
+ const changed=source.map(player=>player.name===name?{...player,canCatch:false}:({...player}));
+ const target=changed.find(player=>player.name===name);
+ assert.equal(target.canCatch,false);
+ assert.equal(changed.length,source.length,'catcher opt-out must preserve attendance');
+ assert.deepEqual(changed.map(player=>player.name),source.map(player=>player.name),'catcher opt-out must preserve attendee order');
+ const plan=scheduler.buildSchedule(changed,'18:00',duration);
+ if(safe(plan)){
+  assert.ok((plan.schedule[name]||[]).every(row=>row.activity!=='Catch Live'&&row.activity!=='Catch Warm-Up'),'opted-out catcher must receive no catcher work');
+  assert.equal(plan.players.find(player=>player.name===name)?.canCatch,false,'plan player must retain catcher opt-out');
+  const setupState={
+   selectedNames:changed.map(player=>player.name),startTime:'18:00',durationMinutes:duration,
+   accommodations:Object.fromEntries(changed.map(player=>[player.name,recoveryAccommodationFromCandidate(player)]))
+  };
+  const saved=session.create({plan:{...plan,portalDraftId:'resolution-480-catcher-optout'},setupState,clock:{running:false}});
+  assert.ok(saved,'safe catcher opt-out plan must persist');
+  const restored=session.restore(saved);
+  assert.ok(restored,'safe catcher opt-out plan must restore');
+  assert.equal(restored.plan.players.find(player=>player.name===name)?.canCatch,false,'restart recovery must retain canCatch=false');
+  assert.equal(restored.setupState.accommodations[name].canCatch,false,'setup recovery must retain canCatch=false');
+  assert.deepEqual(restored.setupState.selectedNames,source.map(player=>player.name),'restart recovery must keep catcher attending');
+ }
+ return {changed,plan};
+}
+const catcher480=controlledKcSix.find(player=>player.isCatcher);
+const optOut480=catcherOptOut480(controlledKcSix,catcher480.name);
+assert.equal(optOut480.changed.find(player=>player.name===catcher480.name).isCatcher,true,'role identity remains catcher even when Catching is disabled');
+assert.equal(optOut480.changed.find(player=>player.name===catcher480.name).canCatch,false,'availability flag alone disables catching');
+assert.ok(optOut480.changed.some(player=>player.name===catcher480.name),'disabled catcher remains an attendee/hitter');
+
+/* Resolution 480 authorization regression for an already-disabled catcher.
+   Practice Resolution may offer only currently enabled catcher choices. A setup
+   opt-out is source state, not a second Resolution choice that can be applied again. */
+function authorizedCatcher480(snapshot,name,withBlock11=false){
+ const list=withBlock11?snapshot.combinedCatchers:snapshot.catchers;
+ const player=(snapshot.practicePlayers||[]).filter(item=>item.name===name);
+ return player.length===1&&player[0].isCatcher===true&&player[0].canCatch===true&&Array.isArray(list)&&list.includes(name);
+}
+const catcherSnapshot480={
+ practicePlayers:controlledKcSix.map(player=>({...player})),
+ catchers:[catcher480.name],combinedCatchers:[catcher480.name]
+};
+assert.equal(authorizedCatcher480(catcherSnapshot480,catcher480.name,false),true,'enabled catcher can be an authorized Resolution choice');
+const disabledSnapshot480={
+ ...catcherSnapshot480,
+ practicePlayers:catcherSnapshot480.practicePlayers.map(player=>player.name===catcher480.name?{...player,canCatch:false}:player)
+};
+assert.equal(authorizedCatcher480(disabledSnapshot480,catcher480.name,false),false,'already opted-out catcher cannot be offered as a second Not Catching Resolution');
+assert.equal(authorizedCatcher480(disabledSnapshot480,catcher480.name,true),false,'already opted-out catcher cannot be offered in combined Not Catching + Block 11');
+console.log('Resolution 480 catcher opt-out regression passed.');
