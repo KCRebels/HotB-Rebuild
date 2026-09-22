@@ -5791,25 +5791,31 @@ function bindPractice(){
   // The build handler now has intentional async frame yields during Practice
   // Resolution. A short timer cannot distinguish those healthy yields from a stall,
   // so use an explicit stage heartbeat and only recover after a real quiet period.
-  let buildWatchdog=null,buildWatchdogStage='pre-scheduler';
+  let buildWatchdog=null,buildWatchdogStage='pre-scheduler',buildWatchdogGeneration=0,buildFinished=false;
+  const stopBuildWatchdog=()=>{buildFinished=true;buildWatchdogGeneration++;stopBuildWatchdog();buildWatchdog=null};
   const armBuildWatchdog=(stage,timeout=12000)=>{
-   buildWatchdogStage=stage;
+   buildFinished=false;buildWatchdogStage=stage;
+   const generation=++buildWatchdogGeneration;
    if(buildButton)buildButton.dataset.buildStage=stage;
    clearTimeout(buildWatchdog);
    buildWatchdog=setTimeout(()=>{
+    // Timers already queued by WebKit can still execute after clearTimeout. Only
+    // the newest live heartbeat generation may recover the UI.
+    if(buildFinished||generation!==buildWatchdogGeneration)return;
     const stuckButton=$('#generatePractice');
     if(!stuckButton||!stuckButton.disabled)return;
     if(practicePlan&&!practicePlan.feasibilityErrors?.length){
      console.warn('HotB build watchdog observed a completed scheduler result; normal build handoff still owns publication.');
      return;
     }
+    stopBuildWatchdog();
     stuckButton.disabled=false;stuckButton.textContent='Build Practice Schedule';
     alert('HotB practice build stopped at '+String(stuckButton.dataset.buildStage||buildWatchdogStage)+'. Please tell me this exact stage.');
    },timeout);
   };
   armBuildWatchdog('scheduler');
   try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});armBuildWatchdog('scheduler-returned')}catch(error){
-   console.error('HotB practice scheduler failed',error);clearTimeout(buildWatchdog);practicePlan=null;
+   console.error('HotB practice scheduler failed',error);stopBuildWatchdog();practicePlan=null;
    // During an automatic Resolution rebuild, the outer transaction owns rollback.
    // Preserve its token + draft authorization so the queued verifier can restore
    // the original verified Resolution instead of mistaking this failure for stale work.
@@ -5843,7 +5849,7 @@ function bindPractice(){
    // top of the coaching choice being applied. Leave transaction ownership intact;
    // the outer verifier will see this infeasible plan and roll back atomically.
    if(resolutionApplyBuild){
-    clearTimeout(buildWatchdog);
+    stopBuildWatchdog();
     if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-rebuild-infeasible'}
     return;
    }
@@ -6085,7 +6091,7 @@ function bindPractice(){
    let generatedResolutionBytes='';
    try{generatedResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not serialize the generated Practice Resolution.',error)}
    if(!generatedResolutionBytes){
-    clearTimeout(buildWatchdog);
+    stopBuildWatchdog();
     practiceResolution=null;practicePlan=null;
     if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-seal-failed'}
     alert('HotB could not seal the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
@@ -6100,7 +6106,7 @@ function bindPractice(){
    practiceSetupState.durationMinutes=durationMinutes;
    if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
     console.error('HotB refused to publish an internally inconsistent Practice Resolution.');
-    clearTimeout(buildWatchdog);
+    stopBuildWatchdog();
     practiceResolution=null;practicePlan=null;persistPracticeDraft();
     if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-snapshot-invalid'}
     alert('HotB could not verify the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
@@ -6109,12 +6115,12 @@ function bindPractice(){
 
    if(JSON.stringify(practiceResolution)!==generatedResolutionBytes){
     console.error('HotB refused a Practice Resolution that changed before persistence.');
-    clearTimeout(buildWatchdog);
+    stopBuildWatchdog();
     practiceResolution=null;practicePlan=null;persistPracticeDraft();
     if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-mutated'}
     render();return;
    }
-   practicePlan=null;if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');clearTimeout(buildWatchdog);practiceResolution=null;modal=null;if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-persist-failed'}render();return}
+   practicePlan=null;if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');stopBuildWatchdog();practiceResolution=null;modal=null;if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-persist-failed'}render();return}
    let publishedSessionBytes='',publishedResolutionBytes='',publishedRestored=null;
    try{
     publishedSessionBytes=JSON.stringify(db.activePracticeSession);
@@ -6123,22 +6129,22 @@ function bindPractice(){
    }catch(error){console.error('HotB could not verify the published Practice Resolution recovery session.',error)}
    if(!practiceResolution||JSON.stringify(practiceResolution)!==generatedResolutionBytes||publishedResolutionBytes!==generatedResolutionBytes||!publishedSessionBytes||!publishedRestored||JSON.stringify(publishedRestored)!==publishedSessionBytes){
     console.error('HotB refused a Practice Resolution that changed during publication.');
-    clearTimeout(buildWatchdog);practiceResolution=null;modal=null;persistPracticeDraft();if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-publication-invalid'}render();return;
+    stopBuildWatchdog();practiceResolution=null;modal=null;persistPracticeDraft();if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-publication-invalid'}render();return;
    }
    // Modal publication is the final handoff from generation into coach interaction.
    // Re-prove the live snapshot after persistence/restore so no stale decision can
    // become clickable merely because its saved bytes looked correct.
    if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
     console.error('HotB refused a Practice Resolution that was stale at modal publication.');
-    clearTimeout(buildWatchdog);practiceResolution=null;modal=null;persistPracticeDraft();if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-stale'}render();return;
+    stopBuildWatchdog();practiceResolution=null;modal=null;persistPracticeDraft();if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='practice-resolution-stale'}render();return;
    }
    setResolutionStage('practice-resolution-publish');
    await yieldResolutionUI();
    modal='practiceResolution';
-   try{render();clearTimeout(buildWatchdog);window.scrollTo(0,0)}
+   try{render();stopBuildWatchdog();window.scrollTo(0,0)}
    catch(error){
     console.error('HotB Practice Resolution screen failed',error);
-    clearTimeout(buildWatchdog);practiceResolution=null;modal=null;persistPracticeDraft();
+    stopBuildWatchdog();practiceResolution=null;modal=null;persistPracticeDraft();
     const button=$('#generatePractice');if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage='practice-resolution-render-failed'}
     alert('HotB verified the Practice Resolution but could not open its decision screen: '+String(error?.message||error||'unknown'));
    }
@@ -6160,7 +6166,7 @@ function bindPractice(){
    // rollback snapshot and must be allowed to restore it atomically. Stop this
    // build's heartbeat before returning; otherwise its timer can later fire over
    // the restored Resolution modal and falsely report a stranded build.
-   clearTimeout(buildWatchdog);
+   stopBuildWatchdog();
    practicePlan=null;
    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-identity-mismatch'}
    return;
@@ -6169,7 +6175,7 @@ function bindPractice(){
   practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();
   // Draft identity is now authoritative. Stop the heartbeat only after that
   // assignment succeeds; an exception before this point must remain diagnosable.
-  clearTimeout(buildWatchdog);
+  stopBuildWatchdog();
   // The build authorization is consumed here, but the transaction token remains
   // alive until the outer Resolution verifier commits or rolls back this exact plan.
   practiceResolutionApplyDraftId=null;
@@ -6190,11 +6196,11 @@ function bindPractice(){
   if(resolutionApplyBuild){
    // The outer Resolution transaction owns verification and final publication from
    // this point forward. This click handler must leave no local watchdog behind.
-   clearTimeout(buildWatchdog);
+   stopBuildWatchdog();
    return;
   }
-  if(practicePlan.buildNotices?.length){clearTimeout(buildWatchdog);modal='practiceBuildNotice';render();return}
-  clearTimeout(buildWatchdog);
+  if(practicePlan.buildNotices?.length){stopBuildWatchdog();modal='practiceBuildNotice';render();return}
+  stopBuildWatchdog();
   setTimeout(()=>{
    try{
     render();
