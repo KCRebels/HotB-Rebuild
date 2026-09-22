@@ -429,7 +429,10 @@
    if(entries.some((entry,index)=>entry?.activity==='Tee Work'&&(player?.prePracticeComplete||index!==from+1)))errors.push(`${name} has Tee Work outside the one required tee block.`);
    if(from<until&&entries.filter(entry=>entry.activity==='Machine').length!==1)errors.push(`${name} must complete Machine exactly once.`);
    if(from<until&&entries.filter(entry=>entry.activity.startsWith('Front Toss Lane')).length!==1)errors.push(`${name} must complete Front Toss exactly once.`);
-   if(from<until&&!entries.some(entry=>entry.activity.startsWith('Drill #')))errors.push(`${name} is missing drill work.`);
+   if(from<until&&!entries.some(entry=>entry.activity.startsWith('Drill #'))){
+    const limited=from>0||until<BLOCK_COUNT;
+    if(!limited)errors.push(`${name} is missing drill work.`);
+   }
    const drillEntries=entries.filter(entry=>entry.activity.startsWith('Drill #')).map(entry=>entry.activity);
    if(new Set(drillEntries).size!==drillEntries.length)errors.push(`${name} repeats a drill station.`);
    const liveHitCount=entries.filter(entry=>entry.activity==='Hit Live').length,expectedLiveHits=plan.liveHitterRepeats?.includes(name)?2:1;
