@@ -909,7 +909,7 @@ console.log('Resolution 488 mobile long-task regression passed.');
  assert.ok(combinedBody.includes('combinedPitchers=[]')&&combinedBody.includes('combinedCatchers=[]'),'combined choices must remain empty on setup tap');
  assert.ok(!combinedBody.includes('verifyOrderedCandidates('),'combined setup branch must not call scheduler candidate verifier');
  assert.ok(!combinedBody.includes('buildSchedule('),'combined setup branch must not call scheduler directly');
- assert.ok(appSource489.includes('candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?3:2)'),'build budget must exclude removed combined candidates');
+ assert.ok(appSource489.includes('candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?1:0)'),'build budget must exclude removed combined and role candidates');
 }
 console.log('Resolution 489 setup-tap combined-search bypass regression passed.');
 
