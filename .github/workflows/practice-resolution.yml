@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - 'app.js'
+      - 'styles.css'
+      - 'team-jenkins-practice-only.test.js'
       - 'practice-resolution.test.js'
       - 'practice-resolution-runtime.test.js'
       - 'practice-scheduler.js'
@@ -38,6 +40,8 @@ jobs:
           node --check recruiting-workflow.js
       - name: Run scouting report regression
         run: node scouting-report.test.js
+      - name: Run Team Jenkins practice-only contracts
+        run: node team-jenkins-practice-only.test.js
       - name: Run Practice Resolution contracts
         run: node practice-resolution.test.js
       - name: Run Practice Resolution runtime regression
