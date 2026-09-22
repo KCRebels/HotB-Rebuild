@@ -4890,8 +4890,9 @@ function bind(){
    return true;
   };
   const awaitPracticeResolutionPaint=callback=>{
-   if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(callback,0));
-   else setTimeout(callback,16);
+   const run=()=>{try{callback()}catch(error){console.error('HotB Practice Resolution paint callback failed',error)}};
+   if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(run,0));
+   else setTimeout(run,16);
   };
   const restoreResolutionRollback=state=>{
    const releaseFailedRollback=message=>{
@@ -4953,7 +4954,9 @@ function bind(){
    db.activePracticeSession=restoredSession;
    try{save()}catch(error){
     releaseFailedRollback('HotB could not save the restored Practice Resolution rollback state');
-    try{render()}catch(renderError){console.error('HotB could not render after failed Practice Resolution rollback save.',renderError)}
+    // releaseFailedRollback has already normalized and unlocked state. Publish that
+    // safe setup on a fresh frame instead of synchronously rewriting #app here.
+    awaitPracticeResolutionPaint(()=>render());
     return false;
    }
    // save() must not mutate the rollback object or its persisted recovery record.
@@ -4977,21 +4980,26 @@ function bind(){
     // Keep the apply lock through the recovery render. A real paint-frame handoff
     // prevents the same iPhone tap/async turn from tearing down and rebuilding #app
     // while rollback persistence is still settling.
-    try{
-     awaitPracticeResolutionPaint(()=>{try{render()}finally{endResolutionApply()}});
-    }catch(error){console.error('HotB could not queue the failed rollback recovery render.',error);endResolutionApply()}
+    awaitPracticeResolutionPaint(()=>{
+     try{render()}
+     finally{endResolutionApply()}
+    });
     return false
    }
    // Keep the apply lock through post-save restart verification and rendering.
    // Publish rollback on a real browser frame for the same reason as successful
    // Resolution publication: iPhone Safari must finish the current event turn first.
-   try{
-    awaitPracticeResolutionPaint(()=>{
-     try{render()}
-     catch(error){releaseFailedRollback('HotB could not render the restored Practice Resolution rollback state');return}
-     endResolutionApply();
-    });
-   }catch(error){releaseFailedRollback('HotB could not queue the restored Practice Resolution rollback render')}
+   awaitPracticeResolutionPaint(()=>{
+    try{render()}
+    catch(error){
+     releaseFailedRollback('HotB could not render the restored Practice Resolution rollback state');
+     // releaseFailedRollback clears transaction ownership; show the normalized
+     // setup on the following frame so a broken Resolution modal cannot remain.
+     awaitPracticeResolutionPaint(()=>render());
+     return;
+    }
+    endResolutionApply();
+   });
    return true;
   };
   const expectedResolutionState=(role=null,name=null,withBlock11=false,resolutionSnapshot=practiceResolution)=>{
