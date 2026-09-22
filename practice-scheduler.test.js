@@ -19,6 +19,35 @@ invalid.schedule['Full Player'][5]={activity:'Tee Work'};
 assert.ok(scheduler.validate(invalid).some(error=>error.includes('Tee Work outside the one required tee block')),'validator must reject any repeated or misplaced Tee Work after the required second attended block');
 
 const standardRoster=Array.from({length:13},(_,index)=>({name:`Player ${index+1}`,isPitcher:index<5,isCatcher:index===5||index===6,canPitch:index<5,requiresPitchWarmup:index<5,canCatch:index===5||index===6,availableFromBlock:0,availableUntilBlock:10}));
+
+// Exact current KC Rebels 13-player role mix regression. This is the production
+// roster shape that exposed the Practice Resolution stall: five pitchers, two
+// catchers, all present for the full ten blocks. The scheduler must solve it
+// directly; Practice Resolution is not allowed to become the normal path merely
+// because the roster has 13 players.
+const rebels13=[
+ {name:'Aniesa Rohleder',isPitcher:true,isCatcher:false,canPitch:true,requiresPitchWarmup:true,canCatch:false},
+ {name:'Brooklyn Gering',isPitcher:true,isCatcher:false,canPitch:true,requiresPitchWarmup:true,canCatch:false},
+ {name:'Brynna Peter',isPitcher:false,isCatcher:false,canPitch:false,requiresPitchWarmup:false,canCatch:false},
+ {name:'Claire Jack',isPitcher:false,isCatcher:false,canPitch:false,requiresPitchWarmup:false,canCatch:false},
+ {name:'Hailey Marsh',isPitcher:false,isCatcher:false,canPitch:false,requiresPitchWarmup:false,canCatch:false},
+ {name:'Lakyn Farley',isPitcher:true,isCatcher:false,canPitch:true,requiresPitchWarmup:true,canCatch:false},
+ {name:'Lydia Copeland',isPitcher:false,isCatcher:true,canPitch:false,requiresPitchWarmup:false,canCatch:true},
+ {name:'Maia Waddell',isPitcher:false,isCatcher:false,canPitch:false,requiresPitchWarmup:false,canCatch:false},
+ {name:'Makenna Whitaker',isPitcher:true,isCatcher:false,canPitch:true,requiresPitchWarmup:true,canCatch:false},
+ {name:'Maleah Pena',isPitcher:false,isCatcher:false,canPitch:false,requiresPitchWarmup:false,canCatch:false},
+ {name:'Mattingly Hardy',isPitcher:false,isCatcher:false,canPitch:false,requiresPitchWarmup:false,canCatch:false},
+ {name:'Megan Ryan',isPitcher:true,isCatcher:false,canPitch:true,requiresPitchWarmup:true,canCatch:false},
+ {name:'Tayte Stepps',isPitcher:false,isCatcher:true,canPitch:false,requiresPitchWarmup:false,canCatch:true}
+].map(player=>({...player,availableFromBlock:0,availableUntilBlock:10,prePracticeComplete:false,isGuest:false}));
+const rebels13Plan=scheduler.buildSchedule(rebels13,'18:00',120);
+assert.deepEqual(rebels13Plan.feasibilityErrors,[],'the exact full KC Rebels 13-player roster must build directly without Practice Resolution');
+assert.deepEqual(scheduler.validate(rebels13Plan),[],'the exact full KC Rebels 13-player roster must pass the complete rules audit');
+assert.equal(rebels13Plan.players.length,13,'the full-roster regression may not silently remove a player');
+assert.ok(rebels13Plan.liveSessions.length>=5,'all five available Rebels pitchers must receive live work');
+assert.ok(rebels13Plan.liveSessions.every(session=>session.hitters.length>=2&&session.hitters.length<=3),'every full-roster live session must retain 2-3 hitters');
+assert.ok(Object.values(rebels13Plan.schedule).every(entries=>entries.length===10),'every full-roster player must receive all ten schedule rows');
+
 const standardPlan=scheduler.buildSchedule(standardRoster);
 assert.deepEqual(standardPlan.feasibilityErrors,[]);
 assert.ok(!scheduler.validate(standardPlan).some(error=>error.includes('Tee Work')));
