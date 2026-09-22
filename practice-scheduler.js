@@ -83,7 +83,15 @@
    // tests, and the mobile Resolution path. Placement below is a finite pass over
    // this fixed pool; there is no retry or recursive search.
    const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-3)},(_,index)=>index+3),used=new Set(),placed=[];
-   const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&(!pitcher||isOpen(pitcher,block+offset))));
+   const pitcherCanUseLiveBlock=(pitcher,block)=>{
+    if(!pitcher||!isOpen(pitcher,block))return !pitcher;
+    if(!pitcher.requiresPitchWarmup)return true;
+    // A pitcher must have at least one open block one or two blocks before Live.
+    // This is only a feasibility look-ahead; the exact warm-up matcher below owns
+    // coach/catcher resource allocation across all pitchers.
+    return [block-1,block-2].some(warmBlock=>warmBlock>=2&&isOpen(pitcher,warmBlock));
+   };
+   const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&pitcherCanUseLiveBlock(pitcher,block+offset)));
    const ordered=groups.slice().sort((x,y)=>startsFor(x).length-startsFor(y).length||y.length-x.length);
    for(const group of ordered){
     const start=startsFor(group).find(block=>group.every((_,offset)=>!used.has(block+offset)));
