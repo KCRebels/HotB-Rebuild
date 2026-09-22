@@ -5098,8 +5098,15 @@ function persistPracticeDraft(){
  if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
  let resolutionToPersist=null;
  if(practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
-  try{resolutionToPersist=structuredClone(practiceResolution)}
-  catch(error){console.error('HotB refused to persist Practice Resolution because its verified decision could not be cloned.',error);return false}
+  // Resolution 532: WebKit/PWA structuredClone has proved less reliable here than
+  // the JSON-only persistence format used by HotBPracticeSession itself. Resolution
+  // state is deliberately JSON data, so capture it through the same serialization
+  // contract instead of making structuredClone a prerequisite for publication.
+  try{
+   const sealedResolution=JSON.stringify(practiceResolution);
+   resolutionToPersist=JSON.parse(sealedResolution);
+   if(JSON.stringify(resolutionToPersist)!==sealedResolution)throw new Error('resolution-json-clone-drift');
+  }catch(error){console.error('HotB refused to persist Practice Resolution because its verified decision could not be JSON-cloned.',error);return false}
  }
  let draft;
  try{draft=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:resolutionToPersist})}
