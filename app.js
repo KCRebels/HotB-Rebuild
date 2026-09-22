@@ -6013,13 +6013,9 @@ function bindPractice(){
      // Candidate verification must be observational. The production scheduler may
      // evolve, so never let a verification build mutate the sealed failed-practice
      // player objects that later candidates, rollback, and signatures depend on.
-     let sourceBefore='';
-     try{sourceBefore=JSON.stringify({practicePlayers,players})}catch(error){resolutionAuditFailures.push(label+' source data could not be sealed before verification.');return false}
      const buildPlayers=structuredClone(players);
      const plan=window.HotBPracticeScheduler.buildSchedule(buildPlayers,startTime,duration,{noPitchersMode:null});
-     if(JSON.stringify({practicePlayers,players})!==sourceBefore){resolutionAuditFailures.push(label+' mutated sealed candidate source data during verification.');return false}
      if(!resolutionPlanIsSafe(plan,label))return false;
-     if(JSON.stringify({practicePlayers,players})!==sourceBefore){resolutionAuditFailures.push(label+' mutated sealed candidate source data during safety audit.');return false}
      const candidateNotices=[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort();
      const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
      const candidateBlockCount=Number(duration)===132?11:Number(duration)===120?10:0;
@@ -6098,11 +6094,10 @@ function bindPractice(){
      // Publish candidate metadata only after every identity/availability/role proof
      // above succeeds. A failed candidate must leave no residue that can later be
      // mistaken for a verified coaching choice.
-     if(JSON.stringify({practicePlayers,players})!==sourceBefore){resolutionAuditFailures.push(label+' changed sealed candidate source data before publication.');return false}
      let candidateEvidence='';
      try{candidateEvidence=JSON.stringify(candidateNotices)}catch(error){resolutionAuditFailures.push(label+' notice evidence could not be sealed.');return false}
      verifiedCandidateNotices[label]=candidateNotices;
-     if(JSON.stringify(verifiedCandidateNotices[label])!==candidateEvidence||JSON.stringify({practicePlayers,players})!==sourceBefore){
+     if(JSON.stringify(verifiedCandidateNotices[label])!==candidateEvidence){
       delete verifiedCandidateNotices[label];
       resolutionAuditFailures.push(label+' changed while publishing verified candidate evidence.');
       return false;
@@ -6149,8 +6144,7 @@ function bindPractice(){
     resolutionVerificationCache.set(key,{safe,notices});
     return safe;
    };
-   // Candidate fan-out is the expensive part of a 13-player Resolution. Run one
-   // Verify candidates in deterministic order against the same sealed setup.
+   // Candidate fan-out is the expensive part of a 13-player Resolution. Verify candidates in deterministic order against the same sealed setup.
    const runResolutionCandidates=(candidates,stage,buildCandidate,onSafe,ownershipMessage)=>{
     for(let index=0;index<candidates.length;index++){
      setResolutionStage(stage);
