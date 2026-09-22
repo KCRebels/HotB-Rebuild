@@ -5813,6 +5813,16 @@ function bindPractice(){
    // Tayte was absent, Lydia was Not Catching, Brooklyn/Makenna were late and
    // Lakyn was Hitting Only. Fail fast to Practice Resolution instead.
    const hardRoleMissing=!availablePitchers.length||!availableCatchers.length;
+   // Resolution 500: the Resolution panel's primary problem statement must describe
+   // the same root cause as its setup guidance. A zero-role condition is stronger
+   // and more actionable than the scheduler's downstream generic Live-capacity
+   // failure, so replace that derivative error before sealing the snapshot.
+   const resolutionErrors=identityBlocked?baseErrors:
+    !availableCatchers.length
+     ?['No attending player is currently available to catch. Live pitching requires an attending catcher.']
+     :!availablePitchers.length
+      ?['No attending player is currently available to pitch Live. Live work requires an attending pitcher.']
+      :baseErrors;
    // Resolution 497: now that the base scheduler's internal grouping/warm-up
    // searches are complete, a remaining failure is a genuine coaching conflict.
    // Verify a small, bounded set of coaching compromises before showing Resolution.
@@ -5867,7 +5877,7 @@ function bindPractice(){
       ?'HotB exhausted the automatic schedule and the allowed coaching compromises without finding a rule-safe build. Change attendance, availability, Pitching, or Catching explicitly and build again.'
       :'This practice needs an attending pitcher or another explicit attendance/availability change before HotB can satisfy every absolute rule.';
    practiceResolution={
-    errors:baseErrors,pitchers,catchers,canExtend,combinedPitchers,combinedCatchers,
+    errors:resolutionErrors,pitchers,catchers,canExtend,combinedPitchers,combinedCatchers,
     rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,
     notices:Array.isArray(practicePlan.fallbackWarnings)?[...new Set(practicePlan.fallbackWarnings.map(value=>String(value||'').trim()).filter(Boolean))].sort():[],
     auditFailures:[],candidateNotices:sortedCandidateNotices,
@@ -5875,7 +5885,7 @@ function bindPractice(){
    };
    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
    modal='practiceResolution';
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution497',stage:'verified-coaching-options-publish',state:'ready',errors:baseErrors,at:new Date().toISOString()}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution497',stage:'verified-coaching-options-publish',state:'ready',errors:resolutionErrors,at:new Date().toISOString()}))}catch(error){}
    setPracticeBuildControlsLocked(false);
    try{
     render();
