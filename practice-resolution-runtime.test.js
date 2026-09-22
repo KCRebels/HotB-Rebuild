@@ -895,7 +895,7 @@ console.log('Resolution 487 infeasible-candidate short-circuit regression passed
  assert.ok(!discovery.includes('practiceResolutionExtendedPlayers('),'failed-build discovery must not model Block 11');
  assert.ok(!discovery.includes('verifyOrderedCandidates'),'failed-build discovery must not create candidate continuation');
  assert.ok(!discovery.includes('setTimeout('),'failed-build discovery must not create an async continuation');
- assert.ok(discovery.includes('const solvingPitchers=[],solvingCatchers=[],combinedPitchers=[],combinedCatchers=[]'),'all speculative choice arrays start and remain empty');
- assert.ok(discovery.includes('const canExtend=false,resolutionBudgetExceeded=false'),'Block 11 is not speculatively advertised');
+ assert.ok(app492.includes('const solvingPitchers=[],solvingCatchers=[],combinedPitchers=[],combinedCatchers=[]'),'all speculative choice arrays start and remain empty');
+ assert.ok(app492.includes('const canExtend=false,resolutionBudgetExceeded=false'),'Block 11 is not speculatively advertised');
 }
 console.log('Resolution 492 base-result-only discovery regression passed.');
