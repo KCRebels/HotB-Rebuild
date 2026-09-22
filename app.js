@@ -5794,170 +5794,44 @@ function bindPractice(){
    return
   }
   if(practicePlan.feasibilityErrors?.length){
-   // A deterministic scheduler cannot become feasible by rebuilding identical
-   // bytes. Preserve the first result and spend the Resolution budget only on
-   // genuinely different coaching alternatives.
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution458',stage:'base-failed',state:'captured',at:new Date().toISOString(),errors:[...practicePlan.feasibilityErrors],players:practicePlayers.map(player=>({name:player.name,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,from:player.availableFromBlock,until:player.availableUntilBlock}))}))}catch(error){}
-  }
-  if(practicePlan.feasibilityErrors?.length){
-   // The base scheduler has returned. Practice Resolution now runs as one synchronous verified transaction.
-   buildStage='practice-resolution';
-   // Keep the build state visible and make every long Resolution phase identifiable.
-   // This also keeps the Build control locked throughout the verification transaction.
-   const setResolutionStage=stage=>{
-    const button=$('#generatePractice');
-    if(button){
-     button.disabled=true;
-     const labels={'practice-resolution-budget-exceeded':'Resolution Stopped Safely…','practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Preparing Resolution…','practice-resolution-byte-seal':'Sealing Resolution…','practice-resolution-snapshot-verify':'Validating Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-publish':'Opening Resolution…'};
-     button.textContent=labels[stage]||'Building Practice…';
-    }
-    
-    buildStage=stage;
-   };
-   setResolutionStage('practice-resolution-start');
-   if(!resolutionApplyBuild&&!buildSetupStillOwned()){
-    recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was building. Nothing was committed. Please review the setup and tap Build Practice Schedule again.');
-    return;
-   }
-   // A failed automatic Resolution rebuild must not create a second Resolution on
-   // top of the coaching choice being applied. Leave transaction ownership intact;
-   // the outer verifier will see this infeasible plan and roll back atomically.
-   if(resolutionApplyBuild){
-    
-    setPracticeBuildControlsLocked(false);
-    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-rebuild-infeasible'}
-    return;
-   }
-   // Resolution 492: a failed base build is already the complete deterministic
-   // scheduler result for this exact setup. Resolution discovery is now deliberately
-   // data-only: it must not run extension modeling, role candidate generation,
-   // candidate validators, or another scheduler. Those layers were the source of
-   // the iPhone setup transaction repeatedly stopping at whichever candidate stage
-   // happened to remain. Preserve the base errors and publish a sealed no-choice
-   // Resolution immediately so the coach regains control and can make an explicit
-   // setup change.
-   const errors=practicePlan.feasibilityErrors.slice();
-   const resolutionAuditFailures=[];
-   const verifiedCandidateNotices={};
-   const solvingPitchers=[],solvingCatchers=[],combinedPitchers=[],combinedCatchers=[];
-   const canExtend=false,resolutionBudgetExceeded=false;
-   const identityBlocked=errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(String(error||'')));
-   const availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch);
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution492',stage:'practice-resolution-base-result-only',state:'publishing',errors:[...errors],at:new Date().toISOString()}))}catch(error){}
-   // Candidate fan-out is complete. Normalize once, then enter verified evidence publication.
-   solvingPitchers=[...new Set(solvingPitchers)].sort();
-   solvingCatchers=[...new Set(solvingCatchers)].sort();
-   combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
-   combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution455',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
-   setResolutionStage('practice-resolution-evidence');
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was preparing Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
-   const survivingCandidateLabels=new Set([
-    ...solvingPitchers.map(name=>'Hitting Only: '+name),
-    ...solvingCatchers.map(name=>'Not Catching: '+name),
-    ...(canExtend?['Block 11']:[]),
-    ...combinedPitchers.map(name=>'Hitting Only + Block 11: '+name),
-    ...combinedCatchers.map(name=>'Not Catching + Block 11: '+name)
-   ]);
-   for(const label of Object.keys(verifiedCandidateNotices)){if(!survivingCandidateLabels.has(label))delete verifiedCandidateNotices[label]}
-   const candidateEvidenceComplete=[...survivingCandidateLabels].every(label=>Object.prototype.hasOwnProperty.call(verifiedCandidateNotices,label)&&Array.isArray(verifiedCandidateNotices[label]))&&Object.keys(verifiedCandidateNotices).length===survivingCandidateLabels.size;
-   let finalCandidateEvidence='';
-   try{finalCandidateEvidence=JSON.stringify(verifiedCandidateNotices)}catch(error){resolutionAuditFailures.push('Practice Resolution candidate evidence could not be sealed after final filtering.')}
-   if(!candidateEvidenceComplete||!finalCandidateEvidence){
-    resolutionAuditFailures.push('Practice Resolution candidate evidence did not match the final verified choices.');
-    solvingPitchers=[];solvingCatchers=[];canExtend=false;combinedPitchers=[];combinedCatchers=[];
-    for(const label of Object.keys(verifiedCandidateNotices))delete verifiedCandidateNotices[label];
-   }
-   const hasVerifiedResolution=!!(solvingPitchers.length||solvingCatchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
-   // Budget exhaustion is a transaction failure, not merely another infeasible
-   // candidate. Never publish a partial set of choices after the verifier stops.
-   if(resolutionBudgetExceeded){
-    setResolutionStage('practice-resolution-budget-exceeded');
-    solvingPitchers=[];solvingCatchers=[];canExtend=false;combinedPitchers=[];combinedCatchers=[];
-    for(const label of Object.keys(verifiedCandidateNotices))delete verifiedCandidateNotices[label];
-    recoverPracticeBuildSetup('practice-resolution-budget-exceeded','HotB stopped Practice Resolution before it could exceed its safe scheduler-build limit. Nothing was committed. Please review the setup and build again.');
-    return;
-   }
-   // Evidence and setup ownership were proven immediately above. Build the sealed
-   // decision directly instead of adding two more UI/state transitions on the same tap.
-   const rosterGuidance=identityBlocked?'HotB found attendee identity or availability information that must be corrected before resolution. Fix the roster/guest or arrival/departure entry and build again; HotB will not guess or silently normalize it.':availablePitchers.length?'This exact setup did not satisfy every scheduler rule. Return to setup and make the coaching change explicitly using attendance, availability, Pitching, or Catching; HotB will not silently change a player role.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
-   const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
-   const cleanResolutionText=value=>String(value??'').trim();
-   const cleanResolutionList=values=>[...new Set((Array.isArray(values)?values:[]).map(cleanResolutionText).filter(Boolean))].sort();
+   // Resolution 493: the failed base scheduler result is already authoritative.
+   // Do not enter a second transaction, re-read DOM ownership, validate a synthetic
+   // candidate snapshot, persist evidence, or render a modal from this Build tap.
+   // Those operations are not required to explain a failed schedule and on iPhone
+   // they repeatedly left the last painted frame at "Checking Practice". Publish a
+   // plain failure panel as part of the normal setup render and immediately release
+   // the Build lock. The coach can then make an explicit setup change and rebuild.
+   const baseErrors=[...new Set(practicePlan.feasibilityErrors.map(error=>String(error||'').trim()).filter(Boolean))];
+   const availablePitchers=practicePlayers.filter(player=>player.canPitch);
+   const identityBlocked=baseErrors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(error));
+   const rosterGuidance=identityBlocked
+    ?'HotB found attendee identity or availability information that must be corrected. Fix the roster/guest or arrival/departure entry and build again.'
+    :availablePitchers.length
+     ?'This exact setup did not satisfy every scheduler rule. Change attendance, availability, Pitching, or Catching explicitly, then build again.'
+     :'This practice needs an attending pitcher or another explicit attendance/availability change before HotB can satisfy every absolute rule.';
    practiceResolution={
-    errors:cleanResolutionList(errors),
-    pitchers:solvingPitchers,catchers:solvingCatchers,canExtend,combinedPitchers,combinedCatchers,rosterGuidance,
-    practicePlayers,startTime,durationMinutes,noPitchersMode,
-    notices:cleanResolutionList(practicePlan.fallbackWarnings),
-    auditFailures:cleanResolutionList(resolutionAuditFailures),
-    candidateNotices:Object.fromEntries(Object.entries(verifiedCandidateNotices).sort(([a],[b])=>a.localeCompare(b)).map(([key,value])=>[key,cleanResolutionList(value)])),
-    signature:resolutionSignature,
-    decisionSignature:''
+    errors:baseErrors,pitchers:[],catchers:[],canExtend:false,combinedPitchers:[],combinedCatchers:[],
+    rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,
+    notices:Array.isArray(practicePlan.fallbackWarnings)?[...practicePlan.fallbackWarnings]:[],
+    auditFailures:[],candidateNotices:{},
+    signature:practiceResolutionSignature(practicePlayers,startTime,durationMinutes),decisionSignature:''
    };
-   // Persist a second seal over the verified alternatives themselves. A restored
-   // Resolution cannot add, remove, or swap a coaching choice without invalidating
-   // the transaction and forcing a fresh verification build.
    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
-   // Resolution 484: the decision snapshot must be byte-stable from sealing through
-   // publication. Validation/rendering are read-only consumers; if either path ever
-   // normalizes, sorts, or otherwise mutates the object in place, reject publication
-   // instead of persisting a decision different from the verified candidate set.
-   let sealedResolutionBytes='';
-   try{sealedResolutionBytes=JSON.stringify(practiceResolution)}catch(error){
-    recoverPracticeBuildSetup('practice-resolution-seal-failed','HotB could not seal the verified Practice Resolution. Your original setup was kept unchanged.');
-    return;
-   }
-   // Candidate evidence was already sealed before this object was constructed.
-   // Do not mutate setup state merely to make the snapshot validator pass. The
-   // Resolution transaction was opened from the already-sealed builder setup and
-   // buildSetupStillOwned() has re-proven that ownership after candidate search.
-   // Rewriting selectedNames/timing here created a second, unnecessary state edge
-   // between a safe candidate and modal publication on iPhone Safari.
-   const publicationSnapshotValid=practiceResolutionSnapshotIsCurrentAndValid(practiceResolution);
-   let publicationSnapshotStable=false;
-   try{publicationSnapshotStable=JSON.stringify(practiceResolution)===sealedResolutionBytes}catch(error){publicationSnapshotStable=false}
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution455',stage:'practice-resolution-snapshot',state:publicationSnapshotValid?'valid':'invalid',at:new Date().toISOString(),signatureMatch:practiceResolution.signature===currentPracticeResolutionSignature(),selectedNames:[...(practiceSetupState.selectedNames||[])],verifiedNames:practiceResolution.practicePlayers.map(player=>player.name),startTime:practiceSetupState.startTime,durationMinutes:practiceSetupState.durationMinutes}))}catch(error){}
-   if(!publicationSnapshotValid||!publicationSnapshotStable){
-    console.error('HotB refused to publish an internally inconsistent or mutated Practice Resolution.');
-    // Nothing from this failed Resolution has been committed yet. Recovery owns
-    // restoring/persisting the original setup; do not perform a redundant draft
-    // save immediately before that recovery transaction.
-    recoverPracticeBuildSetup('practice-resolution-snapshot-invalid','HotB could not verify the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
-    return;
-   }
-   // The verified decision is a UI choice, not an active practice. Publish it
-   // immediately from memory. Do not make modal visibility depend on another full
-   // setup-session persistence/restore cycle; that work belongs to Apply & Build.
-   // The previous publication wrapper added a second asynchronous generation gate
-   // after the expensive scheduler proof. On iPhone that could leave the gray Build
-   // button as the last painted frame even though Resolution had already verified.
-   setResolutionStage('practice-resolution-publish');
    modal='practiceResolution';
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution457',stage:'practice-resolution-publish',state:'ready',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution493',stage:'base-failure-direct-publish',state:'ready',errors:baseErrors,at:new Date().toISOString()}))}catch(error){}
+   setPracticeBuildControlsLocked(false);
    try{
-    // Release only the setup-control lock. The modal itself owns interaction from
-    // this point and its Apply handlers revalidate the sealed Resolution snapshot.
-    setPracticeBuildControlsLocked(false);
     render();
     window.scrollTo(0,0);
-    // Rendering the modal must not acquire transaction authority by changing the
-    // sealed decision. Prove byte identity again before declaring publication done.
-    if(JSON.stringify(practiceResolution)!==sealedResolutionBytes)throw new Error('Practice Resolution changed while rendering the decision screen.');
-    const mountedResolution=document.querySelector('.practice-resolution-modal');
-    if(!mountedResolution)throw new Error('Practice Resolution modal did not mount after verified publication.');
-    const staleBuildButton=$('#generatePractice');
-    if(staleBuildButton)staleBuildButton.dataset.buildStage='practice-resolution-modal-mounted';
-    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution457',stage:'practice-resolution-publish',state:'mounted',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choiceCount:solvingPitchers.length+solvingCatchers.length+(canExtend?1:0)+combinedPitchers.length+combinedCatchers.length}))}catch(error){}
+    const mounted=document.querySelector('.practice-resolution-modal');
+    if(!mounted)throw new Error('Practice Resolution failure panel did not mount.');
    }catch(error){
-    console.error('HotB Practice Resolution publication failed',error);
+    console.error('HotB could not publish the base scheduler failure panel.',error);
     practiceResolution=null;modal=null;practicePlan=null;
-    setPracticeBuildControlsLocked(false);
-    // Return to the exact ordinary setup rather than leaving an invisible modal
-    // or disabled Build control. No Resolution choice has been applied at this point.
-    try{render()}catch(renderError){console.error('HotB Practice Resolution recovery render failed',renderError)}
+    try{render()}catch(_){}
     const button=$('#generatePractice');
-    if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage='practice-resolution-publish-failed'}
-    alert('HotB verified Practice Resolution but could not open the decision screen. Nothing was changed. Please tap Build Practice Schedule again.');
+    if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage='base-failure-publish-failed'}
+    alert('HotB could not open the Practice Resolution screen. Nothing was changed. Please review the setup and build again.');
    }
    return;
   }
