@@ -54,4 +54,6 @@ jobs:
           ! grep -q "launch=136" hotb-fresh.html
           grep -q '"start_url": "./?source=pwa&launch=226"' manifest.webmanifest
           ! grep -q 'launch=221' manifest.webmanifest
+          grep -q "manifest.webmanifest?v=20260921-launch226" index.html
+          ! grep -q "manifest.webmanifest?v=20260919-launch138" index.html
           ! grep -q "Finalizing Resolution" app.js
