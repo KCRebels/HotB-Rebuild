@@ -5823,6 +5823,8 @@ function bindPractice(){
    }catch(error){console.error('HotB could not seal the practice build setup.',error);return ''}
   };
   const initialBuildSetupSignature=buildSetupSignature();
+  let buildSetupOwnershipChecked=false;
+  let buildSetupOwnershipValid=!!initialBuildSetupSignature;
   // Resolution rebuild failures are owned by rebuildResolvedPractice. Do not clear
   // its token here: doing so makes the queued verifier stale and prevents rollback.
   // Ordinary/manual builds still report these preflight problems directly.
@@ -5897,7 +5899,13 @@ function bindPractice(){
     if(message)alert(message);
    });
   };
-  const buildSetupStillOwned=()=>!!initialBuildSetupSignature&&buildSetupSignature()===initialBuildSetupSignature;
+  const buildSetupStillOwned=()=>{
+   if(!buildSetupOwnershipValid)return false;
+   if(buildSetupOwnershipChecked)return true;
+   buildSetupOwnershipChecked=true;
+   buildSetupOwnershipValid=buildSetupSignature()===initialBuildSetupSignature;
+   return buildSetupOwnershipValid;
+  };
   const setPracticeBuildControlsLocked=locked=>{
    // Freeze every setup control for the full build transaction.
    // that can alter scheduler input until publication/recovery owns a fresh screen.
