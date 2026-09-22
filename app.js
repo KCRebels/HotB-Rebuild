@@ -6000,11 +6000,25 @@ function bindPractice(){
     }
    };
    const verifiedCandidateNotices={};
+   // One base failure may offer many named role changes, but the scheduler only
+   // needs to prove structurally distinct candidates. Keep a hard transaction
+   // budget as a second line of defense: if future code accidentally defeats
+   // structural deduplication, iPhone Safari fails closed instead of grinding
+   // through an unbounded-looking Resolution search.
+   const RESOLUTION_BUILD_BUDGET=9;
+   let resolutionBuildCount=0,resolutionBudgetExceeded=false;
    // Candidate verification is intentionally single-build. buildSchedule already
    // returns fresh normalized player/schedule objects; cloning every 13-player
    // candidate before every scheduler pass added avoidable allocation/GC pressure
    // on iPhone Safari during the exact failure path we are trying to resolve.
    const verifyResolutionBuild=(players,duration,label,expectedChange=null)=>{
+    if(resolutionBuildCount>=RESOLUTION_BUILD_BUDGET){
+     if(!resolutionBudgetExceeded)resolutionAuditFailures.push('Practice Resolution stopped because its verified scheduler-build budget was exceeded.');
+     resolutionBudgetExceeded=true;
+     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution422',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
+     return false;
+    }
+    resolutionBuildCount++;
     try{
      // buildSchedule is contractually pure for its player input and returns fresh
      // plan data. The runtime regression suite exercises every resolvable fixture
@@ -6131,7 +6145,7 @@ function bindPractice(){
      setResolutionStage(stage);
      if(button)button.textContent='Checking '+(stageLabels[stage]||'Resolution')+' '+(index+1)+'/'+unique.length+'…';
      const started=typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
-     const diagnosticBase={bundle:'resolution420',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
+     const diagnosticBase={bundle:'resolution422',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
      try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({...diagnosticBase,state:'started'}))}catch(error){}
      const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
      const elapsed=Math.round((typeof performance!=='undefined'&&performance.now?performance.now():Date.now())-started);
@@ -6211,7 +6225,7 @@ function bindPractice(){
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution420',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution422',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
    setResolutionStage('practice-resolution-evidence');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was preparing Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const survivingCandidateLabels=new Set([
