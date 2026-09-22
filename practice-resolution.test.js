@@ -30,9 +30,9 @@ has("expectedNames.some((name,index)=>scheduleKeys[index]!==name)","schedule own
 has("catcherLoadNames.length!==new Set(catcherLoadNames).size","catcher metadata must reject duplicate identities");
 has("HotB refused a Practice Resolution rollback that changed during cloning","rollback clone must preserve sealed state");
 has("practiceResolution=null;","successful commit must revoke stale Resolution");
-has("bundle:'resolution497'","genuine scheduler failure must publish verified coaching options");
-has("stage:'verified-coaching-options-publish'","genuine scheduler failure must identify verified option publication");
-has("verifyResolutionCandidate","Practice Resolution choices must be rebuilt before display");
+has("const candidateQueue=[]","genuine scheduler failure must build a bounded verified choice queue");
+has("const finalizeCandidates=()=>","genuine scheduler failure must finalize verified coaching options");
+has("const verifyCandidate=item=>","Practice Resolution choices must be rebuilt before display");
 has("window.HotBPracticeScheduler.validate(plan)","Practice Resolution choices must pass the full validator");
 has("modal='practiceResolution'","failed scheduler result must open Practice Resolution");
 
