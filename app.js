@@ -6105,38 +6105,8 @@ function bindPractice(){
    // Cache verification by the complete candidate input. The same combined
    // Block 11 candidate can be reached through more than one Resolution branch;
    // iPhone should never pay for an identical full scheduler + rules audit twice.
-   const resolutionVerificationCache=new Map();
-   const verifyResolutionCandidate=(players,candidateDuration,label,expectedChange=null)=>{
-    let key='';
-    try{key=JSON.stringify({players,duration:candidateDuration,expectedChange})}
-    catch(error){resolutionAuditFailures.push(label+' could not seal its verification cache key.');return false}
-    if(resolutionVerificationCache.has(key)){
-     
-     const cached=resolutionVerificationCache.get(key);
-     if(cached?.notices){
-      try{verifiedCandidateNotices[label]=structuredClone(cached.notices)}
-      catch(error){
-       resolutionAuditFailures.push(label+' cached notice evidence could not be cloned.');
-       return false;
-      }
-     }
-     return cached?.safe===true;
-    }
-    const safe=verifyResolutionBuild(players,candidateDuration,label,expectedChange);
-    
-    let notices=null;
-    if(safe&&verifiedCandidateNotices[label]){
-     try{notices=structuredClone(verifiedCandidateNotices[label])}
-     catch(error){
-      resolutionAuditFailures.push(label+' verified notice evidence could not be cached safely.');
-      delete verifiedCandidateNotices[label];
-      resolutionVerificationCache.set(key,{safe:false,notices:null});
-      return false;
-     }
-    }
-    resolutionVerificationCache.set(key,{safe,notices});
-    return safe;
-   };
+   const verifyResolutionCandidate=(players,candidateDuration,label,expectedChange=null)=>
+    verifyResolutionBuild(players,candidateDuration,label,expectedChange);
    // Candidate fan-out is the expensive part of a 13-player Resolution. Verify candidates in deterministic order against the same sealed setup.
    const runResolutionCandidates=(candidates,stage,buildCandidate,onSafe,ownershipMessage)=>{
     for(let index=0;index<candidates.length;index++){
