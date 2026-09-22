@@ -5909,7 +5909,7 @@ function bindPractice(){
    // pitcher + one same-duration catcher + one combined pitcher + one combined
    // catcher. Any future code that accidentally reintroduces exhaustive fan-out
    // will stop safely instead of regressing to an iPhone freeze.
-   const candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?5:2);
+   const candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?3:2);
    const RESOLUTION_BUILD_BUDGET=identityBlocked?1:candidateSearchCapacity+1;
    let resolutionBuildCount=1,resolutionBudgetExceeded=false;
    // The base scheduler attempt above is build #1. Candidate verification is intentionally single-build. buildSchedule already
@@ -6119,31 +6119,17 @@ function bindPractice(){
    }
 
    if(!identityBlocked&&!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded){
-    // Resolution 485: combined role + Block 11 fan-out is the expensive path that
-    // was visibly stalling iPhone Safari. Do not enumerate every pitcher and catcher
-    // candidate synchronously. Search one deterministic role candidate per tap-path:
-    // the first enabled pitcher, then (only if needed) the first enabled catcher.
-    // Each displayed choice is still independently rebuilt and fully audited; this
-    // changes only breadth, not the safety standard. If neither first candidate is
-    // safe, publish the verified no-choice Resolution and send the coach back to
-    // attendance/availability rather than freezing the UI while exploring the full
-    // Cartesian role list.
-    const firstExtendedPitcher=extendedPlayers.find(player=>player.canPitch);
-    if(firstExtendedPitcher){
-     const spec={players:extendedPlayers.map(player=>player.name===firstExtendedPitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:132,label:'Hitting Only + Block 11: '+firstExtendedPitcher.name,expectedChange:{role:'pitcher',name:firstExtendedPitcher.name},choiceName:firstExtendedPitcher.name};
-     const result=await verifyOrderedCandidates([spec],'practice-resolution-pitcher-block11','Hitting Only + Block 11',safeSpec=>combinedPitchers.push(safeSpec.choiceName));
-     if(result==='aborted')return;
-     if(result==='budget')resolutionBudgetExceeded=true;
-    }
-    if(!combinedPitchers.length&&!resolutionBudgetExceeded){
-     const firstExtendedCatcher=extendedPlayers.find(player=>player.canCatch);
-     if(firstExtendedCatcher){
-      const spec={players:extendedPlayers.map(player=>player.name===firstExtendedCatcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+firstExtendedCatcher.name,expectedChange:{role:'catcher',name:firstExtendedCatcher.name},choiceName:firstExtendedCatcher.name};
-      const result=await verifyOrderedCandidates([spec],'practice-resolution-catcher-block11','Not Catching + Block 11',safeSpec=>combinedCatchers.push(safeSpec.choiceName));
-      if(result==='aborted')return;
-      if(result==='budget')resolutionBudgetExceeded=true;
-     }
-    }
+    // Resolution 489: do not run a speculative combined role + Block 11 scheduler
+    // search while the coach is still on the setup screen. This was the exact
+    // branch repeatedly observed to strand iPhone Safari at "Checking Not Catching
+    // + Block 11…". A combined change is not needed to explain the failed practice,
+    // and it is safer to return control immediately than to keep the setup tap alive
+    // for another 132-minute full scheduler build. Combined choices remain empty;
+    // the coach can change attendance/availability or make an explicit role change
+    // and rebuild from the ordinary setup path.
+    combinedPitchers=[];
+    combinedCatchers=[];
+    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution489',stage:'practice-resolution-combined-bypassed',state:'returned-to-coach',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,at:new Date().toISOString()}))}catch(error){}
    }
    // Candidate fan-out is complete. Normalize once, then enter verified evidence publication.
    solvingPitchers=[...new Set(solvingPitchers)].sort();
