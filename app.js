@@ -6101,14 +6101,18 @@ function bindPractice(){
 
    // Candidate fan-out is the expensive part of a 13-player Resolution. Verify candidates in deterministic order against the same sealed setup.
    const runResolutionCandidates=(candidates,stage,buildCandidate,onSafe,ownershipMessage,stopAfterFirst=false)=>{
-    setResolutionStage(stage);
+    const stageLabels={'practice-resolution-pitcher':'Pitcher','practice-resolution-catcher':'Catcher','practice-resolution-pitcher-block11':'Pitcher + Block 11','practice-resolution-catcher-block11':'Catcher + Block 11'};
     for(let index=0;index<candidates.length;index++){
      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed',ownershipMessage);return false}
-     const candidate=candidates[index],spec=buildCandidate(candidate);
-     if(verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange)){
+     const candidate=candidates[index],spec=buildCandidate(candidate),button=$('#generatePractice');
+     setResolutionStage(stage);
+     if(button)button.textContent='Checking '+(stageLabels[stage]||'Resolution')+' '+(index+1)+'/'+candidates.length+'…';
+     const started=typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
+     const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
+     const elapsed=Math.round((typeof performance!=='undefined'&&performance.now?performance.now():Date.now())-started);
+     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution406',stage,label:spec.label,index:index+1,total:candidates.length,elapsedMs:elapsed,safe,at:new Date().toISOString()}))}catch(error){}
+     if(safe){
       onSafe(candidate,spec);
-      // One verified role alternative is enough to unblock the coach. Do not keep
-      // solving equivalent permutations merely to populate a longer modal.
       if(stopAfterFirst)return true;
      }
     }
