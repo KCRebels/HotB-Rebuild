@@ -1,0 +1,15 @@
+const assert=require('assert');
+const fs=require('fs');
+const vm=require('vm');
+const workflow=fs.readFileSync('recruiting-workflow.js','utf8');
+const profile=fs.readFileSync('player-recruiting-profile.html','utf8');
+assert(workflow.includes("localStorage.setItem('hotb.recruitingProfilePreview.'+slug"));
+assert(workflow.includes("&name='+encodeURIComponent(player.name||'')"));
+assert(workflow.includes("publishProfile(name,true)"));
+assert(profile.includes("bootstrapIdentity();"));
+assert(profile.includes("if(attempt<10){setTimeout(()=>loadProfile(attempt+1),400);return}"));
+assert(!profile.includes("wrap.hidden=trueconst"));
+const scripts=[...profile.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(x=>x.trim());
+assert(scripts.length>0,'expected inline scouting report script');
+scripts.forEach(code=>new vm.Script(code));
+console.log('scouting report tests passed');
