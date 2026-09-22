@@ -6098,15 +6098,14 @@ function bindPractice(){
      return false;
     }
    };
-   const verifyResolutionCandidate=(players,candidateDuration,label,expectedChange=null)=>
-    verifyResolutionBuild(players,candidateDuration,label,expectedChange);
+
    // Candidate fan-out is the expensive part of a 13-player Resolution. Verify candidates in deterministic order against the same sealed setup.
    const runResolutionCandidates=(candidates,stage,buildCandidate,onSafe,ownershipMessage,stopAfterFirst=false)=>{
     setResolutionStage(stage);
     for(let index=0;index<candidates.length;index++){
      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed',ownershipMessage);return false}
      const candidate=candidates[index],spec=buildCandidate(candidate);
-     if(verifyResolutionCandidate(spec.players,spec.duration,spec.label,spec.expectedChange)){
+     if(verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange)){
       onSafe(candidate,spec);
       // One verified role alternative is enough to unblock the coach. Do not keep
       // solving equivalent permutations merely to populate a longer modal.
@@ -6128,7 +6127,7 @@ function bindPractice(){
     if(extensionBaselineValid){
      setResolutionStage('practice-resolution-block11');
      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Block 11. Nothing was committed. Please review the setup and build again.');return}
-     canExtend=verifyResolutionCandidate(extendedPlayers,132,'Block 11');
+     canExtend=verifyResolutionBuild(extendedPlayers,132,'Block 11');
     }else resolutionAuditFailures.push('Block 11 availability could not be verified against the production availability rules.');
    }
    // If Block 11 is safe, it is already a complete verified resolution and no role
