@@ -6362,13 +6362,19 @@ function bindPractice(){
    }
    setResolutionStage('practice-resolution-publish');
    await yieldResolutionUI();
-   // The final decision screen is a publication boundary just like a completed
-   // practice plan. Keep inputs locked and the heartbeat alive until its frame
-   // callback actually begins; never render the modal inline after an async yield.
+   // The last yield is itself an asynchronous boundary. Re-prove both setup
+   // ownership and the exact verified Resolution bytes immediately before exposing
+   // any coaching choice. This closes the final gap between validation and render.
+   if(!buildSetupStillOwned()||JSON.stringify(practiceResolution)!==generatedResolutionBytes){
+    recoverPracticeBuildSetup('practice-resolution-prepublish-changed','HotB stopped because the verified Practice Resolution changed immediately before it could open. Please build the practice again.');
+    return;
+   }
    modal='practiceResolution';
    publishPracticeBuildFrame('practice-resolution-publish',()=>{
-    setPracticeBuildControlsLocked(false);
+    // Do not unlock setup controls until the Resolution DOM has rendered
+    // successfully. If render throws, the publication helper owns recovery.
     render();
+    setPracticeBuildControlsLocked(false);
     stopBuildWatchdog();
     window.scrollTo(0,0);
    });
@@ -6446,10 +6452,10 @@ function bindPractice(){
   }
   if(practicePlan.buildNotices?.length){
    modal='practiceBuildNotice';
-   publishPracticeBuildFrame('practice-build-notice',()=>{setPracticeBuildControlsLocked(false);render();stopBuildWatchdog();window.scrollTo(0,0)});
+   publishPracticeBuildFrame('practice-build-notice',()=>{render();setPracticeBuildControlsLocked(false);stopBuildWatchdog();window.scrollTo(0,0)});
    return;
   }
-  publishPracticeBuildFrame('practice-plan-publish',()=>{setPracticeBuildControlsLocked(false);render();stopBuildWatchdog();window.scrollTo(0,0)});
+  publishPracticeBuildFrame('practice-plan-publish',()=>{render();setPracticeBuildControlsLocked(false);stopBuildWatchdog();window.scrollTo(0,0)});
  });
  $('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',limitations:practiceSetupState.accommodations?.[player.name]?.limitations||'',prePracticeComplete:!!player.prePracticeComplete,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={...practiceSetupState,selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;practiceSection='setup';persistPracticeDraft();render();window.scrollTo(0,0)});
  $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;if(practiceCoachOpen)practiceCardsOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
