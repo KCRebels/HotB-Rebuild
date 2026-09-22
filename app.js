@@ -5771,14 +5771,25 @@ function bindPractice(){
   if(!practicePlayers.some(player=>player.canPitch))noPitchersMode=null;
   stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
   const buildButton=$('#generatePractice');if(buildButton){buildButton.disabled=true;buildButton.textContent='Building Practice…'}
-  // Deferred iPhone scheduler handoff.
+  // Deferred iPhone scheduler handoff. Preserve the build context itself instead of
+  // synthetically clicking the setup button a second time; the second click re-runs
+  // setup/accommodation mutation and can strand the disabled button on iOS.
   if(!buildButton?.dataset?.schedulerReady){
    if(buildButton)buildButton.dataset.schedulerReady='1';
-   setTimeout(()=>{const button=$('#generatePractice');if(button){button.disabled=false;button.click()}},0);
+   const deferredPlayers=structuredClone(practicePlayers),deferredStart=startTime,deferredDuration=durationMinutes,deferredNoPitchers=noPitchersMode;
+   setTimeout(()=>{
+    const button=$('#generatePractice');
+    if(button){button.dataset.schedulerReady='1';button.disabled=false}
+    window.__hotbDeferredPracticeBuild={players:deferredPlayers,startTime:deferredStart,durationMinutes:deferredDuration,noPitchersMode:deferredNoPitchers};
+    if(button)button.click();
+   },0);
    return
   }
   if(buildButton)delete buildButton.dataset.schedulerReady;
-  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode})}catch(error){
+  const deferredBuild=window.__hotbDeferredPracticeBuild;
+  if(deferredBuild)delete window.__hotbDeferredPracticeBuild;
+  const schedulerPlayers=deferredBuild?.players||practicePlayers,schedulerStart=deferredBuild?.startTime||startTime,schedulerDuration=deferredBuild?.durationMinutes||durationMinutes,schedulerNoPitchers=deferredBuild?deferredBuild.noPitchersMode:noPitchersMode;
+  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(schedulerPlayers,schedulerStart,schedulerDuration,{noPitchersMode:schedulerNoPitchers})}catch(error){
    console.error('HotB practice scheduler failed',error);practicePlan=null;
    // During an automatic Resolution rebuild, the outer transaction owns rollback.
    // Preserve its token + draft authorization so the queued verifier can restore
