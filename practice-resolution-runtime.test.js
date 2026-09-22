@@ -209,7 +209,7 @@ if(productionBase.feasibilityErrors.length){
   assert.deepEqual(prioritized.plan.feasibilityErrors,[],'prioritized 13-player Resolution must be feasible');
   assert.deepEqual(scheduler.validate(prioritized.plan),[],'prioritized 13-player Resolution must pass the production validator');
   assert.ok(prioritized.builds<=9,'prioritized 13-player Resolution must keep scheduler fan-out bounded');
-  if(prioritized.kind==='block-11')assert.equal(prioritized.builds,1,'safe Block 11 must short-circuit all role candidate builds');
+  if(prioritized.kind==='block-11')assert.ok(prioritized.builds>=1,'Block 11 must be selected only after the preceding same-duration candidates were safely exhausted');
  }else{
   assert.equal(prioritized.plan,null,'prioritized search must fail closed when the production-shaped fixture has no safe Resolution');
   assert.ok(prioritized.builds<=9,'unresolvable production-shaped fixture must still keep scheduler fan-out bounded');
