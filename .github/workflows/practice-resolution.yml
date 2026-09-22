@@ -45,4 +45,9 @@ jobs:
           grep -q "'./practice-scheduler.js'" service-worker.js
           grep -Fq "/\\/practice-scheduler\\.js" service-worker.js
           grep -q "launch=226" service-worker.js
+          grep -q "pwa-update.js?v=20260921-pwa226" index.html
+          grep -q "BUILD_VERSION = '2026.09.21.226'" pwa-update.js
+          grep -q "url.searchParams.set('launch','226')" pwa-update.js
+          ! grep -q "20260920-pwa221" index.html
+          ! grep -q "2026.09.20.221" pwa-update.js
           ! grep -q "Finalizing Resolution" app.js
