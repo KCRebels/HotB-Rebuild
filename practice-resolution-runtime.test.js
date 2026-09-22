@@ -903,3 +903,19 @@ function boundedSearch486(players,{block11=false,samePitcher=false,sameCatcher=f
  assert.deepEqual(boundedSearch486(many,{sameCatcher:true}),['Block 11','Hitting Only: P1','Not Catching: C1'],'safe same-duration catcher ends search');
 }
 console.log('Resolution 486 global bounded-search regression passed.');
+
+
+/* Resolution 487 infeasible-candidate short-circuit regression.
+   A scheduler-declared failure must never pay for the expensive full validator. */
+function candidateAudit487(plan,validate){
+ if(!plan||plan.feasibilityErrors?.length)return false;
+ return validate(plan).length===0;
+}
+{
+ let validations=0;
+ assert.equal(candidateAudit487({feasibilityErrors:['no safe schedule']},()=>{validations++;return[]}),false);
+ assert.equal(validations,0,'infeasible candidate bypasses full safety validator');
+ assert.equal(candidateAudit487({feasibilityErrors:[]},()=>{validations++;return[]}),true);
+ assert.equal(validations,1,'feasible candidate receives full safety validator exactly once');
+}
+console.log('Resolution 487 infeasible-candidate short-circuit regression passed.');
