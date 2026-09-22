@@ -911,3 +911,17 @@ console.log('Resolution 540 exhaustive postcondition diagnostic regression passe
  assert.match(branch,/hour=hour%12\+\(match\[3\]===['"]p['"]\?12:0\)/,'postcondition clock parser must normalize am/pm labels');
 }
 console.log('Resolution 542 block-time representation regression passed.');
+
+
+/* Resolution 548 restart canonicalization regression.
+   PracticeSession.restore() normalizes optional fields (resolution:null), so
+   persistence must not require raw create-vs-restore byte equality. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('function persistPracticeSession(){');
+ const end=source.indexOf('function persistPracticeDraft(){',start);
+ const branch=source.slice(start,end);
+ assert.doesNotMatch(branch,/JSON\.stringify\(restored\)!==serializedSession/,'restart proof must not reject restore() canonicalization');
+ assert.match(branch,/restore the resolved practice identity \[restore-identity\]/,'restart proof must retain portal draft identity verification');
+}
+console.log('Resolution 548 restart canonicalization regression passed.');
