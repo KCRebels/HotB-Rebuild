@@ -395,4 +395,23 @@ const fragmentedMachinePlan=scheduler.buildSchedule(fragmentedMachineRoster,'18:
 assert.ok(!fragmentedMachinePlan.feasibilityErrors.some(error=>error.includes('Machine cannot be scheduled')),'bounded exact grouping must not manufacture a Machine failure when a valid 2-3 grouping exists');
 if(!fragmentedMachinePlan.feasibilityErrors.length)assert.deepEqual(scheduler.validate(fragmentedMachinePlan),[],'fragmented Machine solution must pass the complete audit');
 
+
+
+// Resolution 495: exact phone edge case — Tayte absent, Lydia attends but Catching
+// is off, and Lakyn attends but Pitching is off. The remaining four pitchers plus
+// twelve hitters have a legal Live assignment; greedy hitter filling used to strand
+// a player and manufacture a Practice Resolution failure.
+const rebels12NoCatchLakynHitOnly=rebels13.filter(player=>player.name!=='Tayte Stepps').map(player=>{
+ if(player.name==='Lydia Copeland')return {...player,canCatch:false};
+ if(player.name==='Lakyn Farley')return {...player,canPitch:false,requiresPitchWarmup:false};
+ return {...player};
+});
+const rebels12NoCatchLakynHitOnlyPlan=scheduler.buildSchedule(rebels12NoCatchLakynHitOnly,'18:00',120);
+assert.deepEqual(rebels12NoCatchLakynHitOnlyPlan.feasibilityErrors,[],'12-player no-catcher/Lakyn-hitting-only phone setup must build directly');
+assert.deepEqual(scheduler.validate(rebels12NoCatchLakynHitOnlyPlan),[],'12-player no-catcher/Lakyn-hitting-only plan must pass the full audit');
+assert.equal(rebels12NoCatchLakynHitOnlyPlan.liveSessions.length,4,'the four remaining available pitchers must each receive one Live block');
+assert.ok(rebels12NoCatchLakynHitOnlyPlan.liveSessions.every(session=>session.hitters.length>=2&&session.hitters.length<=3),'every Live block must contain 2-3 hitters');
+assert.ok(rebels12NoCatchLakynHitOnlyPlan.schedule['Lakyn Farley'].every(entry=>entry.activity!=='Pitch Live'&&entry.activity!=='Pitch Warm-Up'),'Lakyn Hitting Only must receive no pitching work');
+assert.ok(rebels12NoCatchLakynHitOnlyPlan.schedule['Lydia Copeland'].every(entry=>entry.activity!=='Catch Live'&&entry.activity!=='Catch Warm-Up'),'Lydia Not Catching must receive no catching work');
+
 console.log('practice-scheduler tests passed');
