@@ -5808,7 +5808,7 @@ function bindPractice(){
    },timeout);
   };
   armBuildWatchdog('scheduler');
-  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});if(buildButton)buildButton.dataset.buildStage='scheduler-returned'}catch(error){
+  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});armBuildWatchdog('scheduler-returned')}catch(error){
    console.error('HotB practice scheduler failed',error);clearTimeout(buildWatchdog);practicePlan=null;
    // During an automatic Resolution rebuild, the outer transaction owns rollback.
    // Preserve its token + draft authorization so the queued verifier can restore
@@ -5817,7 +5817,7 @@ function bindPractice(){
    if(!resolutionApplyBuild)alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));
    return
   }
-  if(buildButton)buildButton.dataset.buildStage='post-scheduler';
+  armBuildWatchdog('post-scheduler');
   if(practicePlan.feasibilityErrors?.length){
    // The base scheduler has returned. Practice Resolution can require many additional
    // scheduler/audit passes; the stage heartbeat below is re-armed around each
@@ -5843,7 +5843,8 @@ function bindPractice(){
    // top of the coaching choice being applied. Leave transaction ownership intact;
    // the outer verifier will see this infeasible plan and roll back atomically.
    if(resolutionApplyBuild){
-    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}
+    clearTimeout(buildWatchdog);
+    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-rebuild-infeasible'}
     return;
    }
    const errors=practicePlan.feasibilityErrors.slice(),identityBlocked=errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(error)),availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
@@ -6158,7 +6159,7 @@ function bindPractice(){
    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Plan'}
    return;
   }
-  if(buildButton)buildButton.dataset.buildStage='finalizing-plan';
+  armBuildWatchdog('finalizing-plan');
   clearTimeout(buildWatchdog);
   practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();
   // The build authorization is consumed here, but the transaction token remains
@@ -6179,7 +6180,8 @@ function bindPractice(){
   // transaction will audit persistence/recovery and then render the final builder
   // (or roll back). Never expose this transient plan or its notice as interactive UI.
   if(resolutionApplyBuild)return;
-  if(practicePlan.buildNotices?.length){modal='practiceBuildNotice';render();return}
+  if(practicePlan.buildNotices?.length){clearTimeout(buildWatchdog);modal='practiceBuildNotice';render();return}
+  clearTimeout(buildWatchdog);
   setTimeout(()=>{
    try{
     render();
