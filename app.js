@@ -5799,6 +5799,18 @@ function bindPractice(){
  $('#endPracticeDraft')?.addEventListener('click',endPracticeDraft);
  $('#generatePractice')?.addEventListener('click',async()=>{
   const roster=practiceAttendanceRoster(),attendees=Array.from(document.querySelectorAll('[data-practice-player]:checked')).map(input=>roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
+  // Seal the exact setup that this asynchronous build owns. Practice Resolution
+  // intentionally yields browser frames; controls can otherwise change underneath
+  // the candidate verification and produce a plan for a different setup.
+  const buildSetupSignature=()=>{
+   try{
+    const checked=Array.from(document.querySelectorAll('[data-practice-player]:checked')).map(input=>roster[Number(input.dataset.practicePlayer)]?.name).filter(Boolean);
+    const accommodations={};
+    roster.forEach(player=>{accommodations[player.name]=practiceAccommodation(player)});
+    return JSON.stringify({checked,start:$('#practiceStartTime')?.value||'18:00',duration:Number($('#practiceDuration')?.value)||120,accommodations});
+   }catch(error){console.error('HotB could not seal the practice build setup.',error);return ''}
+  };
+  const initialBuildSetupSignature=buildSetupSignature();
   // Resolution rebuild failures are owned by rebuildResolvedPractice. Do not clear
   // its token here: doing so makes the queued verifier stale and prevents rollback.
   // Ordinary/manual builds still report these preflight problems directly.
@@ -5869,6 +5881,7 @@ function bindPractice(){
     if(message)alert(message);
    });
   };
+  const buildSetupStillOwned=()=>!!initialBuildSetupSignature&&buildSetupSignature()===initialBuildSetupSignature;
   const armBuildWatchdog=(stage,timeout=12000)=>{
    buildFinished=false;buildWatchdogStage=stage;
    const generation=++buildWatchdogGeneration;
@@ -5921,6 +5934,10 @@ function bindPractice(){
    };
    setResolutionStage('practice-resolution-start');
    await yieldResolutionUI();
+   if(!resolutionApplyBuild&&!buildSetupStillOwned()){
+    recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was building. Nothing was committed. Please review the setup and tap Build Practice Schedule again.');
+    return;
+   }
    // A failed automatic Resolution rebuild must not create a second Resolution on
    // top of the coaching choice being applied. Leave transaction ownership intact;
    // the outer verifier will see this infeasible plan and roll back atomically.
@@ -6078,6 +6095,7 @@ function bindPractice(){
    for(const pitcher of availablePitchers){
     setResolutionStage('practice-resolution-pitcher');
     await yieldResolutionUI();
+    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
     const testPlayers=practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
     if(verifyResolutionBuild(testPlayers,durationMinutes,'Hitting Only: '+pitcher.name,{role:'pitcher',name:pitcher.name}))solvingPitchers.push(pitcher.name)
    }
@@ -6086,6 +6104,7 @@ function bindPractice(){
    for(const catcher of availableCatchers){
     setResolutionStage('practice-resolution-catcher');
     await yieldResolutionUI();
+    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
     const testPlayers=practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
     if(verifyResolutionBuild(testPlayers,durationMinutes,'Not Catching: '+catcher.name,{role:'catcher',name:catcher.name}))solvingCatchers.push(catcher.name)
    }
@@ -6096,19 +6115,21 @@ function bindPractice(){
     // The extension helper marks any production-availability disagreement invalid.
     // Do not fan out combined candidates from a poisoned Block 11 baseline.
     const extensionBaselineValid=extendedPlayers.length===practicePlayers.length&&extendedPlayers.every(player=>Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=11&&Number(player.availableFromBlock)<Number(player.availableUntilBlock));
-    if(extensionBaselineValid){setResolutionStage('practice-resolution-block11');await yieldResolutionUI()}
+    if(extensionBaselineValid){setResolutionStage('practice-resolution-block11');await yieldResolutionUI();if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Block 11. Nothing was committed. Please review the setup and build again.');return}}
     canExtend=extensionBaselineValid&&verifyResolutionBuild(extendedPlayers,132,'Block 11');
     if(!extensionBaselineValid)resolutionAuditFailures.push('Block 11 availability could not be verified against the production availability rules.');
     if(!canExtend&&extensionBaselineValid){
      for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
       setResolutionStage('practice-resolution-pitcher-block11');
       await yieldResolutionUI();
+      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
       const label='Hitting Only + Block 11: '+pitcher.name,testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
       if(verifyResolutionBuild(testPlayers,132,label,{role:'pitcher',name:pitcher.name}))combinedPitchers.push(pitcher.name);
      }
      for(const catcher of extendedPlayers.filter(player=>player.canCatch)){
       setResolutionStage('practice-resolution-catcher-block11');
       await yieldResolutionUI();
+      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
       const label='Not Catching + Block 11: '+catcher.name,testPlayers=extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
       if(verifyResolutionBuild(testPlayers,132,label,{role:'catcher',name:catcher.name}))combinedCatchers.push(catcher.name);
      }
@@ -6116,6 +6137,7 @@ function bindPractice(){
    }
    setResolutionStage('practice-resolution-finalize');
    await yieldResolutionUI();
+   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be finalized. Nothing was committed. Please review the setup and build again.');return}
    solvingPitchers=[...new Set(solvingPitchers)].sort();
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    // A combined option is meaningful only when the same role change cannot solve
