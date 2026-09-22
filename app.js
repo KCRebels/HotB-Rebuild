@@ -4113,12 +4113,13 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  const roleCorrect=(name,role)=>{
   const verified=verifiedByName.get(name),live=liveByName.get(name);
   if(!verified||!live)return false;
-  // The verified base snapshot must prove the player currently has the capability.
-  // The raw attendance roster stores positions, not derived isPitcher/isCatcher
-  // booleans, so derive underlying role eligibility from the canonical profile.
+  // Candidate generation already requires canPitch/canCatch before a choice can
+  // enter the verified set. At display/apply time validate the immutable underlying
+  // roster role + exact identity, not the mutable accommodation capability. A
+  // Resolution exists specifically to authorize changing that capability.
   return role==='pitcher'
-   ?verified.isPitcher===true&&verified.canPitch===true&&isPitcherProfile(live)
-   :verified.isCatcher===true&&verified.canCatch===true&&positionTokens(live).includes('C');
+   ?verified.isPitcher===true&&isPitcherProfile(live)
+   :verified.isCatcher===true&&positionTokens(live).includes('C');
  };
  if(!r.pitchers.every(name=>roleCorrect(name,'pitcher'))||!r.combinedPitchers.every(name=>roleCorrect(name,'pitcher')))return false;
  if(!r.catchers.every(name=>roleCorrect(name,'catcher'))||!r.combinedCatchers.every(name=>roleCorrect(name,'catcher')))return false;
@@ -5969,10 +5970,10 @@ function bindPractice(){
      }
      if(!r.catchers.every(name=>role(name,'catcher'))||!r.combinedCatchers.every(name=>role(name,'catcher')))return fail('catcher-role');
      if(r.combinedPitchers.some(name=>r.pitchers.includes(name))||r.combinedCatchers.some(name=>r.catchers.includes(name)))return fail('choice-overlap');
-     // Do not require the mutable capability flag to remain true for a choice
-     // whose entire purpose is to turn that capability off. Underlying role
-     // eligibility and exact identity were proven above.
-     return 'unmapped-contract';
+     // Every clause mirrored from the authoritative validator passed. Returning
+     // an explicit success marker prevents a future validator/diagnostic drift from
+     // being mislabeled as an unknown contract failure.
+     return 'validator-drift-after-audit-pass';
     };
     if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
      const sealReason=sealAudit();
