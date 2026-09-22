@@ -6015,7 +6015,7 @@ function bindPractice(){
     if(resolutionBuildCount>=RESOLUTION_BUILD_BUDGET){
      if(!resolutionBudgetExceeded)resolutionAuditFailures.push('Practice Resolution stopped because its verified scheduler-build budget was exceeded.');
      resolutionBudgetExceeded=true;
-     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution441',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
+     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution445',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
      return false;
     }
     resolutionBuildCount++;
@@ -6145,7 +6145,7 @@ function bindPractice(){
      setResolutionStage(stage);
      if(button)button.textContent='Checking '+(stageLabels[stage]||'Resolution')+' '+(index+1)+'/'+unique.length+'…';
      const started=typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
-     const diagnosticBase={bundle:'resolution441',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
+     const diagnosticBase={bundle:'resolution445',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
      try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({...diagnosticBase,state:'started'}))}catch(error){}
      const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
      const elapsed=Math.round((typeof performance!=='undefined'&&performance.now?performance.now():Date.now())-started);
@@ -6161,71 +6161,68 @@ function bindPractice(){
     }
     return true;
    };
-   // Resolve the least-disruptive option first. For a normal 120-minute practice,
-   // Block 11 changes no player's role and is a single scheduler proof. If it works,
-   // publish that verified choice immediately instead of forcing iPhone Safari through
-   // every pitcher/catcher permutation before it can open Practice Resolution.
+   // Search only until the first verified coaching solution is found. Once one
+   // option is proven safe, publishing it is more useful than spending additional
+   // iPhone main-thread time proving lower-priority alternatives. The coach can
+   // return to setup if they do not want that verified adjustment.
    let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
    const availableCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
    let extendedPlayers=null,extensionBaselineValid=false;
    if(!identityBlocked&&Number(durationMinutes)===120){
     extendedPlayers=practiceResolutionExtendedPlayers(practicePlayers,startTime);
     extensionBaselineValid=extendedPlayers.length===practicePlayers.length&&extendedPlayers.every(player=>Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=11&&Number(player.availableFromBlock)<Number(player.availableUntilBlock));
-    if(extensionBaselineValid){
-     setResolutionStage('practice-resolution-block11');
-     if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Block 11. Nothing was committed. Please review the setup and build again.');return}
-     canExtend=verifyResolutionBuild(extendedPlayers,132,'Block 11');
-    }else resolutionAuditFailures.push('Block 11 availability could not be verified against the production availability rules.');
    }
-   // If Block 11 is safe, it is already a complete verified resolution and no role
-   // fan-out is needed. Only search role changes when the duration-only solution fails.
-   if(!canExtend){
+   // Prefer the smallest coaching change first: keep the 120-minute practice and
+   // make one pitcher Hitting Only. This is the known natural six-player recovery
+   // case and avoids an unnecessary 132-minute scheduler pass before it.
+   if(!identityBlocked&&availablePitchers.length){
     if(!runResolutionCandidates(
      availablePitchers,'practice-resolution-pitcher',
      pitcher=>({players:practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:durationMinutes,label:'Hitting Only: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name}}),
      pitcher=>solvingPitchers.push(pitcher.name),
      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
     ))return;
-    // One verified 120-minute role change is sufficient. If Hitting Only works,
-    // do not spend another scheduler build proving a catcher alternative that is
-    // unnecessary to unblock this practice.
-    if(!solvingPitchers.length){
-     if(!runResolutionCandidates(
-      availableCatchers,'practice-resolution-catcher',
-      catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
-      catcher=>solvingCatchers.push(catcher.name),
-      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
-     ))return;
-    }
-    // Combined role + Block 11 choices are fallback proofs only. They are useful when
-    // neither the plain extension nor a one-role 120-minute change is sufficient.
-    if(extensionBaselineValid&&!solvingPitchers.length&&!solvingCatchers.length){
-     const combinedPitcherCandidates=extendedPlayers.filter(player=>player.canPitch);
-     if(!runResolutionCandidates(
-      combinedPitcherCandidates,'practice-resolution-pitcher-block11',
-      pitcher=>({players:extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:132,label:'Hitting Only + Block 11: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name}}),
-      pitcher=>combinedPitchers.push(pitcher.name),
-      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
-     ))return;
-     // As with the 120-minute role search, stop the category fan-out once one
-     // combined role + Block 11 solution is proven.
-     if(!combinedPitchers.length){
-      const combinedCatcherCandidates=extendedPlayers.filter(player=>player.canCatch);
-      if(!runResolutionCandidates(
-       combinedCatcherCandidates,'practice-resolution-catcher-block11',
-       catcher=>({players:extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
-       catcher=>combinedCatchers.push(catcher.name),
-       'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
-      ))return;
-     }
-    }
+   }
+   // If no pitcher-only fix works, try the same-duration catcher adjustment.
+   if(!solvingPitchers.length&&availableCatchers.length){
+    if(!runResolutionCandidates(
+     availableCatchers,'practice-resolution-catcher',
+     catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
+     catcher=>solvingCatchers.push(catcher.name),
+     'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
+    ))return;
+   }
+   // Only if no 120-minute role adjustment works do we spend one build checking
+   // Block 11, followed by the two combined fallbacks.
+   if(!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid){
+    setResolutionStage('practice-resolution-block11');
+    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Block 11. Nothing was committed. Please review the setup and build again.');return}
+    canExtend=verifyResolutionBuild(extendedPlayers,132,'Block 11');
+   }
+   if(!solvingPitchers.length&&!solvingCatchers.length&&!canExtend&&extensionBaselineValid){
+    const combinedPitcherCandidates=extendedPlayers.filter(player=>player.canPitch);
+    if(!runResolutionCandidates(
+     combinedPitcherCandidates,'practice-resolution-pitcher-block11',
+     pitcher=>({players:extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:132,label:'Hitting Only + Block 11: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name}}),
+     pitcher=>combinedPitchers.push(pitcher.name),
+     'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
+    ))return;
+   }
+   if(!solvingPitchers.length&&!solvingCatchers.length&&!canExtend&&!combinedPitchers.length&&extensionBaselineValid){
+    const combinedCatcherCandidates=extendedPlayers.filter(player=>player.canCatch);
+    if(!runResolutionCandidates(
+     combinedCatcherCandidates,'practice-resolution-catcher-block11',
+     catcher=>({players:extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
+     catcher=>combinedCatchers.push(catcher.name),
+     'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
+    ))return;
    }
    // Candidate fan-out is complete. Normalize once, then enter verified evidence publication.
    solvingPitchers=[...new Set(solvingPitchers)].sort();
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution441',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution445',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
    setResolutionStage('practice-resolution-evidence');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was preparing Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const survivingCandidateLabels=new Set([
@@ -6296,7 +6293,7 @@ function bindPractice(){
    // persistence belongs to the chosen Apply & Build transaction.
    setResolutionStage('practice-resolution-publish');
    modal='practiceResolution';
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution441',stage:'practice-resolution-publish',state:'published',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution445',stage:'practice-resolution-publish',state:'published',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
    publishPracticeBuildFrame('practice-resolution-publish',()=>{
     render();
     setPracticeBuildControlsLocked(false);
