@@ -5880,19 +5880,27 @@ function bindPractice(){
    clearTimeout(buildWatchdog);buildWatchdog=null;
    clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
   };
+  // Publication callbacks are asynchronous and can outlive the build turn that
+  // scheduled them. Give each publication/recovery handoff its own ownership token
+  // so an older Safari rAF/timer can never render over a newer build or recovery.
+  let buildPublicationGeneration=0;
+  const cancelPracticeBuildPublication=()=>++buildPublicationGeneration;
   const publishPracticeBuildFrame=(stage,callback)=>{
+   const publicationGeneration=++buildPublicationGeneration;
    if(buildButton)buildButton.dataset.buildStage=stage;
    const run=()=>{
+    if(publicationGeneration!==buildPublicationGeneration)return;
     markBuildProgress();
     try{callback()}
     catch(error){
+     if(publicationGeneration!==buildPublicationGeneration)return;
      console.error('HotB practice build publication failed at '+stage,error);
      stopBuildWatchdog();
      setPracticeBuildControlsLocked(false);
      const button=$('#generatePractice');
      if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage=stage+'-failed'}
-     // Do not recursively call this publication helper after a render exception.
-     // Leave the current DOM usable and report the exact failed handoff.
+     // Invalidate any second queued browser callback from this failed handoff.
+     cancelPracticeBuildPublication();
      alert('HotB built the practice but could not open the next screen at '+stage+': '+String(error?.message||error||'unknown'));
     }
    };
