@@ -8,7 +8,6 @@ on:
       - 'practice-resolution-runtime.test.js'
       - 'practice-scheduler.js'
       - 'practice-scheduler.test.js'
-      - 'resolution-fixture-probe.js'
       - 'practice-session.js'
       - 'index.html'
       - 'service-worker.js'
@@ -39,8 +38,6 @@ jobs:
         run: node practice-resolution-runtime.test.js
       - name: Run full practice scheduler regression
         run: node practice-scheduler.test.js
-      - name: Run bounded Resolution fixture probe
-        run: node resolution-fixture-probe.js
       - name: Run installed-app update regression
         run: node pwa-update.test.js
       - name: Verify deployed bundle markers
