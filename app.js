@@ -4040,9 +4040,9 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===132?11:duration===120?10:0,names=players.map(player=>player?.name),verifiedNames=new Set(names);
  if(!blockCount||!players.length||names.length!==verifiedNames.size)return false;
  if(typeof r.canExtend!=='boolean'||r.noPitchersMode!==null)return false;
- const startMatch=String(r.startTime||'').match(/^(\d{2}):(\d{2})$/),startHour=Number(startMatch?.[1]),startMinute=Number(startMatch?.[2]);
+ const startMatch=String(r.startTime||'').match(/^(\\d{2}):(\\d{2})$/),startHour=Number(startMatch?.[1]),startMinute=Number(startMatch?.[2]);
  if(!startMatch||startHour>23||startMinute>59||String(r.startTime)!==String(practiceSetupState.startTime||''))return false;
- const clockMinutes=value=>{const match=String(value||'').match(/^(\d{2}):(\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour<24&&minute<60?hour*60+minute:null};
+ const clockMinutes=value=>{const match=String(value||'').match(/^(\\d{2}):(\\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour<24&&minute<60?hour*60+minute:null};
  const resolutionStart=clockMinutes(r.startTime),resolutionEnd=resolutionStart===null?null:(resolutionStart+duration)%(24*60);
  if(resolutionStart===null||resolutionEnd===null)return false;
  // A persisted Resolution is always the failed normal practice. Emergency Block 11
