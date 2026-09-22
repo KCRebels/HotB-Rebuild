@@ -188,11 +188,14 @@
   // adds exponential work without improving the result.
   function assignStationGroups(playersToAssign,slots,eligible,allowOneFrontTossFour=false){
    const assignments=Array.from({length:slots.length},()=>[]);
+   let placementSteps=0;
+   const placementStepLimit=Math.max(200,playersToAssign.length*Math.max(1,slots.length)*8);
    const remaining=playersToAssign.slice().sort((a,b)=>{
     const count=player=>slots.filter((slot,index)=>eligible(player,slot,index,assignments[index])).length;
     return count(a)-count(b)||a.name.localeCompare(b.name);
    });
    while(remaining.length){
+    if(++placementSteps>placementStepLimit)return null;
     let placed=false;
     for(let ri=0;ri<remaining.length&&!placed;ri++){
      const player=remaining[ri];
@@ -258,7 +261,9 @@
   const drillSlotsByPlayer=Object.fromEntries(attendees.map(player=>[player.name,schedule[player.name].map((entry,index)=>entry.activity==='Drill'?index:-1).filter(index=>index>=0)]));
   const drillPlayersByBlock=Array.from({length:BLOCK_COUNT},(_,block)=>attendees.filter(player=>schedule[player.name][block].activity==='Drill'));
   let drillStations=Math.max(0,...Object.values(drillSlotsByPlayer).map(slots=>slots.length),...drillPlayersByBlock.map(list=>Math.ceil(list.length/3))),drillsAssigned=false;
+  let drillAssignmentPasses=0;
   while(!drillsAssigned&&drillStations<=BLOCK_COUNT){
+   if(++drillAssignmentPasses>BLOCK_COUNT+1)break;
    attendees.forEach(player=>schedule[player.name].forEach(entry=>{if(entry.activity.startsWith('Drill #'))entry.activity='Drill'}));
    const usedByPlayer=Object.fromEntries(attendees.map(player=>[player.name,new Set()]));
    let failed=false;
