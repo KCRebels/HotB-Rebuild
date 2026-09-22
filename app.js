@@ -6135,6 +6135,10 @@ function bindPractice(){
      try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({...diagnosticBase,state:'started'}))}catch(error){}
      const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
      const elapsed=Math.round((typeof performance!=='undefined'&&performance.now?performance.now():Date.now())-started);
+     // A candidate that returns is never allowed to leave the transaction looking
+     // like it is still inside that candidate. Publish completion immediately so a
+     // real-device screenshot distinguishes scheduler work from post-search work.
+     if(button)button.textContent='Checked '+(stageLabels[stage]||'Resolution')+' '+(index+1)+'/'+candidates.length+' — '+(safe?'safe':'not safe')+'…';
      try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({...diagnosticBase,state:'completed',elapsedMs:elapsed,safe,completedAt:new Date().toISOString()}))}catch(error){}
      if(safe){
       onSafe(candidate,spec);
