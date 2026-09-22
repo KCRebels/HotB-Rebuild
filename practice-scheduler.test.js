@@ -125,6 +125,26 @@ assert.deepEqual(scheduler.validate(tenTwoTwo),[]);
 const thirteenTwoTwo=scheduler.buildSchedule(scenario(13,2,2));
 assert.ok(thirteenTwoTwo.feasibilityErrors.some(error=>error.includes('short 1 live block')),'the scheduler must reject a plan that would require a pitcher to throw more than twice');
 
+/* Resolution 549 live-pitcher capacity boundary.
+   This is the exact 13-player boundary exercised on-device after the direct Apply
+   transaction was repaired. Zero, one and two available pitchers must fail closed;
+   three available pitchers must build without exceeding the two-live-block ceiling. */
+for(const pitcherCount of [0,1,2]){
+ const roster=scenario(13,pitcherCount,2);
+ const plan=scheduler.buildSchedule(roster,'18:00',120);
+ assert.ok(plan.feasibilityErrors.length>0,`13 players with ${pitcherCount} available pitcher(s) must not produce a practice`);
+ if(pitcherCount===0)assert.ok(plan.feasibilityErrors.some(error=>/pitch/i.test(error)),'zero-pitcher failure must identify pitching');
+ if(pitcherCount===1)assert.ok(plan.feasibilityErrors.some(error=>/safely cover only 2|pitch/i.test(error)),'one-pitcher failure must expose the safe capacity limit');
+ if(pitcherCount===2)assert.ok(plan.feasibilityErrors.some(error=>/short 1 live block/i.test(error)),'two-pitcher failure must identify the one-block deficit');
+}
+const thirteenThreeTwo=scheduler.buildSchedule(scenario(13,3,2),'18:00',120);
+assert.deepEqual(thirteenThreeTwo.feasibilityErrors,[],'13 players with three available pitchers must cross the capacity boundary and build');
+assert.deepEqual(scheduler.validate(thirteenThreeTwo),[],'the three-pitcher boundary plan must pass the full rules audit');
+const boundaryPitcherLoads=new Map();
+for(const live of thirteenThreeTwo.liveSessions)boundaryPitcherLoads.set(live.pitcher,(boundaryPitcherLoads.get(live.pitcher)||0)+1);
+assert.ok([...boundaryPitcherLoads.values()].every(count=>count<=2),'the feasible boundary may not make any pitcher throw more than two live blocks');
+assert.ok(thirteenThreeTwo.liveSessions.length>=5,'the feasible boundary must provide the five live blocks required by 13 players');
+
 const earlyGuests=[...scenario(11,4,2),...Array.from({length:6},(_,index)=>({name:`Early Guest ${index+1}`,isGuest:true,isPitcher:index<2,isCatcher:index>=2&&index<4,canPitch:index<2,requiresPitchWarmup:index<2,canCatch:index>=2&&index<4,prePracticeComplete:true,availableFromBlock:0,availableUntilBlock:10}))];
 const earlyGuestPlan=scheduler.buildSchedule(earlyGuests);
 assert.deepEqual(earlyGuestPlan.feasibilityErrors,[],'17 players should fit when six guests complete warm-up and tee before practice');
