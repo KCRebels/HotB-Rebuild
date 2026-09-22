@@ -5823,78 +5823,101 @@ function bindPractice(){
      :!availablePitchers.length
       ?['No attending player is currently available to pitch Live. Live work requires an attending pitcher.']
       :baseErrors;
-   // Resolution 501: do not synchronously rebuild speculative Resolution
-   // candidates inside the coach's Build tap. On iPhone those repeated complete
-   // scheduler+validator passes can monopolize the main thread and leave the UI
-   // permanently painted in its locked Building state. The failed base build is
-   // already authoritative. Publish that conflict immediately; the coach returns
-   // to setup and makes an explicit attendance/availability/role change. Verified
-   // one-click compromises can be reintroduced only through a bounded/nonblocking
-   // verifier, never by looping full builds inside this tap handler.
-   const pitchers=[],catchers=[],combinedPitchers=[],combinedCatchers=[],candidateNotices={};
-   const canExtend=false;
-   [pitchers,catchers,combinedPitchers,combinedCatchers].forEach(list=>list.sort());
-   const sortedCandidateNotices=Object.fromEntries(Object.entries(candidateNotices).sort(([a],[b])=>a.localeCompare(b)));
-   // Resolution 504: canonical snapshot validation requires errors/notices/audit
-   // collections to be sorted. The base scheduler emits errors in discovery order,
-   // so a multi-error constrained practice could build a correct Resolution object
-   // and then have the display validator reject it before the modal mounted.
-   resolutionErrors.sort((a,b)=>a.localeCompare(b));
-   const hasVerifiedChoice=!!(pitchers.length||catchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
-   const rosterGuidance=identityBlocked
+   // Resolution 509: candidate verification is cooperative. The old implementation
+   // ran every complete candidate build inside the original Build tap and froze
+   // iPhone Safari. First mount a stable Resolution shell, then verify one candidate
+   // per event-loop turn. The scheduler itself is bounded, so each turn has finite
+   // work and the browser gets a paint/input opportunity between candidates.
+   const resolutionErrors=(identityBlocked?baseErrors:
+    !availableCatchers.length
+     ?['No attending player is currently available to catch. Live pitching requires an attending catcher.']
+     :!availablePitchers.length
+      ?['No attending player is currently available to pitch Live. Live work requires an attending pitcher.']
+      :baseErrors).slice().sort((a,b)=>a.localeCompare(b));
+   const notices=Array.isArray(practicePlan.fallbackWarnings)?[...new Set(practicePlan.fallbackWarnings.map(value=>String(value||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)):[];
+   const initialGuidance=identityBlocked
     ?'HotB found attendee identity or availability information that must be corrected. Fix the roster/guest or arrival/departure entry and build again.'
     :hardRoleMissing&&!availableCatchers.length
      ?'No attending player is currently available to catch. Return to setup and make an attending catcher available for Catching, or change attendance so a catcher is present.'
      :hardRoleMissing&&!availablePitchers.length
       ?'No attending player is currently available to pitch Live. Return to setup and make an attending pitcher available to pitch, or change attendance so a pitcher is present.'
-    :hasVerifiedChoice
-     ?'HotB verified the choices above against this exact practice. Choose the coaching compromise you prefer, or return to setup and make a different change.'
-     :availablePitchers.length
-      ?'HotB could not satisfy every absolute rule with this exact setup. Change attendance, availability, Pitching, or Catching explicitly and build again.'
-      :'This practice needs an attending pitcher or another explicit attendance/availability change before HotB can satisfy every absolute rule.';
-   // Resolution 506: base-build failure display is deliberately independent of
-   // the persisted/actionable Practice Resolution transaction. The previous path
-   // still called practiceResolutionModal(), whose signature/snapshot validator can
-   // reject reconstructed live setup state before any HTML exists. For a no-choice
-   // failure there is nothing to Apply, so render a dedicated informational modal
-   // from the scheduler's authoritative errors and guidance. Actionable Resolution
-   // transactions continue to use the strict validator.
-   const problemItems=resolutionErrors.map(error=>`<li>${esc(error)}</li>`).join('');
-   const noticeItems=(Array.isArray(practicePlan.fallbackWarnings)?[...new Set(practicePlan.fallbackWarnings.map(value=>String(value||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)):[]).map(note=>`<li>${esc(note)}</li>`).join('');
-   const failureHtml=`<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>HotB needs a setup change</h2></div></div><p class="practice-resolution-intro">HotB could not satisfy every absolute practice rule with this exact setup.</p><section class="practice-resolution-problem"><b>What is preventing the build</b><ul>${problemItems}</ul></section>${noticeItems?`<section class="practice-resolution-notices"><b>Automatic equipment / capacity notices</b><ul>${noticeItems}</ul></section>`:''}<section class="practice-resolution-choice"><h3>Change Attendance / Availability</h3><p>${esc(rosterGuidance)}</p><button class="btn red block" id="returnPracticeAttendance">Change Attendance / Availability</button></section></div></div>`;
-   // Clear any stale actionable transaction before rendering the informational
-   // result. This prevents render() from routing through modalContent()'s strict
-   // Practice Resolution validator.
-   practiceResolution=null;
-   modal=null;
-   setPracticeBuildControlsLocked(false);
-   try{
-    // Resolution 507: render() is intentionally not called here. The Build handler
-    // is still executing and a full practice rerender/rebind can fail before the
-    // informational panel is inserted (the exact repeated symptom on iPhone).
-    // Mount the self-contained failure panel directly onto the already-live app DOM.
-    const appRoot=document.querySelector('#app');
-    if(!appRoot)throw new Error('HotB app root is unavailable.');
+      :'HotB is checking the approved Practice Resolution options for this exact setup.';
+   const mountResolutionHtml=html=>{
+    const appRoot=document.querySelector('#app');if(!appRoot)throw new Error('HotB app root is unavailable.');
     document.querySelector('.practice-resolution-informational')?.remove();
-    const shell=document.createElement('div');
-    shell.className='practice-resolution-informational';
-    shell.innerHTML=failureHtml;
-    appRoot.appendChild(shell);
-    const returnButton=shell.querySelector('#returnPracticeAttendance');
-    if(returnButton)returnButton.addEventListener('click',()=>{shell.remove();const button=$('#generatePractice');if(button){button.disabled=false;button.textContent='Build Practice Schedule'}window.scrollTo(0,0)});
-    window.scrollTo(0,0);
-    if(!shell.querySelector('.practice-resolution-modal'))throw new Error('Practice Resolution failure panel did not mount.');
-    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution507',stage:'direct-informational-failure-mounted',state:'ready',errors:resolutionErrors,at:new Date().toISOString()}))}catch(error){}
-   }catch(error){
-    console.error('HotB could not publish the informational scheduler failure panel.',error);
-    practicePlan=null;
-    const button=$('#generatePractice');
-    if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage='base-failure-publish-failed'}
-    // Resolution 508 diagnostic: expose the exact failing browser operation on the
-    // coach device instead of collapsing every publication exception into the same
-    // generic alert. This is temporary diagnostic text and changes no practice data.
-    alert('HotB Practice Resolution publish error: '+String(error?.name||'Error')+' — '+String(error?.message||error||'unknown'));
+    const shell=document.createElement('div');shell.className='practice-resolution-informational';shell.innerHTML=html;appRoot.appendChild(shell);
+    return shell;
+   };
+   const basePanel=(guidance,status='')=>`<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>HotB needs a setup change</h2></div></div><p class="practice-resolution-intro">HotB could not satisfy every absolute practice rule with this exact setup.</p><section class="practice-resolution-problem"><b>What is preventing the build</b><ul>${resolutionErrors.map(error=>`<li>${esc(error)}</li>`).join('')}</ul></section>${notices.length?`<section class="practice-resolution-notices"><b>Automatic equipment / capacity notices</b><ul>${notices.map(note=>`<li>${esc(note)}</li>`).join('')}</ul></section>`:''}${status?`<section class="practice-resolution-notices"><b>${esc(status)}</b></section>`:''}<section class="practice-resolution-choice"><h3>Change Attendance / Availability</h3><p>${esc(guidance)}</p><button class="btn red block" id="returnPracticeAttendance">Change Attendance / Availability</button></section></div></div>`;
+   const bindInfoReturn=shell=>shell.querySelector('#returnPracticeAttendance')?.addEventListener('click',()=>{shell.remove();const button=$('#generatePractice');if(button){button.disabled=false;button.textContent='Build Practice Schedule'}window.scrollTo(0,0)});
+   practiceResolution=null;modal=null;setPracticeBuildControlsLocked(false);
+   let shell;
+   try{shell=mountResolutionHtml(basePanel(initialGuidance,!identityBlocked&&!hardRoleMissing?'Checking approved solutions…':''));bindInfoReturn(shell);window.scrollTo(0,0)}
+   catch(error){console.error('HotB could not mount Practice Resolution shell.',error);practicePlan=null;if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule'}alert('HotB Practice Resolution publish error: '+String(error?.name||'Error')+' — '+String(error?.message||error||'unknown'));return}
+   if(identityBlocked||hardRoleMissing){
+    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution509',stage:'role-or-identity-failure',state:'ready',errors:resolutionErrors,at:new Date().toISOString()}))}catch(error){}
+    return;
    }
+   const sourcePlayers=practicePlayers.map(player=>({...player}));
+   const candidateQueue=[];
+   availablePitchers.forEach(player=>candidateQueue.push({kind:'pitcher',name:player.name,duration:120,label:'Hitting Only: '+player.name}));
+   availableCatchers.forEach(player=>candidateQueue.push({kind:'catcher',name:player.name,duration:120,label:'Not Catching: '+player.name}));
+   candidateQueue.push({kind:'extension',name:null,duration:132,label:'Block 11'});
+   availablePitchers.forEach(player=>candidateQueue.push({kind:'pitcher',name:player.name,duration:132,label:'Hitting Only + Block 11: '+player.name}));
+   availableCatchers.forEach(player=>candidateQueue.push({kind:'catcher',name:player.name,duration:132,label:'Not Catching + Block 11: '+player.name}));
+   const verified={pitchers:[],catchers:[],canExtend:false,combinedPitchers:[],combinedCatchers:[],candidateNotices:{}};
+   let candidateIndex=0,cancelled=false;
+   const verifyCandidate=item=>{
+    let candidate=item.duration===132?practiceResolutionExtendedPlayers(sourcePlayers,startTime):sourcePlayers.map(player=>({...player}));
+    if(!candidate.length||candidate.some(player=>Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)<0))return null;
+    if(item.kind==='pitcher')candidate=candidate.map(player=>player.name===item.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
+    if(item.kind==='catcher')candidate=candidate.map(player=>player.name===item.name?{...player,canCatch:false}:player);
+    const plan=window.HotBPracticeScheduler.buildSchedule(candidate,startTime,item.duration,{noPitchersMode:null});
+    if(!plan||plan.feasibilityErrors?.length)return null;
+    const audit=window.HotBPracticeScheduler.validate(plan);
+    if(!Array.isArray(audit)||audit.length)return null;
+    return plan;
+   };
+   const finalizeCandidates=()=>{
+    if(cancelled||!shell.isConnected)return;
+    [verified.pitchers,verified.catchers,verified.combinedPitchers,verified.combinedCatchers].forEach(list=>list.sort((a,b)=>a.localeCompare(b)));
+    const candidateNotices=Object.fromEntries(Object.entries(verified.candidateNotices).sort(([a],[b])=>a.localeCompare(b)));
+    const hasChoice=!!(verified.pitchers.length||verified.catchers.length||verified.canExtend||verified.combinedPitchers.length||verified.combinedCatchers.length);
+    if(!hasChoice){
+     shell.innerHTML=basePanel('HotB checked the approved coaching compromises and none produced a rule-safe practice. Change attendance, availability, Pitching, or Catching explicitly and build again.');
+     bindInfoReturn(shell);return;
+    }
+    practiceResolution={errors:resolutionErrors,pitchers:verified.pitchers,catchers:verified.catchers,canExtend:verified.canExtend,combinedPitchers:verified.combinedPitchers,combinedCatchers:verified.combinedCatchers,rosterGuidance:'You can use one of the verified choices above, or return to setup and make a different attendance/availability change.',practicePlayers:sourcePlayers,startTime,durationMinutes,noPitchersMode:null,notices,auditFailures:[],candidateNotices,signature:practiceResolutionSignature(sourcePlayers,startTime,durationMinutes),decisionSignature:''};
+    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
+    if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
+     console.error('HotB rejected the completed cooperative Practice Resolution snapshot.');
+     practiceResolution=null;shell.innerHTML=basePanel('HotB checked possible coaching compromises but could not seal the result safely. Change attendance or availability and build again.');bindInfoReturn(shell);return;
+    }
+    shell.remove();modal='practiceResolution';
+    try{render();window.scrollTo(0,0);if(!document.querySelector('.practice-resolution-modal'))throw new Error('Verified Practice Resolution did not mount.')}
+    catch(error){console.error('HotB could not publish verified Practice Resolution.',error);modal=null;practiceResolution=null;shell=mountResolutionHtml(basePanel('HotB verified a coaching option but could not open the decision screen. Return to setup and build again.'));bindInfoReturn(shell)}
+   };
+   const runNextCandidate=()=>{
+    if(cancelled||!shell.isConnected)return;
+    if(candidateIndex>=candidateQueue.length){finalizeCandidates();return}
+    const item=candidateQueue[candidateIndex++];
+    try{
+     const plan=verifyCandidate(item);
+     if(plan){
+      verified.candidateNotices[item.label]=[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+      if(item.kind==='pitcher'&&item.duration===120)verified.pitchers.push(item.name);
+      else if(item.kind==='catcher'&&item.duration===120)verified.catchers.push(item.name);
+      else if(item.kind==='extension')verified.canExtend=true;
+      else if(item.kind==='pitcher')verified.combinedPitchers.push(item.name);
+      else if(item.kind==='catcher')verified.combinedCatchers.push(item.name);
+     }
+    }catch(error){console.error('HotB Practice Resolution candidate check failed',item.label,error)}
+    const status=shell.querySelector('.practice-resolution-notices:last-of-type b');
+    if(status&&status.textContent.includes('Checking approved solutions'))status.textContent=`Checking approved solutions… ${candidateIndex}/${candidateQueue.length}`;
+    setTimeout(runNextCandidate,0);
+   };
+   shell.querySelector('#returnPracticeAttendance')?.addEventListener('click',()=>{cancelled=true});
+   setTimeout(runNextCandidate,0);
    return;
   }
   if(practicePlan.fallbackWarnings?.length){
