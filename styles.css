@@ -1172,3 +1172,10 @@ html,body,button,a,[role="button"]{touch-action:manipulation}
 .practice-resolution-pitcher input{width:20px;height:20px}
 .practice-resolution-pitcher span{display:flex;flex-direction:column;gap:2px}
 .practice-resolution-pitcher small{color:#667085}
+
+/* Team Jenkins: Hitting Practice roster only. Visually separate from KC Rebels and Guests. */
+.team-jenkins-practice-section{margin:18px 0 16px;padding-top:4px}
+.team-jenkins-heading{margin:0 0 8px;padding:11px 12px;border-top:2px solid #9aa0a6;border-bottom:1px solid #c9cdd1;background:#e7e9eb;color:#30343a;font-size:12px;font-weight:950;letter-spacing:.12em}
+.practice-attendance-row.team-jenkins-player{background:#eef0f2!important;border-color:#b8bec4!important}
+.practice-attendance-row.team-jenkins-player .practice-player-line{background:transparent}
+.practice-attendance-row.team-jenkins-player .practice-player small{color:#555d66}
