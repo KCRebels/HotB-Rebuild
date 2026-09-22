@@ -4554,14 +4554,24 @@ function bind(){
     practiceResolution=null;modal=null;
     // Do not persist this transient state. Until the resolved schedule has passed
     // its postcondition/rules audit and is committed, restart recovery must retain
-    // the original verified Resolution transaction.
-    render();
+    // the original verified Resolution transaction. Do not synchronously rebuild
+    // #app from the Apply tap: iPhone Safari must finish that event turn first.
     const deferResolutionFrame=callback=>{
      if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(callback,0));
      else setTimeout(callback,16);
     };
     deferResolutionFrame(()=>{
      try{
+      // The Resolution modal has now yielded its event turn. Publish the transient
+      // setup only while this exact apply still owns the transaction; a stale frame
+      // must never erase a newer screen.
+      if(!transactionOwnsToken()){console.warn('HotB ignored a stale Practice Resolution setup-publication callback');return}
+      try{render()}
+      catch(error){
+       console.error('HotB Practice Resolution could not open the verified rebuild setup',error);
+       if(rollbackIfOwned())alert('HotB could not start the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+       return;
+      }
       // Workspace teardown deliberately clears the global identities. A callback
       // that runs afterward is stale and must never resurrect the closed draft.
       if(!transactionOwnsToken()){console.warn('HotB ignored a stale Practice Resolution rebuild callback');return}
@@ -4588,7 +4598,10 @@ function bind(){
         // without the plan, the build has definitively failed; otherwise keep waiting
         // across Safari frame yields rather than guessing from button DOM state.
         if(!practiceResolutionApplyDraftId)return false;
-        await new Promise(resolve=>setTimeout(resolve,50));
+        await new Promise(resolve=>{
+         if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(resolve,0));
+         else setTimeout(resolve,16);
+        });
        }
        return false;
       };
