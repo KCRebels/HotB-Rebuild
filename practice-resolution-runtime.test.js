@@ -889,9 +889,10 @@ console.log('Resolution 487 infeasible-candidate short-circuit regression passed
  const ownershipAt=appSource.indexOf("if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed'",yieldAt);
  const schedulerAt=appSource.indexOf('const safe=verifyResolutionBuild(',yieldAt);
  assert.ok(yieldAt>=0&&ownershipAt>yieldAt&&schedulerAt>ownershipAt,'setup ownership must be re-proved after the mobile yield and before scheduler execution');
- for(const label of ['practice-resolution-block11','practice-resolution-pitcher','practice-resolution-catcher','practice-resolution-pitcher-block11','practice-resolution-catcher-block11']){
-  assert.ok(appSource.includes('await verifyOrderedCandidates(')&&appSource.includes(label),'every Resolution candidate branch must use the awaited verifier');
- }
+ assert.ok(appSource.includes('const verifyOrderedCandidates=async('),'legacy candidate verifier remains async if explicitly reused');
+ assert.ok(appSource.includes("stage:'practice-resolution-block11-search-bypassed'"),'current setup path bypasses Block 11 candidate scheduling');
+ assert.ok(appSource.includes("stage:'practice-resolution-role-search-bypassed'"),'current setup path bypasses role candidate scheduling');
+ assert.ok(appSource.includes("stage:'practice-resolution-combined-bypassed'"),'current setup path bypasses combined candidate scheduling');
 }
 console.log('Resolution 488 mobile long-task regression passed.');
 
