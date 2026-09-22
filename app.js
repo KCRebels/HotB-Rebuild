@@ -6108,9 +6108,11 @@ function bindPractice(){
      setResolutionStage(stage);
      if(button)button.textContent='Checking '+(stageLabels[stage]||'Resolution')+' '+(index+1)+'/'+candidates.length+'…';
      const started=typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
+     const diagnosticBase={bundle:'resolution407',stage,label:spec.label,index:index+1,total:candidates.length,startedAt:new Date().toISOString()};
+     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({...diagnosticBase,state:'started'}))}catch(error){}
      const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
      const elapsed=Math.round((typeof performance!=='undefined'&&performance.now?performance.now():Date.now())-started);
-     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution406',stage,label:spec.label,index:index+1,total:candidates.length,elapsedMs:elapsed,safe,at:new Date().toISOString()}))}catch(error){}
+     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({...diagnosticBase,state:'completed',elapsedMs:elapsed,safe,completedAt:new Date().toISOString()}))}catch(error){}
      if(safe){
       onSafe(candidate,spec);
       if(stopAfterFirst)return true;
@@ -6182,6 +6184,7 @@ function bindPractice(){
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution407',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
    setResolutionStage('practice-resolution-evidence');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was preparing Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const survivingCandidateLabels=new Set([
