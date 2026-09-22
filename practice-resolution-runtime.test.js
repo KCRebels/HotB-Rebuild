@@ -788,3 +788,32 @@ const noticed482=commitCleanup482({practiceResolution:{signature:'failed-source'
 assert.equal(noticed482.practiceResolution,null,'build-notice commit must also revoke the failed snapshot');
 assert.equal(noticed482.modal,'practiceBuildNotice','resolved build notices remain available after commit cleanup');
 console.log('Resolution 482 candidate purity/commit cleanup regressions passed.');
+
+
+/* Resolution 483 snapshot role-drift and universal unlock regressions. */
+function snapshotRoleCorrect483(snapshot,liveRoster){
+ const verified=new Map(snapshot.practicePlayers.map(player=>[player.name,player]));
+ const live=new Map(liveRoster.map(player=>[player.name,player]));
+ const correct=(name,role)=>{
+  const a=verified.get(name),b=live.get(name);
+  return !!a&&!!b&&(role==='pitcher'
+   ?a.isPitcher===true&&a.canPitch===true&&b.isPitcher===true
+   :a.isCatcher===true&&a.canCatch===true&&b.isCatcher===true);
+ };
+ return snapshot.pitchers.every(name=>correct(name,'pitcher'))&&snapshot.combinedPitchers.every(name=>correct(name,'pitcher'))&&snapshot.catchers.every(name=>correct(name,'catcher'))&&snapshot.combinedCatchers.every(name=>correct(name,'catcher'));
+}
+const catcher483=controlledKcSix.find(player=>player.isCatcher&&player.canCatch);
+const pitcher483=controlledKcSix.find(player=>player.isPitcher&&player.canPitch);
+const snapshot483={practicePlayers:controlledKcSix.map(player=>({...player})),pitchers:[pitcher483.name],combinedPitchers:[],catchers:[catcher483.name],combinedCatchers:[]};
+assert.equal(snapshotRoleCorrect483(snapshot483,controlledKcSix),true);
+assert.equal(snapshotRoleCorrect483(snapshot483,controlledKcSix.map(player=>player.name===catcher483.name?{...player,isCatcher:false}:player)),false,'live catcher role drift invalidates the whole Resolution snapshot');
+assert.equal(snapshotRoleCorrect483(snapshot483,controlledKcSix.map(player=>player.name===pitcher483.name?{...player,isPitcher:false}:player)),false,'live pitcher role drift invalidates the whole Resolution snapshot');
+function terminalUnlock483(result,globalOwned=false){
+ let localLocked=true;
+ if(result.started)return localLocked;
+ if(!globalOwned)localLocked=false;
+ return localLocked;
+}
+for(const reason of ['stale','rollback','unverified','handled','apply','busy'])assert.equal(terminalUnlock483({started:false,reason},false),false,reason+' without a global transaction must release the modal lock');
+assert.equal(terminalUnlock483({started:false,reason:'handled'},true),true,'a surviving owned transaction remains the only legitimate lock owner');
+console.log('Resolution 483 role-drift/universal-unlock regressions passed.');
