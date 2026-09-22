@@ -788,7 +788,8 @@ console.log('Resolution 532 WebKit recovery-clone regression passed.');
  const start=source.indexOf('const finalizeCandidates=()=>');
  const publish=source.indexOf('// Publish the already-verified decision directly',start);
  const branch=source.slice(start,publish);
- assert.doesNotMatch(branch,/persistPracticeDraft\(\)/,'post-Build Resolution publication must not reread missing setup controls');
+ const executable=branch.replace(/\/\/[^\n]*/g,'');
+ assert.doesNotMatch(executable,/persistPracticeDraft\(\)/,'post-Build Resolution publication must not reread missing setup controls');
  assert.match(branch,/resolutionRecoveryDraft=window\.HotBPracticeSession\?\.createDraft/,'publication must create recovery from sealed in-memory setup');
  assert.match(branch,/db\.activePracticeSession=resolutionRecoveryDraft/,'publication must install the exact sealed recovery draft');
 }
