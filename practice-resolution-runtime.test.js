@@ -847,30 +847,19 @@ assert.equal(publicationSeal484(structuredClone(publication484),[value=>{value.p
 console.log('Resolution 484 publication immutability regression passed.');
 
 
-/* Resolution 485/486 historical note.
-   Combined role + Block 11 speculation was first bounded, then removed entirely
-   from the setup tap by Resolution 489. Same-duration search remains bounded. */
-function boundedSearch486(players,{block11=false,samePitcher=false,sameCatcher=false}={}){
- const attempts=[];
- attempts.push('Block 11'); if(block11)return attempts;
- const pitcher=players.find(player=>player.canPitch);
- if(pitcher){attempts.push('Hitting Only: '+pitcher.name);if(samePitcher)return attempts}
- const catcher=players.find(player=>player.canCatch);
- if(catcher){attempts.push('Not Catching: '+catcher.name);if(sameCatcher)return attempts}
+/* Resolution 485/486/490 historical note.
+   Candidate fan-out was progressively bounded and is now removed from the setup
+   transaction. After the failed base build, only Block 11 may receive one scheduler
+   proof before Resolution returns control to the coach. */
+function boundedSearch490({block11=false}={}){
+ const attempts=['Block 11'];
  return attempts;
 }
 {
- const many=[];
- for(let i=1;i<=20;i++)many.push({name:'P'+i,canPitch:true,canCatch:false});
- for(let i=1;i<=20;i++)many.push({name:'C'+i,canPitch:false,canCatch:true});
- const exhausted=boundedSearch486(many);
- assert.equal(exhausted.length,3,'setup candidate count is bounded independently of roster size');
- assert.deepEqual(exhausted,['Block 11','Hitting Only: P1','Not Catching: C1']);
- assert.deepEqual(boundedSearch486(many,{block11:true}),['Block 11'],'safe Block 11 ends search');
- assert.deepEqual(boundedSearch486(many,{samePitcher:true}),['Block 11','Hitting Only: P1'],'safe same-duration pitcher ends search');
- assert.deepEqual(boundedSearch486(many,{sameCatcher:true}),['Block 11','Hitting Only: P1','Not Catching: C1'],'safe same-duration catcher ends search');
+ assert.deepEqual(boundedSearch490(),['Block 11'],'setup performs only the Block 11 alternative proof');
+ assert.deepEqual(boundedSearch490({block11:true}),['Block 11'],'safe Block 11 also ends after one alternative proof');
 }
-console.log('Resolution 486 bounded setup-search regression passed.');
+console.log('Resolution 490 single-alternative setup-search regression passed.');
 
 
 /* Resolution 487 infeasible-candidate short-circuit regression.
@@ -923,3 +912,18 @@ console.log('Resolution 488 mobile long-task regression passed.');
  assert.ok(appSource489.includes('candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?3:2)'),'build budget must exclude removed combined candidates');
 }
 console.log('Resolution 489 setup-tap combined-search bypass regression passed.');
+
+
+/* Resolution 490 role-search bypass production regression. */
+{
+ const app490=require('node:fs').readFileSync('./app.js','utf8');
+ const roleMarker=app490.indexOf("stage:'practice-resolution-role-search-bypassed'");
+ assert.ok(roleMarker>=0,'production must bypass role search from setup');
+ const roleBranch=app490.lastIndexOf('if(!identityBlocked&&!canExtend&&!resolutionBudgetExceeded)',roleMarker);
+ const combinedBranch=app490.indexOf('if(!identityBlocked&&!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded)',roleMarker);
+ const roleBody=app490.slice(roleBranch,combinedBranch);
+ assert.ok(roleBody.includes('solvingPitchers=[]')&&roleBody.includes('solvingCatchers=[]'),'role choices remain empty');
+ assert.ok(!roleBody.includes('verifyOrderedCandidates(')&&!roleBody.includes('buildSchedule('),'role bypass performs no scheduler work');
+ assert.ok(app490.includes('candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?1:0)'),'candidate budget permits only Block 11 after base');
+}
+console.log('Resolution 490 role-search bypass production regression passed.');
