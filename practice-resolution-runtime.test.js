@@ -205,7 +205,7 @@ for(const fixture of block11Fixtures){
  const prioritized=prioritizedResolution(fixture.source);
  assert.ok(prioritized.plan,'A naturally resolvable fixture with Block 11 capacity must still produce a verified first-safe choice');
  assert.deepEqual(scheduler.validate(prioritized.plan),[],'first-safe result for a Block 11-capable fixture must pass the full production validator');
- if(prioritized.kind==='block-11')assert.ok(prioritized.builds>=1,'Block 11 may be selected only after simpler same-duration role choices have been checked');
+ if(prioritized.kind==='block-11')assert.ok(prioritized.builds>=1,'Block 11 must be scheduler-verified before it can be selected');
 }
 let prioritizedParityChecked=0;
 for(const fixture of fixtures){
@@ -216,7 +216,7 @@ for(const fixture of fixtures){
  const maxBuilds=1+fixture.pitchers+fixture.catchers+fixture.pitchers+fixture.catchers;
  assert.ok(prioritized.builds<=maxBuilds,'prioritized Resolution search must never exceed its bounded candidate space');
  if(fixture.verified.some(choice=>choice.kind==='block-11')){
-  assert.ok(['hitting-only','not-catching','block-11'].includes(prioritized.kind),'a Block 11-capable fixture must prefer a safe 120-minute role adjustment when available, otherwise Block 11');
+  assert.ok(['block-11','hitting-only','not-catching'].includes(prioritized.kind),'a Block 11-capable fixture must return only a verified roster-preserving extension or verified role adjustment');
  }
  prioritizedParityChecked++;
 }
@@ -242,7 +242,7 @@ if(productionBase.feasibilityErrors.length){
   assert.deepEqual(prioritized.plan.feasibilityErrors,[],'prioritized 13-player Resolution must be feasible');
   assert.deepEqual(scheduler.validate(prioritized.plan),[],'prioritized 13-player Resolution must pass the production validator');
   assert.ok(prioritized.builds<=9,'prioritized 13-player Resolution must keep scheduler fan-out bounded');
-  if(prioritized.kind==='block-11')assert.ok(prioritized.builds>=1,'Block 11 must be selected only after the preceding same-duration candidates were safely exhausted');
+  if(prioritized.kind==='block-11')assert.ok(prioritized.builds>=1,'Block 11 must be scheduler-verified before it can be selected');
  }else{
   assert.equal(prioritized.plan,null,'prioritized search must fail closed when the production-shaped fixture has no safe Resolution');
   assert.ok(prioritized.builds<=9,'unresolvable production-shaped fixture must still keep scheduler fan-out bounded');
@@ -250,6 +250,34 @@ if(productionBase.feasibilityErrors.length){
 }
 
 console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${thirteenPlayerFixtures.length} naturally failing 13-player prioritized fixtures; ${block11Fixtures.length} naturally occurring Block-11 fast-path fixtures; ${prioritizedParityChecked} prioritized parity fixtures; exercised: ${[...exercised].join(', ')})`);
+
+// Production policy regression: preserve the full roster/roles first. The app's
+// mobile Resolution checks Block 11 before asking a healthy pitcher or catcher to
+// give up a role. Mirror that order here so tests cannot silently reintroduce the
+// old expensive role-first fan-out.
+function block11FirstResolution(source){
+ let builds=0;
+ const ext=extended(source);
+ const extension=scheduler.buildSchedule(ext,'18:00',132);builds++;
+ if(!extension.feasibilityErrors.length&&!scheduler.validate(extension).length)return {kind:'block-11',plan:extension,builds};
+ for(const player of source.filter(p=>p.canPitch)){
+  const changed=source.map(x=>x.name===player.name?{...x,canPitch:false,requiresPitchWarmup:false}:x);
+  const plan=scheduler.buildSchedule(changed,'18:00',120);builds++;
+  if(!plan.feasibilityErrors.length&&!scheduler.validate(plan).length)return {kind:'hitting-only',name:player.name,plan,builds};
+ }
+ for(const player of source.filter(p=>p.canCatch)){
+  const changed=source.map(x=>x.name===player.name?{...x,canCatch:false}:x);
+  const plan=scheduler.buildSchedule(changed,'18:00',120);builds++;
+  if(!plan.feasibilityErrors.length&&!scheduler.validate(plan).length)return {kind:'not-catching',name:player.name,plan,builds};
+ }
+ return {kind:null,plan:null,builds};
+}
+for(const fixture of fixtures.filter(f=>f.verified.some(choice=>choice.kind==='block-11'))){
+ const result=block11FirstResolution(fixture.source);
+ assert.ok(result.plan,'Block-11-capable failed practice must have a verified roster-preserving first path');
+ assert.equal(result.kind,'block-11','Block 11 must be preferred over changing a healthy player role when it safely preserves the full roster');
+ assert.equal(result.builds,1,'Block-11-first Resolution must need exactly one candidate scheduler build when extension is safe');
+}
 
 // Mobile Resolution must collapse role alternatives that are structurally identical.
 // The current 13-player Rebels shape (5 pitchers, 2 catchers, full attendance) would
