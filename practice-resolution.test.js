@@ -35,7 +35,8 @@ has("practiceResolution=null;","successful commit must revoke stale Resolution")
 has("sealedResolutionBytes","publication must be byte sealed");
 has("publicationSnapshotStable","publication validation must be read-only");
 has("RESOLUTION_BUILD_BUDGET","candidate search must have a hard scheduler-build budget");
-has("candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?1:0)","normal candidate search must be globally bounded to Block 11 only");
+has("const candidateSearchCapacity=0","failed setup must perform zero speculative candidate scheduler builds");
+has("stage:'practice-resolution-block11-search-bypassed'","setup Build must bypass speculative Block 11 scheduler search");
 has("stage:'practice-resolution-role-search-bypassed'","setup Build must bypass speculative pitcher/catcher scheduler searches");
 has("stage:'practice-resolution-combined-bypassed'","combined role plus Block 11 speculation must be bypassed on the setup tap");
 has("if(!plan||plan.feasibilityErrors?.length)","infeasible candidates must short-circuit before full audit");
