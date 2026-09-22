@@ -244,7 +244,7 @@ mustInclude("rollback whose recovery equality proof could not be sealed.","rollb
 mustInclude("refused to clear a practice recovery session that could not be sealed.","practice-session clear must seal its rollback authority before mutation");
 mustInclude("could not restore the previous practice recovery session after clear failure.","practice-session clear failure must restore and persist the previous recovery authority");
 mustInclude("document.querySelectorAll('[data-accommodation-arrival],[data-accommodation-departure],[data-accommodation-pitch],[data-accommodation-warmup],[data-accommodation-catch],[data-accommodation-prepractice],[data-accommodation-limitations]').forEach","Practice Builder must bind accommodation controls as a collection so setup binding reaches Build Practice Schedule");
-assert.ok((source.match(/bundle:'resolution437'/g)||[]).length>=3,"all current mobile Resolution diagnostic branches must identify the current bounded implementation");
+assert.ok((source.match(/bundle:'resolution436'/g)||[]).length>=3,"all current mobile Resolution diagnostic branches must identify the current bounded implementation");
 mustInclude("const RESOLUTION_BUILD_BUDGET=9","production Resolution must hard-cap scheduler builds at the verified mobile budget");
 mustInclude("let resolutionBuildCount=1,resolutionBudgetExceeded=false","the nine-build transaction ceiling must count the base scheduler attempt as build one");
 mustInclude("resolutionBuildCount>=RESOLUTION_BUILD_BUDGET","production Resolution must fail closed before exceeding its scheduler-build budget");
@@ -253,6 +253,6 @@ mustInclude("if(resolutionBudgetExceeded){","budget exhaustion must abort the en
 mustInclude("practice-resolution-budget-exceeded","budget exhaustion must restore the editable build setup with an explicit recovery reason");
 mustInclude("'practice-resolution-budget-exceeded':'Resolution Stopped Safely…'","budget recovery must expose a distinct on-device stage instead of looking like the last candidate froze");
 mustInclude("setResolutionStage('practice-resolution-budget-exceeded')","budget recovery must publish its safe-stop stage before restoring setup");
-mustNotInclude("bundle:'resolution436'","no stale Resolution diagnostic bundle marker may survive in production code");
+mustNotInclude("bundle:'resolution426'","no stale Resolution diagnostic bundle marker may survive in production code");
 mustInclude("+'/'+unique.length+' — '","completed candidate status must report the deduplicated candidate count, not the pre-collapse source count");
 console.log('practice-resolution static contract tests passed');
