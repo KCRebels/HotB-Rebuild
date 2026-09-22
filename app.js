@@ -5804,21 +5804,65 @@ function bindPractice(){
    const baseErrors=[...new Set(practicePlan.feasibilityErrors.map(error=>String(error||'').trim()).filter(Boolean))];
    const availablePitchers=practicePlayers.filter(player=>player.canPitch);
    const identityBlocked=baseErrors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(error));
+   // Resolution 497: now that the base scheduler's internal grouping/warm-up
+   // searches are complete, a remaining failure is a genuine coaching conflict.
+   // Verify a small, bounded set of coaching compromises before showing Resolution.
+   // Each displayed option must independently rebuild and pass the full validator.
+   const verifyResolutionCandidate=(players,duration,label)=>{
+    try{
+     const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode});
+     if(plan?.feasibilityErrors?.length)return null;
+     const audit=window.HotBPracticeScheduler.validate(plan);
+     if(audit?.length)return null;
+     return {label,notices:[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort()};
+    }catch(error){console.error('HotB could not verify Practice Resolution candidate '+label,error);return null}
+   };
+   const pitchers=[],catchers=[],combinedPitchers=[],combinedCatchers=[],candidateNotices={};
+   const recordCandidate=(bucket,name,result)=>{if(!result)return;bucket.push(name);candidateNotices[result.label]=result.notices};
+   if(!identityBlocked){
+    practicePlayers.filter(player=>player.canPitch).forEach(player=>{
+     const candidate=practicePlayers.map(item=>item.name===player.name?{...item,canPitch:false,requiresPitchWarmup:false}:item);
+     recordCandidate(pitchers,player.name,verifyResolutionCandidate(candidate,durationMinutes,'Hitting Only: '+player.name));
+    });
+    practicePlayers.filter(player=>player.canCatch).forEach(player=>{
+     const candidate=practicePlayers.map(item=>item.name===player.name?{...item,canCatch:false}:item);
+     recordCandidate(catchers,player.name,verifyResolutionCandidate(candidate,durationMinutes,'Not Catching: '+player.name));
+    });
+   }
+   const extensionResult=!identityBlocked&&Number(durationMinutes)===120?verifyResolutionCandidate(practiceResolutionExtendedPlayers(practicePlayers,startTime,durationMinutes),132,'Block 11'):null;
+   const canExtend=!!extensionResult;if(extensionResult)candidateNotices['Block 11']=extensionResult.notices;
+   // Only try two-part compromises when neither corresponding one-part change nor
+   // Block 11 already solves the practice. This keeps failed-build work bounded.
+   if(!identityBlocked&&!canExtend){
+    practicePlayers.filter(player=>player.canPitch&&!pitchers.includes(player.name)).forEach(player=>{
+     const candidate=practiceResolutionExtendedPlayers(practicePlayers.map(item=>item.name===player.name?{...item,canPitch:false,requiresPitchWarmup:false}:item),startTime,durationMinutes);
+     recordCandidate(combinedPitchers,player.name,verifyResolutionCandidate(candidate,132,'Hitting Only + Block 11: '+player.name));
+    });
+    practicePlayers.filter(player=>player.canCatch&&!catchers.includes(player.name)).forEach(player=>{
+     const candidate=practiceResolutionExtendedPlayers(practicePlayers.map(item=>item.name===player.name?{...item,canCatch:false}:item),startTime,durationMinutes);
+     recordCandidate(combinedCatchers,player.name,verifyResolutionCandidate(candidate,132,'Not Catching + Block 11: '+player.name));
+    });
+   }
+   [pitchers,catchers,combinedPitchers,combinedCatchers].forEach(list=>list.sort());
+   const sortedCandidateNotices=Object.fromEntries(Object.entries(candidateNotices).sort(([a],[b])=>a.localeCompare(b)));
+   const hasVerifiedChoice=!!(pitchers.length||catchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
    const rosterGuidance=identityBlocked
     ?'HotB found attendee identity or availability information that must be corrected. Fix the roster/guest or arrival/departure entry and build again.'
-    :availablePitchers.length
-     ?'This exact setup did not satisfy every scheduler rule. Change attendance, availability, Pitching, or Catching explicitly, then build again.'
-     :'This practice needs an attending pitcher or another explicit attendance/availability change before HotB can satisfy every absolute rule.';
+    :hasVerifiedChoice
+     ?'HotB verified the choices above against this exact practice. Choose the coaching compromise you prefer, or return to setup and make a different change.'
+     :availablePitchers.length
+      ?'HotB exhausted the automatic schedule and the allowed coaching compromises without finding a rule-safe build. Change attendance, availability, Pitching, or Catching explicitly and build again.'
+      :'This practice needs an attending pitcher or another explicit attendance/availability change before HotB can satisfy every absolute rule.';
    practiceResolution={
-    errors:baseErrors,pitchers:[],catchers:[],canExtend:false,combinedPitchers:[],combinedCatchers:[],
+    errors:baseErrors,pitchers,catchers,canExtend,combinedPitchers,combinedCatchers,
     rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,
-    notices:Array.isArray(practicePlan.fallbackWarnings)?[...practicePlan.fallbackWarnings]:[],
-    auditFailures:[],candidateNotices:{},
+    notices:Array.isArray(practicePlan.fallbackWarnings)?[...new Set(practicePlan.fallbackWarnings.map(value=>String(value||'').trim()).filter(Boolean))].sort():[],
+    auditFailures:[],candidateNotices:sortedCandidateNotices,
     signature:practiceResolutionSignature(practicePlayers,startTime,durationMinutes),decisionSignature:''
    };
    practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
    modal='practiceResolution';
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution493',stage:'base-failure-direct-publish',state:'ready',errors:baseErrors,at:new Date().toISOString()}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution497',stage:'verified-coaching-options-publish',state:'ready',errors:baseErrors,at:new Date().toISOString()}))}catch(error){}
    setPracticeBuildControlsLocked(false);
    try{
     render();
