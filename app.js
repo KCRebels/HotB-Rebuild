@@ -4319,11 +4319,14 @@ function bind(){
    };
    const verifiedStart=clockMinutes(expected.startTime);
    if(verifiedStart===null)return failProof('postcondition-clause-10');
-   if(!plan.times.every((time,index)=>{
+   for(let index=0;index<plan.times.length;index++){
+    const time=plan.times[index];
     if(!time||Number(time.block)!==index+1)return failProof('postcondition-clause-11');
     const start=clockMinutes(time.start),end=clockMinutes(time.end),expectedStart=(verifiedStart+index*12)%(24*60),expectedEnd=(verifiedStart+(index+1)*12)%(24*60);
-    return start===expectedStart&&end===expectedEnd;
-   }))return failProof('postcondition-clause-12');
+    if(start!==expectedStart||end!==expectedEnd){
+     return failProof('block-time-'+(index+1)+'-actual-'+String(time.start||'missing')+'-'+String(time.end||'missing')+'-expected-'+expectedStart+'-'+expectedEnd);
+    }
+   }
    for(const name of expectedNames){
     const rows=plan.schedule[name];
     if(rows.some((row,index)=>!row||typeof row!=='object'||typeof row.activity!=='string'||!row.activity.trim()||row.activity.trim()!==row.activity||(row.block!=null&&Number(row.block)!==index+1)||(row.partner!=null&&(typeof row.partner!=='string'||!row.partner.trim()||row.partner.trim()!==row.partner))))return failProof('postcondition-clause-13');
