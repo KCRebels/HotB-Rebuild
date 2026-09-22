@@ -24,6 +24,10 @@ assert.match(client,/registration\.update\(\)/,'the app must explicitly check fo
 assert.match(client,/visibilitychange/,'resumed Home Screen apps must check for updates');
 assert.match(client,/New HotB version available/,'an in-app update notice must be available');
 assert.match(client,/UPDATE NOW/,'the update notice must provide a reload action');
+assert.doesNotMatch(client,/version === BUILD_VERSION/,'waiting-worker notice must not suppress itself by comparing the current page version to itself');
+assert.match(client,/registration\.waiting[\s\S]*showUpdate\('waiting-worker'\)/,'a waiting worker must always surface the update notice');
+assert.match(client,/installed-worker/,'a newly installed worker behind a controlled page must surface the update notice');
+
 assert.ok(index.includes('pwa-update.js'),'canonical app entry point must register update handling');
 assert.match(fresh,/launch=230/,'legacy recovery shell must redirect directly to the current canonical launch');
 assert.doesNotMatch(fresh,/launch=136/,'legacy recovery shell must not send installed iPhones through the stale launch route');
