@@ -23,3 +23,7 @@ assert.ok(app.includes("jenkins=portalData?.portalType==='jenkinsPlayer'"),'Jenk
 assert.ok(app.includes("No practice is active right now. Use this same link the next time you practice with us."),'reusable no-practice state exists');
 assert.ok(app.includes("Team Jenkins · current Hitting Practice only"),'share UI states the access boundary');
 console.log('team-jenkins-practice-only tests passed');
+
+assert.ok(app.includes("async function setupJenkinsPortals()"),'portal manager has Team Jenkins setup action');
+assert.ok(app.includes("$('#setupJenkinsPortals')?.addEventListener('click',setupJenkinsPortals)"),'Team Jenkins setup button is bound');
+assert.ok((app.match(/\$\$\('\[data-share-practice-jenkins\]'\)/g)||[]).length>=2,'Team Jenkins share buttons are bound in manager and practice views');
