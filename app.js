@@ -5733,7 +5733,7 @@ function bindPractice(){
  $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#endPracticeDraft')?.addEventListener('click',endPracticeDraft);
- $('#generatePractice')?.addEventListener('click',()=>{
+ $('#generatePractice')?.addEventListener('click',async()=>{
   const roster=practiceAttendanceRoster(),attendees=Array.from(document.querySelectorAll('[data-practice-player]:checked')).map(input=>roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
   // Resolution rebuild failures are owned by rebuildResolvedPractice. Do not clear
   // its token here: doing so makes the queued verifier stale and prevents rollback.
@@ -5802,6 +5802,12 @@ function bindPractice(){
   }
   if(buildButton)buildButton.dataset.buildStage='post-scheduler';
   if(practicePlan.feasibilityErrors?.length){
+   // The base scheduler has returned. Practice Resolution can require many additional
+   // scheduler/audit passes; stop the short build watchdog before yielding between
+   // those passes so iPhone Safari can repaint without falsely reporting a stuck build.
+   clearTimeout(buildWatchdog);
+   if(buildButton)buildButton.dataset.buildStage='practice-resolution';
+   const yieldResolutionUI=()=>new Promise(resolve=>setTimeout(resolve,0));
    // A failed automatic Resolution rebuild must not create a second Resolution on
    // top of the coaching choice being applied. Leave transaction ownership intact;
    // the outer verifier will see this infeasible plan and roll back atomically.
@@ -5956,12 +5962,14 @@ function bindPractice(){
    };
    // Only offer a pitcher decision after proving that exact one-practice change builds cleanly.
    for(const pitcher of availablePitchers){
+    await yieldResolutionUI();
     const testPlayers=practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
     if(verifyResolutionBuild(testPlayers,durationMinutes,'Hitting Only: '+pitcher.name,{role:'pitcher',name:pitcher.name}))solvingPitchers.push(pitcher.name)
    }
    let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
    const availableCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
    for(const catcher of availableCatchers){
+    await yieldResolutionUI();
     const testPlayers=practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
     if(verifyResolutionBuild(testPlayers,durationMinutes,'Not Catching: '+catcher.name,{role:'catcher',name:catcher.name}))solvingCatchers.push(catcher.name)
    }
@@ -5972,14 +5980,17 @@ function bindPractice(){
     // The extension helper marks any production-availability disagreement invalid.
     // Do not fan out combined candidates from a poisoned Block 11 baseline.
     const extensionBaselineValid=extendedPlayers.length===practicePlayers.length&&extendedPlayers.every(player=>Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=11&&Number(player.availableFromBlock)<Number(player.availableUntilBlock));
+    if(extensionBaselineValid)await yieldResolutionUI();
     canExtend=extensionBaselineValid&&verifyResolutionBuild(extendedPlayers,132,'Block 11');
     if(!extensionBaselineValid)resolutionAuditFailures.push('Block 11 availability could not be verified against the production availability rules.');
     if(!canExtend&&extensionBaselineValid){
      for(const pitcher of extendedPlayers.filter(player=>player.canPitch)){
+      await yieldResolutionUI();
       const label='Hitting Only + Block 11: '+pitcher.name,testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
       if(verifyResolutionBuild(testPlayers,132,label,{role:'pitcher',name:pitcher.name}))combinedPitchers.push(pitcher.name);
      }
      for(const catcher of extendedPlayers.filter(player=>player.canCatch)){
+      await yieldResolutionUI();
       const label='Not Catching + Block 11: '+catcher.name,testPlayers=extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
       if(verifyResolutionBuild(testPlayers,132,label,{role:'catcher',name:catcher.name}))combinedCatchers.push(catcher.name);
      }
