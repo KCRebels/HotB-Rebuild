@@ -237,4 +237,19 @@ if(actualBase.feasibilityErrors.length){
  assert.deepEqual(scheduler.validate(actualBase),[],'actual 13-player Rebels normal practice must pass the full validator');
 }
 console.log('Actual 13-player KC Rebels production-role regression passed.');
+const actualExtended=extended(actualRebels);
+const actualStructuralSpecs=[
+ ...actualRebels.filter(p=>p.canPitch).map(p=>({players:actualRebels.map(x=>x.name===p.name?{...x,canPitch:false,requiresPitchWarmup:false}:x),duration:120})),
+ ...actualRebels.filter(p=>p.canCatch).map(p=>({players:actualRebels.map(x=>x.name===p.name?{...x,canCatch:false}:x),duration:120})),
+ ...actualExtended.filter(p=>p.canPitch).map(p=>({players:actualExtended.map(x=>x.name===p.name?{...x,canPitch:false,requiresPitchWarmup:false}:x),duration:132})),
+ ...actualExtended.filter(p=>p.canCatch).map(p=>({players:actualExtended.map(x=>x.name===p.name?{...x,canCatch:false}:x),duration:132}))
+];
+assert.equal(actualStructuralSpecs.length,14,'actual Rebels roster must expose five pitcher and two catcher alternatives at both durations');
+assert.equal(new Set(actualStructuralSpecs.map(spec=>anonymousShape(spec.players,spec.duration))).size,4,'actual Rebels roster must collapse fourteen role alternatives to four anonymous scheduler shapes');
+for(const spec of [...new Map(actualStructuralSpecs.map(spec=>[anonymousShape(spec.players,spec.duration),spec])).values()]){
+ const plan=scheduler.buildSchedule(spec.players,'18:00',spec.duration);
+ if(!plan.feasibilityErrors.length)assert.deepEqual(scheduler.validate(plan),[],'every feasible unique actual-Rebels Resolution shape must pass the full validator');
+}
+console.log('Actual KC Rebels fourteen-to-four mobile fan-out regression passed.');
+
 
