@@ -5901,8 +5901,16 @@ function bindPractice(){
    // same-duration pitcher + every same-duration catcher + every combined pitcher
    // + every combined catcher. Keep that finite ceiling for safety, but structural
    // source errors bypass candidate scheduling entirely below.
-   const candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?1:0)+availablePitchers.length+enabledCatchers.length+(Number(durationMinutes)===120?availablePitchers.length+enabledCatchers.length:0);
-   const RESOLUTION_BUILD_BUDGET=identityBlocked?1:Math.min(64,Math.max(2,candidateSearchCapacity+1));
+   // Resolution 486: the production search is intentionally bounded. The previous
+   // budget still described the old exhaustive fan-out (every pitcher + catcher +
+   // every combined alternative), so it could silently permit dozens of scheduler
+   // builds even though the UI path is now designed to be short. Make the budget
+   // match the actual policy: base build + Block 11 + at most one same-duration
+   // pitcher + one same-duration catcher + one combined pitcher + one combined
+   // catcher. Any future code that accidentally reintroduces exhaustive fan-out
+   // will stop safely instead of regressing to an iPhone freeze.
+   const candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?5:2);
+   const RESOLUTION_BUILD_BUDGET=identityBlocked?1:candidateSearchCapacity+1;
    let resolutionBuildCount=1,resolutionBudgetExceeded=false;
    // The base scheduler attempt above is build #1. Candidate verification is intentionally single-build. buildSchedule already
    // returns fresh normalized player/schedule objects; cloning every 13-player
@@ -6070,22 +6078,26 @@ function bindPractice(){
     if(result==='aborted')return;
    }
 
-   if(!identityBlocked&&!canExtend){
-    // Resolution 467: a verified same-duration solution is sufficient evidence.
-    // Search pitchers in deterministic roster order; if one works, publish that
-    // exact safe choice and stop. Only search catchers when no pitcher solution
-    // exists. Earlier completeness fan-out rebuilt every safe alternative on the
-    // same iPhone tap, which increased CPU/GC cost without improving schedule
-    // safety. Resolution's job is to provide a proven way forward, not enumerate
-    // every equivalent coaching option.
-    const pitcherSpecs=availablePitchers.map(pitcher=>({players:practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:durationMinutes,label:'Hitting Only: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name},choiceName:pitcher.name}));
-    const pitcherResult=verifyOrderedCandidates(pitcherSpecs,'practice-resolution-pitcher','Hitting Only',spec=>solvingPitchers.push(spec.choiceName));
-    if(pitcherResult==='aborted')return;
-
-    if(!solvingPitchers.length){
-     const catcherSpecs=availableCatchers.map(catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name},choiceName:catcher.name}));
-     const catcherResult=verifyOrderedCandidates(catcherSpecs,'practice-resolution-catcher','Not Catching',spec=>solvingCatchers.push(spec.choiceName));
-     if(catcherResult==='aborted')return;
+   if(!identityBlocked&&!canExtend&&!resolutionBudgetExceeded){
+    // Resolution 486: same-duration role search follows the same bounded policy as
+    // the combined branch. A Resolution only needs one independently verified way
+    // forward; enumerating every eligible pitcher/catcher on the phone adds repeated
+    // scheduler work without making the displayed choice safer.
+    const firstPitcher=availablePitchers[0]||null;
+    if(firstPitcher){
+     const spec={players:practicePlayers.map(player=>player.name===firstPitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:durationMinutes,label:'Hitting Only: '+firstPitcher.name,expectedChange:{role:'pitcher',name:firstPitcher.name},choiceName:firstPitcher.name};
+     const result=verifyOrderedCandidates([spec],'practice-resolution-pitcher','Hitting Only',safeSpec=>solvingPitchers.push(safeSpec.choiceName));
+     if(result==='aborted')return;
+     if(result==='budget')resolutionBudgetExceeded=true;
+    }
+    if(!solvingPitchers.length&&!resolutionBudgetExceeded){
+     const firstCatcher=availableCatchers[0]||null;
+     if(firstCatcher){
+      const spec={players:practicePlayers.map(player=>player.name===firstCatcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+firstCatcher.name,expectedChange:{role:'catcher',name:firstCatcher.name},choiceName:firstCatcher.name};
+      const result=verifyOrderedCandidates([spec],'practice-resolution-catcher','Not Catching',safeSpec=>solvingCatchers.push(safeSpec.choiceName));
+      if(result==='aborted')return;
+      if(result==='budget')resolutionBudgetExceeded=true;
+     }
     }
    }
 
