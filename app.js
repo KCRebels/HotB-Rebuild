@@ -4525,7 +4525,11 @@ function bind(){
    const catcherLoadNames=plan.catcherLoads.map(item=>item.name);
    if(catcherLoadNames.length!==new Set(catcherLoadNames).size)return failProof('postcondition-clause-56');
    const catcherLoadMap=new Map(plan.catcherLoads.map(item=>[item.name,Number(item.liveBlocks)]));
-   const eligibleCatchers=(plan.players||[]).filter(player=>player.isCatcher===true).map(player=>player.name);
+   // catcherLoads is generated from the scheduler's currently eligible catcher
+   // pool, not from every player whose permanent roster position includes catcher.
+   // A Resolution choice such as "Not Catching" correctly leaves isCatcher=true
+   // while setting canCatch=false, so the immutable proof must use the same pool.
+   const eligibleCatchers=(plan.players||[]).filter(player=>player.isCatcher===true&&player.canCatch===true).map(player=>player.name);
    if(catcherLoadMap.size!==eligibleCatchers.length||eligibleCatchers.some((name,index)=>catcherLoadNames[index]!==name||catcherLoadMap.get(name)!==(liveCatcherLoads.get(name)||0)))return failProof('catcher-load-summary');
    const repeatedPitchers=[...livePitcherLoads.entries()].filter(([,count])=>count>1).map(([name])=>name).sort();
    if(plan.pitcherRepeats.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name)||plan.pitcherRepeats.length!==new Set(plan.pitcherRepeats).size)return failProof('postcondition-clause-57');
