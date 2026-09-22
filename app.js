@@ -5954,15 +5954,20 @@ function bindPractice(){
      const liveRoster=practiceAttendanceRoster(),exact=name=>players.filter(p=>p.name===name).length===1&&liveRoster.filter(p=>p.name===name).length===1;
      if(!choiceKeys.every(key=>r[key].every(exact)))return fail('choice-identity');
      const verifiedByName=new Map(players.map(p=>[p.name,p])),liveByName=new Map(liveRoster.map(p=>[p.name,p]));
-     const role=(name,type)=>{const v=verifiedByName.get(name),l=liveByName.get(name);return !!v&&!!l&&(type==='pitcher'?v.isPitcher===true&&v.canPitch===true&&l.isPitcher===true:v.isCatcher===true&&v.canCatch===true&&l.isCatcher===true)};
+     // A Resolution choice is allowed to CHANGE canPitch/canCatch. Validate the
+     // player's underlying roster eligibility here, not the current accommodation
+     // switch. Otherwise "Hitting Only: Brooklyn" can never be presented because
+     // the candidate itself necessarily has canPitch=false.
+     const role=(name,type)=>{const v=verifiedByName.get(name),l=liveByName.get(name);return !!v&&!!l&&(type==='pitcher'?v.isPitcher===true&&l.isPitcher===true:v.isCatcher===true&&l.isCatcher===true)};
      if(!r.pitchers.every(name=>role(name,'pitcher'))||!r.combinedPitchers.every(name=>role(name,'pitcher'))){
       const bad=[...r.pitchers,...r.combinedPitchers].filter(name=>!role(name,'pitcher')).map(name=>{const v=verifiedByName.get(name),l=liveByName.get(name);return name+'{vP:'+String(v?.isPitcher)+',vCan:'+String(v?.canPitch)+',lP:'+String(l?.isPitcher)+'}'}).join('|');
       return fail('pitcher-role-'+bad);
      }
      if(!r.catchers.every(name=>role(name,'catcher'))||!r.combinedCatchers.every(name=>role(name,'catcher')))return fail('catcher-role');
      if(r.combinedPitchers.some(name=>r.pitchers.includes(name))||r.combinedCatchers.some(name=>r.catchers.includes(name)))return fail('choice-overlap');
-     if(r.pitchers.some(name=>!players.find(p=>p.name===name)?.canPitch)||r.combinedPitchers.some(name=>!players.find(p=>p.name===name)?.canPitch))return fail('pitcher-capability');
-     if(r.catchers.some(name=>!players.find(p=>p.name===name)?.canCatch)||r.combinedCatchers.some(name=>!players.find(p=>p.name===name)?.canCatch))return fail('catcher-capability');
+     // Do not require the mutable capability flag to remain true for a choice
+     // whose entire purpose is to turn that capability off. Underlying role
+     // eligibility and exact identity were proven above.
      return 'unmapped-contract';
     };
     if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
