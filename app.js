@@ -6301,6 +6301,12 @@ function bindPractice(){
     render();
     setPracticeBuildControlsLocked(false);
     window.scrollTo(0,0);
+    // The Resolution handoff must be observable on the real device. If a future
+    // render regression fails to mount the coaching modal, recover immediately
+    // instead of leaving the coach staring at the last gray candidate message.
+    if(!document.querySelector('.practice-resolution-modal')){
+     throw new Error('Practice Resolution modal did not mount after verified publication.');
+    }
    });
    return;
   }
