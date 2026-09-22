@@ -5961,22 +5961,30 @@ function bindPractice(){
      try{sessionStorage.setItem('hotb-resolution-seal-reason',JSON.stringify({bundle:'resolution512',reason:sealReason,at:new Date().toISOString()}))}catch(error){}
      practiceResolution=null;shell.innerHTML=basePanel('HotB checked possible coaching compromises but the safety seal rejected '+sealReason+'. Change attendance or availability and build again.');bindInfoReturn(shell);return;
     }
-    // The temporary verification shell lives inside #app. render() replaces
-    // #app.innerHTML wholesale, so removing that shell first can detach #app's
-    // descendants before render captures the new Resolution modal on iOS/WebKit.
-    // Keep the shell mounted until render atomically replaces the app tree.
+    // Publish the already-verified decision directly into the existing shell.
+    // This avoids routing the handoff through the full application render/bind
+    // lifecycle while the Build button's asynchronous candidate transaction is
+    // still on the stack. The shell is already the active modal backdrop, so this
+    // is an atomic DOM replacement with no iOS/WebKit detach window.
     modal='practiceResolution';
     try{
-     render();window.scrollTo(0,0);
+     const decisionHtml=practiceResolutionModal();
+     if(!decisionHtml||!decisionHtml.includes('practice-resolution-modal'))throw new Error('Verified Practice Resolution produced no decision markup.');
+     const holder=document.createElement('div');
+     holder.innerHTML=decisionHtml.trim();
+     const decision=holder.firstElementChild;
+     if(!decision)throw new Error('Verified Practice Resolution produced no decision node.');
+     shell.replaceWith(decision);
+     window.scrollTo(0,0);
      const published=document.querySelector('.practice-resolution-modal');
      if(!published)throw new Error('Verified Practice Resolution did not mount.');
+     bindPracticeResolution();
     }
     catch(error){
      console.error('HotB could not publish verified Practice Resolution.',error);
-     // Preserve the verified snapshot for diagnosis/retry. A rendering failure is
-     // not evidence that the already-audited coaching choices became invalid.
      modal=null;
-     try{render()}catch(renderError){console.error('HotB could not restore Practice Setup after Resolution publication failure.',renderError)}
+     const existing=document.querySelector('.practice-resolution-modal');
+     if(existing)existing.remove();
      shell=mountResolutionHtml(basePanel('HotB verified a coaching option but could not open the decision screen. Return to setup and build again.'));bindInfoReturn(shell)
     }
    };
