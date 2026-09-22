@@ -5968,8 +5968,15 @@ function bindPractice(){
     buildWatchdogConfirm=setTimeout(confirm,250);
    },timeout);
   };
-  armBuildWatchdog('scheduler');
-  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});markBuildProgress();armBuildWatchdog('scheduler-returned')}catch(error){
+  buildWatchdogStage='scheduler';
+  if(buildButton)buildButton.dataset.buildStage='scheduler';
+  markBuildProgress();
+  try{
+   practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});
+   markBuildProgress();
+   buildWatchdogStage='post-scheduler';
+   if(buildButton)buildButton.dataset.buildStage='post-scheduler';
+  }catch(error){
    console.error('HotB practice scheduler failed',error);stopBuildWatchdog();practicePlan=null;
    setPracticeBuildControlsLocked(false);
    // During an automatic Resolution rebuild, the outer transaction owns rollback.
@@ -5979,14 +5986,11 @@ function bindPractice(){
    if(!resolutionApplyBuild)alert('HotB could not build the practice schedule. Scheduler error: '+String(error?.message||error||'unknown'));
    return
   }
-  armBuildWatchdog('post-scheduler');
   if(practicePlan.feasibilityErrors?.length){
    // The base scheduler has returned. Practice Resolution now runs as one synchronous
    // verified transaction. Retire the initial scheduler watchdog before entering it;
    // watchdog before entering it; Resolution itself no longer uses wall-clock
    // timers, eliminating false iPhone stalls during legitimate candidate work.
-   clearTimeout(buildWatchdog);buildWatchdog=null;
-   clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
    buildWatchdogGeneration++;
    buildWatchdogStage='practice-resolution';
    // Keep the build state visible and make every long Resolution phase identifiable.
