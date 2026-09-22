@@ -4244,30 +4244,10 @@ function bind(){
    document.querySelectorAll('.practice-resolution-modal input').forEach(input=>input.disabled=true);
    return true;
   };
-  const verifiedResolutionChoice=(type,name=null)=>{
-   if(!practiceResolutionSnapshotIsCurrentAndValid())return false;
-   const verifiedPlayers=practiceResolution.practicePlayers||[],matches=name==null?[]:verifiedPlayers.filter(player=>player.name===name);
-   if(type==='extension')return practiceResolution.canExtend===true&&Number(practiceResolution.durationMinutes)===120&&Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,'Block 11')&&Array.isArray(practiceResolution.candidateNotices['Block 11']);
-   if(matches.length!==1)return false;
-   const player=matches[0],blockCount=Number(practiceResolution.durationMinutes)===132?11:Number(practiceResolution.durationMinutes)===120?10:0;
-   if(!blockCount||!Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>blockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock))return false;
-   if(typeof player.canPitch!=='boolean'||typeof player.requiresPitchWarmup!=='boolean'||typeof player.canCatch!=='boolean'||(!player.canPitch&&player.requiresPitchWarmup))return false;
-   const label=type==='pitcher'?'Hitting Only: '+name:type==='catcher'?'Not Catching: '+name:type==='combinedPitcher'?'Hitting Only + Block 11: '+name:type==='combinedCatcher'?'Not Catching + Block 11: '+name:'';
-   if(!label||!Object.prototype.hasOwnProperty.call(practiceResolution.candidateNotices,label)||!Array.isArray(practiceResolution.candidateNotices[label]))return false;
-   if(type==='pitcher')return player.canPitch===true&&(practiceResolution.pitchers||[]).includes(name);
-   if(type==='catcher')return player.canCatch===true&&(practiceResolution.catchers||[]).includes(name);
-   if(type==='combinedPitcher')return Number(practiceResolution.durationMinutes)===120&&player.canPitch===true&&(practiceResolution.combinedPitchers||[]).includes(name);
-   if(type==='combinedCatcher')return Number(practiceResolution.durationMinutes)===120&&player.canCatch===true&&(practiceResolution.combinedCatchers||[]).includes(name);
-   return false;
-  };
   const rejectUnverifiedResolution=()=>{
    alert('HotB will not apply that choice because it is not one of the verified solutions for this practice. Return to Practice Setup and build again.');
   };
-  const findResolutionRosterIndex=(name,roleLabel)=>{
-   // Resolution 474: authorization must be a pure verifier. The previous helper
-   // alerted from inside authorization and accepted the first duplicate match.
-   // Resolution snapshots already require unique identity; re-prove exactly one
-   // live roster match here and let the outer apply gate own all user messaging.
+  const findResolutionRosterIndex=(name)=>{
    const roster=practiceAttendanceRoster(),matches=[];
    for(let index=0;index<roster.length;index++)if(roster[index]?.name===name)matches.push(index);
    if(matches.length!==1)return null;
@@ -4900,17 +4880,17 @@ function bind(){
    return expected;
   };
   $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('pitcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>authorizedResolutionExpectedState('pitcher',picked,false,snapshot));
+   const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}runVerifiedResolutionApply(snapshot=>authorizedResolutionExpectedState('pitcher',picked,false,snapshot));
   });
   $('#applyPracticeCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('catcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>authorizedResolutionExpectedState('catcher',picked,false,snapshot));
+   const picked=$('input[name="practiceResolutionCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}runVerifiedResolutionApply(snapshot=>authorizedResolutionExpectedState('catcher',picked,false,snapshot));
   });
-  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;if(!verifiedResolutionChoice('extension')){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>authorizedResolutionExpectedState(null,null,true,snapshot))});
+  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;runVerifiedResolutionApply(snapshot=>authorizedResolutionExpectedState(null,null,true,snapshot))});
   $('#applyPracticeCombinedResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionCombinedPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('combinedPitcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>authorizedResolutionExpectedState('pitcher',picked,true,snapshot));
+   const picked=$('input[name="practiceResolutionCombinedPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}runVerifiedResolutionApply(snapshot=>authorizedResolutionExpectedState('pitcher',picked,true,snapshot));
   });
   $('#applyPracticeCombinedCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('combinedCatcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>authorizedResolutionExpectedState('catcher',picked,true,snapshot));
+   const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}runVerifiedResolutionApply(snapshot=>authorizedResolutionExpectedState('catcher',picked,true,snapshot));
   });
   $('#returnPracticeAttendance')?.addEventListener('click',()=>{
    // Resolution 465: leaving the decision screen is not a scheduler transaction.
