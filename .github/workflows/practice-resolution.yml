@@ -52,4 +52,6 @@ jobs:
           ! grep -q "2026.09.20.221" pwa-update.js
           grep -q "launch=226" hotb-fresh.html
           ! grep -q "launch=136" hotb-fresh.html
+          grep -q '"start_url": "./?source=pwa&launch=226"' manifest.webmanifest
+          ! grep -q 'launch=221' manifest.webmanifest
           ! grep -q "Finalizing Resolution" app.js
