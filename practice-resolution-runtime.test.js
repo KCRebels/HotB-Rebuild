@@ -396,3 +396,32 @@ function candidateCapacityFor(players,errors,duration=120){
 }
 assert.equal(candidateCapacityFor(base,['Invalid availability for Guest 1.']),0,'malformed source must schedule zero Resolution candidates');
 assert.ok(candidateCapacityFor(base,['Catcher coverage is insufficient.'])>0,'ordinary feasibility failures retain automatic Resolution search');
+
+
+/* Resolution 467 first-safe search policy regression.
+   Resolution must prove a safe path quickly on mobile; it is not required to
+   enumerate every equivalent coaching choice. Deterministic roster order makes
+   the selected alternative stable across repeated builds. */
+function firstSafeRoleChoice(players,duration=120){
+ let builds=0;
+ for(const pitcher of players.filter(player=>player.canPitch)){
+  builds++;
+  const candidate=players.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
+  const plan=scheduler.buildSchedule(candidate,'18:00',duration);
+  if(!plan.feasibilityErrors.length&&!scheduler.validate(plan).length)return {role:'pitcher',name:pitcher.name,builds};
+ }
+ for(const catcher of players.filter(player=>player.canCatch)){
+  builds++;
+  const candidate=players.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
+  const plan=scheduler.buildSchedule(candidate,'18:00',duration);
+  if(!plan.feasibilityErrors.length&&!scheduler.validate(plan).length)return {role:'catcher',name:catcher.name,builds};
+ }
+ return {role:null,name:null,builds};
+}
+for(const fixture of [base,...matrix]){
+ if(!Array.isArray(fixture)||!fixture.length)continue;
+ const first=firstSafeRoleChoice(fixture),second=firstSafeRoleChoice(fixture);
+ assert.deepEqual(first,second,'first-safe Resolution choice must be deterministic for identical ordered input');
+ const maximum=fixture.filter(player=>player.canPitch).length+fixture.filter(player=>player.canCatch).length;
+ assert.ok(first.builds<=maximum,'first-safe Resolution search cannot exceed its finite role candidate count');
+}
