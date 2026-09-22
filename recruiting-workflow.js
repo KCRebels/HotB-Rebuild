@@ -26,7 +26,7 @@
  function readRecruiting(){try{const value=JSON.parse(localStorage.getItem(RECRUITING_KEY)||'{}');return value&&typeof value==='object'?value:{}}catch{return{}}}
  function saveRecruiting(value){localStorage.setItem(RECRUITING_KEY,JSON.stringify(value))}
  function playerRecord(name){return (readDb().roster||[]).find(player=>player.name===name)||null}
- function activePlayer(name){return !!playerRecord(name)}
+ function activePlayer(name){return !!clean(name)&&name!=='Team'}
  function buildEmailSubject(player){
   const positions=clean(player?.positions).replace(/\s*\|\s*/g,'/');
   return `${clean(player?.name)||'Player'} | ${clean(player?.grad)||'Grad Year'} | ${positions||'Positions'} | ${clean(player?.gpa)||'—'} GPA | #${clean(player?.jersey)||'—'}`;
