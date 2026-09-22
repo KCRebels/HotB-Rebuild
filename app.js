@@ -5823,7 +5823,10 @@ function bindPractice(){
    }catch(error){console.error('HotB could not seal the practice build setup.',error);return ''}
   };
   const initialBuildSetupSignature=buildSetupSignature();
-  let buildSetupOwnershipChecked=false;
+  // Ownership is not a one-time preflight. Re-prove the sealed setup whenever
+  // Resolution crosses a scheduler boundary. A previous optimization cached the
+  // first successful comparison forever, so a later DOM/setup mutation could occur
+  // during the multi-build 13-player search without being detected.
   let buildSetupOwnershipValid=!!initialBuildSetupSignature;
   // Resolution rebuild failures are owned by rebuildResolvedPractice. Do not clear
   // its token here: doing so makes the queued verifier stale and prevents rollback.
@@ -5908,9 +5911,8 @@ function bindPractice(){
   };
   const buildSetupStillOwned=()=>{
    if(!buildSetupOwnershipValid)return false;
-   if(buildSetupOwnershipChecked)return true;
-   buildSetupOwnershipChecked=true;
-   buildSetupOwnershipValid=buildSetupSignature()===initialBuildSetupSignature;
+   const current=buildSetupSignature();
+   buildSetupOwnershipValid=!!current&&current===initialBuildSetupSignature;
    return buildSetupOwnershipValid;
   };
   const setPracticeBuildControlsLocked=locked=>{
@@ -5947,25 +5949,10 @@ function bindPractice(){
    return
   }
   if(practicePlan.feasibilityErrors?.length){
-   // Prove the exact unchanged roster once more before emergency Resolution. The
-   // scheduler is deterministic; this boundary prevents a transient/mutated result
-   // from sending the normal full 13-player practice through the expensive fan-out.
-   const initialFeasibilityErrors=[...practicePlan.feasibilityErrors];
-   try{
-    const exactRetry=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});
-    const retryErrors=Array.isArray(exactRetry?.feasibilityErrors)?exactRetry.feasibilityErrors:[];
-    const retryAudit=!retryErrors.length&&exactRetry?window.HotBPracticeScheduler.validate(exactRetry):[];
-    if(!retryErrors.length&&Array.isArray(retryAudit)&&!retryAudit.length){
-     console.warn('HotB recovered the unchanged practice at the Resolution boundary; using the verified exact retry.');
-     practicePlan=exactRetry;
-    }else if(JSON.stringify(retryErrors)!==JSON.stringify(initialFeasibilityErrors)){
-     console.error('HotB detected nondeterministic scheduler errors for the unchanged practice.',{initialFeasibilityErrors,retryErrors});
-     recoverPracticeBuildSetup('practice-scheduler-nondeterministic','HotB detected inconsistent scheduler results for the unchanged practice. Nothing was committed. Please build again.');
-     return;
-    }
-   }catch(error){
-    console.error('HotB exact-roster scheduler retry failed at the Resolution boundary',error);
-   }
+   // A deterministic scheduler cannot become feasible by rebuilding identical
+   // bytes. Preserve the first result and spend the Resolution budget only on
+   // genuinely different coaching alternatives.
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution458',stage:'base-failed',state:'captured',at:new Date().toISOString(),errors:[...practicePlan.feasibilityErrors],players:practicePlayers.map(player=>({name:player.name,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch,from:player.availableFromBlock,until:player.availableUntilBlock}))}))}catch(error){}
   }
   if(practicePlan.feasibilityErrors?.length){
    // The base scheduler has returned. Practice Resolution now runs as one synchronous verified transaction.
