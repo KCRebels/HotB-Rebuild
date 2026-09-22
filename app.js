@@ -1490,28 +1490,31 @@ async function syncPlayerEvaluationPortals(){
 async function setupJenkinsPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return;
  const players=db.roster.filter(item=>item.isTeamJenkins),originals=players.map(player=>({player,portalId:player.portalId,portalSecret:player.portalSecret}));
- cloudBusy=true;portalMessage='Creating Team Jenkins practice portals…';render();
+ cloudBusy=true;portalMessage='Preparing Team Jenkins practice portals…';render();
+ let watchdog=setTimeout(()=>{if(!cloudBusy)return;cloudBusy=false;portalMessage='Team Jenkins portal setup stopped before cloud verification. Nothing else was changed. Tap Create Team Jenkins Portals again.';render()},12000);
  try{
-  // Create all portal identities locally first, then publish them in one batch.
-  // Eight sequential Firestore writes can leave the iOS PWA looking frozen on a
-  // gray button when the network is slow or one request never resolves.
   for(const player of players){player.portalId=player.portalId||newPortalId();player.portalSecret=player.portalSecret||newGuestSecret()}
   const batch=cloudStore.batch();
   for(const player of players){
    const pinHash=await portalHash(player.portalId,player.portalSecret);
    batch.set(portalDoc(player.portalId),{portalType:'jenkinsPlayer',playerName:player.name,firstName:practiceFirstName(player.name),phone:player.phone,pinHash,ownerUid:null,expired:false,accessStatus:'waiting',activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   }
-  await Promise.race([batch.commit(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('jenkins-portal-write-timeout')),10000))]);
-  const verification=await Promise.race([Promise.all(players.map(async player=>{const snapshot=await portalDoc(player.portalId).get(),remote=snapshot.exists?snapshot.data():null;return !!remote&&remote.portalType==='jenkinsPlayer'&&remote.playerName===player.name&&remote.expired===false})),new Promise((_,reject)=>setTimeout(()=>reject(new Error('jenkins-portal-verify-timeout')),10000))]);
+  portalMessage='Saving Team Jenkins practice portals…';render();
+  await Promise.race([batch.commit(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('jenkins-portal-write-timeout')),8000))]);
+  portalMessage='Verifying Team Jenkins practice portals…';render();
+  const verification=await Promise.race([Promise.all(players.map(async player=>{const snapshot=await portalDoc(player.portalId).get(),remote=snapshot.exists?snapshot.data():null;return !!remote&&remote.portalType==='jenkinsPlayer'&&remote.playerName===player.name&&remote.expired===false})),new Promise((_,reject)=>setTimeout(()=>reject(new Error('jenkins-portal-verify-timeout')),8000))]);
   if(verification.some(ok=>!ok))throw new Error('jenkins-portal-verification-failed');
+  clearTimeout(watchdog);watchdog=null;
   db.route=route;localStorage.setItem(DBKEY,JSON.stringify(db));if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');scheduleCloudBackup();
-  portalMessage='Team Jenkins practice portals are ready. These links stay the same from practice to practice.';
+  cloudBusy=false;portalMessage='Team Jenkins practice portals are ready. These links stay the same from practice to practice.';render();
  }catch(error){
+  clearTimeout(watchdog);watchdog=null;
   originals.forEach(({player,portalId,portalSecret})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalSecret===undefined)delete player.portalSecret;else player.portalSecret=portalSecret});
-  console.error('Team Jenkins portal setup failed',error);
-  portalMessage=String(error?.message||'').includes('timeout')?'Team Jenkins portal setup timed out. No portal links were replaced. Please try once more.':'Team Jenkins practice portals could not be created. Nothing else was changed.';
+  console.error('Team Jenkins portal setup failed',error);cloudBusy=false;
+  const reason=String(error?.message||error||'unknown');
+  portalMessage=reason.includes('write-timeout')?'Team Jenkins portal setup stopped while saving to the cloud. Nothing else was changed.':reason.includes('verify-timeout')?'Team Jenkins portals saved, but HotB could not verify them in time. Nothing else was changed.':`Team Jenkins practice portals could not be created (${reason}). Nothing else was changed.`;
+  render();
  }
- cloudBusy=false;render();
 }
 async function setupPlayerPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return;
