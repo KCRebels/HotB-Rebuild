@@ -700,3 +700,19 @@ console.log('Resolution 526 atomic publication regression passed.');
  assert.match(branch,/return practiceResolutionModal\(\)/,'authorized Resolution renders as a pure consumer');
 }
 console.log('Resolution 527 render-purity regression passed.');
+
+
+/* Resolution 528 direct-publication regression.
+   Candidate completion must mount the sealed decision into the active verification
+   shell without invoking the full application render lifecycle. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf("const decisionHtml=practiceResolutionModal()",source.indexOf('const finalizeCandidates=()=>'));
+ const end=source.indexOf('const runNextCandidate=()=>',start);
+ assert.ok(start>=0&&end>start,'direct Resolution publication branch must exist');
+ const branch=source.slice(start,end);
+ assert.match(branch,/shell\.replaceWith\(decision\)/,'verified decision must atomically replace the checking shell');
+ assert.match(branch,/bind\(\)/,'directly mounted decision must receive existing Resolution handlers');
+ assert.doesNotMatch(branch,/\brender\(\)/,'candidate completion must not invoke full application render');
+}
+console.log('Resolution 528 direct-publication regression passed.');
