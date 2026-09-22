@@ -6227,13 +6227,8 @@ function bindPractice(){
     recoverPracticeBuildSetup('practice-resolution-publication-invalid','HotB stopped because the saved Practice Resolution did not retain the verified decision. Please build the practice again.');return;
    }
    // Persistence just proved the saved decision identity against the fully
-   // validated live snapshot. Setup controls remain locked throughout this
-   // synchronous transaction, so there is no mutation window requiring another
-   // full snapshot validation before the modal handoff.
-   if(!buildSetupStillOwned()){
-    recoverPracticeBuildSetup('practice-resolution-prepublish-changed','HotB stopped because the practice setup changed immediately before Resolution could open. Please build the practice again.');
-    return;
-   }
+   // validated live snapshot. Setup controls are still locked and this code has
+   // not yielded, so publish immediately rather than recomputing the setup signature.
    setResolutionStage('practice-resolution-publish');
    modal='practiceResolution';
    // All scheduler/evidence/persistence work is complete before the modal handoff.
