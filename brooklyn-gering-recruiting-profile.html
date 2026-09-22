@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Coach-verified scouting report for Brooklyn Gering, KC Rebels 16U Regional.">
-  <title>Brooklyn Gering | Coach-Verified Scouting Report</title>
+  <title>KC Rebels | Coach-Verified Scouting Report</title>
   <style>
     :root{--red:#cf112d;--deep:#111318;--ink:#18202f;--muted:#697386;--line:#d9dde4;--paper:#fff;--wash:#f3f5f7;--soft:#f7f8fa}
     *{box-sizing:border-box}
@@ -200,31 +200,14 @@
   <script>
   (()=>{
     const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
+    const slug=new URLSearchParams(location.search).get('player')||'brooklyn-gering';
     const text=(id,value)=>{const el=document.getElementById(id);if(el&&value!==undefined&&value!==null&&value!=='')el.textContent=value};
     const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-    const evaluation=value=>{
-      const parts=String(value||'').split(/\n\s*\n/).filter(Boolean);if(!parts.length)return;
-      text('coachEvaluation1','“'+parts[0]);text('coachEvaluation2',(parts[1]||'')+'”');
-    };
-    const measurement=(name,row)=>{const card=document.querySelector(`[data-measure="${name}"]`);if(!card||!row)return;const strong=card.querySelector('strong'),verified=card.querySelector('.verified-date');let value=row.value;if(name==='Home to First')value=Number(value).toFixed(2)+' sec';else value=`${value} mph`;strong.textContent=value;if(row.date)verified.textContent=`Verified ${row.date}`};
-    try{
-      if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
-      firebase.firestore().collection('recruitingProfiles').doc('brooklyn-gering').get().then(snap=>{
-        if(!snap.exists)return;const data=snap.data(),p=data.player||{};
-        text('gradYear',p.grad);text('playerName',p.name);text('playerMeta',`#${p.jersey||'16'} · ${p.positions||'RHP / OF'}`);
-        const sub=document.getElementById('playerSubmeta');if(sub)sub.innerHTML=`<span class="nowrap">Throw/Bat: ${escapeHtml(p.throws||'R')}/${escapeHtml(p.side||'R')}</span><br><span class="nowrap">${escapeHtml(p.school||'Spring Hill HS')} · GPA ${escapeHtml(p.gpa||'4.0')}</span><br><span class="nowrap">Intended Major: ${escapeHtml(p.interest||'Nursing')}</span>`;
-        const motto=document.getElementById('playerMotto'),mottoText=document.getElementById('playerMottoText');if(motto&&mottoText){const value=String(data.motto||'').trim();mottoText.textContent=value;motto.hidden=!value}
-        const email=document.getElementById('playerEmail');if(email&&p.email)email.href=`mailto:${p.email}`;const twitter=document.getElementById('playerTwitter');if(twitter&&p.twitter)twitter.href=p.twitter;
-        ['sportsRecruitsMobile','sportsRecruitsDesktop'].forEach(id=>{const el=document.getElementById(id);if(el&&data.sportsRecruitsUrl)el.href=data.sportsRecruitsUrl});
-        evaluation(data.coachEvaluation);
-        if(data.coachEvaluationUpdatedAt){const d=new Date(data.coachEvaluationUpdatedAt);text('evaluationUpdated',`Evaluation updated ${d.toLocaleDateString('en-US',{month:'short',year:'numeric'})}`)}
-        Object.entries(data.pitching||{}).forEach(([key,value])=>{const el=document.querySelector(`[data-pitch="${key}"]`);if(el)el.textContent=value});
-        Object.entries(data.hitting||{}).forEach(([key,value])=>{const el=document.querySelector(`[data-hit="${key}"]`);if(el)el.textContent=value});
-        Object.entries(data.measurements||{}).forEach(([name,row])=>measurement(name,row));
-        if(data.updatedAt){const d=new Date(data.updatedAt),updated=document.getElementById('performanceUpdated');if(updated){updated.childNodes[0].nodeValue=String(data.performanceSeason||'2026–27 full season');updated.childNodes[2].nodeValue=`Updated ${d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`}}
-        const status=document.getElementById('liveStatus');if(status)status.style.display='block';
-      }).catch(()=>{});
-    }catch(error){}
+    const first=name=>String(name||'Player').trim().split(/\s+/)[0]||'Player';
+    const evaluation=value=>{const parts=String(value||'').split(/\n\s*\n/).filter(Boolean);if(!parts.length)return;text('coachEvaluation1','“'+parts[0]);text('coachEvaluation2',(parts[1]||'')+'”')};
+    const list=(selector,items)=>{const ul=document.querySelector(selector);if(!ul||!Array.isArray(items)||!items.length)return;ul.innerHTML=items.map(item=>'<li>'+escapeHtml(item)+'</li>').join('')};
+    const measurement=(name,row)=>{const card=document.querySelector(`[data-measure="${name}"]`);if(!card||!row)return;const strong=card.querySelector('strong'),verified=card.querySelector('.verified-date');let value=row.value;if(name==='Home to First'||name==='Pop Time')value=Number(value).toFixed(2)+' sec';else value=`${value} mph`;strong.textContent=value;if(row.date)verified.textContent=`Verified ${row.date}`};
+    try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);firebase.firestore().collection('recruitingProfiles').doc(slug).get().then(snap=>{if(!snap.exists)return;const data=snap.data(),p=data.player||{},fn=first(p.name);document.title=`${p.name||'KC Rebels'} | Coach-Verified Scouting Report`;document.querySelector('meta[name="description"]')?.setAttribute('content',`Coach-verified scouting report for ${p.name||'KC Rebels player'}, KC Rebels 16U Regional.`);text('gradYear',p.grad);text('playerName',p.name);text('playerMeta',`#${p.jersey||'—'} · ${String(p.positions||'').replace(/\s*\|\s*/g,' / ')}`);const photo=document.getElementById('profilePhoto');if(photo&&p.photo){photo.src=p.photo;photo.alt=p.name||'Player'}const sub=document.getElementById('playerSubmeta');if(sub)sub.innerHTML=`<span class="nowrap">Throw/Bat: ${escapeHtml(p.throws||'R')}/${escapeHtml(p.side||'R')}</span><br><span class="nowrap">${escapeHtml(p.school||'')} · GPA ${escapeHtml(p.gpa||'—')}</span><br><span class="nowrap">Intended Major: ${escapeHtml(p.interest||'Undecided')}</span>`;const motto=document.getElementById('playerMotto'),mottoText=document.getElementById('playerMottoText');if(motto&&mottoText){const value=String(data.motto||'').trim();mottoText.textContent=value;motto.hidden=!value}const email=document.getElementById('playerEmail');if(email){email.textContent=`Email ${fn}`;if(p.email)email.href=`mailto:${p.email}`}const twitter=document.getElementById('playerTwitter');if(twitter&&p.twitter)twitter.href=p.twitter;document.querySelectorAll('.profile-link p').forEach(el=>el.textContent=`Visit ${fn}’s SportsRecruits profile for academics, personal information, film and her complete recruiting résumé.`);['sportsRecruitsMobile','sportsRecruitsDesktop'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=`View ${fn}’s Profile`;if(data.sportsRecruitsUrl)el.href=data.sportsRecruitsUrl}});evaluation(data.coachEvaluation);text('evaluationUpdated','Evaluation updated Sept. 2026');const devTitle=document.querySelector('.development-grid')?.closest('.card')?.querySelector('h2');if(devTitle)devTitle.textContent=`How ${fn} Is Developing`;list('.development-grid .dev-panel:not(.focus) ul',data.developmentStrengths);list('.development-grid .dev-panel.focus ul',data.developmentGrowth);const where=[...document.querySelectorAll('.card h2')].find(el=>el.textContent.startsWith('Upcoming Events'))?.closest('.card')?.querySelector('.kicker');if(where)where.textContent=`Where to See ${fn}`;Object.entries(data.pitching||{}).forEach(([key,value])=>{const el=document.querySelector(`[data-pitch="${key}"]`);if(el)el.textContent=value});Object.entries(data.hitting||{}).forEach(([key,value])=>{const el=document.querySelector(`[data-hit="${key}"]`);if(el)el.textContent=value});Object.entries(data.measurements||{}).forEach(([name,row])=>measurement(name,row));const status=document.getElementById('liveStatus');if(status)status.style.display='block'}).catch(()=>{})}catch(error){}
   })();
   </script>
 </body>
