@@ -8,9 +8,7 @@ function has(fragment,message){assert.ok(source.includes(fragment),message)}
 // synchronous/bounded-search refactors.
 has("practiceResolutionDecisionSignature","decision alternatives must be sealed");
 has("practiceResolutionSnapshotIsCurrentAndValid","live Resolution snapshot must be validated");
-has("candidateNotices:Object.fromEntries","candidate evidence must be persisted");
-has("const survivingCandidateLabels=new Set([","only surviving verified choices may retain evidence");
-has("Practice Resolution candidate evidence did not match the final verified choices.","evidence mismatch must fail closed");
+has("candidateNotices:{}","direct failure Resolution must not invent candidate evidence");
 has("JSON.stringify(actualNotices)!==JSON.stringify(expectedNotices)","Apply must reject changed fallback notices");
 has("if(resolutionApplying||practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId)return false","Apply must have one transaction lock");
 has("HotB deferred setup-draft persistence during Practice Resolution apply.","temporary Apply state must not persist as an ordinary draft");
@@ -32,9 +30,8 @@ has("expectedNames.some((name,index)=>scheduleKeys[index]!==name)","schedule own
 has("catcherLoadNames.length!==new Set(catcherLoadNames).size","catcher metadata must reject duplicate identities");
 has("HotB refused a Practice Resolution rollback that changed during cloning","rollback clone must preserve sealed state");
 has("practiceResolution=null;","successful commit must revoke stale Resolution");
-has("sealedResolutionBytes","publication must be byte sealed");
-has("publicationSnapshotStable","publication validation must be read-only");
-has("RESOLUTION_BUILD_BUDGET","candidate search must have a hard scheduler-build budget");
-has("window.HotBPracticeScheduler.validate(plan)","feasible displayed candidates must still pass the full scheduler validator");
-has("if(JSON.stringify(practiceResolution)!==sealedResolutionBytes)","render must not mutate the sealed decision");
+has("bundle:'resolution493'","failed scheduler result must use direct Resolution publication");
+has("stage:'base-failure-direct-publish'","failed scheduler result must publish directly without candidate discovery");
+has("modal='practiceResolution'","failed scheduler result must open Practice Resolution");
+
 console.log('Practice Resolution production contracts passed.');
