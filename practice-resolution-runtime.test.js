@@ -714,7 +714,21 @@ console.log('Resolution 527 render-purity regression passed.');
  assert.ok(start>=0&&end>start,'direct Resolution publication branch must exist');
  const branch=source.slice(start,end);
  assert.match(branch,/shell\.replaceWith\(decision\)/,'verified decision must atomically replace the checking shell');
- assert.match(branch,/bind\(\)/,'directly mounted decision must receive existing Resolution handlers');
+ assert.match(branch,/bindPractice\(\)/,'directly mounted decision must receive Practice Resolution handlers explicitly');
  assert.doesNotMatch(branch,/\brender\(\)/,'candidate completion must not invoke full application render');
 }
 console.log('Resolution 528 direct-publication regression passed.');
+
+
+/* Resolution 529 direct-bind regression.
+   The Build Practice route does not rely on generic route dispatch after a direct
+   modal mount; the Resolution controls must be bound explicitly. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf("const decisionHtml=practiceResolutionModal()",source.indexOf('const finalizeCandidates=()=>'));
+ const end=source.indexOf('const runNextCandidate=()=>',start);
+ const branch=source.slice(start,end);
+ assert.match(branch,/bindPractice\(\)/,'direct publication must explicitly bind Practice Resolution controls');
+ assert.doesNotMatch(branch,/\n\s*bind\(\);/,'direct publication must not depend on generic route dispatch');
+}
+console.log('Resolution 529 direct-bind regression passed.');
