@@ -5833,8 +5833,13 @@ function bindPractice(){
    // base + Block 11 + each enabled pitcher + each enabled catcher + each combined
    // role/Block 11 candidate. Cap only pathological input, never a normal roster.
    const enabledCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
+   // Resolution 472: the first-safe policy no longer needs a budget sized for
+   // exhaustive enumeration. Its true worst case is base + Block 11 + every
+   // same-duration pitcher + every same-duration catcher + every combined pitcher
+   // + every combined catcher. Keep that finite ceiling for safety, but structural
+   // source errors bypass candidate scheduling entirely below.
    const candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?1:0)+availablePitchers.length+enabledCatchers.length+(Number(durationMinutes)===120?availablePitchers.length+enabledCatchers.length:0);
-   const RESOLUTION_BUILD_BUDGET=Math.min(64,Math.max(9,candidateSearchCapacity+1));
+   const RESOLUTION_BUILD_BUDGET=identityBlocked?1:Math.min(64,Math.max(2,candidateSearchCapacity+1));
    let resolutionBuildCount=1,resolutionBudgetExceeded=false;
    // The base scheduler attempt above is build #1. Candidate verification is intentionally single-build. buildSchedule already
    // returns fresh normalized player/schedule objects; cloning every 13-player
@@ -5990,14 +5995,20 @@ function bindPractice(){
     return collectAllSafe?'complete':'none';
    };
 
-   // Preserve every attendee and every role whenever the verified 132-minute plan
-   // works. This is one scheduler proof for the normal full-roster congestion case.
-   if(extensionBaselineValid){
+   // Resolution 472: structural attendee/availability errors are not scheduler
+   // problems. Publish the sealed no-choice Resolution directly; do not spend even
+   // one candidate build trying Block 11 or role changes against invalid source data.
+   if(identityBlocked){
+    canExtend=false;solvingPitchers=[];solvingCatchers=[];combinedPitchers=[];combinedCatchers=[];
+    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution472',stage:'practice-resolution-source-invalid',state:'candidate-search-bypassed',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,errors:[...errors],at:new Date().toISOString()}))}catch(error){}
+   }else if(extensionBaselineValid){
+    // Preserve every attendee and every role whenever the verified 132-minute plan
+    // works. This is one scheduler proof for the normal full-roster congestion case.
     const result=verifyOrderedCandidates([{players:extendedPlayers,duration:132,label:'Block 11',expectedChange:null}],'practice-resolution-block11','Block 11',()=>{canExtend=true});
     if(result==='aborted')return;
    }
 
-   if(!canExtend&&!identityBlocked){
+   if(!identityBlocked&&!canExtend){
     // Resolution 467: a verified same-duration solution is sufficient evidence.
     // Search pitchers in deterministic roster order; if one works, publish that
     // exact safe choice and stop. Only search catchers when no pitcher solution
@@ -6016,7 +6027,7 @@ function bindPractice(){
     }
    }
 
-   if(!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded){
+   if(!identityBlocked&&!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded){
     // Resolution 467: combined emergency search follows the same first-safe rule.
     // Try Hitting Only + Block 11 in roster order, then Not Catching + Block 11
     // only if no pitcher combination is safe.
