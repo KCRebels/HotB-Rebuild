@@ -763,3 +763,18 @@ console.log('Resolution 530 route-interference regression passed.');
  assert.match(branch,/JSON\.stringify\(savedResolution\)!==JSON\.stringify\(practiceResolution\)/,'publication must prove persisted decision equality');
 }
 console.log('Resolution 531 recovery-publication regression passed.');
+
+
+/* Resolution 532 WebKit recovery-clone regression.
+   Persisting a verified Resolution must use the same JSON data contract as
+   HotBPracticeSession and may not depend on structuredClone support. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('function persistPracticeDraft(){');
+ const end=source.indexOf('function clearPracticeSession(){',start);
+ const branch=source.slice(start,end);
+ assert.match(branch,/const sealedResolution=JSON\.stringify\(practiceResolution\)/,'recovery persistence must seal Resolution as JSON');
+ assert.match(branch,/resolutionToPersist=JSON\.parse\(sealedResolution\)/,'recovery persistence must clone from the sealed JSON');
+ assert.doesNotMatch(branch,/resolutionToPersist=structuredClone\(practiceResolution\)/,'recovery persistence must not require structuredClone');
+}
+console.log('Resolution 532 WebKit recovery-clone regression passed.');
