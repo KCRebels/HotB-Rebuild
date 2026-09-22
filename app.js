@@ -5797,7 +5797,24 @@ function bindPractice(){
    // malformed source data; publish one informational Resolution that sends the
    // coach back to attendance/availability.
    const errors=practicePlan.feasibilityErrors.slice();
-   const identityBlocked=errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(String(error||'')));
+   // Resolution 475: classify source-data failures from the player model itself,
+   // not only from scheduler wording. This keeps Resolution independent of exact
+   // feasibility-error text and prevents malformed late/early or role data from
+   // entering candidate builds just because an error message changes.
+   const sourceBlockCount=Number(durationMinutes)===132?11:Number(durationMinutes)===120?10:0;
+   const sourceNames=practicePlayers.map(player=>String(player?.name||''));
+   const sourceModelInvalid=!sourceBlockCount||!practicePlayers.length||
+    sourceNames.some(name=>!name||name.trim()!==name)||new Set(sourceNames).size!==sourceNames.length||
+    practicePlayers.some(player=>{
+     if(!player||typeof player.isPitcher!=='boolean'||typeof player.isCatcher!=='boolean'||typeof player.isGuest!=='boolean'||typeof player.prePracticeComplete!=='boolean')return true;
+     if(typeof player.canPitch!=='boolean'||typeof player.requiresPitchWarmup!=='boolean'||typeof player.canCatch!=='boolean')return true;
+     if(!player.isPitcher&&(player.canPitch||player.requiresPitchWarmup)||!player.canPitch&&player.requiresPitchWarmup||!player.isCatcher&&player.canCatch)return true;
+     if(typeof player.arrivalTime!=='string'||typeof player.departureTime!=='string'||typeof player.limitations!=='string'||player.limitations.trim()!==player.limitations)return true;
+     if(!Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>sourceBlockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock))return true;
+     const availability=practiceAvailability(startTime,durationMinutes,player.arrivalTime,player.departureTime);
+     return Number(availability.availableFromBlock)!==Number(player.availableFromBlock)||Number(availability.availableUntilBlock)!==Number(player.availableUntilBlock);
+    });
+   const identityBlocked=sourceModelInvalid||errors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(String(error||'')));
    const availablePitchers=identityBlocked?[]:practicePlayers.filter(player=>player.canPitch),solvingPitchers=[];
    // Practice Resolution is intentionally stricter than the normal build path. It is rare,
    // so every choice shown to the coach must pass both scheduler feasibility and the full
