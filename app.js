@@ -5864,9 +5864,12 @@ function bindPractice(){
    const sourcePlayers=practicePlayers.map(player=>{
     const live=liveRosterByName.get(player.name);
     if(!live)return {...player};
-    const accommodation=practiceSetupState.accommodations?.[player.name]||{};
+    // Use the same fallback chain as currentPracticeResolutionSignature().
+    // An empty setup accommodation is not equivalent to practiceAccommodation():
+    // the latter carries the live/default availability clocks used by the seal.
+    const accommodation=practiceSetupState.accommodations?.[player.name]||practiceAccommodation(live);
     const normalized=practicePlayerModel(live,accommodation,startTime,durationMinutes);
-    return {...player,arrivalTime:normalized.arrivalTime,departureTime:normalized.departureTime,availableFromBlock:normalized.availableFromBlock,availableUntilBlock:normalized.availableUntilBlock};
+    return {...normalized};
    });
    const candidateQueue=[];
    availablePitchers.forEach(player=>candidateQueue.push({kind:'pitcher',name:player.name,duration:120,label:'Hitting Only: '+player.name}));
