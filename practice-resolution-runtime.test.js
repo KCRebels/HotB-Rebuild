@@ -152,6 +152,16 @@ for(const fixture of fixtures.filter(x=>x.count===13&&x.pitchers===2&&x.catchers
  assert.ok(prioritized.builds<=9,'prioritized production-shaped fixture must keep scheduler fan-out bounded');
  prioritizedFixturesChecked++;
 }
+const thirteenPlayerFixtures=fixtures.filter(fixture=>fixture.count===13);
+assert.ok(thirteenPlayerFixtures.length,'runtime corpus must contain resolvable failed 13-player practices');
+for(const fixture of thirteenPlayerFixtures){
+ const prioritized=prioritizedResolution(fixture.source);
+ assert.ok(prioritized.plan,'every resolvable failed 13-player fixture must be resolved by the prioritized search');
+ assert.deepEqual(prioritized.plan.feasibilityErrors,[],'13-player prioritized Resolution must have no feasibility errors');
+ assert.deepEqual(scheduler.validate(prioritized.plan),[],'13-player prioritized Resolution must pass the full production validator');
+ const theoreticalBound=1+(fixture.pitchers*2)+(fixture.catchers*2);
+ assert.ok(prioritized.builds<=theoreticalBound,'13-player prioritized Resolution must stay within its strict candidate-build bound');
+}
 const productionShape=roster(13,2,2);
 const productionBase=scheduler.buildSchedule(productionShape,'18:00',120);
 if(productionBase.feasibilityErrors.length){
@@ -168,4 +178,4 @@ if(productionBase.feasibilityErrors.length){
  }
 }
 
-console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${block11Fixtures.length} Block-11 fast-path fixtures; ${prioritizedParityChecked} prioritized parity fixtures; ${prioritizedFixturesChecked} production-shaped prioritized fixtures; exercised: ${[...exercised].join(', ')})`);
+console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${thirteenPlayerFixtures.length} 13-player prioritized fixtures; ${block11Fixtures.length} Block-11 fast-path fixtures; ${prioritizedParityChecked} prioritized parity fixtures; ${prioritizedFixturesChecked} production-shaped prioritized fixtures; exercised: ${[...exercised].join(', ')})`);
