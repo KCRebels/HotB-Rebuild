@@ -45,7 +45,7 @@ jobs:
           test "$(grep -o "app.js?v=20260922-resolution493" index.html | wc -l)" -eq 2
           ! grep -q "app.js?v=20260922-resolution452" index.html
           grep -q "app.js?v=20260922-resolution493" index.html
-          test "$(grep -o "practice-scheduler.js?v=20260922-resolution495" index.html | wc -l)" -eq 1
+          test "$(grep -o "practice-scheduler.js?v=20260922-resolution496" index.html | wc -l)" -eq 1
           ! grep -q "practice-scheduler.js?v=20260922-resolution452" index.html
           grep -q "BUILD_VERSION = '2026.09.22.231'" service-worker.js
           grep -q "'./practice-scheduler.js'" service-worker.js
