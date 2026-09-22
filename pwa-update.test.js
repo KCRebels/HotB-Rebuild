@@ -21,7 +21,9 @@ assert.match(client,/registration\.update\(\)/,'the app must explicitly check fo
 assert.match(client,/visibilitychange/,'resumed Home Screen apps must check for updates');
 assert.match(client,/New HotB version available/,'an in-app update notice must be available');
 assert.match(client,/UPDATE NOW/,'the update notice must provide a reload action');
-assert.ok(index.includes('pwa-update.js')&&fresh.includes('pwa-update.js'),'every app entry point must register update handling');
+assert.ok(index.includes('pwa-update.js'),'canonical app entry point must register update handling');
+assert.match(fresh,/launch=226/,'legacy recovery shell must redirect directly to the current canonical launch');
+assert.doesNotMatch(fresh,/launch=136/,'legacy recovery shell must not send installed iPhones through the stale launch route');
 assert.equal(manifest.start_url,'./?source=pwa','the installed app must open the canonical network-first entry point');
 assert.match(app,/Version:.*HOTB_BUILD_VERSION/,'the Home page must display the running build');
 
