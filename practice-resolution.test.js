@@ -198,8 +198,8 @@ mustInclude("could not restore the previous practice recovery session after reso
 mustInclude("could not seal the saved practice recovery session.","resolved session persistence must contain post-save serialization failure");
 mustInclude("delete verifiedCandidateNotices[label]","candidate publication must remove evidence if publication verification fails");
 mustInclude("candidate evidence could not be sealed after final filtering.","final candidate evidence set must be serializable before Resolution publication");
-mustInclude("const savedResolution=db.activePracticeSession?.resolution;","Resolution publication must verify the persisted recovery draft retained the verified decision identity");
-mustInclude("savedResolution.signature!==practiceResolution.signature||savedResolution.decisionSignature!==practiceResolution.decisionSignature","Resolution publication must reject persisted decision identity drift");
+mustNotInclude("const savedResolution=db.activePracticeSession?.resolution;","Resolution publication must not depend on a pre-modal persisted recovery draft");
+mustNotInclude("savedResolution.signature!==practiceResolution.signature||savedResolution.decisionSignature!==practiceResolution.decisionSignature","Resolution publication must not perform obsolete persisted-decision identity checks before display");
 mustInclude("practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)","Resolution publication must revalidate the live decision snapshot immediately before opening");
 mustInclude("Array.isArray(practiceResolution.candidateNotices['Block 11'])","Block 11 apply authorization must require verified array evidence");
 mustInclude("!Array.isArray(practiceResolution.candidateNotices[label])","role apply authorization must require verified array evidence");
