@@ -248,5 +248,7 @@ mustInclude("bundle:'resolution422'","mobile Resolution diagnostics must identif
 mustInclude("const RESOLUTION_BUILD_BUDGET=9","production Resolution must hard-cap scheduler builds at the verified mobile budget");
 mustInclude("resolutionBuildCount>=RESOLUTION_BUILD_BUDGET","production Resolution must fail closed before exceeding its scheduler-build budget");
 mustInclude("practice-resolution-budget","budget exhaustion must leave a real-device diagnostic instead of appearing frozen");
+mustInclude("if(resolutionBudgetExceeded){","budget exhaustion must abort the entire Resolution transaction instead of publishing partial verified choices");
+mustInclude("practice-resolution-budget-exceeded","budget exhaustion must restore the editable build setup with an explicit recovery reason");
 mustInclude("+'/'+unique.length+' — '","completed candidate status must report the deduplicated candidate count, not the pre-collapse source count");
 console.log('practice-resolution static contract tests passed');
