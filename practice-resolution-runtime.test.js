@@ -732,3 +732,18 @@ console.log('Resolution 528 direct-publication regression passed.');
  assert.doesNotMatch(branch,/\n\s*bind\(\);/,'direct publication must not depend on generic route dispatch');
 }
 console.log('Resolution 529 direct-bind regression passed.');
+
+
+/* Resolution 530 route-interference regression.
+   Direct publication must not call bindPractice() itself: the Resolution handlers
+   live in bind(), after route dispatch. Suppressing route dispatch lets bind()
+   reach those modal handlers without a partial-page route binder throwing first. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf("const decisionHtml=practiceResolutionModal()",source.indexOf('const finalizeCandidates=()=>'));
+ const end=source.indexOf('const runNextCandidate=()=>',start);
+ const branch=source.slice(start,end);
+ assert.doesNotMatch(branch,/bindPractice\(\)/,'direct modal publication must not invoke the full Practice page binder');
+ assert.match(branch,/route='__practiceResolutionDirectMount';bind\(\)/,'direct modal publication must run generic modal binding with route dispatch suppressed');
+}
+console.log('Resolution 530 route-interference regression passed.');
