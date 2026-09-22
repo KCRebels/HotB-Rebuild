@@ -5794,13 +5794,11 @@ function bindPractice(){
   const buildWatchdog=setTimeout(()=>{
    const stuckButton=$('#generatePractice');
    if(!stuckButton||!stuckButton.disabled)return;
+   // A completed plan still belongs to the normal build transaction below. The
+   // watchdog must never render/commit it early: doing so races draft-ID assignment,
+   // notices, and automatic Practice Resolution ownership.
    if(practicePlan&&!practicePlan.feasibilityErrors?.length){
-    practiceSection='builder';
-    try{render();window.scrollTo(0,0)}catch(error){
-     console.error('HotB practice build watchdog could not open the completed plan',error);
-     const button=$('#generatePractice');if(button){button.disabled=false;button.textContent='Build Practice Schedule'}
-     alert('The schedule was built, but HotB could not open the practice-plan screen: '+String(error?.message||error||'unknown'));
-    }
+    console.warn('HotB build watchdog observed a completed scheduler result; normal build handoff still owns publication.');
     return;
    }
    const stage=String(stuckButton.dataset.buildStage||'pre-scheduler');
@@ -6158,6 +6156,8 @@ function bindPractice(){
    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Plan'}
    return;
   }
+  if(buildButton)buildButton.dataset.buildStage='finalizing-plan';
+  clearTimeout(buildWatchdog);
   practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();
   // The build authorization is consumed here, but the transaction token remains
   // alive until the outer Resolution verifier commits or rolls back this exact plan.
