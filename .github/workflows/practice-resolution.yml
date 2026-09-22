@@ -31,6 +31,7 @@ jobs:
           node --check practice-scheduler.js
           node --check practice-session.js
           node --check service-worker.js
+          node --check pwa-update.js
       - name: Run Practice Resolution contracts
         run: node practice-resolution.test.js
       - name: Run Practice Resolution runtime regression
