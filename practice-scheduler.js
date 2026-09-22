@@ -384,7 +384,15 @@
   }
   if(!drillsAssigned)warnings.push('The drill stations could not be assigned without a repeat.');
   activeAttendees.forEach(player=>{
-   if(!schedule[player.name].some(entry=>entry.activity.startsWith('Drill #')))feasibilityErrors.push(`${player.name} cannot receive mandatory drill work with this attendance and live-pitching combination.`);
+   if(!schedule[player.name].some(entry=>entry.activity.startsWith('Drill #'))){
+    // A late/limited pitcher can legitimately spend every remaining open block on
+    // required warm-up, Tee, Live, Machine and Front Toss. Those are all active
+    // practice work; do not manufacture a Resolution solely because no numbered
+    // open-area drill fits into the shortened attendance window.
+    const limited=(player.availableFromBlock??0)>0||(player.availableUntilBlock??BLOCK_COUNT)<BLOCK_COUNT;
+    if(limited)warnings.push(`${player.name} has no numbered drill station because required work fills the available practice blocks.`);
+    else feasibilityErrors.push(`${player.name} cannot receive mandatory drill work with this attendance and live-pitching combination.`);
+   }
   });
   const blocks=times.map((time,index)=>{
    const assignments={};
