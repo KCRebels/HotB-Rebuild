@@ -209,14 +209,16 @@
     const choose=(at,left,value)=>{if(left===0){out.push(value>>>0);return}for(let i=at;i<=bits.length-left;i++)choose(i+1,left-1,value|(1<<bits[i]))};
     choose(0,size,0);return out;
    };
-   const search=(remaining,startSlot,fourUsed)=>{
+   const search=(remaining,usedSlots,fourUsed)=>{
     if(!remaining)return [];
-    const key=remaining+'|'+startSlot+'|'+(fourUsed?1:0);if(memo.has(key))return null;
-    // Pick the most constrained remaining player. Every chosen group is anchored
-    // to that player, which avoids generating the same partition in many orders.
+    const key=remaining+'|'+usedSlots+'|'+(fourUsed?1:0);if(memo.has(key))return null;
+    // Pick the most constrained remaining player. Slots are independent station
+    // opportunities, not chronological steps: a later chosen group may legitimately
+    // use an earlier block. Track used slots as a bitmask instead of forcing slot
+    // indices to increase, which incorrectly discarded valid Machine partitions.
     let anchor=-1,anchorSlots=null;
     for(let playerIndex=0;playerIndex<count;playerIndex++)if(remaining&(1<<playerIndex)){
-     const possible=[];for(let slotIndex=startSlot;slotIndex<slots.length;slotIndex++)if(eligibleMasks[slotIndex]&(1<<playerIndex))possible.push(slotIndex);
+     const possible=[];for(let slotIndex=0;slotIndex<slots.length;slotIndex++)if(!(usedSlots&(1<<slotIndex))&&(eligibleMasks[slotIndex]&(1<<playerIndex)))possible.push(slotIndex);
      if(!possible.length){memo.add(key);return null}
      if(anchorSlots===null||possible.length<anchorSlots.length){anchor=playerIndex;anchorSlots=possible}
     }
@@ -232,7 +234,7 @@
        // the actual proposed group rather than assuming the empty-group mask is enough.
        const names=players.filter((_,i)=>groupMask&(1<<i)).map(player=>player.name);
        if(!players.every((player,i)=>!(groupMask&(1<<i))||eligible(player,slots[slotIndex],slotIndex,names.filter(name=>name!==player.name))))continue;
-       const tail=search((remaining&~groupMask)>>>0,slotIndex+1,fourUsed||size===4);
+       const tail=search((remaining&~groupMask)>>>0,(usedSlots|(1<<slotIndex))>>>0,fourUsed||size===4);
        if(tail)return [{slotIndex,names},...tail];
       }
      }
