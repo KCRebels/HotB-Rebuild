@@ -4269,11 +4269,11 @@ function bind(){
    document.querySelectorAll('.practice-resolution-modal input').forEach(input=>input.disabled=false);
   };
   const resolutionPostcondition=(expected,plan=practicePlan)=>{
-   if(!expected||!plan){try{sessionStorage.setItem('hotb-resolution-postcondition','missing-expected-or-plan')}catch(_){}return failProof('postcondition-clause-1');}
+   if(!expected||!plan){try{sessionStorage.setItem('hotb-resolution-postcondition','missing-expected-or-plan')}catch(_){}return false;}
    // This verifier is intentionally read-only and can prove a detached candidate
    // before that plan becomes live application state.
    let proofBefore='';
-   const failProof=reason=>{try{sessionStorage.setItem('hotb-resolution-postcondition',String(reason||'unknown'))}catch(_){}return failProof('postcondition-clause-2')};
+   const failProof=reason=>{try{sessionStorage.setItem('hotb-resolution-postcondition',String(reason||'unknown'))}catch(_){}return false};
    try{proofBefore=JSON.stringify(plan)}catch(_){return failProof('plan-seal')}
    try{sessionStorage.removeItem('hotb-resolution-postcondition')}catch(_){}
    const finishProof=result=>{
