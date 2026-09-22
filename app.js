@@ -6100,15 +6100,38 @@ function bindPractice(){
    };
 
    // Candidate fan-out is the expensive part of a 13-player Resolution. Verify candidates in deterministic order against the same sealed setup.
+   const resolutionCandidateShape=spec=>{
+    // Names are intentionally excluded. Candidate alternatives that produce the
+    // same scheduling-role/availability shape are interchangeable for feasibility;
+    // proving every name permutation only repeats the same 13-player solve and was
+    // exhausting iPhone Safari before Practice Resolution could publish.
+    const shape=(spec.players||[]).map(player=>({
+     isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,isGuest:!!player.isGuest,
+     canPitch:!!player.canPitch,requiresPitchWarmup:!!player.requiresPitchWarmup,canCatch:!!player.canCatch,
+     prePracticeComplete:!!player.prePracticeComplete,
+     availableFromBlock:Number(player.availableFromBlock),availableUntilBlock:Number(player.availableUntilBlock),
+     limitations:String(player.limitations||'')
+    }));
+    // Roster order is irrelevant to structural capacity. Sort the anonymous role
+    // records so "Lydia not catching" and "Tayte not catching" collapse only when
+    // their actual scheduler constraints are identical.
+    return JSON.stringify({duration:Number(spec.duration),players:shape.map(value=>JSON.stringify(value)).sort()});
+   };
    const runResolutionCandidates=(candidates,stage,buildCandidate,onSafe,ownershipMessage,stopAfterFirst=false)=>{
     const stageLabels={'practice-resolution-pitcher':'Pitcher','practice-resolution-catcher':'Catcher','practice-resolution-pitcher-block11':'Pitcher + Block 11','practice-resolution-catcher-block11':'Catcher + Block 11'};
-    for(let index=0;index<candidates.length;index++){
+    const unique=[],seenShapes=new Set();
+    for(const candidate of candidates){
+     const spec=buildCandidate(candidate),shape=resolutionCandidateShape(spec);
+     if(seenShapes.has(shape))continue;
+     seenShapes.add(shape);unique.push({candidate,spec});
+    }
+    for(let index=0;index<unique.length;index++){
      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed',ownershipMessage);return false}
-     const candidate=candidates[index],spec=buildCandidate(candidate),button=$('#generatePractice');
+     const {candidate,spec}=unique[index],button=$('#generatePractice');
      setResolutionStage(stage);
-     if(button)button.textContent='Checking '+(stageLabels[stage]||'Resolution')+' '+(index+1)+'/'+candidates.length+'…';
+     if(button)button.textContent='Checking '+(stageLabels[stage]||'Resolution')+' '+(index+1)+'/'+unique.length+'…';
      const started=typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
-     const diagnosticBase={bundle:'resolution407',stage,label:spec.label,index:index+1,total:candidates.length,startedAt:new Date().toISOString()};
+     const diagnosticBase={bundle:'resolution408',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
      try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({...diagnosticBase,state:'started'}))}catch(error){}
      const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
      const elapsed=Math.round((typeof performance!=='undefined'&&performance.now?performance.now():Date.now())-started);
@@ -6184,7 +6207,7 @@ function bindPractice(){
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution407',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution408',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
    setResolutionStage('practice-resolution-evidence');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was preparing Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const survivingCandidateLabels=new Set([
