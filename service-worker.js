@@ -4,8 +4,8 @@ const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
 const CANONICAL_LAUNCH = './?source=pwa&launch=225';
 const LEGACY_SHELL = './hotb-fresh.html';
-const CORE_FILES = ['./index.html', './hotb-fresh.html', './styles.css', './evaluation-cleanup.css', './app.js'];
-const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/, /\/decision-quality\.js(?:\?|$)/, /\/coach-observations\.js(?:\?|$)/, /\/styles\.css(?:\?|$)/, /\/evaluation-cleanup\.css(?:\?|$)/];
+const CORE_FILES = ['./index.html', './hotb-fresh.html', './styles.css', './evaluation-cleanup.css', './app.js', './practice-scheduler.js'];
+const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/, /\/practice-scheduler\.js(?:\?|$)/, /\/decision-quality\.js(?:\?|$)/, /\/coach-observations\.js(?:\?|$)/, /\/styles\.css(?:\?|$)/, /\/evaluation-cleanup\.css(?:\?|$)/];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
