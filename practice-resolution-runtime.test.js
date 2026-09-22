@@ -520,3 +520,30 @@ assert.equal(JSON.stringify(sourceSetup471),sourceBytes471,'detached Resolution 
 assert.equal(detached471.durationMinutes,132,'detached Resolution setup must carry candidate duration');
 assert.deepEqual(detached471.selectedNames,extended471.map(player=>player.name),'detached Resolution setup must preserve candidate order');
 for(const player of extended471)assert.equal(detached471.accommodations[player.name].departure,player.departureTime,'detached Resolution setup must carry verified candidate departure');
+
+
+/* Resolution 472 invalid-source bypass regression.
+   Identity/availability source errors cannot be repaired by Block 11, Hitting Only,
+   or Not Catching. They must consume zero candidate scheduler builds. */
+function resolutionSearchPlan472(players,errors,duration=120){
+ const blocked=resolutionSourceBlocked(errors);
+ const pitchers=blocked?[]:players.filter(player=>player.canPitch);
+ const catchers=blocked?[]:players.filter(player=>player.canCatch);
+ const capacity=blocked?0:(duration===120?1:0)+pitchers.length+catchers.length+(duration===120?pitchers.length+catchers.length:0);
+ return {blocked,capacity,budget:blocked?1:Math.min(64,Math.max(2,capacity+1)),candidateBuilds:blocked?0:null};
+}
+for(const errors of [
+ ['Duplicate player names are not allowed.'],
+ ['Every attending player must have a name.'],
+ ['Invalid availability for Guest 1.']
+]){
+ const plan=resolutionSearchPlan472(base,errors);
+ assert.equal(plan.blocked,true,'structural Resolution source error must be blocked');
+ assert.equal(plan.capacity,0,'blocked Resolution source must have zero candidate capacity');
+ assert.equal(plan.budget,1,'blocked Resolution source budget must cover only the already-failed base build');
+ assert.equal(plan.candidateBuilds,0,'blocked Resolution source must run no candidate scheduler builds');
+}
+const solvable472=resolutionSearchPlan472(base,['Catcher coverage is insufficient.']);
+assert.equal(solvable472.blocked,false,'scheduler feasibility errors must retain Resolution search');
+assert.ok(solvable472.capacity>0,'scheduler feasibility errors must retain finite candidate capacity');
+assert.equal(solvable472.budget,Math.min(64,Math.max(2,solvable472.capacity+1)),'Resolution budget must match finite first-safe search ceiling');
