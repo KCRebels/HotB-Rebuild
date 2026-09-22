@@ -105,9 +105,8 @@ const block11CapacityRoster=roster(15,6,2);
 const block11CapacityPlan=scheduler.buildSchedule(extended(block11CapacityRoster),'18:00',132);
 if(safe(block11CapacityPlan)){
  assert.equal(block11CapacityPlan.times.length,11,'Block 11 capacity plan must expose eleven blocks');
- const liveInBlock11=Object.values(block11CapacityPlan.schedule).flat().some((entry,index)=>false);
- // At minimum, the scheduler source contract below guarantees Block 11 is in the
- // legal Live pool; safe plans still choose the earliest feasible deterministic slots.
+ // Safe plans still choose the earliest feasible deterministic Live slots; the
+ // source contract below separately guarantees the added block is eligible.
 }
 const schedulerSource=require('node:fs').readFileSync(require('node:path').join(__dirname,'practice-scheduler.js'),'utf8');
 assert.match(schedulerSource,/Array\.from\(\{length:Math\.max\(0,BLOCK_COUNT-3\)\},\(_,index\)=>index\+3\)/,'132-minute scheduling must include Block 11 in the legal Live pool');
