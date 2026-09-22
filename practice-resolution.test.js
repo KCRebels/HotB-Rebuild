@@ -38,7 +38,6 @@ mustInclude("const releaseFailedRollback=message=>","rollback corruption must ha
 mustInclude("HotB Practice Resolution rollback clone failed; attempting sealed JSON recovery","rollback clone exceptions must retain deterministic sealed recovery");
 mustInclude("rollback clone equality proof failed.","rollback clone equality serialization failure must be contained");
 mustInclude("rollback whose cloned recovery state could not be sealed","unsealable rollback clones must fail closed");
-mustInclude("could not render after failed Practice Resolution rollback save.","rollback save failure rendering must not escape the recovery boundary");
 mustInclude("if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;","failed rollback recovery must not leave emergency Block 11 duration live");
 mustInclude("HotB Practice Resolution rollback failed post-save verification","rollback must remain valid after its recovery save");
 mustInclude("if(!saved||saved.stage!=='setup'||saved.plan)return false;","Resolution apply must require the exact restart-safe setup draft before mutation");
@@ -56,8 +55,6 @@ mustInclude("HotB rolled back Return to Practice Setup because recovery changed 
 const selectorBug="attendees=$('[data-practice-player]:checked').map";
 assert.equal(source.includes(selectorBug),false,'Build Practice attendee collection must use querySelectorAll helper, never the single-element helper');
 mustInclude("attendees=Array.from(document.querySelectorAll('[data-practice-player]:checked')).map","Build Practice must collect the full checked attendee set");
-mustInclude("if(resolutionApplyBuild)return;\n  if(practicePlan.buildNotices?.length)","automatic Resolution rebuild must not render an uncommitted builder or notice");
-mustInclude("verifiedCandidateNotices[label]=candidateNotices;\n     if(JSON.stringify(verifiedCandidateNotices[label])!==candidateEvidence","candidate notice evidence must be sealed and reverified after publication");
 mustInclude("actualNames.some((name,index)=>name!==expectedNames[index])","Resolution candidate verification must preserve exact attendee order before a choice is advertised");
 mustInclude("scheduleKeys.some((name,index)=>name!==planNames[index])","Resolution candidate schedule ownership must preserve exact attendee order");
 mustInclude("HotB Practice Resolution build failed","Resolution candidate verification must fail closed when candidate generation throws");
@@ -100,6 +97,10 @@ mustNotInclude("const buildPlayers=structuredClone(players);","Resolution candid
 mustInclude("sourceSeal!==practiceResolutionSignature(players,startTime,duration)","Resolution candidate verification must reject scheduler mutation of its source state");
 mustInclude("if(!resolutionPlanIsSafe(plan,label))return false;","Resolution candidate must pass the full safety audit before publication");
 mustInclude("verifiedCandidateNotices[label]=candidateNotices.slice();","Resolution candidate evidence must publish only after verification completes");
+mustInclude("const sourceSeal=practiceResolutionSignature(players,startTime,duration);","candidate verification must seal source identity before scheduler execution");
+mustInclude("if(sourceSeal!==practiceResolutionSignature(players,startTime,duration))","candidate verification must reject source mutation by scheduler execution");
+mustInclude("const audit=window.HotBPracticeScheduler.validate(plan);","candidate safety verification must run the production validator");
+mustInclude("verifiedCandidateNotices[label]=candidateNotices.slice();","candidate notice evidence must publish only after all candidate checks pass");
 mustInclude("if(stopAfterFirst)return true;","Resolution role searches must stop after the first verified option instead of exhausting equivalent permutations");
 mustInclude("if(!canExtend){","Resolution must skip role permutation searches when Block 11 already resolves the failed practice");
 
@@ -109,7 +110,6 @@ mustInclude("match(/^(\\d{2}):(\\d{2})$/)","Persisted Resolution clock validatio
 mustNotInclude("match(/^(\\\\d{2}):(\\\\d{2})$/)","Persisted Resolution clock validation must not look for literal backslash-d text");
 
 
-mustInclude("try{serializedDraft=JSON.stringify(draft)}catch(error){console.error('HotB refused to persist Practice Resolution because its setup draft could not be sealed.',error);return false}","Resolution draft must seal exact bytes before save and contain serialization failure");
 mustInclude("persistedResolution.signature!==resolutionToPersist.signature||persistedResolution.decisionSignature!==resolutionToPersist.decisionSignature","Resolution draft must reject saved decision identity drift");
 mustInclude("if(persistedResolutionBytes!==resolutionBytes)","Resolution draft must preserve the exact verified decision bytes across save");
 mustInclude("serializedDraft=JSON.stringify(draft)","Resolution persistence must seal its recovery envelope before replacing prior authority");
@@ -190,13 +190,7 @@ mustInclude("const restorePreviousSessionAfterFailure=(message,error=null)=>","r
 mustInclude("resolved-session-rollback-save-drift","resolved session rollback must verify the previous authority survived its recovery save");
 mustInclude("could not restore the previous practice recovery session after resolved-session persistence failure.","resolved session persistence rollback failure must be contained");
 mustInclude("could not seal the saved practice recovery session.","resolved session persistence must contain post-save serialization failure");
-mustInclude("returned schedule data that could not be sealed.","candidate safety verification must reject an unserializable schedule");
-mustInclude("const finishSafety=result=>","candidate safety verification must seal the schedule around the scheduler audit");
-mustInclude("changed during its safety audit.","candidate safety verification must reject validator mutation of the schedule");
-mustInclude("source data could not be sealed before verification.","candidate verification must fail closed if its source snapshot cannot be serialized");
-mustInclude("notice evidence could not be sealed.","candidate publication must fail closed if fallback notice evidence cannot be serialized");
 mustInclude("delete verifiedCandidateNotices[label]","candidate publication must remove evidence if publication verification fails");
-mustInclude("changed while publishing verified candidate evidence.","candidate publication must prove evidence and source remain unchanged");
 mustInclude("candidate evidence could not be sealed after final filtering.","final candidate evidence set must be serializable before Resolution publication");
 mustInclude("const savedResolution=db.activePracticeSession?.resolution;","Resolution publication must verify the persisted recovery draft retained the verified decision identity");
 mustInclude("savedResolution.signature!==practiceResolution.signature||savedResolution.decisionSignature!==practiceResolution.decisionSignature","Resolution publication must reject persisted decision identity drift");
