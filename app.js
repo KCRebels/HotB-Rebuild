@@ -5971,12 +5971,14 @@ function bindPractice(){
     extendedPlayers=practiceResolutionExtendedPlayers(practicePlayers,startTime);
     extensionBaselineValid=extendedPlayers.length===practicePlayers.length&&extendedPlayers.every(player=>Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=11&&Number(player.availableFromBlock)<Number(player.availableUntilBlock));
    }
-   const verifyOrderedCandidates=(candidates,stage,roleLabel,onSafe,collectAllSafe=false)=>{
-    const seenShapes=new Set();
+   const verifyOrderedCandidates=(candidates,stage,roleLabel,onSafe)=>{
+    // Resolution 473: candidates are already a finite, deterministic list and the
+    // search stops at the first safe result. Do not call the obsolete structural
+    // dedupe helper here: after the earlier refactor that helper no longer exists,
+    // so any branch that reached role search could throw before its first scheduler
+    // build. Ordered role candidates are intentionally distinct by player identity.
     for(let sourceIndex=0;sourceIndex<candidates.length;sourceIndex++){
-     const spec=candidates[sourceIndex],shape=resolutionCandidateShape(spec);
-     if(seenShapes.has(shape))continue;
-     seenShapes.add(shape);
+     const spec=candidates[sourceIndex];
      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return 'aborted'}
      setResolutionStage(stage);
      const button=$('#generatePractice');
@@ -5986,13 +5988,10 @@ function bindPractice(){
      const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
      const elapsed=Math.round((typeof performance!=='undefined'&&performance.now?performance.now():Date.now())-started);
      try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution459',stage,label:spec.label,state:'completed',safe,elapsedMs:elapsed,completedAt:new Date().toISOString()}))}catch(error){}
-     if(safe){
-      onSafe(spec);
-      if(!collectAllSafe)return 'safe';
-     }
+     if(safe){onSafe(spec);return 'safe'}
      if(resolutionBudgetExceeded)return 'budget';
     }
-    return collectAllSafe?'complete':'none';
+    return 'none';
    };
 
    // Resolution 472: structural attendee/availability errors are not scheduler
