@@ -4865,43 +4865,30 @@ function bind(){
    const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('combinedCatcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState('catcher',picked,true,snapshot),()=>applyResolutionAccommodation(picked,'catcher',true));
   });
   $('#returnPracticeAttendance')?.addEventListener('click',()=>{
-   // Return to setup is a destructive exit from the verified decision context.
-   // It must never race an apply that already owns rollback/commit state.
+   // Resolution 465: leaving the decision screen is not a scheduler transaction.
+   // The verified snapshot already describes the exact failed ordinary setup, so
+   // reconstruct that setup once, prove its signature, persist one clean draft,
+   // and render. The former path maintained a second rollback transaction around
+   // this simple exit and duplicated large chunks of apply/rollback machinery.
    if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){console.warn('HotB ignored Return to Practice Setup while Practice Resolution apply is verifying.');return}
-   let originalSetup,originalResolution,originalSession,originalModal=modal,originalReturnBytes='';
-   try{
-    originalReturnBytes=JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession});
-    const sealed=JSON.parse(originalReturnBytes);
-    if(JSON.stringify(sealed)!==originalReturnBytes)throw new Error('return-state-roundtrip-failed');
-    originalSetup=sealed.setupState;originalResolution=sealed.resolution;originalSession=sealed.activePracticeSession;
-   }catch(error){console.error('HotB refused Return to Practice Setup because its rollback state could not be sealed.',error);return}
-   const restoreReturnState=()=>{
-    try{
-     const sealed=JSON.parse(originalReturnBytes);
-     if(JSON.stringify(sealed)!==originalReturnBytes)throw new Error('return-state-restore-roundtrip-failed');
-     practiceSetupState=sealed.setupState;practiceResolution=sealed.resolution;db.activePracticeSession=sealed.activePracticeSession;modal=originalModal;
-     save();
-     if(JSON.stringify({setupState:practiceSetupState,resolution:practiceResolution,activePracticeSession:db.activePracticeSession})!==originalReturnBytes||JSON.stringify(db.activePracticeSession)!==JSON.stringify(originalSession))throw new Error('return-state-post-save-drift');
-     return true;
-    }catch(error){console.error('HotB could not restore the sealed Practice Resolution Return-to-Setup state.',error);practiceResolution=null;modal=null;practicePlan=null;if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;db.activePracticeSession=null;try{save()}catch(clearError){console.error('HotB could not clear failed Return-to-Setup recovery authority.',clearError)}return false}
-   };
-   // Build the ordinary setup locally. Nothing live changes until the failed
-   // practice has been reconstructed and its safety signature matches exactly.
    const verifiedResolution=practiceResolutionSnapshotIsCurrentAndValid()?practiceResolution:null;
+   let nextSetup;
+   try{nextSetup=structuredClone(practiceSetupState)}
+   catch(error){
+    try{nextSetup=JSON.parse(JSON.stringify(practiceSetupState))}
+    catch(_){console.error('HotB could not clone Practice Setup while leaving Resolution.',error);return}
+   }
    if(verifiedResolution){
-    const verifiedPlayers=verifiedResolution.practicePlayers,roster=practiceAttendanceRoster();
-    let nextSetup,nextAccommodations;
-    try{nextSetup=structuredClone(practiceSetupState);nextAccommodations=structuredClone(nextSetup.accommodations||{})}
-    catch(error){console.error('HotB refused Return to Practice Setup because the verified setup could not be cloned.',error);return}
+    const roster=practiceAttendanceRoster(),verifiedPlayers=verifiedResolution.practicePlayers,nextAccommodations={...(nextSetup.accommodations||{})};
     nextSetup.selectedNames=verifiedPlayers.map(player=>player.name);
     nextSetup.startTime=verifiedResolution.startTime;
-    nextSetup.durationMinutes=verifiedResolution.durationMinutes;
+    nextSetup.durationMinutes=120;
     for(const player of verifiedPlayers){
      const rosterPlayer=roster.find(item=>item.name===player.name);
-     if(!rosterPlayer){console.error('HotB refused Return to Practice Setup because a verified player is no longer in the attendance roster.');return}
+     if(!rosterPlayer){alert('A player in this Practice Resolution is no longer in the attendance roster. HotB kept the Resolution unchanged.');return}
      let accommodation;
      try{accommodation=structuredClone(nextAccommodations[player.name]||practiceAccommodation(rosterPlayer))}
-     catch(error){console.error('HotB refused Return to Practice Setup because a verified accommodation could not be cloned.',error);return}
+     catch(error){try{accommodation=JSON.parse(JSON.stringify(nextAccommodations[player.name]||practiceAccommodation(rosterPlayer)))}catch(_){return}}
      accommodation.arrival=player.arrivalTime||'';
      accommodation.departure=player.departureTime||'';
      accommodation.limitations=String(player.limitations||'');
@@ -4914,35 +4901,36 @@ function bind(){
     nextSetup.accommodations=nextAccommodations;
     const reconstructed=verifiedPlayers.map(player=>{
      const rosterPlayer=roster.find(item=>item.name===player.name);
-     return rosterPlayer?practicePlayerModel(rosterPlayer,nextAccommodations[player.name]||practiceAccommodation(rosterPlayer),verifiedResolution.startTime,verifiedResolution.durationMinutes):null;
+     return rosterPlayer?practicePlayerModel(rosterPlayer,nextAccommodations[player.name]||practiceAccommodation(rosterPlayer),verifiedResolution.startTime,120):null;
     });
-    if(reconstructed.some(player=>!player)||practiceResolutionSignature(reconstructed,verifiedResolution.startTime,verifiedResolution.durationMinutes)!==verifiedResolution.signature){
-     console.error('HotB refused Return to Practice Setup because the verified failed practice could not be reconstructed.');
+    if(reconstructed.some(player=>!player)||practiceResolutionSignature(reconstructed,verifiedResolution.startTime,120)!==verifiedResolution.signature){
+     alert('HotB could not reconstruct the exact failed practice setup. The verified Resolution was kept unchanged.');
      return;
     }
-    practiceSetupState=nextSetup;
-   }else if(Number(practiceSetupState.durationMinutes)===132){
-    // A corrupt/stale Resolution is not authority for emergency Block 11.
-    let normalizedSetup;
-    try{normalizedSetup=structuredClone(practiceSetupState)}
-    catch(error){console.error('HotB refused Return to Practice Setup because stale Block 11 state could not be cloned.',error);return}
-    normalizedSetup.durationMinutes=120;practiceSetupState=normalizedSetup;
+   }else{
+    // Stale/corrupt Resolution data has no authority to leave emergency Block 11
+    // installed when returning to ordinary setup.
+    nextSetup.durationMinutes=120;
    }
-   practiceResolution=null;modal=null;
+
+   const previousSetup=practiceSetupState,previousResolution=practiceResolution,previousModal=modal,previousSession=db.activePracticeSession;
+   practiceSetupState=nextSetup;practiceResolution=null;modal=null;practicePlan=null;
    if(persistPracticeDraft()!==true){
-    console.error('HotB could not persist Return to Practice Setup after Practice Resolution.');
-    restoreReturnState();render();return
+    practiceSetupState=previousSetup;practiceResolution=previousResolution;modal=previousModal;db.activePracticeSession=previousSession;
+    alert('HotB could not save the ordinary Practice Setup, so the verified Resolution was kept unchanged.');
+    render();return;
    }
-   // Prove persistence did not rewrite the ordinary setup. If it did, restore the
-   // exact pre-exit Resolution transaction instead of silently losing recovery.
-   let restoredExit=null;
-   try{restoredExit=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
-   catch(error){console.error('HotB Return to Practice Setup restart restore failed.',error)}
-   if(!restoredExit||restoredExit.stage!=='setup'||restoredExit.plan||restoredExit.resolution||JSON.stringify(restoredExit)!==JSON.stringify(db.activePracticeSession)||JSON.stringify(restoredExit.setupState)!==JSON.stringify(practiceSetupState)){
-    console.error('HotB rolled back Return to Practice Setup because recovery changed the ordinary setup.');
-    restoreReturnState();render();return
+   let restored=null;
+   try{restored=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}catch(error){console.error('HotB Practice Setup restart verification failed.',error)}
+   if(!restored||restored.stage!=='setup'||restored.plan||restored.resolution||JSON.stringify(restored.setupState)!==JSON.stringify(practiceSetupState)){
+    practiceSetupState=previousSetup;practiceResolution=previousResolution;modal=previousModal;db.activePracticeSession=previousSession;
+    try{save()}catch(error){console.error('HotB could not restore Resolution after failed setup-exit verification.',error)}
+    alert('HotB could not verify the saved Practice Setup, so the verified Resolution was kept unchanged.');
+    render();return;
    }
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution465',stage:'return-to-setup',state:'committed',at:new Date().toISOString()}))}catch(error){}
    render();window.scrollTo(0,0);
+
   });
  }
  $('#openCloudBackup')?.addEventListener('click',()=>{modal='cloudBackup';render()});
