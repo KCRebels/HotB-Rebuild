@@ -6226,11 +6226,15 @@ function bindPractice(){
     console.error('HotB refused Practice Resolution persistence that did not retain the verified identity.');
     recoverPracticeBuildSetup('practice-resolution-publication-invalid','HotB stopped because the saved Practice Resolution did not retain the verified decision. Please build the practice again.');return;
    }
-   setResolutionStage('practice-resolution-publish');
-   if(!buildSetupStillOwned()||!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
-    recoverPracticeBuildSetup('practice-resolution-prepublish-changed','HotB stopped because the verified Practice Resolution changed immediately before it could open. Please build the practice again.');
+   // Persistence just proved the saved decision identity against the fully
+   // validated live snapshot. Setup controls remain locked throughout this
+   // synchronous transaction, so there is no mutation window requiring another
+   // full snapshot validation before the modal handoff.
+   if(!buildSetupStillOwned()){
+    recoverPracticeBuildSetup('practice-resolution-prepublish-changed','HotB stopped because the practice setup changed immediately before Resolution could open. Please build the practice again.');
     return;
    }
+   setResolutionStage('practice-resolution-publish');
    modal='practiceResolution';
    // All scheduler/evidence/persistence work is complete before the modal handoff.
    // Scheduler/evidence/persistence verification is complete; publish the Resolution screen.
