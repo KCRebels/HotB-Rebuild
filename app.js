@@ -6015,7 +6015,7 @@ function bindPractice(){
     if(resolutionBuildCount>=RESOLUTION_BUILD_BUDGET){
      if(!resolutionBudgetExceeded)resolutionAuditFailures.push('Practice Resolution stopped because its verified scheduler-build budget was exceeded.');
      resolutionBudgetExceeded=true;
-     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution445',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
+     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution450',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
      return false;
     }
     resolutionBuildCount++;
@@ -6126,10 +6126,11 @@ function bindPractice(){
      availableFromBlock:Number(player.availableFromBlock),availableUntilBlock:Number(player.availableUntilBlock),
      limitations:String(player.limitations||'')
     }));
-    // Roster order is irrelevant to structural capacity. Sort the anonymous role
-    // records so "Lydia not catching" and "Tayte not catching" collapse only when
-    // their actual scheduler constraints are identical.
-    return JSON.stringify({duration:Number(spec.duration),players:shape.map(value=>JSON.stringify(value)).sort()});
+    // The scheduler is deterministic but roster-order sensitive: station assignment
+    // walks players in their production order. Keep that order in the signature.
+    // Two candidate changes are deduplicated only when they produce the same ordered
+    // scheduling state, never merely the same anonymous multiset of roles.
+    return JSON.stringify({duration:Number(spec.duration),players:shape});
    };
    const runResolutionCandidates=(candidates,stage,buildCandidate,onSafe,ownershipMessage,stopAfterFirst=false)=>{
     const stageLabels={'practice-resolution-pitcher':'Pitcher','practice-resolution-catcher':'Catcher','practice-resolution-pitcher-block11':'Pitcher + Block 11','practice-resolution-catcher-block11':'Catcher + Block 11'};
@@ -6145,7 +6146,7 @@ function bindPractice(){
      setResolutionStage(stage);
      if(button)button.textContent='Checking '+(stageLabels[stage]||'Resolution')+' '+(index+1)+'/'+unique.length+'…';
      const started=typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
-     const diagnosticBase={bundle:'resolution445',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
+     const diagnosticBase={bundle:'resolution450',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
      try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({...diagnosticBase,state:'started'}))}catch(error){}
      const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
      const elapsed=Math.round((typeof performance!=='undefined'&&performance.now?performance.now():Date.now())-started);
@@ -6222,7 +6223,7 @@ function bindPractice(){
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution445',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution450',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
    setResolutionStage('practice-resolution-evidence');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was preparing Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const survivingCandidateLabels=new Set([
@@ -6293,7 +6294,7 @@ function bindPractice(){
    // persistence belongs to the chosen Apply & Build transaction.
    setResolutionStage('practice-resolution-publish');
    modal='practiceResolution';
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution445',stage:'practice-resolution-publish',state:'published',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution450',stage:'practice-resolution-publish',state:'published',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
    publishPracticeBuildFrame('practice-resolution-publish',()=>{
     render();
     setPracticeBuildControlsLocked(false);
