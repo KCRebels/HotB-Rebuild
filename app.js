@@ -5978,10 +5978,13 @@ function bindPractice(){
      window.scrollTo(0,0);
      const published=document.querySelector('.practice-resolution-modal');
      if(!published)throw new Error('Verified Practice Resolution did not mount.');
-     // bind() dispatches bindPractice() only when route==='practice'. The Build
-     // screen uses the dedicated practice-builder route, so bind the directly
-     // mounted Resolution controls explicitly instead of relying on route dispatch.
-     bindPractice();
+     // This modal was mounted outside the normal render cycle. Bind only modal
+     // controls here: route-specific binders may assume their full page exists and
+     // can throw before bind() reaches the Practice Resolution handler block.
+     // Temporarily suppress route dispatch, then restore it synchronously.
+     const resolutionBindRoute=route;
+     try{route='__practiceResolutionDirectMount';bind()}
+     finally{route=resolutionBindRoute}
     }
     catch(error){
      console.error('HotB could not publish verified Practice Resolution.',error);
