@@ -4663,7 +4663,14 @@ function bind(){
     try{lockedResolutionBytes=JSON.stringify(rollbackState.resolution)}catch(error){throw new Error('Practice Resolution locked snapshot could not be sealed.')}
     const liveSetupBytes=JSON.stringify(practiceSetupState),liveResolutionBytes=JSON.stringify(practiceResolution),liveSessionBytes=JSON.stringify(db.activePracticeSession);
     const expected=authorizedExpectedFactory(rollbackState.resolution);
-    if(!expected)return {started:false,reason:'unverified'};
+    if(!expected){
+     // Authorization failure occurs after beginResolutionApply disabled the modal.
+     // Release that local UI lock before returning to the verified rejection path;
+     // otherwise a rejected catcher/pitcher choice can leave the Resolution screen
+     // visibly frozen even though no transaction token was ever acquired.
+     endResolutionApply();
+     return {started:false,reason:'unverified'};
+    }
     if(JSON.stringify(rollbackState.resolution)!==lockedResolutionBytes)throw new Error('Practice Resolution authorization changed the locked snapshot.');
     if(JSON.stringify(practiceSetupState)!==liveSetupBytes||JSON.stringify(practiceResolution)!==liveResolutionBytes||JSON.stringify(db.activePracticeSession)!==liveSessionBytes)throw new Error('Practice Resolution authorization mutated live state.');
     if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution))throw new Error('Practice Resolution became stale during authorization.');
@@ -4874,12 +4881,17 @@ function bind(){
    if(typeof withBlock11!=='boolean'||(withBlock11&&Number(snapshot.durationMinutes)!==120))return null;
    if(role!==null){
     if((role!=='pitcher'&&role!=='catcher')||typeof name!=='string'||!name)return null;
-    const target=findResolutionRosterIndex(name,role);
+    const target=findResolutionRosterIndex(name);
     if(!target)return null;
     const verified=(snapshot.practicePlayers||[]).filter(player=>player.name===name);
     if(verified.length!==1)return null;
-    if(role==='pitcher'&&verified[0].canPitch!==true)return null;
-    if(role==='catcher'&&verified[0].canCatch!==true)return null;
+    const verifiedPlayer=verified[0],livePlayer=target.roster[target.index];
+    // Resolution 481: role authorization must agree across the sealed source
+    // player and the unique live attendance identity. This closes the catcher
+    // opt-out race: a player whose Catching switch changed after verification
+    // cannot be re-authorized from a stale named alternative.
+    if(role==='pitcher'&&(verifiedPlayer.isPitcher!==true||verifiedPlayer.canPitch!==true||livePlayer.isPitcher!==true))return null;
+    if(role==='catcher'&&(verifiedPlayer.isCatcher!==true||verifiedPlayer.canCatch!==true||livePlayer.isCatcher!==true))return null;
    }else if(name!==null||!withBlock11)return null;
    const expected=expectedResolutionState(role,name,withBlock11,snapshot);
    if(!expected)return null;
