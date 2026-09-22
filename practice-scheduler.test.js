@@ -374,4 +374,25 @@ if(resolutionRoleBase.feasibilityErrors.length){
  }
 }
 
+
+
+// Resolution 494: Machine grouping must solve valid fragmented availability instead
+// of failing because a greedy first-fit leaves an isolated player. This fixture is
+// intentionally constrained after fixed work; a complete 2-3 grouping exists.
+const fragmentedMachineRoster=[
+ {name:'FM1',isPitcher:true,canPitch:true,requiresPitchWarmup:true,availableFromBlock:0,availableUntilBlock:10},
+ {name:'FM2',isPitcher:true,canPitch:true,requiresPitchWarmup:true,availableFromBlock:0,availableUntilBlock:10},
+ {name:'FM3',isPitcher:true,canPitch:true,requiresPitchWarmup:true,availableFromBlock:0,availableUntilBlock:10},
+ {name:'FM4',isPitcher:true,canPitch:true,requiresPitchWarmup:true,availableFromBlock:0,availableUntilBlock:10},
+ {name:'FM5',isPitcher:false,availableFromBlock:0,availableUntilBlock:10},
+ {name:'FM6',isPitcher:false,isCatcher:true,canCatch:true,availableFromBlock:0,availableUntilBlock:10},
+ {name:'FM7',isPitcher:false,isCatcher:true,canCatch:true,availableFromBlock:0,availableUntilBlock:10},
+ {name:'FM8',isPitcher:false,availableFromBlock:0,availableUntilBlock:10},
+ {name:'FM9',isPitcher:false,availableFromBlock:0,availableUntilBlock:10},
+ {name:'FM10',isPitcher:false,availableFromBlock:0,availableUntilBlock:10}
+].map(player=>({canPitch:false,requiresPitchWarmup:false,canCatch:false,prePracticeComplete:false,isGuest:false,...player}));
+const fragmentedMachinePlan=scheduler.buildSchedule(fragmentedMachineRoster,'18:00',120);
+assert.ok(!fragmentedMachinePlan.feasibilityErrors.some(error=>error.includes('Machine cannot be scheduled')),'bounded exact grouping must not manufacture a Machine failure when a valid 2-3 grouping exists');
+if(!fragmentedMachinePlan.feasibilityErrors.length)assert.deepEqual(scheduler.validate(fragmentedMachinePlan),[],'fragmented Machine solution must pass the complete audit');
+
 console.log('practice-scheduler tests passed');
