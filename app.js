@@ -5785,7 +5785,14 @@ function bindPractice(){
    // budget as a second line of defense: if future code accidentally defeats
    // structural deduplication, iPhone Safari fails closed instead of grinding
    // through an unbounded-looking Resolution search.
-   const RESOLUTION_BUILD_BUDGET=9;
+   // Resolution 462: budget against the actual finite search space, not a magic
+   // number. With a larger guest roster the old budget of 9 could stop before the
+   // first catcher or combined candidate was ever examined, turning a solvable
+   // practice into a false "change attendance" result. The search itself is bounded:
+   // base + Block 11 + each enabled pitcher + each enabled catcher + each combined
+   // role/Block 11 candidate. Cap only pathological input, never a normal roster.
+   const candidateSearchCapacity=1+(Number(durationMinutes)===120&&!identityBlocked?1:0)+availablePitchers.length+(identityBlocked?0:practicePlayers.filter(player=>player.canCatch).length)+(Number(durationMinutes)===120&&!identityBlocked?availablePitchers.length+practicePlayers.filter(player=>player.canCatch).length:0);
+   const RESOLUTION_BUILD_BUDGET=Math.min(64,Math.max(9,candidateSearchCapacity+1));
    let resolutionBuildCount=1,resolutionBudgetExceeded=false;
    // The base scheduler attempt above is build #1. Candidate verification is intentionally single-build. buildSchedule already
    // returns fresh normalized player/schedule objects; cloning every 13-player
@@ -5795,7 +5802,7 @@ function bindPractice(){
     if(resolutionBuildCount>=RESOLUTION_BUILD_BUDGET){
      if(!resolutionBudgetExceeded)resolutionAuditFailures.push('Practice Resolution stopped because its verified scheduler-build budget was exceeded.');
      resolutionBudgetExceeded=true;
-     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution455',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
+     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution462',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,searchCapacity:candidateSearchCapacity,stoppedAt:new Date().toISOString()}))}catch(error){}
      return false;
     }
     resolutionBuildCount++;
