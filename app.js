@@ -5955,7 +5955,10 @@ function bindPractice(){
      if(!choiceKeys.every(key=>r[key].every(exact)))return fail('choice-identity');
      const verifiedByName=new Map(players.map(p=>[p.name,p])),liveByName=new Map(liveRoster.map(p=>[p.name,p]));
      const role=(name,type)=>{const v=verifiedByName.get(name),l=liveByName.get(name);return !!v&&!!l&&(type==='pitcher'?v.isPitcher===true&&v.canPitch===true&&l.isPitcher===true:v.isCatcher===true&&v.canCatch===true&&l.isCatcher===true)};
-     if(!r.pitchers.every(name=>role(name,'pitcher'))||!r.combinedPitchers.every(name=>role(name,'pitcher')))return fail('pitcher-role');
+     if(!r.pitchers.every(name=>role(name,'pitcher'))||!r.combinedPitchers.every(name=>role(name,'pitcher'))){
+      const bad=[...r.pitchers,...r.combinedPitchers].filter(name=>!role(name,'pitcher')).map(name=>{const v=verifiedByName.get(name),l=liveByName.get(name);return name+'[verified:isPitcher='+String(v?.isPitcher)+',canPitch='+String(v?.canPitch)+';live:isPitcher='+String(l?.isPitcher)+']'}).join(',');
+      return fail('pitcher-role['+bad+']');
+     }
      if(!r.catchers.every(name=>role(name,'catcher'))||!r.combinedCatchers.every(name=>role(name,'catcher')))return fail('catcher-role');
      if(r.combinedPitchers.some(name=>r.pitchers.includes(name))||r.combinedCatchers.some(name=>r.catchers.includes(name)))return fail('choice-overlap');
      if(r.pitchers.some(name=>!players.find(p=>p.name===name)?.canPitch)||r.combinedPitchers.some(name=>!players.find(p=>p.name===name)?.canPitch))return fail('pitcher-capability');
