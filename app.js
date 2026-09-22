@@ -6146,13 +6146,25 @@ function bindPractice(){
     catch(error){resolutionAuditFailures.push(label+' could not seal its verification cache key.');return false}
     if(resolutionVerificationCache.has(key)){
      const cached=resolutionVerificationCache.get(key);
-     if(cached?.notices)verifiedCandidateNotices[label]=structuredClone(cached.notices);
+     if(cached?.notices){
+      try{verifiedCandidateNotices[label]=structuredClone(cached.notices)}
+      catch(error){
+       resolutionAuditFailures.push(label+' cached notice evidence could not be cloned.');
+       return false;
+      }
+     }
      return cached?.safe===true;
     }
     const safe=verifyResolutionBuild(players,candidateDuration,label,expectedChange);
     let notices=null;
     if(safe&&verifiedCandidateNotices[label]){
-     try{notices=structuredClone(verifiedCandidateNotices[label])}catch(error){notices=null}
+     try{notices=structuredClone(verifiedCandidateNotices[label])}
+     catch(error){
+      resolutionAuditFailures.push(label+' verified notice evidence could not be cached safely.');
+      delete verifiedCandidateNotices[label];
+      resolutionVerificationCache.set(key,{safe:false,notices:null});
+      return false;
+     }
     }
     resolutionVerificationCache.set(key,{safe,notices});
     return safe;
@@ -6190,14 +6202,14 @@ function bindPractice(){
       await yieldResolutionUI();
       if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
       const label='Hitting Only + Block 11: '+pitcher.name,testPlayers=extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-      if(verifyResolutionBuild(testPlayers,132,label,{role:'pitcher',name:pitcher.name}))combinedPitchers.push(pitcher.name);
+      if(verifyResolutionCandidate(testPlayers,132,label,{role:'pitcher',name:pitcher.name}))combinedPitchers.push(pitcher.name);
      }
      for(const catcher of extendedPlayers.filter(player=>player.canCatch)){
       setResolutionStage('practice-resolution-catcher-block11');
       await yieldResolutionUI();
       if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
       const label='Not Catching + Block 11: '+catcher.name,testPlayers=extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-      if(verifyResolutionBuild(testPlayers,132,label,{role:'catcher',name:catcher.name}))combinedCatchers.push(catcher.name);
+      if(verifyResolutionCandidate(testPlayers,132,label,{role:'catcher',name:catcher.name}))combinedCatchers.push(catcher.name);
      }
     }
    }
