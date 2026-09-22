@@ -5921,6 +5921,7 @@ function bindPractice(){
     if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
      const sealReason=sealAudit();
      console.error('HotB rejected the completed cooperative Practice Resolution snapshot:',sealReason);
+     try{sessionStorage.setItem('hotb-resolution-seal-reason',JSON.stringify({bundle:'resolution512',reason:sealReason,at:new Date().toISOString()}))}catch(error){}
      practiceResolution=null;shell.innerHTML=basePanel('HotB checked possible coaching compromises but the safety seal rejected '+sealReason+'. Change attendance or availability and build again.');bindInfoReturn(shell);return;
     }
     shell.remove();modal='practiceResolution';
