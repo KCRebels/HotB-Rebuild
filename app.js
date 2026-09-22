@@ -5878,6 +5878,7 @@ function bindPractice(){
   const publishPracticeBuildFrame=(stage,callback)=>{
    if(buildButton)buildButton.dataset.buildStage=stage;
    const run=()=>{
+    markBuildProgress();
     try{callback()}
     catch(error){
      console.error('HotB practice build publication failed at '+stage,error);
@@ -5928,7 +5929,7 @@ function bindPractice(){
   const markBuildProgress=()=>++buildWatchdogProgress;
   const armBuildWatchdog=(stage,timeout=12000)=>{
    buildFinished=false;buildWatchdogStage=stage;
-   const generation=++buildWatchdogGeneration,progressAtArm=buildWatchdogProgress;
+   const generation=++buildWatchdogGeneration,progressAtArm=buildWatchdogProgress,stageAtArm=stage;
    if(buildButton)buildButton.dataset.buildStage=stage;
    clearTimeout(buildWatchdog);
    buildWatchdog=setTimeout(()=>{
@@ -5940,7 +5941,7 @@ function bindPractice(){
     // Treat the watchdog as a true stall detector. A 13-player Resolution may
     // legitimately take longer than one wall-clock window while still yielding
     // frames and advancing transaction state.
-    if(buildWatchdogProgress!==progressAtArm){
+    if(buildWatchdogProgress!==progressAtArm||buildWatchdogStage!==stageAtArm){
      armBuildWatchdog(buildWatchdogStage,timeout);
      return;
     }
@@ -5955,7 +5956,7 @@ function bindPractice(){
    },timeout);
   };
   armBuildWatchdog('scheduler');
-  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});armBuildWatchdog('scheduler-returned')}catch(error){
+  try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});markBuildProgress();armBuildWatchdog('scheduler-returned')}catch(error){
    console.error('HotB practice scheduler failed',error);stopBuildWatchdog();practicePlan=null;
    setPracticeBuildControlsLocked(false);
    // During an automatic Resolution rebuild, the outer transaction owns rollback.
@@ -6160,6 +6161,7 @@ function bindPractice(){
     try{key=JSON.stringify({players,duration:candidateDuration,expectedChange})}
     catch(error){resolutionAuditFailures.push(label+' could not seal its verification cache key.');return false}
     if(resolutionVerificationCache.has(key)){
+     markBuildProgress();
      const cached=resolutionVerificationCache.get(key);
      if(cached?.notices){
       try{verifiedCandidateNotices[label]=structuredClone(cached.notices)}
@@ -6171,6 +6173,7 @@ function bindPractice(){
      return cached?.safe===true;
     }
     const safe=verifyResolutionBuild(players,candidateDuration,label,expectedChange);
+    markBuildProgress();
     let notices=null;
     if(safe&&verifiedCandidateNotices[label]){
      try{notices=structuredClone(verifiedCandidateNotices[label])}
