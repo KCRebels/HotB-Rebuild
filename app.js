@@ -5717,7 +5717,11 @@ function bindPractice(){
     return JSON.stringify({checked,start:$('#practiceStartTime')?.value||'18:00',duration:Number($('#practiceDuration')?.value)||120,accommodations});
    }catch(error){console.error('HotB could not seal the practice build setup.',error);return ''}
   };
-  const initialBuildSetupSignature=buildSetupSignature();
+  // Resolution 554: storePracticeAccommodation() below canonicalizes the live
+  // controls into practiceSetupState. Seal AFTER that canonicalization; sealing
+  // here made a normal build compare pre-canonical DOM/default values against the
+  // submitted setup and falsely report that the coach changed Practice Setup.
+  let initialBuildSetupSignature='';
   // Ownership is not a one-time preflight. Re-prove the sealed setup whenever
   // Resolution crosses a scheduler boundary. A previous optimization cached the
   // first successful comparison forever, so a later DOM/setup mutation could occur
@@ -5758,6 +5762,10 @@ function bindPractice(){
    return;
   }
   roster.forEach((player,index)=>storePracticeAccommodation(index));
+  // The transaction begins from the exact canonical setup actually submitted to
+  // the scheduler, not from the pre-normalization form representation.
+  initialBuildSetupSignature=buildSetupSignature();
+  buildSetupOwnershipValid=!!initialBuildSetupSignature;
   const accommodations=structuredClone(practiceSetupState.accommodations||{}),practicePlayers=attendees.map(player=>practicePlayerModel(player,accommodations[player.name]||practiceAccommodation(player),startTime,durationMinutes));
   let noPitchersMode=null;
   // Live requires a real attending pitcher. Coach Pitch is front toss, not Live.
