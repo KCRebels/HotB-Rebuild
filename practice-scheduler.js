@@ -81,7 +81,15 @@
    // Blocks 4-10 available for Live; the verified 132-minute Block 11 extension
    // must add Block 11 to this pool as real scheduling capacity rather than merely
    // extending the later station grid. Keep placement deterministic and bounded.
-   const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-3)},(_,index)=>index+3),used=new Set(),placed=[];
+   // Preserve the historical 120-minute Live envelope (Blocks 4-9).
+   // The 132-minute resolution explicitly adds Blocks 10-11 as extra capacity.
+   // This makes Block 11 a real resolution rather than silently relaxing the
+   // baseline 120-minute scheduler and keeps the two plans meaningfully distinct.
+   const baseLiveEnd=Math.min(BLOCK_COUNT,9);
+   const liveBlocks=[
+    ...Array.from({length:Math.max(0,baseLiveEnd-3)},(_,index)=>index+3),
+    ...(BLOCK_COUNT===MAX_BLOCK_COUNT?[9,10]:[])
+   ],used=new Set(),placed=[];
    const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&(!pitcher||isOpen(pitcher,block+offset))));
    const ordered=groups.slice().sort((x,y)=>startsFor(x).length-startsFor(y).length||y.length-x.length);
    for(const group of ordered){
