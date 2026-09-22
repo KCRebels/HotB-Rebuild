@@ -4568,16 +4568,34 @@ function bind(){
     practiceSetupState.selectedNames=(plan.players||[]).map(player=>player.name);
     practiceSetupState.startTime=plan.startTime;
     practiceSetupState.durationMinutes=plan.durationMinutes;
-    // Mirror the verified role flags into setup recovery. Block 11 timing is already
-    // represented by duration and practicePlayerModel will derive the new end time.
+    // Resolution 468: commit the exact verified candidate back into setup recovery.
+    // Role-only mirroring was insufficient for Block 11: a player with an explicit
+    // 120-minute departure kept that old clock in setup even though the verified
+    // 132-minute candidate extended her through Block 11. Resume/edit could then
+    // reconstruct a different practice than the one we had just audited.
+    const roster=practiceAttendanceRoster(),nextAccommodations={...(practiceSetupState.accommodations||{})};
     for(const player of plan.players||[]){
-     const existing=practiceSetupState.accommodations?.[player.name];
-     if(existing){
-      existing.canPitch=player.canPitch===true;
-      existing.requiresPitchWarmup=player.requiresPitchWarmup===true;
-      existing.canCatch=player.canCatch===true;
-     }
+     const rosterPlayer=roster.find(item=>item.name===player.name);
+     if(!rosterPlayer)throw new Error('Resolved practice player disappeared from attendance roster before setup commit.');
+     let existing;
+     try{existing=structuredClone(nextAccommodations[player.name]||practiceAccommodation(rosterPlayer))}
+     catch(error){existing=JSON.parse(JSON.stringify(nextAccommodations[player.name]||practiceAccommodation(rosterPlayer)))}
+     existing.arrival=player.arrivalTime||'';
+     existing.departure=player.departureTime||'';
+     existing.limitations=String(player.limitations||'');
+     existing.canPitch=player.canPitch===true;
+     existing.requiresPitchWarmup=player.requiresPitchWarmup===true;
+     existing.canCatch=player.canCatch===true;
+     existing.prePracticeComplete=player.prePracticeComplete===true;
+     nextAccommodations[player.name]=existing;
     }
+    practiceSetupState.accommodations=nextAccommodations;
+    // Prove that setup recovery now recreates the exact candidate that was audited.
+    const recoveredPlayers=(plan.players||[]).map(player=>{
+     const rosterPlayer=roster.find(item=>item.name===player.name);
+     return practicePlayerModel(rosterPlayer,nextAccommodations[player.name],plan.startTime,plan.durationMinutes);
+    });
+    if(practiceResolutionSignature(recoveredPlayers,plan.startTime,plan.durationMinutes)!==practiceResolutionSignature(plan.players,plan.startTime,plan.durationMinutes))throw new Error('Resolved setup recovery did not reproduce the verified candidate exactly.');
 
     if(persistPracticeSession()!==true)throw new Error('Resolved practice could not be committed to restart recovery.');
     const committed=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
@@ -4622,7 +4640,8 @@ function bind(){
     if(JSON.stringify(rollbackState.resolution)!==lockedResolutionBytes)throw new Error('Practice Resolution expected-state derivation changed the locked snapshot.');
     if(mutate(rollbackState.resolution)!==true)throw new Error('Practice Resolution mutation was rejected.');
     if(JSON.stringify(rollbackState.resolution)!==lockedResolutionBytes)throw new Error('Practice Resolution mutation changed the locked snapshot.');
-    rebuildResolvedPractice(rollbackState,expected);
+    const rebuilt=rebuildResolvedPractice(rollbackState,expected);
+    if(rebuilt!==true)return {started:false,reason:'handled'};
     return {started:true,reason:'started'};
    }catch(error){
     console.error('HotB Practice Resolution apply transition failed',error);
@@ -4635,7 +4654,7 @@ function bind(){
    if(result.started)return true;
    if(result.reason==='stale')rejectUnverifiedResolution();
    else if(result.reason==='busy')console.warn('HotB ignored a duplicate Practice Resolution apply while another apply is running.');
-   else alert('HotB could not safely start that verified resolution. Your Practice Resolution was kept unchanged so you can try again.');
+   else if(result.reason!=='handled')alert('HotB could not safely start that verified resolution. Your Practice Resolution was kept unchanged so you can try again.');
    return false;
   };
   const resolutionRollbackState=()=>{
