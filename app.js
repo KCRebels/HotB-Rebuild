@@ -6396,7 +6396,8 @@ function bindPractice(){
    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-identity-mismatch'}
    return;
   }
-  armBuildWatchdog('finalizing-plan');
+  buildWatchdogStage='finalizing-plan';
+  if(buildButton)buildButton.dataset.buildStage='finalizing-plan';
   // Finalization is also protected by the immutable setup seal. Resolution
   // verification may have taken several frames; never publish a valid schedule
   // after the coach's live setup has diverged from the inputs that produced it.
@@ -6418,11 +6419,10 @@ function bindPractice(){
    recoverPracticeBuildSetup('practice-plan-finalize-failed','HotB built the schedule but could not finalize the practice plan. Your setup was kept so you can build again.');
    return;
   }
-  // Draft identity is authoritative, but a normal build is not complete until
-  // its destination screen actually paints. Keep its heartbeat alive through the
-  // deferred publication frame. Resolution apply builds remain owned externally.
-  if(!resolutionApplyBuild)armBuildWatchdog('practice-plan-publication-wait',20000);
-  else stopBuildWatchdog();
+  // Draft identity is authoritative. Publication is synchronous now, so no
+  // separate publication-wait timer or heartbeat is required.
+  buildWatchdogStage=resolutionApplyBuild?'resolution-apply-ready':'practice-plan-publication-ready';
+  if(buildButton)buildButton.dataset.buildStage=buildWatchdogStage;
   // The build authorization is consumed here, but the transaction token remains
   // alive until the outer Resolution verifier commits or rolls back this exact plan.
   practiceResolutionApplyDraftId=null;
