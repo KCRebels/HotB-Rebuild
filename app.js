@@ -5844,7 +5844,8 @@ function bindPractice(){
     return shell;
    };
    const basePanel=(guidance,status='')=>`<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>HotB needs a setup change</h2></div></div><p class="practice-resolution-intro">HotB could not satisfy every absolute practice rule with this exact setup.</p><section class="practice-resolution-problem"><b>What is preventing the build</b><ul>${resolutionErrors.map(error=>`<li>${esc(error)}</li>`).join('')}</ul></section>${notices.length?`<section class="practice-resolution-notices"><b>Automatic equipment / capacity notices</b><ul>${notices.map(note=>`<li>${esc(note)}</li>`).join('')}</ul></section>`:''}${status?`<section class="practice-resolution-notices"><b>${esc(status)}</b></section>`:''}<section class="practice-resolution-choice"><h3>Change Attendance / Availability</h3><p>${esc(guidance)}</p><button class="btn red block" id="returnPracticeAttendance">Change Attendance / Availability</button></section></div></div>`;
-   const bindInfoReturn=shell=>shell.querySelector('#returnPracticeAttendance')?.addEventListener('click',()=>{shell.remove();const button=$('#generatePractice');if(button){button.disabled=false;button.textContent='Build Practice Schedule'}window.scrollTo(0,0)});
+   let resolutionCandidateCancelled=false;
+   const bindInfoReturn=shell=>shell.querySelector('#returnPracticeAttendance')?.addEventListener('click',()=>{resolutionCandidateCancelled=true;shell.remove();const button=$('#generatePractice');if(button){button.disabled=false;button.textContent='Build Practice Schedule'}window.scrollTo(0,0)});
    practiceResolution=null;modal=null;setPracticeBuildControlsLocked(false);
    let shell;
    try{shell=mountResolutionHtml(basePanel(initialGuidance,!identityBlocked&&!hardRoleMissing?'Checking approved solutions…':''));bindInfoReturn(shell);window.scrollTo(0,0)}
@@ -5861,7 +5862,7 @@ function bindPractice(){
    availablePitchers.forEach(player=>candidateQueue.push({kind:'pitcher',name:player.name,duration:132,label:'Hitting Only + Block 11: '+player.name}));
    availableCatchers.forEach(player=>candidateQueue.push({kind:'catcher',name:player.name,duration:132,label:'Not Catching + Block 11: '+player.name}));
    const verified={pitchers:[],catchers:[],canExtend:false,combinedPitchers:[],combinedCatchers:[],candidateNotices:{}};
-   let candidateIndex=0,cancelled=false;
+   let candidateIndex=0;
    const verifyCandidate=item=>{
     let candidate=item.duration===132?practiceResolutionExtendedPlayers(sourcePlayers,startTime):sourcePlayers.map(player=>({...player}));
     if(!candidate.length||candidate.some(player=>Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)<0))return null;
@@ -5874,7 +5875,7 @@ function bindPractice(){
     return plan;
    };
    const finalizeCandidates=()=>{
-    if(cancelled||!shell.isConnected)return;
+    if(resolutionCandidateCancelled||!shell.isConnected)return;
     [verified.pitchers,verified.catchers,verified.combinedPitchers,verified.combinedCatchers].forEach(list=>list.sort((a,b)=>a.localeCompare(b)));
     const candidateNotices=Object.fromEntries(Object.entries(verified.candidateNotices).sort(([a],[b])=>a.localeCompare(b)));
     const hasChoice=!!(verified.pitchers.length||verified.catchers.length||verified.canExtend||verified.combinedPitchers.length||verified.combinedCatchers.length);
@@ -5893,7 +5894,7 @@ function bindPractice(){
     catch(error){console.error('HotB could not publish verified Practice Resolution.',error);modal=null;practiceResolution=null;shell=mountResolutionHtml(basePanel('HotB verified a coaching option but could not open the decision screen. Return to setup and build again.'));bindInfoReturn(shell)}
    };
    const runNextCandidate=()=>{
-    if(cancelled||!shell.isConnected)return;
+    if(resolutionCandidateCancelled||!shell.isConnected)return;
     if(candidateIndex>=candidateQueue.length){finalizeCandidates();return}
     const item=candidateQueue[candidateIndex++];
     try{
@@ -5911,7 +5912,6 @@ function bindPractice(){
     if(status&&status.textContent.includes('Checking approved solutions'))status.textContent=`Checking approved solutions… ${candidateIndex}/${candidateQueue.length}`;
     setTimeout(runNextCandidate,0);
    };
-   shell.querySelector('#returnPracticeAttendance')?.addEventListener('click',()=>{cancelled=true});
    setTimeout(runNextCandidate,0);
    return;
   }
