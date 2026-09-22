@@ -817,3 +817,25 @@ function terminalUnlock483(result,globalOwned=false){
 for(const reason of ['stale','rollback','unverified','handled','apply','busy'])assert.equal(terminalUnlock483({started:false,reason},false),false,reason+' without a global transaction must release the modal lock');
 assert.equal(terminalUnlock483({started:false,reason:'handled'},true),true,'a surviving owned transaction remains the only legitimate lock owner');
 console.log('Resolution 483 role-drift/universal-unlock regressions passed.');
+
+
+/* Resolution 484 publication immutability regression.
+   Once candidate verification has produced the decision signature, snapshot
+   validation and modal rendering are read-only. Publication must reject any
+   consumer that changes the sealed transaction before the coach can act on it. */
+function publicationSeal484(snapshot,consumers){
+ const sealed=JSON.stringify(snapshot);
+ for(const consume of consumers)consume(snapshot);
+ return JSON.stringify(snapshot)===sealed;
+}
+const publication484={
+ signature:'source-484',decisionSignature:'decision-484',
+ practicePlayers:controlledKcSix.map(player=>({...player})),
+ pitchers:[],catchers:[],combinedPitchers:[],combinedCatchers:[],
+ canExtend:true,candidateNotices:{'Block 11':[]},errors:['conflict'],notices:[],auditFailures:[]
+};
+assert.equal(publicationSeal484(structuredClone(publication484),[value=>JSON.stringify(value),value=>Object.keys(value)]),true,'read-only validation/render consumers preserve the sealed Resolution');
+assert.equal(publicationSeal484(structuredClone(publication484),[value=>{value.canExtend=false}]),false,'publication seal detects decision mutation');
+assert.equal(publicationSeal484(structuredClone(publication484),[value=>{value.candidateNotices['Block 11'].push('changed')}]),false,'publication seal detects nested evidence mutation');
+assert.equal(publicationSeal484(structuredClone(publication484),[value=>{value.practicePlayers[0].canCatch=!value.practicePlayers[0].canCatch}]),false,'publication seal detects nested player mutation');
+console.log('Resolution 484 publication immutability regression passed.');
