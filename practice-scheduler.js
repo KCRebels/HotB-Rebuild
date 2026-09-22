@@ -136,22 +136,58 @@
    if(catcher)schedule[catcher.name][liveBlock]={activity:'Catch Live',partner:pitcherName};
    liveSessions.push({block:liveBlock,pitcher:pitcherName,catcher:catcher?.name||'9Square',hitters:[]});
   });
-  const warmedPitchers=new Set(),warmupCatcherLoads=new Map(orderedCatchers.map(catcher=>[catcher.name,0])),coachWarmupBlocks=new Set();
+  // Resolution 496: warm-up assignment is a tiny exact matching problem.
+  // With no available catchers every required warm-up uses Coach, and the old
+  // session-order greedy pass could spend a scarce coach block that was the only
+  // legal warm-up for a late-arriving pitcher. Solve all required pitcher warm-ups
+  // together before committing any of them.
+  const warmupPitchers=[],seenWarmupPitchers=new Set();
   sessionPlans.forEach(({pitcher,liveBlock,catcher})=>{
-   if(!pitcher||!pitcher.requiresPitchWarmup||warmedPitchers.has(pitcher.name))return;
-   warmedPitchers.add(pitcher.name);
-   let warmBlock,warmCatcher=null,warmPartner='';
-   for(const candidateBlock of [liveBlock-1,liveBlock-2]){
-    if(candidateBlock<2||!isOpen(pitcher,candidateBlock))continue;
-    const playerCatcher=[catcher,...orderedCatchers].filter((candidate,candidateIndex,list)=>candidate&&list.indexOf(candidate)===candidateIndex).sort((a,b)=>(a.isGuest===pitcher.isGuest?0:1)-(b.isGuest===pitcher.isGuest?0:1)).find(candidate=>(warmupCatcherLoads.get(candidate.name)||0)<1&&candidate.name!==pitcher.name&&isOpen(candidate,candidateBlock));
-    if(playerCatcher){warmBlock=candidateBlock;warmCatcher=playerCatcher;warmPartner=playerCatcher.name;break}
-    if(!coachWarmupBlocks.has(candidateBlock)){warmBlock=candidateBlock;warmPartner='Coach';coachWarmupBlocks.add(candidateBlock);break}
-   }
-   if(warmBlock===undefined){feasibilityErrors.push(`${pitcher.name} cannot be assigned a pitching warm-up within two blocks before live with the available catchers and one warm-up coach.`);return}
-   if(warmCatcher)warmupCatcherLoads.set(warmCatcher.name,(warmupCatcherLoads.get(warmCatcher.name)||0)+1);
-   schedule[pitcher.name][warmBlock]={activity:'Pitch Warm-Up',partner:warmPartner};
-   if(warmCatcher)schedule[warmCatcher.name][warmBlock]={activity:'Catch Warm-Up',partner:pitcher.name};
+   if(!pitcher||!pitcher.requiresPitchWarmup||seenWarmupPitchers.has(pitcher.name))return;
+   seenWarmupPitchers.add(pitcher.name);warmupPitchers.push({pitcher,liveBlock,catcher});
   });
+  const warmAssignments=[],warmupCatcherLoads=new Map(orderedCatchers.map(catcher=>[catcher.name,0])),coachWarmupBlocks=new Set(),warmMemo=new Set();
+  const warmOptionsFor=item=>{
+   const options=[];
+   for(const candidateBlock of [item.liveBlock-1,item.liveBlock-2]){
+    if(candidateBlock<2||!isOpen(item.pitcher,candidateBlock))continue;
+    const catcherChoices=[item.catcher,...orderedCatchers].filter((candidate,candidateIndex,list)=>candidate&&list.indexOf(candidate)===candidateIndex).sort((a,b)=>(a.isGuest===item.pitcher.isGuest?0:1)-(b.isGuest===item.pitcher.isGuest?0:1)||a.name.localeCompare(b.name));
+    catcherChoices.forEach(candidate=>{if(candidate.name!==item.pitcher.name&&isOpen(candidate,candidateBlock))options.push({block:candidateBlock,catcher:candidate,partner:candidate.name})});
+    options.push({block:candidateBlock,catcher:null,partner:'Coach'});
+   }
+   return options;
+  };
+  const warmSearch=remaining=>{
+   if(!remaining.length)return true;
+   let chosenIndex=-1,chosenOptions=null;
+   for(let index=0;index<remaining.length;index++){
+    const item=remaining[index],possible=warmOptionsFor(item).filter(option=>option.catcher?(warmupCatcherLoads.get(option.catcher.name)||0)<1:!coachWarmupBlocks.has(option.block));
+    if(!possible.length)return false;
+    if(chosenOptions===null||possible.length<chosenOptions.length){chosenIndex=index;chosenOptions=possible}
+   }
+   const item=remaining[chosenIndex],next=remaining.slice(0,chosenIndex).concat(remaining.slice(chosenIndex+1));
+   chosenOptions.sort((a,b)=>(a.catcher?0:1)-(b.catcher?0:1)||b.block-a.block||(a.partner||'').localeCompare(b.partner||''));
+   const stateKey=remaining.map(entry=>entry.pitcher.name).sort().join('|')+'#'+[...coachWarmupBlocks].sort().join(',')+'#'+[...warmupCatcherLoads.entries()].map(([name,count])=>name+':'+count).sort().join(',');
+   if(warmMemo.has(stateKey))return false;
+   for(const option of chosenOptions){
+    if(option.catcher)warmupCatcherLoads.set(option.catcher.name,(warmupCatcherLoads.get(option.catcher.name)||0)+1);else coachWarmupBlocks.add(option.block);
+    warmAssignments.push({item,option});
+    if(warmSearch(next))return true;
+    warmAssignments.pop();
+    if(option.catcher)warmupCatcherLoads.set(option.catcher.name,(warmupCatcherLoads.get(option.catcher.name)||0)-1);else coachWarmupBlocks.delete(option.block);
+   }
+   warmMemo.add(stateKey);return false;
+  };
+  const warmupsOk=warmSearch(warmupPitchers);
+  if(!warmupsOk&&warmupPitchers.length){
+   const constrained=warmupPitchers.slice().sort((a,b)=>warmOptionsFor(a).length-warmOptionsFor(b).length)[0];
+   feasibilityErrors.push(`${constrained.pitcher.name} cannot be assigned a pitching warm-up within two blocks before live with the available catchers and one warm-up coach.`);
+  }else{
+   warmAssignments.forEach(({item,option})=>{
+    schedule[item.pitcher.name][option.block]={activity:'Pitch Warm-Up',partner:option.partner};
+    if(option.catcher)schedule[option.catcher.name][option.block]={activity:'Catch Warm-Up',partner:item.pitcher.name};
+   });
+  }
   let liveHitterRepeats=[];
   if(liveSessions.length&&!feasibilityErrors.length){
    // Resolution 495: live hitting is a constrained matching problem, not a greedy
