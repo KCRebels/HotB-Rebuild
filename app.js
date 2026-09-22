@@ -6280,21 +6280,17 @@ function bindPractice(){
      ))return;
     }
    }
-   // Candidate fan-out is complete. Do not arm a watchdog on the transitional
-   // "finalize" label itself: on iPhone Safari a timer from the last candidate task
-   // can become runnable before this continuation crosses its first paint boundary.
-   // Show the label, invalidate the previous watchdog generation, and let the next
-   // concrete evidence phase arm a fresh watchdog after the browser has painted.
+   // Candidate fan-out is complete. Finalize is only a visible handoff label, not
+   // a watchdog stage. Fully invalidate the previous candidate generation before
+   // yielding; the evidence stage below becomes the next monitored unit of work.
    buildWatchdogStage='practice-resolution-finalize';
-   if(buildButton){buildButton.dataset.buildStage='practice-resolution-finalize';buildButton.textContent='Finalizing Resolution…'}
-   markBuildProgress();
+   buildWatchdogGeneration++;
    clearTimeout(buildWatchdog);buildWatchdog=null;
    clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
-   await new Promise(resolve=>{
-    const resume=()=>{markBuildProgress();resolve()};
-    if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(resume,0));
-    else setTimeout(resume,16);
-   });
+   if(buildButton){buildButton.dataset.buildStage='practice-resolution-finalize';buildButton.textContent='Finalizing Resolution…'}
+   markBuildProgress();
+   await new Promise(resolve=>setTimeout(resolve,0));
+   markBuildProgress();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be finalized. Nothing was committed. Please review the setup and build again.');return}
    // Finalization is intentionally tiny and synchronous. Normalize the verified
    // candidate lists, then immediately enter a concrete heartbeat stage.
