@@ -16,7 +16,13 @@ function roster(count=13,pitchers=2,catchers=2){
  }));
 }
 function safe(plan){return !!plan&&!plan.feasibilityErrors.length&&!scheduler.validate(plan).length}
-function extended(source){return source.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock}))}
+function extended(source){
+ // Match production Block 11 semantics: only a player verified through the normal
+ // practice end is extended, and the explicit departure clock moves with the new
+ // 132-minute end. Keeping 20:00 while claiming availableUntilBlock 11 creates an
+ // impossible recovery model and was a stale test-helper bug.
+ return source.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock,departureTime:player.availableUntilBlock===10&&player.departureTime==='20:00'?'20:12':player.departureTime}));
+}
 function candidates(source){
  const result=[];
  for(const player of source.filter(p=>p.canPitch)){
