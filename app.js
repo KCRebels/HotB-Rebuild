@@ -5969,7 +5969,8 @@ function bindPractice(){
      const confirmedButton=$('#generatePractice');
      if(!confirmedButton||!confirmedButton.disabled)return;
      if(buildWatchdogProgress!==confirmProgress||buildWatchdogStage!==confirmStage){
-      armBuildWatchdog(buildWatchdogStage,timeout);
+      // A newer phase owns liveness now. Never let an old confirmation callback
+      // re-arm itself against the newer stage; that can manufacture a false stall.
       return;
      }
      if(practicePlan&&!practicePlan.feasibilityErrors?.length){
@@ -6030,6 +6031,9 @@ function bindPractice(){
      button.textContent=labels[stage]||'Building Practice…';
     }
     markBuildProgress();
+    // Every concrete phase gets a fresh generation. The transitional finalize label
+    // is handled separately so it can never own a timeout while Safari is handing
+    // control from candidate verification to evidence finalization.
     armBuildWatchdog(stage,20000);
    };
    setResolutionStage('practice-resolution-start');
