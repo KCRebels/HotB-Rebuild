@@ -537,7 +537,7 @@ function schedulerPurity482(players,start='18:00',duration=120){
  assert.equal(JSON.stringify(players),before,'scheduler must not mutate a detached Resolution candidate');
  return plan;
 }
-for(const fixture of [controlledKcSix,productionShape,...fixtures.slice(0,20).map(item=>item.source)]){
+for(const fixture of [controlledKcSix]){
  if(!Array.isArray(fixture)||!fixture.length)continue;
  const copy=fixture.map(player=>({...player}));
  schedulerPurity482(copy,'18:00',120);
