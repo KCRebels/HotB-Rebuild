@@ -839,3 +839,19 @@ console.log('Resolution 535 restore-normalization regression passed.');
  assert.match(branch,/JSON\.stringify\(snapshot\)!==JSON\.stringify\(practiceResolution\)/,'authorization must prove exact sealed decision value');
 }
 console.log('Resolution 536 locked-copy authorization regression passed.');
+
+
+/* Resolution 537 Apply role-model regression.
+   Apply must use the same canonical roster-role proof that admitted and revalidated
+   the named choice; attendance UI records need not expose literal role booleans. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('const authorizedResolutionExpectedState=');
+ const end=source.indexOf("$('#applyPracticePitcherResolution')",start);
+ const branch=source.slice(start,end);
+ assert.match(branch,/!isPitcherProfile\(livePlayer\)/,'pitcher Apply authorization must use canonical pitcher profile');
+ assert.match(branch,/!positionTokens\(livePlayer\)\.includes\('C'\)/,'catcher Apply authorization must use canonical catcher position');
+ assert.doesNotMatch(branch,/livePlayer\.isPitcher!==true/,'Apply must not require a noncanonical attendance isPitcher flag');
+ assert.doesNotMatch(branch,/livePlayer\.isCatcher!==true/,'Apply must not require a noncanonical attendance isCatcher flag');
+}
+console.log('Resolution 537 Apply role-model regression passed.');
