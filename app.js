@@ -5975,7 +5975,7 @@ function bindPractice(){
     const button=$('#generatePractice');
     if(button){
      button.disabled=true;
-     const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-finalize':'Finalizing Resolution…','practice-resolution-seal':'Sealing Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-restore-verify':'Verifying Saved Resolution…','practice-resolution-publish':'Opening Resolution…'};
+     const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-finalize':'Finalizing Resolution…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Sealing Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-restore-verify':'Verifying Saved Resolution…','practice-resolution-publish':'Opening Resolution…'};
      button.textContent=labels[stage]||'Building Practice…';
     }
     armBuildWatchdog(stage,20000);
@@ -6220,15 +6220,17 @@ function bindPractice(){
    setResolutionStage('practice-resolution-finalize');
    await yieldResolutionUI();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be finalized. Nothing was committed. Please review the setup and build again.');return}
+   // Finalization used to hold one 20-second heartbeat across every evidence
+   // cleanup/seal operation. On the 13-player path Safari can queue that watchdog
+   // while the work is still legitimately progressing. Split finalization into
+   // observable frame-sized phases and refresh ownership between them.
    solvingPitchers=[...new Set(solvingPitchers)].sort();
    solvingCatchers=[...new Set(solvingCatchers)].sort();
-   // A combined option is meaningful only when the same role change cannot solve
-   // the original 10-block practice by itself.
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
-   // Candidate notice evidence is transaction data. Once final option filtering
-   // removes a redundant combined choice, remove its verification residue too.
-   // Conversely every surviving choice must still have exactly one evidence entry.
+   setResolutionStage('practice-resolution-evidence');
+   await yieldResolutionUI();
+   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was finalizing Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
    const survivingCandidateLabels=new Set([
     ...solvingPitchers.map(name=>'Hitting Only: '+name),
     ...solvingCatchers.map(name=>'Not Catching: '+name),
@@ -6245,6 +6247,9 @@ function bindPractice(){
     solvingPitchers=[];solvingCatchers=[];canExtend=false;combinedPitchers=[];combinedCatchers=[];
     for(const label of Object.keys(verifiedCandidateNotices))delete verifiedCandidateNotices[label];
    }
+   setResolutionStage('practice-resolution-evidence-complete');
+   await yieldResolutionUI();
+   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed after HotB finalized Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const hasVerifiedResolution=!!(solvingPitchers.length||solvingCatchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
    // Final sealing/persistence/restore verification is expensive enough to block a
    // mobile paint. Give Safari a frame after candidate fan-out before entering the
