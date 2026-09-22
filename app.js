@@ -5820,9 +5820,9 @@ function bindPractice(){
  $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#endPracticeDraft')?.addEventListener('click',endPracticeDraft);
- $('#generatePractice')?.addEventListener('click',async()=>{
+ $('#generatePractice')?.addEventListener('click',()=>{
   const roster=practiceAttendanceRoster(),attendees=Array.from(document.querySelectorAll('[data-practice-player]:checked')).map(input=>roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
-  // Seal the exact setup that this asynchronous build owns. Practice Resolution
+  // Seal the exact setup that this build owns. Practice Resolution
   // intentionally yields browser frames; controls can otherwise change underneath
   // the candidate verification and produce a plan for a different setup.
   const buildSetupSignature=()=>{
@@ -5870,7 +5870,7 @@ function bindPractice(){
   if(!practicePlayers.some(player=>player.canPitch))noPitchersMode=null;
   stopPracticeClock();practiceSetupState={...practiceSetupState,selectedNames:attendees.map(player=>player.name),startTime,durationMinutes,accommodations};practiceCoachOpen=false;practiceCardsOpen=false;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
   const buildButton=$('#generatePractice');if(buildButton){buildButton.disabled=true;buildButton.textContent='Building Practice…'}
-  // The build handler now has intentional async frame yields during Practice
+  // The build handler runs synchronously through Practice Resolution and publication.
   // Resolution. A short timer cannot distinguish those healthy yields from a stall,
   // so use an explicit stage heartbeat and only recover after a real quiet period.
   let buildWatchdogStage='pre-scheduler',buildFinished=false,buildWatchdogProgress=0;
@@ -5917,7 +5917,7 @@ function bindPractice(){
   };
   const buildSetupStillOwned=()=>!!initialBuildSetupSignature&&buildSetupSignature()===initialBuildSetupSignature;
   const setPracticeBuildControlsLocked=locked=>{
-   // Build is an asynchronous transaction on iPhone. Freeze every setup control
+   // Freeze every setup control for the full build transaction.
    // that can alter scheduler input until publication/recovery owns a fresh screen.
    document.querySelectorAll('[data-practice-player],#practiceStartTime,#practiceDuration,[data-practice-accommodation],[data-practice-pitching],[data-practice-warmup],[data-practice-catching]').forEach(control=>{
     if(!control)return;
@@ -6218,7 +6218,7 @@ function bindPractice(){
     }
    }
    // Candidate fan-out is complete. Enter evidence finalization synchronously;
-   // there is no intermediate Finalizing Resolution state or async boundary.
+   // there is no intermediate Finalizing Resolution state.
    buildWatchdogStage='practice-resolution-evidence';
    markBuildProgress();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be finalized. Nothing was committed. Please review the setup and build again.');return}
@@ -6353,8 +6353,7 @@ function bindPractice(){
    // final byte seal so the last publication turn stays small and deterministic.
    markBuildProgress();
    setResolutionStage('practice-resolution-publish');
-   // The last yield is itself an asynchronous boundary. Re-prove both setup
-   // ownership and exact bytes immediately before exposing any coaching choice.
+   // Re-prove both setup ownership and exact bytes immediately before exposing any coaching choice.
    let prepublishResolutionBytes='';
    try{prepublishResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not seal Practice Resolution at publication.',error)}
    if(!buildSetupStillOwned()||prepublishResolutionBytes!==generatedResolutionBytes){
