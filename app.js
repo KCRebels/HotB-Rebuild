@@ -6212,22 +6212,18 @@ function bindPractice(){
    // complete candidate per browser task, then publish progress before starting the
    // next one. This prevents a long chain of synchronous scheduler + validator work
    // from starving Safari's paint queue while preserving exact verification order.
-   const runResolutionCandidates=async(candidates,stage,buildCandidate,onSafe,ownershipMessage)=>{
+   const runResolutionCandidates=(candidates,stage,buildCandidate,onSafe,ownershipMessage)=>{
     for(let index=0;index<candidates.length;index++){
      setResolutionStage(stage);
-     await yieldResolutionUI();
      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed',ownershipMessage);return false}
      const candidate=candidates[index],spec=buildCandidate(candidate);
      if(verifyResolutionCandidate(spec.players,spec.duration,spec.label,spec.expectedChange))onSafe(candidate,spec);
      markBuildProgress();
-     // The next iteration already yields before its scheduler pass. One yield per
-     // candidate is sufficient; a second yield here only doubles Safari continuation
-     // points without creating any additional scheduler isolation.
     }
     return true;
    };
    // Only offer a pitcher decision after proving that exact one-practice change builds cleanly.
-   if(!await runResolutionCandidates(
+   if(!runResolutionCandidates(
     availablePitchers,'practice-resolution-pitcher',
     pitcher=>({players:practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:durationMinutes,label:'Hitting Only: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name}}),
     pitcher=>solvingPitchers.push(pitcher.name),
@@ -6235,7 +6231,7 @@ function bindPractice(){
    ))return;
    let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
    const availableCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
-   if(!await runResolutionCandidates(
+   if(!runResolutionCandidates(
     availableCatchers,'practice-resolution-catcher',
     catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
     catcher=>solvingCatchers.push(catcher.name),
@@ -6253,14 +6249,14 @@ function bindPractice(){
     if(!extensionBaselineValid)resolutionAuditFailures.push('Block 11 availability could not be verified against the production availability rules.');
     if(!canExtend&&extensionBaselineValid){
      const combinedPitcherCandidates=extendedPlayers.filter(player=>player.canPitch&&!solvingPitchers.includes(player.name));
-     if(!await runResolutionCandidates(
+     if(!runResolutionCandidates(
       combinedPitcherCandidates,'practice-resolution-pitcher-block11',
       pitcher=>({players:extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:132,label:'Hitting Only + Block 11: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name}}),
       pitcher=>combinedPitchers.push(pitcher.name),
       'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.'
      ))return;
      const combinedCatcherCandidates=extendedPlayers.filter(player=>player.canCatch&&!solvingCatchers.includes(player.name));
-     if(!await runResolutionCandidates(
+     if(!runResolutionCandidates(
       combinedCatcherCandidates,'practice-resolution-catcher-block11',
       catcher=>({players:extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
       catcher=>combinedCatchers.push(catcher.name),
@@ -6367,7 +6363,6 @@ function bindPractice(){
    // the build heartbeat advances between the two expensive operations.
    markBuildProgress();
    setResolutionStage('practice-resolution-session-seal');
-   await yieldResolutionUI();
    let publishedSessionBytes='',publishedResolutionBytes='';
    try{
     publishedSessionBytes=JSON.stringify(db.activePracticeSession);
