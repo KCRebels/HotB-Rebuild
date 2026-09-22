@@ -4556,7 +4556,11 @@ function bind(){
     // its postcondition/rules audit and is committed, restart recovery must retain
     // the original verified Resolution transaction.
     render();
-    setTimeout(()=>{
+    const deferResolutionFrame=callback=>{
+     if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(callback,0));
+     else setTimeout(callback,16);
+    };
+    deferResolutionFrame(()=>{
      try{
       // Workspace teardown deliberately clears the global identities. A callback
       // that runs afterward is stale and must never resurrect the closed draft.
@@ -4575,17 +4579,20 @@ function bind(){
       // Resolution before the plan had reached its commit boundary.
       generate.click();
       const waitForResolvedBuild=async()=>{
-       const deadline=Date.now()+15000;
+       const deadline=Date.now()+30000;
        while(Date.now()<deadline){
         if(!transactionOwnsToken())return false;
         if(practicePlan?.portalDraftId===resolutionDraftId)return true;
-        const button=$('#generatePractice');
-        if(button&&!button.disabled&&!practiceResolutionApplyDraftId)return false;
+        // The automatic Build owns practiceResolutionApplyDraftId until it assigns
+        // that exact identity to the finished plan. If the authorization disappears
+        // without the plan, the build has definitively failed; otherwise keep waiting
+        // across Safari frame yields rather than guessing from button DOM state.
+        if(!practiceResolutionApplyDraftId)return false;
         await new Promise(resolve=>setTimeout(resolve,50));
        }
        return false;
       };
-      setTimeout(async()=>{
+      deferResolutionFrame(async()=>{
        try{
        const buildReady=await waitForResolvedBuild();
        if(!buildReady){
@@ -4691,6 +4698,18 @@ function bind(){
          // to restore the sealed failed-practice snapshot instead of leaving a
          // committed session behind a broken/unreleased Resolution UI.
          modal=practicePlan?.buildNotices?.length?'practiceBuildNotice':null;
+         // Match the normal iPhone build handoff: publish the verified committed
+         // builder on a real paint frame instead of rewriting #app inside the same
+         // async verification turn.
+         await new Promise(resolve=>{
+          if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(resolve,0));
+          else setTimeout(resolve,16);
+         });
+         if(!transactionIsCurrent()){
+          console.error('HotB Practice Resolution transaction changed before final committed render');
+          if(rollbackIfOwned())alert('HotB could not finish opening the verified rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+          return;
+         }
          try{render();window.scrollTo(0,0)}
          catch(error){
           console.error('HotB Practice Resolution final committed plan render failed',error);
