@@ -98,6 +98,19 @@ const controlledKcResolution=prioritizedResolution(controlledKcSix);
 assert.equal(controlledKcResolution.kind,'hitting-only','named KC Rebels phone fixture must resolve with Hitting Only');
 assert.equal(controlledKcResolution.builds,1,'named KC Rebels phone fixture must resolve on the first candidate scheduler build');
 assert.deepEqual(scheduler.validate(controlledKcResolution.plan),[],'named KC Rebels first-safe solution must pass the production validator');
+assert.equal(controlledKcResolution.name,'Brooklyn Gering','named KC Rebels phone fixture must publish Brooklyn as the first verified Hitting Only option');
+
+// Prove why production candidate deduplication must preserve roster order. Moving
+// the changed pitcher through this exact roster is allowed to alter deterministic
+// station assignment, so no anonymous sorted-role signature may discard a later
+// pitcher before it has been verified.
+const kcPitcherCandidates=controlledKcSix.filter(player=>player.canPitch).map(player=>{
+ const changed=controlledKcSix.map(value=>value.name===player.name?{...value,canPitch:false,requiresPitchWarmup:false}:value);
+ const plan=scheduler.buildSchedule(changed,'18:00',120);
+ return {name:player.name,safe:safe(plan),schedule:safe(plan)?JSON.stringify(plan.schedule):null};
+});
+assert.equal(kcPitcherCandidates.length,4,'named phone fixture must retain all four ordered pitcher alternatives as independently verifiable candidates');
+assert.ok(kcPitcherCandidates.some(candidate=>candidate.safe),'named phone fixture must contain at least one independently safe pitcher adjustment');
 
 const fixtures=[];
 for(let count=6;count<=15;count++){
