@@ -6445,12 +6445,14 @@ function bindPractice(){
     return;
    }
    modal='practiceResolution';
+   // All scheduler/evidence/persistence work is complete before the modal handoff.
+   // Stop the stall watchdog now rather than leaving a timer alive while Safari is
+   // waiting to execute the publication frame. The publication helper has its own
+   // ownership token and exception recovery, so no build watchdog is needed here.
+   stopBuildWatchdog();
    publishPracticeBuildFrame('practice-resolution-publish',()=>{
-    // Do not unlock setup controls until the Resolution DOM has rendered
-    // successfully. If render throws, the publication helper owns recovery.
     render();
     setPracticeBuildControlsLocked(false);
-    stopBuildWatchdog();
     window.scrollTo(0,0);
    });
    return;
@@ -6529,12 +6531,13 @@ function bindPractice(){
   }
   if(practicePlan.buildNotices?.length){
    modal='practiceBuildNotice';
-   armBuildWatchdog('practice-build-notice',20000);
-   publishPracticeBuildFrame('practice-build-notice',()=>{render();setPracticeBuildControlsLocked(false);stopBuildWatchdog();window.scrollTo(0,0)});
+   // The completed plan no longer needs a scheduler watchdog during UI publication.
+   stopBuildWatchdog();
+   publishPracticeBuildFrame('practice-build-notice',()=>{render();setPracticeBuildControlsLocked(false);window.scrollTo(0,0)});
    return;
   }
-  armBuildWatchdog('practice-plan-publish',20000);
-  publishPracticeBuildFrame('practice-plan-publish',()=>{render();setPracticeBuildControlsLocked(false);stopBuildWatchdog();window.scrollTo(0,0)});
+  stopBuildWatchdog();
+  publishPracticeBuildFrame('practice-plan-publish',()=>{render();setPracticeBuildControlsLocked(false);window.scrollTo(0,0)});
  });
  $('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',limitations:practiceSetupState.accommodations?.[player.name]?.limitations||'',prePracticeComplete:!!player.prePracticeComplete,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={...practiceSetupState,selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;practiceSection='setup';persistPracticeDraft();render();window.scrollTo(0,0)});
  $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;if(practiceCoachOpen)practiceCardsOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
