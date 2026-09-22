@@ -5948,7 +5948,7 @@ function bindPractice(){
     const button=$('#generatePractice');
     if(button){
      button.disabled=true;
-     const labels={'practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Preparing Resolution…','practice-resolution-byte-seal':'Sealing Resolution…','practice-resolution-snapshot-verify':'Validating Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-publish':'Opening Resolution…'};
+     const labels={'practice-resolution-budget-exceeded':'Resolution Stopped Safely…','practice-resolution-start':'Checking Practice…','practice-resolution-pitcher':'Checking Pitcher Options…','practice-resolution-catcher':'Checking Catcher Options…','practice-resolution-block11':'Checking Block 11…','practice-resolution-pitcher-block11':'Checking Pitcher + Block 11…','practice-resolution-catcher-block11':'Checking Catcher + Block 11…','practice-resolution-evidence':'Checking Resolution Evidence…','practice-resolution-evidence-complete':'Resolution Evidence Ready…','practice-resolution-seal':'Preparing Resolution…','practice-resolution-byte-seal':'Sealing Resolution…','practice-resolution-snapshot-verify':'Validating Resolution…','practice-resolution-persist':'Saving Resolution…','practice-resolution-publish':'Opening Resolution…'};
      button.textContent=labels[stage]||'Building Practice…';
     }
     
@@ -6248,6 +6248,7 @@ function bindPractice(){
    // Budget exhaustion is a transaction failure, not merely another infeasible
    // candidate. Never publish a partial set of choices after the verifier stops.
    if(resolutionBudgetExceeded){
+    setResolutionStage('practice-resolution-budget-exceeded');
     solvingPitchers=[];solvingCatchers=[];canExtend=false;combinedPitchers=[];combinedCatchers=[];
     for(const label of Object.keys(verifiedCandidateNotices))delete verifiedCandidateNotices[label];
     recoverPracticeBuildSetup('practice-resolution-budget-exceeded','HotB stopped Practice Resolution before it could exceed its safe scheduler-build limit. Nothing was committed. Please review the setup and build again.');
