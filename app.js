@@ -4506,7 +4506,7 @@ function bind(){
       if(!player.isCatcher||player.canCatch!==true||!partner||partner.isPitcher!==true||partner.canPitch!==true||partner.requiresPitchWarmup!==true||partnerRow?.activity!=='Pitch Warm-Up'||partnerRow?.partner!==player.name)warmupInvalid=true;
      }
     });
-    if(warmupInvalid)return false
+    if(warmupInvalid)return failProof('warmup-partner-consistency')
    }
    // Match the production workload ceilings at the transaction boundary too.
    // A resolved plan must not pass merely because its individual role records are
