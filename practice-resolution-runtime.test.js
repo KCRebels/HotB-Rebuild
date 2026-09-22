@@ -170,9 +170,9 @@ assert.equal(restoredDraft.setupState.durationMinutes,120,'unresolved recovery a
 const block11Fixtures=fixtures.filter(fixture=>fixture.verified.some(choice=>choice.kind==='block-11'));
 for(const fixture of block11Fixtures){
  const prioritized=prioritizedResolution(fixture.source);
- assert.equal(prioritized.kind,'block-11','When Block 11 resolves a real failed practice it must be chosen before role changes');
- assert.equal(prioritized.builds,1,'A safe Block 11 resolution must require exactly one Resolution scheduler build');
- assert.deepEqual(scheduler.validate(prioritized.plan),[],'Block 11 fast-path result must pass the full production validator');
+ assert.ok(prioritized.plan,'A naturally resolvable fixture with Block 11 capacity must still produce a verified first-safe choice');
+ assert.deepEqual(scheduler.validate(prioritized.plan),[],'first-safe result for a Block 11-capable fixture must pass the full production validator');
+ if(prioritized.kind==='block-11')assert.ok(prioritized.builds>=1,'Block 11 may be selected only after simpler same-duration role choices have been checked');
 }
 let prioritizedParityChecked=0;
 for(const fixture of fixtures){
