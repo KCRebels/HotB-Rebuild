@@ -251,5 +251,7 @@ for(const spec of [...new Map(actualStructuralSpecs.map(spec=>[anonymousShape(sp
  if(!plan.feasibilityErrors.length)assert.deepEqual(scheduler.validate(plan),[],'every feasible unique actual-Rebels Resolution shape must pass the full validator');
 }
 console.log('Actual KC Rebels fourteen-to-four mobile fan-out regression passed.');
+assert.ok(block11Fixtures.length>0,'runtime corpus must retain at least one natural Block-11 fast-path fixture');
+
 
 
