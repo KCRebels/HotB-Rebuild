@@ -57,7 +57,7 @@ jobs:
           grep -q "launch=230" service-worker.js
           grep -q "pwa-update.js?v=20260922-pwa230" index.html
           grep -q "BUILD_VERSION = '2026.09.22.230'" pwa-update.js
-          grep -q "url.searchParams.set('launch','229')" pwa-update.js
+          grep -q "url.searchParams.set('launch','230')" pwa-update.js
           ! grep -q "20260922-pwa227" index.html
           ! grep -q "2026.09.22.227" pwa-update.js
           grep -q "launch=230" hotb-fresh.html
