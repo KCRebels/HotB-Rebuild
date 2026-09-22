@@ -7,6 +7,7 @@ on:
       - 'practice-resolution.test.js'
       - 'practice-resolution-runtime.test.js'
       - 'practice-scheduler.js'
+      - 'practice-scheduler.test.js'
       - 'practice-session.js'
       - 'index.html'
       - 'service-worker.js'
@@ -30,6 +31,8 @@ jobs:
         run: node practice-resolution.test.js
       - name: Run Practice Resolution runtime regression
         run: node practice-resolution-runtime.test.js
+      - name: Run full practice scheduler regression
+        run: node practice-scheduler.test.js
       - name: Verify deployed bundle markers
         run: |
           grep -q "app.js?v=20260921-resolution402" index.html
