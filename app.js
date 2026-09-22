@@ -5823,45 +5823,16 @@ function bindPractice(){
      :!availablePitchers.length
       ?['No attending player is currently available to pitch Live. Live work requires an attending pitcher.']
       :baseErrors;
-   // Resolution 497: now that the base scheduler's internal grouping/warm-up
-   // searches are complete, a remaining failure is a genuine coaching conflict.
-   // Verify a small, bounded set of coaching compromises before showing Resolution.
-   // Each displayed option must independently rebuild and pass the full validator.
-   const verifyResolutionCandidate=(players,duration,label)=>{
-    try{
-     const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode});
-     if(plan?.feasibilityErrors?.length)return null;
-     const audit=window.HotBPracticeScheduler.validate(plan);
-     if(audit?.length)return null;
-     return {label,notices:[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort()};
-    }catch(error){console.error('HotB could not verify Practice Resolution candidate '+label,error);return null}
-   };
+   // Resolution 501: do not synchronously rebuild speculative Resolution
+   // candidates inside the coach's Build tap. On iPhone those repeated complete
+   // scheduler+validator passes can monopolize the main thread and leave the UI
+   // permanently painted in its locked Building state. The failed base build is
+   // already authoritative. Publish that conflict immediately; the coach returns
+   // to setup and makes an explicit attendance/availability/role change. Verified
+   // one-click compromises can be reintroduced only through a bounded/nonblocking
+   // verifier, never by looping full builds inside this tap handler.
    const pitchers=[],catchers=[],combinedPitchers=[],combinedCatchers=[],candidateNotices={};
-   const recordCandidate=(bucket,name,result)=>{if(!result)return;bucket.push(name);candidateNotices[result.label]=result.notices};
-   if(!identityBlocked&&!hardRoleMissing){
-    practicePlayers.filter(player=>player.canPitch).forEach(player=>{
-     const candidate=practicePlayers.map(item=>item.name===player.name?{...item,canPitch:false,requiresPitchWarmup:false}:item);
-     recordCandidate(pitchers,player.name,verifyResolutionCandidate(candidate,durationMinutes,'Hitting Only: '+player.name));
-    });
-    practicePlayers.filter(player=>player.canCatch).forEach(player=>{
-     const candidate=practicePlayers.map(item=>item.name===player.name?{...item,canCatch:false}:item);
-     recordCandidate(catchers,player.name,verifyResolutionCandidate(candidate,durationMinutes,'Not Catching: '+player.name));
-    });
-   }
-   const extensionResult=!identityBlocked&&!hardRoleMissing&&Number(durationMinutes)===120?verifyResolutionCandidate(practiceResolutionExtendedPlayers(practicePlayers,startTime,durationMinutes),132,'Block 11'):null;
-   const canExtend=!!extensionResult;if(extensionResult)candidateNotices['Block 11']=extensionResult.notices;
-   // Only try two-part compromises when neither corresponding one-part change nor
-   // Block 11 already solves the practice. This keeps failed-build work bounded.
-   if(!identityBlocked&&!hardRoleMissing&&!canExtend){
-    practicePlayers.filter(player=>player.canPitch&&!pitchers.includes(player.name)).forEach(player=>{
-     const candidate=practiceResolutionExtendedPlayers(practicePlayers.map(item=>item.name===player.name?{...item,canPitch:false,requiresPitchWarmup:false}:item),startTime,durationMinutes);
-     recordCandidate(combinedPitchers,player.name,verifyResolutionCandidate(candidate,132,'Hitting Only + Block 11: '+player.name));
-    });
-    practicePlayers.filter(player=>player.canCatch&&!catchers.includes(player.name)).forEach(player=>{
-     const candidate=practiceResolutionExtendedPlayers(practicePlayers.map(item=>item.name===player.name?{...item,canCatch:false}:item),startTime,durationMinutes);
-     recordCandidate(combinedCatchers,player.name,verifyResolutionCandidate(candidate,132,'Not Catching + Block 11: '+player.name));
-    });
-   }
+   const canExtend=false;
    [pitchers,catchers,combinedPitchers,combinedCatchers].forEach(list=>list.sort());
    const sortedCandidateNotices=Object.fromEntries(Object.entries(candidateNotices).sort(([a],[b])=>a.localeCompare(b)));
    const hasVerifiedChoice=!!(pitchers.length||catchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
@@ -5874,7 +5845,7 @@ function bindPractice(){
     :hasVerifiedChoice
      ?'HotB verified the choices above against this exact practice. Choose the coaching compromise you prefer, or return to setup and make a different change.'
      :availablePitchers.length
-      ?'HotB exhausted the automatic schedule and the allowed coaching compromises without finding a rule-safe build. Change attendance, availability, Pitching, or Catching explicitly and build again.'
+      ?'HotB could not satisfy every absolute rule with this exact setup. Change attendance, availability, Pitching, or Catching explicitly and build again.'
       :'This practice needs an attending pitcher or another explicit attendance/availability change before HotB can satisfy every absolute rule.';
    practiceResolution={
     errors:resolutionErrors,pitchers,catchers,canExtend,combinedPitchers,combinedCatchers,
