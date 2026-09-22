@@ -86,8 +86,8 @@ self.addEventListener('fetch', event => {
   }
   if (request.mode === 'navigate') {
     // Normalize old installed launch URLs to the canonical current shell while
-    // preserving localStorage/IndexedDB. This repairs stale Home Screen launch
-    // targets without deleting or reinstalling HotB.
+    // preserving all application-owned saved data. This repairs stale Home Screen
+    // launch targets without deleting or reinstalling HotB.
     if (!url.searchParams.has('portal') && (url.searchParams.get('source')==='pwa' || url.pathname.endsWith('/hotb-fresh.html'))) {
       const canonicalUrl=new URL(CANONICAL_LAUNCH,self.location.href);
       const canonical=new Request(canonicalUrl.href,{cache:'no-store'});
