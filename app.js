@@ -5803,7 +5803,16 @@ function bindPractice(){
    // the Build lock. The coach can then make an explicit setup change and rebuild.
    const baseErrors=[...new Set(practicePlan.feasibilityErrors.map(error=>String(error||'').trim()).filter(Boolean))];
    const availablePitchers=practicePlayers.filter(player=>player.canPitch);
+   const availableCatchers=practicePlayers.filter(player=>player.canCatch);
    const identityBlocked=baseErrors.some(error=>/duplicate player names|every attending player must have a name|invalid availability/i.test(error));
+   // Resolution 499: if a required live role is completely absent, every existing
+   // compromise probe is monotonic in the wrong direction: Hitting Only / Not
+   // Catching can only REMOVE a role and Block 11 can only add time. Re-running the
+   // full scheduler for those candidates cannot possibly restore the missing role.
+   // On iPhone this impossible-candidate loop was the reproducible lockup when
+   // Tayte was absent, Lydia was Not Catching, Brooklyn/Makenna were late and
+   // Lakyn was Hitting Only. Fail fast to Practice Resolution instead.
+   const hardRoleMissing=!availablePitchers.length||!availableCatchers.length;
    // Resolution 497: now that the base scheduler's internal grouping/warm-up
    // searches are complete, a remaining failure is a genuine coaching conflict.
    // Verify a small, bounded set of coaching compromises before showing Resolution.
@@ -5819,7 +5828,7 @@ function bindPractice(){
    };
    const pitchers=[],catchers=[],combinedPitchers=[],combinedCatchers=[],candidateNotices={};
    const recordCandidate=(bucket,name,result)=>{if(!result)return;bucket.push(name);candidateNotices[result.label]=result.notices};
-   if(!identityBlocked){
+   if(!identityBlocked&&!hardRoleMissing){
     practicePlayers.filter(player=>player.canPitch).forEach(player=>{
      const candidate=practicePlayers.map(item=>item.name===player.name?{...item,canPitch:false,requiresPitchWarmup:false}:item);
      recordCandidate(pitchers,player.name,verifyResolutionCandidate(candidate,durationMinutes,'Hitting Only: '+player.name));
@@ -5829,11 +5838,11 @@ function bindPractice(){
      recordCandidate(catchers,player.name,verifyResolutionCandidate(candidate,durationMinutes,'Not Catching: '+player.name));
     });
    }
-   const extensionResult=!identityBlocked&&Number(durationMinutes)===120?verifyResolutionCandidate(practiceResolutionExtendedPlayers(practicePlayers,startTime,durationMinutes),132,'Block 11'):null;
+   const extensionResult=!identityBlocked&&!hardRoleMissing&&Number(durationMinutes)===120?verifyResolutionCandidate(practiceResolutionExtendedPlayers(practicePlayers,startTime,durationMinutes),132,'Block 11'):null;
    const canExtend=!!extensionResult;if(extensionResult)candidateNotices['Block 11']=extensionResult.notices;
    // Only try two-part compromises when neither corresponding one-part change nor
    // Block 11 already solves the practice. This keeps failed-build work bounded.
-   if(!identityBlocked&&!canExtend){
+   if(!identityBlocked&&!hardRoleMissing&&!canExtend){
     practicePlayers.filter(player=>player.canPitch&&!pitchers.includes(player.name)).forEach(player=>{
      const candidate=practiceResolutionExtendedPlayers(practicePlayers.map(item=>item.name===player.name?{...item,canPitch:false,requiresPitchWarmup:false}:item),startTime,durationMinutes);
      recordCandidate(combinedPitchers,player.name,verifyResolutionCandidate(candidate,132,'Hitting Only + Block 11: '+player.name));
@@ -5848,6 +5857,10 @@ function bindPractice(){
    const hasVerifiedChoice=!!(pitchers.length||catchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
    const rosterGuidance=identityBlocked
     ?'HotB found attendee identity or availability information that must be corrected. Fix the roster/guest or arrival/departure entry and build again.'
+    :hardRoleMissing&&!availableCatchers.length
+     ?'No attending player is currently available to catch. Return to setup and make an attending catcher available for Catching, or change attendance so a catcher is present.'
+     :hardRoleMissing&&!availablePitchers.length
+      ?'No attending player is currently available to pitch Live. Return to setup and make an attending pitcher available to pitch, or change attendance so a pitcher is present.'
     :hasVerifiedChoice
      ?'HotB verified the choices above against this exact practice. Choose the coaching compromise you prefer, or return to setup and make a different change.'
      :availablePitchers.length
