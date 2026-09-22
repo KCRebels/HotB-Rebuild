@@ -248,7 +248,7 @@ mustInclude("rollback whose recovery equality proof could not be sealed.","rollb
 mustInclude("refused to clear a practice recovery session that could not be sealed.","practice-session clear must seal its rollback authority before mutation");
 mustInclude("could not restore the previous practice recovery session after clear failure.","practice-session clear failure must restore and persist the previous recovery authority");
 mustInclude("document.querySelectorAll('[data-accommodation-arrival],[data-accommodation-departure],[data-accommodation-pitch],[data-accommodation-warmup],[data-accommodation-catch],[data-accommodation-prepractice],[data-accommodation-limitations]').forEach","Practice Builder must bind accommodation controls as a collection so setup binding reaches Build Practice Schedule");
-assert.ok((source.match(/bundle:'resolution454'/g)||[]).length>=3,"all current mobile Resolution diagnostic branches must identify the current bounded implementation");
+assert.ok((source.match(/bundle:'resolution455'/g)||[]).length>=3,"all current mobile Resolution diagnostic branches must identify the current bounded implementation");
 mustNotInclude("practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);","verified Resolution publication must not rewrite selected attendance after ownership has already been sealed");
 mustInclude("practiceSetupState.selectedNames=attendees.map(player=>player.name);","Build Practice Schedule must seal the submitted attendance into setup state before scheduler work begins");
 mustInclude("practiceSetupState.startTime=startTime;","Build Practice Schedule must seal submitted start time before Resolution verification");
@@ -268,3 +268,10 @@ mustInclude("setResolutionStage('practice-resolution-budget-exceeded')","budget 
 mustNotInclude("bundle:'resolution439'","no stale Resolution diagnostic bundle marker may survive in production code");
 mustInclude("+'/'+unique.length+' — '","completed candidate status must report the deduplicated candidate count, not the pre-collapse source count");
 console.log('practice-resolution static contract tests passed');
+
+// Resolution 455: candidate verification yields between failed scheduler passes so
+// mobile Safari can paint progress and publication is not trapped in one long task.
+mustInclude("const runResolutionCandidates=async(","candidate verification must be an async bounded transaction");
+mustInclude("await new Promise(resolve=>setTimeout(resolve,0))","failed candidates must yield before the next scheduler verification pass");
+mustInclude("if(!await runResolutionCandidates(","candidate orchestration must await the yielded verification transaction");
+mustInclude("addEventListener('click',async()=>","Build Practice Schedule must own the async Resolution transaction");
