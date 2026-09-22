@@ -898,3 +898,16 @@ console.log('Resolution 539 postcondition diagnostic regression passed.');
  assert.match(branch,/postcondition-clause-\d+/,'postcondition must contain exhaustive numbered diagnostics');
 }
 console.log('Resolution 540 exhaustive postcondition diagnostic regression passed.');
+
+
+/* Resolution 542 block-time representation regression.
+   Scheduler emits 12-hour display labels while setup stores a 24-hour start. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('const resolutionPostcondition=');
+ const end=source.indexOf('const rebuildResolvedPractice=',start);
+ const branch=source.slice(start,end);
+ assert.match(branch,/match\(\/\^\(\\d\{1,2\}\):\(\\d\{2\}\)\(a\|p\)\$\//,'postcondition clock parser must accept scheduler 12-hour labels');
+ assert.match(branch,/hour=hour%12\+\(match\[3\]===['"]p['"]\?12:0\)/,'postcondition clock parser must normalize am/pm labels');
+}
+console.log('Resolution 542 block-time representation regression passed.');
