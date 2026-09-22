@@ -5958,7 +5958,7 @@ function bindPractice(){
      // player's underlying roster eligibility here, not the current accommodation
      // switch. Otherwise "Hitting Only: Brooklyn" can never be presented because
      // the candidate itself necessarily has canPitch=false.
-     const role=(name,type)=>{const v=verifiedByName.get(name),l=liveByName.get(name);return !!v&&!!l&&(type==='pitcher'?v.isPitcher===true&&l.isPitcher===true:v.isCatcher===true&&l.isCatcher===true)};
+     const role=(name,type)=>{const v=verifiedByName.get(name),l=liveByName.get(name);return !!v&&!!l&&(type==='pitcher'?v.isPitcher===true&&isPitcherProfile(l):v.isCatcher===true&&positionTokens(l).includes('C'))};
      if(!r.pitchers.every(name=>role(name,'pitcher'))||!r.combinedPitchers.every(name=>role(name,'pitcher'))){
       const bad=[...r.pitchers,...r.combinedPitchers].filter(name=>!role(name,'pitcher')).map(name=>{const v=verifiedByName.get(name),l=liveByName.get(name);return name+'{vP:'+String(v?.isPitcher)+',vCan:'+String(v?.canPitch)+',lP:'+String(l?.isPitcher)+'}'}).join('|');
       return fail('pitcher-role-'+bad);
