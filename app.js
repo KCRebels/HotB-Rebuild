@@ -4665,7 +4665,8 @@ function bind(){
 
     if(persistPracticeSession()!==true){
      practiceSetupState=preCommitSetup;practicePlan=preCommitPlan;
-     throw new Error('Resolved practice could not be committed to restart recovery.');
+     let persistDetail='unknown';try{persistDetail=sessionStorage.getItem('hotb-practice-persist-failure')||'unknown'}catch(_){}
+     throw new Error('Resolved practice could not be committed to restart recovery ['+persistDetail+'].');
     }
     const committed=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
     if(!committed||JSON.stringify(committed)!==JSON.stringify(db.activePracticeSession)||committed.plan?.portalDraftId!==resolutionDraftId)throw new Error('Resolved practice did not survive restart recovery exactly.');
@@ -5078,6 +5079,7 @@ function persistPracticeSession(){
   previousActivePracticeSession=previousActivePracticeSessionBytes?JSON.parse(previousActivePracticeSessionBytes):null;
  }catch(error){console.error('HotB refused to replace a practice recovery session whose previous authority could not be sealed.',error);return false}
  const restorePreviousSessionAfterFailure=(message,error=null)=>{
+  try{sessionStorage.setItem('hotb-practice-persist-failure',String(message||error?.message||'unknown'))}catch(_){}
   if(error)console.error(message,error);else console.error(message);
   db.activePracticeSession=previousActivePracticeSession;
   try{
@@ -5092,13 +5094,13 @@ function persistPracticeSession(){
  let persistedSessionBytes='';
  try{persistedSessionBytes=JSON.stringify(db.activePracticeSession)}
  catch(error){return restorePreviousSessionAfterFailure('HotB could not seal the saved practice recovery session.',error)}
- if(persistedSessionBytes!==serializedSession)return restorePreviousSessionAfterFailure('HotB practice persistence changed the session during save');
+ if(persistedSessionBytes!==serializedSession)return restorePreviousSessionAfterFailure('HotB practice persistence changed the session during save [persist-bytes]');
  // Persistence success means the exact serialized session is immediately
  // restorable, not merely that an object was assigned to db.
  let restored=null;
  try{restored=window.HotBPracticeSession.restore?.(db.activePracticeSession)}
  catch(error){return restorePreviousSessionAfterFailure('HotB could not restore the practice session it just persisted',error)}
- if(!restored?.plan?.portalDraftId||restored.plan.portalDraftId!==practicePlan.portalDraftId||JSON.stringify(restored)!==serializedSession)return restorePreviousSessionAfterFailure('HotB could not restore the exact practice session it just persisted')
+ if(!restored?.plan?.portalDraftId||restored.plan.portalDraftId!==practicePlan.portalDraftId||JSON.stringify(restored)!==serializedSession)return restorePreviousSessionAfterFailure('HotB could not restore the exact practice session it just persisted [restore-bytes]')
  // A Resolution commit is not allowed to report persistence success merely because
  // the draft ID survived serialization. Its setup identity must survive too; the
  // full resolved-plan postcondition is checked by the owning transaction immediately
@@ -5106,9 +5108,9 @@ function persistPracticeSession(){
  if(practiceResolutionApplyToken){
   const restoredSetup=restored.setupState||{},liveNames=(practicePlan.players||[]).map(player=>player.name),savedNames=Array.isArray(restoredSetup.selectedNames)?restoredSetup.selectedNames:[];
   if(String(restoredSetup.startTime||'')!==String(practicePlan.startTime||'')||Number(restoredSetup.durationMinutes)!==Number(practicePlan.durationMinutes)||savedNames.length!==liveNames.length||new Set(savedNames).size!==savedNames.length||savedNames.some((name,index)=>name!==liveNames[index])){
-   return restorePreviousSessionAfterFailure('HotB Practice Resolution restart recovery changed the resolved setup identity');
+   return restorePreviousSessionAfterFailure('HotB Practice Resolution restart recovery changed the resolved setup identity [setup-identity]');
   }
-  if(JSON.stringify(restored.plan)!==JSON.stringify(practicePlan))return restorePreviousSessionAfterFailure('HotB Practice Resolution restart recovery changed the resolved plan bytes');
+  if(JSON.stringify(restored.plan)!==JSON.stringify(practicePlan))return restorePreviousSessionAfterFailure('HotB Practice Resolution restart recovery changed the resolved plan bytes [plan-bytes]');
   // Resolution 469: setup recovery is authoritative too. Recreate every saved
   // attendee from the persisted accommodations and require exact parity with the
   // persisted resolved plan before reporting a successful commit.
@@ -5118,7 +5120,7 @@ function persistPracticeSession(){
    const matches=roster.filter(item=>item.name===player.name);
    return matches.length===1?practicePlayerModel(matches[0],savedAccommodations[player.name],restored.plan.startTime,restored.plan.durationMinutes):null;
   });
-  if(recoveredPlayers.some((player,index)=>!player||recoveryFields.some(field=>player[field]!==restored.plan.players[index][field])))return restorePreviousSessionAfterFailure('HotB Practice Resolution restart recovery changed attendee availability or role state');
+  if(recoveredPlayers.some((player,index)=>!player||recoveryFields.some(field=>player[field]!==restored.plan.players[index][field])))return restorePreviousSessionAfterFailure('HotB Practice Resolution restart recovery changed attendee availability or role state [attendee-recovery]');
  }
  return true;
 }
