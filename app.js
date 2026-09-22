@@ -5986,10 +5986,14 @@ function bindPractice(){
   }
   armBuildWatchdog('post-scheduler');
   if(practicePlan.feasibilityErrors?.length){
-   // The base scheduler has returned. Practice Resolution can require many additional
-   // scheduler/audit passes; the stage heartbeat below is re-armed around each
-   // intentional frame yield so Safari repaint time is never mistaken for a stall.
-   armBuildWatchdog('practice-resolution',20000);
+   // The base scheduler has returned. Practice Resolution is a cooperative async
+   // transaction with explicit progress stages. Retire the initial scheduler
+   // watchdog before entering it; Resolution itself no longer uses wall-clock
+   // timers, eliminating false iPhone stalls during legitimate candidate work.
+   clearTimeout(buildWatchdog);buildWatchdog=null;
+   clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
+   buildWatchdogGeneration++;
+   buildWatchdogStage='practice-resolution';
    // Give iPhone Safari a real frame between expensive candidate builds. A zero-ms
    // timer can be coalesced and immediately re-enter JavaScript without painting.
    const yieldResolutionUI=()=>new Promise(resolve=>{
