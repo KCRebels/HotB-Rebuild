@@ -6219,23 +6219,41 @@ function bindPractice(){
     resolutionVerificationCache.set(key,{safe,notices});
     return safe;
    };
+   // Candidate fan-out is the expensive part of a 13-player Resolution. Run one
+   // complete candidate per browser task, then publish progress before starting the
+   // next one. This prevents a long chain of synchronous scheduler + validator work
+   // from starving Safari's paint queue while preserving exact verification order.
+   const runResolutionCandidates=async(candidates,stage,buildCandidate,onSafe,ownershipMessage)=>{
+    for(let index=0;index<candidates.length;index++){
+     setResolutionStage(stage);
+     await yieldResolutionUI();
+     if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed',ownershipMessage);return false}
+     const candidate=candidates[index],spec=buildCandidate(candidate);
+     if(verifyResolutionCandidate(spec.players,spec.duration,spec.label,spec.expectedChange))onSafe(candidate,spec);
+     markBuildProgress();
+     // A verified candidate can itself consume a full mobile task. Yield after the
+     // audit as well as before it so queued watchdog probes and UI paint cannot pile
+     // up behind the next scheduler invocation.
+     await yieldResolutionUI();
+     if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed',ownershipMessage);return false}
+    }
+    return true;
+   };
    // Only offer a pitcher decision after proving that exact one-practice change builds cleanly.
-   for(const pitcher of availablePitchers){
-    setResolutionStage('practice-resolution-pitcher');
-    await yieldResolutionUI();
-    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
-    const testPlayers=practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
-    if(verifyResolutionCandidate(testPlayers,durationMinutes,'Hitting Only: '+pitcher.name,{role:'pitcher',name:pitcher.name}))solvingPitchers.push(pitcher.name)
-   }
+   if(!await runResolutionCandidates(
+    availablePitchers,'practice-resolution-pitcher',
+    pitcher=>({players:practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:durationMinutes,label:'Hitting Only: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name}}),
+    pitcher=>solvingPitchers.push(pitcher.name),
+    'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.'
+   ))return;
    let canExtend=false,combinedPitchers=[],solvingCatchers=[],combinedCatchers=[];
    const availableCatchers=identityBlocked?[]:practicePlayers.filter(player=>player.canCatch);
-   for(const catcher of availableCatchers){
-    setResolutionStage('practice-resolution-catcher');
-    await yieldResolutionUI();
-    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
-    const testPlayers=practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player);
-    if(verifyResolutionCandidate(testPlayers,durationMinutes,'Not Catching: '+catcher.name,{role:'catcher',name:catcher.name}))solvingCatchers.push(catcher.name)
-   }
+   if(!await runResolutionCandidates(
+    availableCatchers,'practice-resolution-catcher',
+    catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
+    catcher=>solvingCatchers.push(catcher.name),
+    'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.'
+   ))return;
    if(!identityBlocked&&Number(durationMinutes)===120){
     // Block 11 extends only players who were actually available through the end
     // of the original 120-minute practice. Explicit departures remain protected.
