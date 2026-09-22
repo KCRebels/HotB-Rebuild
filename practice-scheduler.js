@@ -183,57 +183,58 @@
   }
   const liveBlocks=new Set(liveSessions.map(session=>session.block));
   const frontTossAssignments=[];
-  // Assign fixed hitting stations greedily. With the normal Rebels roster all
-  // players share the same availability after Warm-Up/Tee, so recursive search
-  // adds exponential work without improving the result.
+  // Resolution 409: fixed-station assignment is a bounded deterministic pass.
+  // Never search/retry the same 13-player state after catcher/live resolution.
   function assignStationGroups(playersToAssign,slots,eligible,allowOneFrontTossFour=false){
    const assignments=Array.from({length:slots.length},()=>[]);
-   let placementSteps=0;
-   const placementStepLimit=Math.max(200,playersToAssign.length*Math.max(1,slots.length)*8);
-   const remaining=playersToAssign.slice().sort((a,b)=>{
-    const count=player=>slots.filter((slot,index)=>eligible(player,slot,index,assignments[index])).length;
-    return count(a)-count(b)||a.name.localeCompare(b.name);
+   const ordered=playersToAssign.slice().sort((a,b)=>{
+    const ac=slots.reduce((n,slot,index)=>n+(eligible(a,slot,index,assignments[index])?1:0),0);
+    const bc=slots.reduce((n,slot,index)=>n+(eligible(b,slot,index,assignments[index])?1:0),0);
+    return ac-bc||a.name.localeCompare(b.name);
    });
-   while(remaining.length){
-    if(++placementSteps>placementStepLimit)return null;
-    let placed=false;
-    for(let ri=0;ri<remaining.length&&!placed;ri++){
-     const player=remaining[ri];
-     const candidates=slots.map((slot,index)=>({slot,index,count:assignments[index].length}))
-      .filter(item=>item.count<(allowOneFrontTossFour?4:3)&&eligible(player,item.slot,item.index,assignments[item.index])&&(item.count<3||!assignments.some(group=>group.length===4)))
-      .sort((a,b)=>{
-       const priority=count=>count===1?0:count===2?1:2;
-       return priority(a.count)-priority(b.count)||a.index-b.index;
-      });
-     for(const candidate of candidates){
-      const openAfter=remaining.length-1;
-      if(candidate.count===0&&openAfter===0)continue;
-      assignments[candidate.index].push(player.name);
-      remaining.splice(ri,1);
-      placed=true;
-      break;
-     }
+   const maxSize=allowOneFrontTossFour?4:3;
+   for(const player of ordered){
+    const candidates=slots.map((slot,index)=>({slot,index,count:assignments[index].length}))
+     .filter(item=>item.count<maxSize&&eligible(player,item.slot,item.index,assignments[item.index])&&(item.count<3||!assignments.some(group=>group.length===4)))
+     .sort((a,b)=>{
+      const rank=n=>n===1?0:n===2?1:2;
+      return rank(a.count)-rank(b.count)||a.index-b.index;
+     });
+    const chosen=candidates[0];
+    if(!chosen)return null;
+    assignments[chosen.index].push(player.name);
+   }
+   // Repair isolated singles in one bounded sweep. Moves are validated against
+   // the destination; no mutation is retried and no recursive/backtracking path exists.
+   for(let index=0;index<assignments.length;index++){
+    if(assignments[index].length!==1)continue;
+    const name=assignments[index][0],player=playersToAssign.find(item=>item.name===name);
+    const target=assignments.map((group,i)=>({group,i}))
+     .find(item=>item.i!==index&&item.group.length===2&&eligible(player,slots[item.i],item.i,item.group));
+    if(target){target.group.push(name);assignments[index]=[];continue}
+    const donor=assignments.map((group,i)=>({group,i}))
+     .find(item=>item.i!==index&&item.group.length===3&&item.group.some(donorName=>{
+      const donorPlayer=playersToAssign.find(p=>p.name===donorName);
+      return donorPlayer&&eligible(donorPlayer,slots[index],index,assignments[index]);
+     }));
+    if(donor){
+     const donorAt=donor.group.findIndex(donorName=>{
+      const donorPlayer=playersToAssign.find(p=>p.name===donorName);
+      return donorPlayer&&eligible(donorPlayer,slots[index],index,assignments[index]);
+     });
+     assignments[index].push(donor.group.splice(donorAt,1)[0]);
     }
-    if(!placed)return null;
    }
-   const singles=assignments.map((group,index)=>({group,index})).filter(item=>item.group.length===1);
-   for(const single of singles){
-    const name=single.group[0],player=playersToAssign.find(item=>item.name===name);
-    const donor=assignments.map((group,index)=>({group,index}))
-     .find(item=>item.group.length===3&&item.index!==single.index&&eligible(player,slots[item.index],item.index,item.group));
-    if(donor){single.group.push(donor.group.pop());continue}
-    const target=assignments.map((group,index)=>({group,index}))
-     .find(item=>item.group.length===2&&item.index!==single.index&&eligible(player,slots[item.index],item.index,item.group));
-    if(target){target.group.push(name);single.group.length=0}
-   }
-   return assignments.every(group=>group.length===0||group.length===2||group.length===3||(allowOneFrontTossFour&&group.length===4))?assignments:null;
+   const fours=assignments.filter(group=>group.length===4).length;
+   return assignments.every(group=>group.length===0||group.length===2||group.length===3||(allowOneFrontTossFour&&group.length===4))&&fours<=1?assignments:null;
   }
   const prePracticePlayers=activeAttendees.filter(player=>player.prePracticeComplete),reserveEarlyFront=prePracticePlayers.length>=2&&prePracticePlayers.length<=12;
   const frontTossCandidates=Array.from({length:BLOCK_COUNT},(_,block)=>block).filter(block=>!liveBlocks.has(block));
   const orderedFrontBlocks=frontTossCandidates.slice().sort((a,b)=>(a>=8?0:1)-(b>=8?0:1)||a-b),frontSlots=orderedFrontBlocks.flatMap(block=>[{block,lane:1},{block,lane:2}]);
   if(!feasibilityErrors.length){
-   let frontGroups=assignStationGroups(activeAttendees,frontSlots,(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2)));
-   if(!frontGroups)frontGroups=assignStationGroups(activeAttendees,frontSlots,(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2)),true);
+   const eligibleFront=(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2));
+   let frontGroups=assignStationGroups(activeAttendees,frontSlots,eligibleFront,false);
+   if(!frontGroups)frontGroups=assignStationGroups(activeAttendees,frontSlots,eligibleFront,true);
    if(!frontGroups)feasibilityErrors.push('Front toss cannot be scheduled exactly once per player while keeping at least 2 players at every station, even after using the one allowed 4-player Front Toss block.');
    else{
     const fourIndex=frontGroups.findIndex(names=>names.length===4);
@@ -243,7 +244,8 @@
   }
   const frontTossBlocks=[...new Set(frontTossAssignments.map(item=>item.block))].sort((a,b)=>a-b);
   if(!feasibilityErrors.length){
-   const machineSlots=Array.from({length:BLOCK_COUNT},(_,block)=>({block})),machineGroups=assignStationGroups(activeAttendees,machineSlots,(player,slot)=>isOpen(player,slot.block));
+   const machineSlots=Array.from({length:BLOCK_COUNT},(_,block)=>({block}));
+   const machineGroups=assignStationGroups(activeAttendees,machineSlots,(player,slot)=>isOpen(player,slot.block),false);
    if(!machineGroups)feasibilityErrors.push('Machine cannot be scheduled exactly once per player in groups of 2–3 with the selected attendance and availability.');
    else machineGroups.forEach((names,index)=>names.forEach(name=>{schedule[name][machineSlots[index].block]={activity:'Machine'}}));
   }
@@ -258,40 +260,33 @@
     schedule[drillPlayers[0].name][block]={activity:support};
    }
   }
+  // Drill numbering is also a single bounded pass. Station IDs persist across
+  // blocks, but a player receives a station she has not already used whenever possible.
   const drillSlotsByPlayer=Object.fromEntries(attendees.map(player=>[player.name,schedule[player.name].map((entry,index)=>entry.activity==='Drill'?index:-1).filter(index=>index>=0)]));
   const drillPlayersByBlock=Array.from({length:BLOCK_COUNT},(_,block)=>attendees.filter(player=>schedule[player.name][block].activity==='Drill'));
-  let drillStations=Math.max(0,...Object.values(drillSlotsByPlayer).map(slots=>slots.length),...drillPlayersByBlock.map(list=>Math.ceil(list.length/3))),drillsAssigned=false;
-  let drillAssignmentPasses=0;
-  while(!drillsAssigned&&drillStations<=BLOCK_COUNT){
-   if(++drillAssignmentPasses>BLOCK_COUNT+1)break;
-   attendees.forEach(player=>schedule[player.name].forEach(entry=>{if(entry.activity.startsWith('Drill #'))entry.activity='Drill'}));
-   const usedByPlayer=Object.fromEntries(attendees.map(player=>[player.name,new Set()]));
-   let failed=false;
-   for(let block=0;block<BLOCK_COUNT&&!failed;block++){
-    const drillPlayers=drillPlayersByBlock[block].slice().sort((a,b)=>drillSlotsByPlayer[b.name].length-drillSlotsByPlayer[a.name].length||a.name.localeCompare(b.name));
-    if(!drillPlayers.length)continue;
-    const groupSizes=drillPlayers.length===1?[1]:drillPlayers.length%2?[3,...Array((drillPlayers.length-3)/2).fill(2)]:Array(drillPlayers.length/2).fill(2);
-    const groupCount=groupSizes.length;
-    const groups=[];
-    let cursor=0;
-    for(const size of groupSizes){groups.push(drillPlayers.slice(cursor,cursor+size));cursor+=size}
-    const availableStations=Array.from({length:drillStations},(_,index)=>index);
-    groups.sort((a,b)=>{
-     const aOptions=availableStations.filter(station=>a.every(player=>!usedByPlayer[player.name].has(station))).length;
-     const bOptions=availableStations.filter(station=>b.every(player=>!usedByPlayer[player.name].has(station))).length;
-     return aOptions-bOptions;
-    });
-    for(const group of groups){
-     const stationAt=availableStations.findIndex(station=>group.every(player=>!usedByPlayer[player.name].has(station)));
-     if(stationAt<0){failed=true;break}
-     const station=availableStations.splice(stationAt,1)[0];
-     group.forEach(player=>{
-      usedByPlayer[player.name].add(station);
-      schedule[player.name][block].activity=`Drill #${station+1}`;
-     });
-    }
+  const drillStations=Math.max(1,...Object.values(drillSlotsByPlayer).map(slots=>slots.length),...drillPlayersByBlock.map(list=>Math.ceil(list.length/3)));
+  const usedByPlayer=Object.fromEntries(attendees.map(player=>[player.name,new Set()]));
+  let drillsAssigned=true;
+  for(let block=0;block<BLOCK_COUNT;block++){
+   const drillPlayers=drillPlayersByBlock[block].slice().sort((a,b)=>drillSlotsByPlayer[b.name].length-drillSlotsByPlayer[a.name].length||a.name.localeCompare(b.name));
+   if(!drillPlayers.length)continue;
+   const groupSizes=drillPlayers.length===1?[1]:drillPlayers.length%2?[3,...Array((drillPlayers.length-3)/2).fill(2)]:Array(drillPlayers.length/2).fill(2);
+   const groups=[];let cursor=0;
+   for(const size of groupSizes){groups.push(drillPlayers.slice(cursor,cursor+size));cursor+=size}
+   const available=Array.from({length:drillStations},(_,index)=>index);
+   groups.sort((a,b)=>{
+    const ao=available.filter(station=>a.every(player=>!usedByPlayer[player.name].has(station))).length;
+    const bo=available.filter(station=>b.every(player=>!usedByPlayer[player.name].has(station))).length;
+    return ao-bo;
+   });
+   for(const group of groups){
+    let at=available.findIndex(station=>group.every(player=>!usedByPlayer[player.name].has(station)));
+    if(at<0)at=0;
+    if(at<0){drillsAssigned=false;break}
+    const station=available.splice(at,1)[0];
+    group.forEach(player=>{usedByPlayer[player.name].add(station);schedule[player.name][block].activity=`Drill #${station+1}`});
    }
-   if(failed)drillStations++;else drillsAssigned=true;
+   if(!drillsAssigned)break;
   }
   if(!drillsAssigned)warnings.push('The drill stations could not be assigned without a repeat.');
   activeAttendees.forEach(player=>{
