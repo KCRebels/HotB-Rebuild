@@ -8,6 +8,8 @@ assert(workflow.includes("&name='+encodeURIComponent(player.name||'')"));
 assert(workflow.includes("publishProfile(name,true)"));
 assert(profile.includes("bootstrapIdentity();"));
 assert(profile.includes("if(attempt<10){setTimeout(()=>loadProfile(attempt+1),400);return}"));
+assert(!profile.includes("if(attempt<10){setTimeout(()=>loadProfile(attempt+1),400);return}unavailable()"));
+assert(profile.includes("Scouting details are still syncing."));
 assert(!profile.includes("wrap.hidden=trueconst"));
 const scripts=[...profile.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(x=>x.trim());
 assert(scripts.length>0,'expected inline scouting report script');
