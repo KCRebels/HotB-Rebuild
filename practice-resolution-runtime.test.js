@@ -808,3 +808,18 @@ console.log('Resolution 533 post-Build persistence regression passed.');
  assert.doesNotMatch(branch,/structuredClone\(/,'Apply rollback capture must not depend on structuredClone');
 }
 console.log('Resolution 534 Apply rollback-capture regression passed.');
+
+
+/* Resolution 535 restore-normalization regression.
+   HotBPracticeSession.restore() adds runtime defaults to setup drafts. Apply safety
+   must compare sealed recovery authority, not require raw/restored byte equality. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf('const resolutionRollbackStateIsValid=state=>');
+ const end=source.indexOf('const restoreResolutionRollback',start);
+ const branch=source.slice(start,end);
+ assert.doesNotMatch(branch,/JSON\.stringify\(restoredSaved\)!==JSON\.stringify\(saved\)/,'rollback validator must allow restore normalization');
+ assert.match(branch,/JSON\.stringify\(restoredSaved\.resolution\)!==JSON\.stringify\(saved\.resolution\)/,'rollback validator must prove restored Resolution authority');
+ assert.match(branch,/JSON\.stringify\(restoredSaved\.setupState\)!==JSON\.stringify\(saved\.setupState\)/,'rollback validator must prove restored setup authority');
+}
+console.log('Resolution 535 restore-normalization regression passed.');
