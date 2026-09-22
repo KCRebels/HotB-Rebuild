@@ -5828,12 +5828,7 @@ function bindPractice(){
    // iPhone Safari. First mount a stable Resolution shell, then verify one candidate
    // per event-loop turn. The scheduler itself is bounded, so each turn has finite
    // work and the browser gets a paint/input opportunity between candidates.
-   const resolutionErrors=(identityBlocked?baseErrors:
-    !availableCatchers.length
-     ?['No attending player is currently available to catch. Live pitching requires an attending catcher.']
-     :!availablePitchers.length
-      ?['No attending player is currently available to pitch Live. Live work requires an attending pitcher.']
-      :baseErrors).slice().sort((a,b)=>a.localeCompare(b));
+   resolutionErrors.sort((a,b)=>a.localeCompare(b));
    const notices=Array.isArray(practicePlan.fallbackWarnings)?[...new Set(practicePlan.fallbackWarnings.map(value=>String(value||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)):[];
    const initialGuidance=identityBlocked
     ?'HotB found attendee identity or availability information that must be corrected. Fix the roster/guest or arrival/departure entry and build again.'
