@@ -5978,7 +5978,7 @@ function bindPractice(){
      window.scrollTo(0,0);
      const published=document.querySelector('.practice-resolution-modal');
      if(!published)throw new Error('Verified Practice Resolution did not mount.');
-     bindPracticeResolution();
+     bind();
     }
     catch(error){
      console.error('HotB could not publish verified Practice Resolution.',error);
