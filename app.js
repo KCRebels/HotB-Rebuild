@@ -6287,7 +6287,6 @@ function bindPractice(){
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
    markBuildProgress();
    setResolutionStage('practice-resolution-evidence');
-   await yieldResolutionUI();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was finalizing Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
    const survivingCandidateLabels=new Set([
     ...solvingPitchers.map(name=>'Hitting Only: '+name),
@@ -6306,14 +6305,12 @@ function bindPractice(){
     for(const label of Object.keys(verifiedCandidateNotices))delete verifiedCandidateNotices[label];
    }
    setResolutionStage('practice-resolution-evidence-complete');
-   await yieldResolutionUI();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed after HotB finalized Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const hasVerifiedResolution=!!(solvingPitchers.length||solvingCatchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
    // Final sealing/persistence/restore verification is expensive enough to block a
    // mobile paint. Give Safari a frame after candidate fan-out before entering the
    // publication transaction, then re-prove that the owned setup did not change.
    setResolutionStage('practice-resolution-seal');
-   await yieldResolutionUI();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be sealed. Nothing was committed. Please review the setup and build again.');return}
    const rosterGuidance=identityBlocked?'HotB found attendee identity or availability information that must be corrected before resolution. Fix the roster/guest or arrival/departure entry and build again; HotB will not guess or silently normalize it.':resolutionAuditFailures.length&&!hasVerifiedResolution?'HotB could not verify a safe automatic resolution because one or more verification builds/audits did not complete. Change attendance or availability, or build again after correcting the reported verification problem.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
    const resolutionSignature=practiceResolutionSignature(practicePlayers,startTime,durationMinutes);
@@ -6337,7 +6334,6 @@ function bindPractice(){
    // is intentionally large and both operations walk it; doing both under one
    // heartbeat can make a healthy iPhone build look stranded.
    setResolutionStage('practice-resolution-byte-seal');
-   await yieldResolutionUI();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be sealed. Nothing was committed. Please review the setup and build again.');return}
    let generatedResolutionBytes='';
    try{generatedResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not serialize the generated Practice Resolution.',error)}
@@ -6346,7 +6342,6 @@ function bindPractice(){
     return;
    }
    setResolutionStage('practice-resolution-snapshot-verify');
-   await yieldResolutionUI();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution snapshot verification. Nothing was committed. Please review the setup and build again.');return}
    practiceSetupState.selectedNames=practicePlayers.map(player=>player.name);
    practiceSetupState.startTime=startTime;
@@ -6361,7 +6356,6 @@ function bindPractice(){
    // persistence transaction. Repeated full JSON walks of the 13-player Resolution
    // were unnecessary work on iPhone and widened the watchdog race window.
    setResolutionStage('practice-resolution-prepersist-verify');
-   await yieldResolutionUI();
    let prepersistResolutionBytes='';
    try{prepersistResolutionBytes=JSON.stringify(practiceResolution)}catch(error){console.error('HotB could not seal Practice Resolution before persistence.',error)}
    if(!prepersistResolutionBytes||prepersistResolutionBytes!==generatedResolutionBytes){
@@ -6371,7 +6365,6 @@ function bindPractice(){
     return;
    }
    setResolutionStage('practice-resolution-persist');
-   await yieldResolutionUI();
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be saved. Nothing was committed. Please review the setup and build again.');return}
    practicePlan=null;
    if(persistPracticeDraft()!==true){console.error('HotB could not persist the verified Practice Resolution draft.');recoverPracticeBuildSetup('practice-resolution-persist-failed','HotB could not save the verified Practice Resolution. Your practice setup was kept so you can build again.');return}
@@ -6391,13 +6384,11 @@ function bindPractice(){
     practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-publication-invalid','HotB stopped because the saved Practice Resolution did not exactly match the verified decision. Please build the practice again.');return;
    }
    setResolutionStage('practice-resolution-session-restore');
-   await yieldResolutionUI();
    let publishedRestored=null;
    try{publishedRestored=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
    catch(error){console.error('HotB could not restore the published Practice Resolution recovery session.',error)}
    markBuildProgress();
    setResolutionStage('practice-resolution-session-compare');
-   await yieldResolutionUI();
    let restoredSessionBytes='',liveResolutionBytes='';
    try{
     restoredSessionBytes=publishedRestored?JSON.stringify(publishedRestored):'';
@@ -6412,7 +6403,6 @@ function bindPractice(){
     return;
    }
    setResolutionStage('practice-resolution-final-snapshot');
-   await yieldResolutionUI();
    if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
     console.error('HotB refused a Practice Resolution that was stale at modal publication.');
     practiceResolution=null;modal=null;persistPracticeDraft();recoverPracticeBuildSetup('practice-resolution-stale','HotB stopped because the Practice Resolution was no longer current. Please build the practice again.');return;
@@ -6421,7 +6411,6 @@ function bindPractice(){
    // final byte seal so the last publication turn stays small and deterministic.
    markBuildProgress();
    setResolutionStage('practice-resolution-publish');
-   await yieldResolutionUI();
    // The last yield is itself an asynchronous boundary. Re-prove both setup
    // ownership and exact bytes immediately before exposing any coaching choice.
    let prepublishResolutionBytes='';
