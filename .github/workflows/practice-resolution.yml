@@ -42,28 +42,28 @@ jobs:
         run: node pwa-update.test.js
       - name: Verify deployed bundle markers
         run: |
-          test "$(grep -o "app.js?v=20260921-resolution423" index.html | wc -l)" -eq 2
-          ! grep -q "app.js?v=20260921-resolution416" index.html
-          grep -q "app.js?v=20260921-resolution423" index.html
-          test "$(grep -o "practice-scheduler.js?v=20260921-resolution423" index.html | wc -l)" -eq 1
-          ! grep -q "practice-scheduler.js?v=20260921-resolution416" index.html
-          grep -q "BUILD_VERSION = '2026.09.21.226'" service-worker.js
+          test "$(grep -o "app.js?v=20260922-resolution439" index.html | wc -l)" -eq 2
+          ! grep -q "app.js?v=20260921-resolution423" index.html
+          grep -q "app.js?v=20260922-resolution439" index.html
+          test "$(grep -o "practice-scheduler.js?v=20260922-resolution439" index.html | wc -l)" -eq 1
+          ! grep -q "practice-scheduler.js?v=20260921-resolution423" index.html
+          grep -q "BUILD_VERSION = '2026.09.22.227'" service-worker.js
           grep -q "'./practice-scheduler.js'" service-worker.js
           grep -Fq "/\\/practice-scheduler\\.js" service-worker.js
           grep -Fq "'./manifest.webmanifest'" service-worker.js
           grep -Fq "'./pwa-update.js'" service-worker.js
           grep -Fq "/\\/pwa-update\\.js" service-worker.js
           grep -Fq "/\\/manifest\\.webmanifest" service-worker.js
-          grep -q "launch=226" service-worker.js
-          grep -q "pwa-update.js?v=20260921-pwa226" index.html
-          grep -q "BUILD_VERSION = '2026.09.21.226'" pwa-update.js
-          grep -q "url.searchParams.set('launch','226')" pwa-update.js
-          ! grep -q "20260920-pwa221" index.html
-          ! grep -q "2026.09.20.221" pwa-update.js
-          grep -q "launch=226" hotb-fresh.html
-          ! grep -q "launch=136" hotb-fresh.html
-          grep -q '"start_url": "./?source=pwa&launch=226"' manifest.webmanifest
-          ! grep -q 'launch=221' manifest.webmanifest
-          grep -q "manifest.webmanifest?v=20260921-launch226" index.html
-          ! grep -q "manifest.webmanifest?v=20260919-launch138" index.html
+          grep -q "launch=227" service-worker.js
+          grep -q "pwa-update.js?v=20260922-pwa227" index.html
+          grep -q "BUILD_VERSION = '2026.09.22.227'" pwa-update.js
+          grep -q "url.searchParams.set('launch','227')" pwa-update.js
+          ! grep -q "20260921-pwa226" index.html
+          ! grep -q "2026.09.21.226" pwa-update.js
+          grep -q "launch=227" hotb-fresh.html
+          ! grep -q "launch=226" hotb-fresh.html
+          grep -q '"start_url": "./?source=pwa&launch=227"' manifest.webmanifest
+          ! grep -q 'launch=226' manifest.webmanifest
+          grep -q "manifest.webmanifest?v=20260922-launch227" index.html
+          ! grep -q "manifest.webmanifest?v=20260921-launch226" index.html
           ! grep -q "Finalizing Resolution" app.js
