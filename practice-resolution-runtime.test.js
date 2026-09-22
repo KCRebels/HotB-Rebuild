@@ -645,24 +645,25 @@ console.log('Resolution 487 infeasible-candidate short-circuit regression passed
 
 
 
-/* Resolution 493 direct base-failure publication regression.
-   Once the one authoritative scheduler call returns feasibility errors, the same
-   Build handler must publish the failure panel directly. No secondary discovery,
-   ownership reread, candidate scheduler, timer, or persistence gate may intervene. */
+
+
+
+/* Resolution 497 verified coaching-option publication contract.
+   A genuine base failure may test only bounded coaching compromises. Every option
+   exposed to the coach must come from a successful rebuild plus full validator. */
 {
- const app493=require('node:fs').readFileSync('./app.js','utf8');
- const start=app493.indexOf('// Resolution 493: the failed base scheduler result is already authoritative.');
- const end=app493.indexOf('if(practicePlan.fallbackWarnings?.length)',start);
- assert.ok(start>=0&&end>start,'Resolution 493 direct-failure branch must exist');
- const branch=app493.slice(start,end);
- assert.ok(branch.includes("stage:'base-failure-direct-publish'"),'direct failure branch records its publication stage');
- assert.ok(branch.includes("modal='practiceResolution'"),'direct failure branch opens Resolution');
- assert.ok(branch.includes('setPracticeBuildControlsLocked(false)'),'direct failure branch releases setup lock before rendering');
- assert.ok(branch.includes('render();'),'direct failure branch renders synchronously');
- assert.ok(!branch.includes('buildSchedule('),'direct failure branch must never call scheduler again');
- assert.ok(!branch.includes('buildSetupStillOwned('),'direct failure branch must not reread DOM ownership');
- assert.ok(!branch.includes('practiceResolutionSnapshotIsCurrentAndValid('),'direct failure branch must not enter candidate snapshot validation');
- assert.ok(!branch.includes('setTimeout(')&&!branch.includes('requestAnimationFrame('),'direct failure publication must not depend on an iPhone continuation');
- assert.ok(!branch.includes('persistPracticeDraft(')&&!branch.includes('savePractice'),'direct failure publication must not depend on persistence');
+ const app497=require('node:fs').readFileSync('./app.js','utf8');
+ const start=app497.indexOf('// Resolution 497: now that the base scheduler');
+ const end=app497.indexOf("modal='practiceResolution'",start);
+ assert.ok(start>=0&&end>start,'Resolution 497 verified-option branch must exist');
+ const branch=app497.slice(start,end);
+ assert.ok(branch.includes('verifyResolutionCandidate'),'failed base build must verify coaching alternatives');
+ assert.ok(branch.includes('window.HotBPracticeScheduler.buildSchedule(players,startTime,duration'),'each alternative must rebuild from explicit candidate players');
+ assert.ok(branch.includes('window.HotBPracticeScheduler.validate(plan)'),'each alternative must pass the complete scheduler validator');
+ assert.ok(branch.includes("'Hitting Only: '+player.name"),'pitcher Hitting Only must be tested as a coaching option');
+ assert.ok(branch.includes("'Not Catching: '+player.name"),'catcher opt-out must be tested as a coaching option');
+ assert.ok(branch.includes("'Block 11'"),'emergency Block 11 must be tested as a coaching option');
+ assert.ok(branch.includes('sortedCandidateNotices'),'verified option notices must be sealed with the decision');
+ assert.ok(branch.includes("bundle:'resolution497'"),'published Resolution must identify the verified-option architecture');
 }
-console.log('Resolution 493 direct base-failure publication regression passed.');
+console.log('Resolution 497 verified coaching-option regression passed.');
