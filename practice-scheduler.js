@@ -91,39 +91,14 @@
     // coach/catcher resource allocation across all pitchers.
     return [block-1,block-2].some(warmBlock=>warmBlock>=2&&isOpen(pitcher,warmBlock));
    };
-   const liveHitterCapacity=(pitcher,block)=>activeAttendees.reduce((n,player)=>n+(player.name!==pitcher?.name&&isOpen(player,block)?1:0),0);
-   const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&pitcherCanUseLiveBlock(pitcher,block+offset)&&liveHitterCapacity(pitcher,block+offset)>=2));
-   // Resolution 498: pitcher placement is itself a bounded exact matching problem.
-   // A greedy "first free Live block" can consume the only non-Live blocks shared
-   // by a late arrival and an early departure, making Front Toss look impossible.
-   // Explore all legal starts for the most-constrained pitcher group instead.
-   const remaining=groups.map((group,index)=>({group,index})),memo=new Set();
-   const search=(left)=>{
-    if(!left.length)return true;
-    const key=left.map(item=>item.index).sort((a,b)=>a-b).join(',')+'|'+[...used].sort((a,b)=>a-b).join(',');
-    if(memo.has(key))return false;
-    let chosenAt=-1,choices=null;
-    for(let i=0;i<left.length;i++){
-     const possible=startsFor(left[i].group).filter(block=>left[i].group.every((_,offset)=>!used.has(block+offset)));
-     if(!possible.length){memo.add(key);return false}
-     if(choices===null||possible.length<choices.length){chosenAt=i;choices=possible}
-    }
-    const item=left[chosenAt],next=left.slice(0,chosenAt).concat(left.slice(chosenAt+1));
-    // Prefer placements that leave the largest number of attendees open in the
-    // remaining non-Live blocks. This is only ordering; exact backtracking remains
-    // authoritative and will try every legal placement if necessary.
-    choices.sort((a,b)=>{
-     const score=block=>activeAttendees.reduce((n,player)=>n+(isOpen(player,block)?1:0),0);
-     return score(a)-score(b)||b-a;
-    });
-    for(const start of choices){
-     const additions=[];item.group.forEach((pitcher,offset)=>{const block=start+offset;used.add(block);additions.push({pitcher,liveBlock:block})});placed.push(...additions);
-     if(search(next))return true;
-     placed.splice(placed.length-additions.length,additions.length);additions.forEach(entry=>used.delete(entry.liveBlock));
-    }
-    memo.add(key);return false;
-   };
-   return search(remaining)?placed:null;
+   const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&pitcherCanUseLiveBlock(pitcher,block+offset)));
+   const ordered=groups.slice().sort((x,y)=>startsFor(x).length-startsFor(y).length||y.length-x.length);
+   for(const group of ordered){
+    const start=startsFor(group).find(block=>group.every((_,offset)=>!used.has(block+offset)));
+    if(start===undefined)return null;
+    group.forEach((pitcher,offset)=>{used.add(start+offset);placed.push({pitcher,liveBlock:start+offset})});
+   }
+   return placed;
   }
   let plannedSessions=feasibilityErrors.length?[]:placePitcherGroups(pitcherGroups);
   if(!plannedSessions&&pitcherGroups.length){feasibilityErrors.push('The available pitchers cannot be placed into the live blocks while honoring arrival times, departure times, and consecutive blocks for any pitcher who throws twice.');plannedSessions=[]}
