@@ -6155,18 +6155,13 @@ function bindPractice(){
      ))return;
     }
    }
-   // Candidate fan-out is complete. Move directly into verified evidence publication.
-   setResolutionStage('practice-resolution-evidence');
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed before Practice Resolution could be finalized. Nothing was committed. Please review the setup and build again.');return}
-   // Finalization is intentionally tiny and synchronous. Normalize the verified
-   // candidate lists, then immediately enter the evidence stage.
+   // Candidate fan-out is complete. Normalize once, then enter verified evidence publication.
    solvingPitchers=[...new Set(solvingPitchers)].sort();
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
-   
    setResolutionStage('practice-resolution-evidence');
-   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was finalizing Practice Resolution. Nothing was committed. Please review the setup and build again.');return}
+   if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was preparing Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const survivingCandidateLabels=new Set([
     ...solvingPitchers.map(name=>'Hitting Only: '+name),
     ...solvingCatchers.map(name=>'Not Catching: '+name),
