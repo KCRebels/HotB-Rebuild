@@ -77,9 +77,11 @@
    pitcherGroups=orderedPitchers.map(pitcher=>doubleNames.has(pitcher.name)?[pitcher,pitcher]:[pitcher]);
   }
   function placePitcherGroups(groups){
-   // Seven legal live blocks make this a bounded placement problem. Avoid recursive
-   // group permutations on the iPhone build tap path.
-   const liveBlocks=[3,4,5,6,7,8,9],used=new Set(),placed=[];
+   // Live can use every post-Warm-Up/Tee block. A 120-minute practice has
+   // Blocks 4-10 available for Live; the verified 132-minute Block 11 extension
+   // must add Block 11 to this pool as real scheduling capacity rather than merely
+   // extending the later station grid. Keep placement deterministic and bounded.
+   const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-3)},(_,index)=>index+3),used=new Set(),placed=[];
    const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&(!pitcher||isOpen(pitcher,block+offset))));
    const ordered=groups.slice().sort((x,y)=>startsFor(x).length-startsFor(y).length||y.length-x.length);
    for(const group of ordered){
