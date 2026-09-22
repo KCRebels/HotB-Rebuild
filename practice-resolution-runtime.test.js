@@ -151,9 +151,27 @@ assert.deepEqual(restoredDraft.resolution,unresolved.resolution,'unresolved veri
 assert.equal(restoredDraft.setupState.durationMinutes,120,'unresolved recovery authority must remain the original 120-minute failed practice');
 
 
+// The broad combinatorial corpus is intentionally availability-neutral and may
+// not naturally produce a duration-only resolution. Add a targeted availability
+// corpus that proves the production Block 11 fast path with real scheduler output.
 const block11Fixtures=fixtures.filter(fixture=>fixture.verified.some(choice=>choice.kind==='block-11'));
-assert.ok(block11Fixtures.length,'runtime corpus must contain failed practices resolved by Block 11 so the mobile fast path is exercised');
-for(const fixture of block11Fixtures){
+const targetedBlock11Fixtures=[];
+for(let count=8;count<=15&&!targetedBlock11Fixtures.length;count++){
+ for(let pitchers=2;pitchers<=Math.min(6,count-2)&&!targetedBlock11Fixtures.length;pitchers++){
+  for(let catchers=1;catchers<=Math.min(3,count-pitchers)&&!targetedBlock11Fixtures.length;catchers++){
+   for(let constrained=0;constrained<pitchers&&!targetedBlock11Fixtures.length;constrained++){
+    const source=roster(count,pitchers,catchers).map((player,index)=>index===constrained?{...player,availableFromBlock:4}:player);
+    const failed=scheduler.buildSchedule(source,'18:00',120);
+    if(!failed.feasibilityErrors.length)continue;
+    const ext=extended(source),plan=scheduler.buildSchedule(ext,'18:00',132);
+    if(safe(plan))targetedBlock11Fixtures.push({source,failed,verified:[{kind:'block-11',name:null,plan,players:ext}],count,pitchers,catchers});
+   }
+  }
+ }
+}
+const allBlock11Fixtures=block11Fixtures.concat(targetedBlock11Fixtures);
+assert.ok(allBlock11Fixtures.length,'runtime corpus must contain a real failed practice resolved by Block 11 so the mobile fast path is exercised');
+for(const fixture of allBlock11Fixtures){
  const prioritized=prioritizedResolution(fixture.source);
  assert.equal(prioritized.kind,'block-11','Block 11-resolvable practice must choose the duration-only Resolution before role changes');
  assert.equal(prioritized.builds,1,'Block 11-resolvable practice must require exactly one Resolution scheduler build');
@@ -199,7 +217,7 @@ if(productionBase.feasibilityErrors.length){
  }
 }
 
-console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${thirteenPlayerFixtures.length} 13-player prioritized fixtures; ${block11Fixtures.length} Block-11 fast-path fixtures; ${prioritizedParityChecked} prioritized parity fixtures; exercised: ${[...exercised].join(', ')})`);
+console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${thirteenPlayerFixtures.length} 13-player prioritized fixtures; ${allBlock11Fixtures.length} Block-11 fast-path fixtures; ${prioritizedParityChecked} prioritized parity fixtures; exercised: ${[...exercised].join(', ')})`);
 
 // Mobile Resolution must collapse role alternatives that are structurally identical.
 // The current 13-player Rebels shape (5 pitchers, 2 catchers, full attendance) would
