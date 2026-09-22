@@ -6160,13 +6160,17 @@ function bindPractice(){
       pitcher=>combinedPitchers.push(pitcher.name),
       'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
      ))return;
-     const combinedCatcherCandidates=extendedPlayers.filter(player=>player.canCatch);
-     if(!runResolutionCandidates(
-      combinedCatcherCandidates,'practice-resolution-catcher-block11',
-      catcher=>({players:extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
-      catcher=>combinedCatchers.push(catcher.name),
-      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
-     ))return;
+     // As with the 120-minute role search, stop the category fan-out once one
+     // combined role + Block 11 solution is proven.
+     if(!combinedPitchers.length){
+      const combinedCatcherCandidates=extendedPlayers.filter(player=>player.canCatch);
+      if(!runResolutionCandidates(
+       combinedCatcherCandidates,'practice-resolution-catcher-block11',
+       catcher=>({players:extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
+       catcher=>combinedCatchers.push(catcher.name),
+       'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
+      ))return;
+     }
     }
    }
    // Candidate fan-out is complete. Normalize once, then enter verified evidence publication.
