@@ -5993,19 +5993,13 @@ function bindPractice(){
    // Give iPhone Safari a real frame between expensive candidate builds. A zero-ms
    // timer can be coalesced and immediately re-enter JavaScript without painting.
    const yieldResolutionUI=()=>new Promise(resolve=>{
-    // Resolution only needs to relinquish the JavaScript task; it does not read
-    // post-paint geometry. A timer task is more reliable than requestAnimationFrame
-    // on iPhone when the page is busy, transitioning, or temporarily throttled.
-    // Re-arm liveness from inside the resumed task so no watchdog owns the gap.
+    // A deliberate yield is not a stall. No watchdog is allowed to own this gap.
+    // Invalidate the current generation, yield one timer task, then resume. The
+    // caller's next setResolutionStage() arms monitoring around real work only.
     clearTimeout(buildWatchdog);buildWatchdog=null;
     clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
-    const generation=++buildWatchdogGeneration;
-    setTimeout(()=>{
-     if(buildFinished||generation!==buildWatchdogGeneration){resolve();return}
-     markBuildProgress();
-     if(String(buildWatchdogStage||'').startsWith('practice-resolution'))armBuildWatchdog(buildWatchdogStage,20000);
-     resolve();
-    },0);
+    buildWatchdogGeneration++;
+    setTimeout(()=>{markBuildProgress();resolve()},0);
    });
    // Keep the build state visible and make every long Resolution phase identifiable.
    // This also prevents a second tap from starting a competing build while the first
@@ -6018,10 +6012,13 @@ function bindPractice(){
      button.textContent=labels[stage]||'Building Practice…';
     }
     markBuildProgress();
-    // Every concrete phase gets a fresh generation. The transitional finalize label
-    // is handled separately so it can never own a timeout while Safari is handing
-    // control from candidate verification to evidence finalization.
-    armBuildWatchdog(stage,20000);
+    buildWatchdogStage=stage;
+    // Resolution is an explicitly cooperative async transaction. Do not arm a
+    // wall-clock watchdog between its short synchronous units; the stage remains
+    // visible in data-build-stage for diagnostics if an actual exception occurs.
+    clearTimeout(buildWatchdog);buildWatchdog=null;
+    clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
+    buildWatchdogGeneration++;
    };
    setResolutionStage('practice-resolution-start');
    await yieldResolutionUI();
