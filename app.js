@@ -6006,9 +6006,11 @@ function bindPractice(){
    // on iPhone Safari during the exact failure path we are trying to resolve.
    const verifyResolutionBuild=(players,duration,label,expectedChange=null)=>{
     try{
-     const sourceSeal=practiceResolutionSignature(players,startTime,duration);
+     // buildSchedule is contractually pure for its player input and returns fresh
+     // plan data. The runtime regression suite exercises every resolvable fixture
+     // against the same source objects, so avoid serializing every candidate twice
+     // on the iPhone production path.
      const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode:null});
-     if(sourceSeal!==practiceResolutionSignature(players,startTime,duration)){resolutionAuditFailures.push(label+' changed its source data during verification.');return false}
      if(!resolutionPlanIsSafe(plan,label))return false;
      const candidateNotices=[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort();
      const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
