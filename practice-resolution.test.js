@@ -102,6 +102,8 @@ mustInclude("if(sourceSeal!==practiceResolutionSignature(players,startTime,durat
 mustInclude("const audit=window.HotBPracticeScheduler.validate(plan);","candidate safety verification must run the production validator");
 mustInclude("verifiedCandidateNotices[label]=candidateNotices.slice();","candidate notice evidence must publish only after all candidate checks pass");
 mustInclude("if(stopAfterFirst)return true;","Resolution role searches must stop after the first verified option instead of exhausting equivalent permutations");
+mustInclude("combinedPitchers.push(pitcher.name),\n      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true","combined pitcher + Block 11 search must stop after its first verified solution");
+mustInclude("combinedCatchers.push(catcher.name),\n      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true","combined catcher + Block 11 search must stop after its first verified solution");
 mustInclude("if(!canExtend){","Resolution must skip role permutation searches when Block 11 already resolves the failed practice");
 
 mustInclude("match(/^(\\d{1,2}):(\\d{2})$/)","Resolution clock verification must parse numeric HH:MM values");
