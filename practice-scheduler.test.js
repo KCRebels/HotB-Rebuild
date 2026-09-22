@@ -221,6 +221,86 @@ for(const name of resolution.combinedCatchers){
  {const plan=scheduler.buildSchedule(changed,'18:00',132);assert.deepEqual(plan.feasibilityErrors,[],`displayed Not Catching + Block 11 choice ${name} must be independently proven`);assert.deepEqual(scheduler.validate(plan),[],`displayed Not Catching + Block 11 choice ${name} must pass the full validator`);}
 }
 
+
+/* Resolution 550 deterministic candidate-family discovery.
+   Search bounded, reproducible attendance/role variations and prove that every
+   selectable family the UI can expose is backed by an independently safe rebuild.
+   This also gives us exact fixtures instead of asking the coach to hunt manually. */
+function cloneRoster(players){return players.map(player=>({...player}));}
+function extendForResolution(players){
+ return players.map(player=>({...player,availableUntilBlock:player.availableUntilBlock===10?11:player.availableUntilBlock}));
+}
+function firstFixture(predicate){
+ const base=scenario(13,5,2);
+ const masks=1<<5;
+ for(let disabledPitchMask=0;disabledPitchMask<masks;disabledPitchMask++){
+  for(let early=-1;early<13;early++){
+   for(const until of [6,7,8,9,10]){
+    const roster=cloneRoster(base);
+    for(let p=0;p<5;p++)if(disabledPitchMask&(1<<p)){roster[p].canPitch=false;roster[p].requiresPitchWarmup=false;}
+    if(early>=0)roster[early].availableUntilBlock=until;
+    const found=resolutionCandidates(roster);
+    if(predicate(found))return {roster,found,disabledPitchMask,early,until};
+   }
+  }
+ }
+ return null;
+}
+const block11Fixture=firstFixture(result=>result.canExtend===true);
+if(block11Fixture){
+ const extended=extendForResolution(block11Fixture.roster);
+ const plan=scheduler.buildSchedule(extended,'18:00',132);
+ assert.deepEqual(plan.feasibilityErrors,[],'deterministic Block 11 fixture must rebuild safely');
+ assert.deepEqual(scheduler.validate(plan),[],'deterministic Block 11 fixture must pass the full audit');
+}
+const pitcherChoiceFixture=firstFixture(result=>result.pitchers.length>0);
+if(pitcherChoiceFixture){
+ for(const name of pitcherChoiceFixture.found.pitchers){
+  const changed=pitcherChoiceFixture.roster.map(player=>player.name===name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
+  const plan=scheduler.buildSchedule(changed,'18:00',120);
+  assert.deepEqual(plan.feasibilityErrors,[],`deterministic Hitting Only fixture for ${name} must rebuild safely`);
+  assert.deepEqual(scheduler.validate(plan),[],`deterministic Hitting Only fixture for ${name} must pass audit`);
+ }
+}
+const catcherChoiceFixture=firstFixture(result=>result.catchers.length>0);
+if(catcherChoiceFixture){
+ for(const name of catcherChoiceFixture.found.catchers){
+  const changed=catcherChoiceFixture.roster.map(player=>player.name===name?{...player,canCatch:false}:player);
+  const plan=scheduler.buildSchedule(changed,'18:00',120);
+  assert.deepEqual(plan.feasibilityErrors,[],`deterministic Not Catching fixture for ${name} must rebuild safely`);
+  assert.deepEqual(scheduler.validate(plan),[],`deterministic Not Catching fixture for ${name} must pass audit`);
+ }
+}
+const combinedPitcherFixture=firstFixture(result=>result.combinedPitchers.length>0);
+if(combinedPitcherFixture){
+ for(const name of combinedPitcherFixture.found.combinedPitchers){
+  const changed=extendForResolution(combinedPitcherFixture.roster).map(player=>player.name===name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
+  const plan=scheduler.buildSchedule(changed,'18:00',132);
+  assert.deepEqual(plan.feasibilityErrors,[],`deterministic combined Hitting Only + Block 11 fixture for ${name} must rebuild safely`);
+  assert.deepEqual(scheduler.validate(plan),[],`deterministic combined Hitting Only + Block 11 fixture for ${name} must pass audit`);
+ }
+}
+const combinedCatcherFixture=firstFixture(result=>result.combinedCatchers.length>0);
+if(combinedCatcherFixture){
+ for(const name of combinedCatcherFixture.found.combinedCatchers){
+  const changed=extendForResolution(combinedCatcherFixture.roster).map(player=>player.name===name?{...player,canCatch:false}:player);
+  const plan=scheduler.buildSchedule(changed,'18:00',132);
+  assert.deepEqual(plan.feasibilityErrors,[],`deterministic combined Not Catching + Block 11 fixture for ${name} must rebuild safely`);
+  assert.deepEqual(scheduler.validate(plan),[],`deterministic combined Not Catching + Block 11 fixture for ${name} must pass audit`);
+ }
+}
+// The bounded search itself is a regression signal: if a family is not reachable
+// from ordinary role/availability changes, keep it fail-closed rather than
+// fabricating an option. Log the exact fixtures so CI output can be used for the
+// next on-device test without trial-and-error.
+console.log('Resolution 550 fixtures',JSON.stringify({
+ block11:block11Fixture&&{disabledPitchMask:block11Fixture.disabledPitchMask,early:block11Fixture.early,until:block11Fixture.until},
+ pitcher:pitcherChoiceFixture&&{disabledPitchMask:pitcherChoiceFixture.disabledPitchMask,early:pitcherChoiceFixture.early,until:pitcherChoiceFixture.until,names:pitcherChoiceFixture.found.pitchers},
+ catcher:catcherChoiceFixture&&{disabledPitchMask:catcherChoiceFixture.disabledPitchMask,early:catcherChoiceFixture.early,until:catcherChoiceFixture.until,names:catcherChoiceFixture.found.catchers},
+ combinedPitcher:combinedPitcherFixture&&{disabledPitchMask:combinedPitcherFixture.disabledPitchMask,early:combinedPitcherFixture.early,until:combinedPitcherFixture.until,names:combinedPitcherFixture.found.combinedPitchers},
+ combinedCatcher:combinedCatcherFixture&&{disabledPitchMask:combinedCatcherFixture.disabledPitchMask,early:combinedCatcherFixture.early,until:combinedCatcherFixture.until,names:combinedCatcherFixture.found.combinedCatchers}
+}));
+
 const catcherDisabled=scenario(9,4,2);
 catcherDisabled[4].canCatch=false;
 const catcherDisabledPlan=scheduler.buildSchedule(catcherDisabled);
