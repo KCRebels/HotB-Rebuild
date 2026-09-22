@@ -925,3 +925,21 @@ function candidateAudit487(plan,validate){
  assert.equal(validations,1,'feasible candidate receives full safety validator exactly once');
 }
 console.log('Resolution 487 infeasible-candidate short-circuit regression passed.');
+
+
+/* Resolution 488 mobile long-task regression.
+   Candidate verification is deliberately asynchronous: every scheduler candidate
+   receives an event-loop boundary and ownership is checked again after the yield. */
+{
+ const appSource=require('node:fs').readFileSync('./app.js','utf8');
+ assert.ok(appSource.includes('const verifyOrderedCandidates=async('),'candidate verifier must be asynchronous');
+ assert.ok(appSource.includes('await new Promise(resolve=>setTimeout(resolve,0));'),'candidate verifier must yield to Safari before scheduler work');
+ const yieldAt=appSource.indexOf('await new Promise(resolve=>setTimeout(resolve,0));');
+ const ownershipAt=appSource.indexOf("if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed'",yieldAt);
+ const schedulerAt=appSource.indexOf('const safe=verifyResolutionBuild(',yieldAt);
+ assert.ok(yieldAt>=0&&ownershipAt>yieldAt&&schedulerAt>ownershipAt,'setup ownership must be re-proved after the mobile yield and before scheduler execution');
+ for(const label of ['practice-resolution-block11','practice-resolution-pitcher','practice-resolution-catcher','practice-resolution-pitcher-block11','practice-resolution-catcher-block11']){
+  assert.ok(appSource.includes('await verifyOrderedCandidates(')&&appSource.includes(label),'every Resolution candidate branch must use the awaited verifier');
+ }
+}
+console.log('Resolution 488 mobile long-task regression passed.');
