@@ -4104,6 +4104,21 @@ function practiceResolutionSnapshotIsCurrentAndValid(r=practiceResolution){
  const liveRoster=practiceAttendanceRoster();
  const exactIdentity=name=>players.filter(player=>player.name===name).length===1&&liveRoster.filter(player=>player.name===name).length===1;
  if(!choiceKeys.every(key=>r[key].every(exactIdentity)))return false;
+ // Resolution 483: named choices must remain role-correct at snapshot validation,
+ // not only later when Apply is clicked. A catcher/pitcher role edit after the
+ // failed build invalidates the decision immediately and prevents stale controls
+ // from surviving until authorization.
+ const verifiedByName=new Map(players.map(player=>[player.name,player]));
+ const liveByName=new Map(liveRoster.map(player=>[player.name,player]));
+ const roleCorrect=(name,role)=>{
+  const verified=verifiedByName.get(name),live=liveByName.get(name);
+  if(!verified||!live)return false;
+  return role==='pitcher'
+   ?verified.isPitcher===true&&verified.canPitch===true&&live.isPitcher===true
+   :verified.isCatcher===true&&verified.canCatch===true&&live.isCatcher===true;
+ };
+ if(!r.pitchers.every(name=>roleCorrect(name,'pitcher'))||!r.combinedPitchers.every(name=>roleCorrect(name,'pitcher')))return false;
+ if(!r.catchers.every(name=>roleCorrect(name,'catcher'))||!r.combinedCatchers.every(name=>roleCorrect(name,'catcher')))return false;
  // Block 11 is an emergency extension from the normal 120-minute practice only.
  // A Resolution snapshot itself is always the failed base attempt; 132 minutes may
  // exist only after a verified apply has begun, never as a fresh Resolution source.
@@ -4698,6 +4713,11 @@ function bind(){
   const runVerifiedResolutionApply=(authorizedExpectedFactory)=>{
    const result=startVerifiedResolutionApply(authorizedExpectedFactory);
    if(result.started)return true;
+   // Every non-starting path must leave the local modal lock released unless a
+   // real global transaction still owns it. This is deliberately idempotent and
+   // covers rollback-preparation/authorization exceptions as well as explicit
+   // unverified choices.
+   if(!practiceResolutionApplyToken&&!practiceResolutionApplyDraftId&&!practiceResolutionApplyOwnedDraftId)endResolutionApply();
    if(result.reason==='stale'||result.reason==='unverified')rejectUnverifiedResolution();
    else if(result.reason==='busy')console.warn('HotB ignored a duplicate Practice Resolution apply while another apply is running.');
    else if(result.reason!=='handled')alert('HotB could not safely start that verified resolution. Your Practice Resolution was kept unchanged so you can try again.');
