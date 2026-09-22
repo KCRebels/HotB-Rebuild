@@ -5840,6 +5840,21 @@ function bindPractice(){
   // so use an explicit stage heartbeat and only recover after a real quiet period.
   let buildWatchdog=null,buildWatchdogStage='pre-scheduler',buildWatchdogGeneration=0,buildFinished=false;
   const stopBuildWatchdog=()=>{buildFinished=true;buildWatchdogGeneration++;clearTimeout(buildWatchdog);buildWatchdog=null};
+  const publishPracticeBuildFrame=(stage,callback)=>{
+   if(buildButton)buildButton.dataset.buildStage=stage;
+   const run=()=>{
+    try{callback()}
+    catch(error){
+     console.error('HotB practice build publication failed at '+stage,error);
+     stopBuildWatchdog();
+     const button=$('#generatePractice');
+     if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage=stage+'-failed'}
+     alert('HotB built the practice but could not open the next screen at '+stage+': '+String(error?.message||error||'unknown'));
+    }
+   };
+   if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(run,0));
+   else setTimeout(run,16);
+  };
   const armBuildWatchdog=(stage,timeout=12000)=>{
    buildFinished=false;buildWatchdogStage=stage;
    const generation=++buildWatchdogGeneration;
@@ -6246,19 +6261,12 @@ function bindPractice(){
    stopBuildWatchdog();
    return;
   }
-  if(practicePlan.buildNotices?.length){stopBuildWatchdog();modal='practiceBuildNotice';render();return}
-  stopBuildWatchdog();
-  setTimeout(()=>{
-   try{
-    render();
-    window.scrollTo(0,0);
-   }catch(error){
-    console.error('HotB practice plan screen failed',error);
-    const currentBuildButton=$('#generatePractice');
-    if(currentBuildButton){currentBuildButton.disabled=false;currentBuildButton.textContent='Build Practice Schedule'}
-    alert('The schedule was built, but HotB could not open the practice-plan screen: '+String(error?.message||error||'unknown'));
-   }
-  },0);
+  if(practicePlan.buildNotices?.length){
+   modal='practiceBuildNotice';
+   publishPracticeBuildFrame('practice-build-notice',()=>{render();stopBuildWatchdog();window.scrollTo(0,0)});
+   return;
+  }
+  publishPracticeBuildFrame('practice-plan-publish',()=>{render();stopBuildWatchdog();window.scrollTo(0,0)});
  });
  $('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',limitations:practiceSetupState.accommodations?.[player.name]?.limitations||'',prePracticeComplete:!!player.prePracticeComplete,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={...practiceSetupState,selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;practiceSection='setup';persistPracticeDraft();render();window.scrollTo(0,0)});
  $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;if(practiceCoachOpen)practiceCardsOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
