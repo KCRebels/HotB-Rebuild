@@ -4892,7 +4892,11 @@ function bind(){
   // availability, and baseline roles. Re-prove the live roster identity here so the
   // apply transaction no longer runs a second overlapping authorization callback.
   const authorizedResolutionExpectedState=(role=null,name=null,withBlock11=false,snapshot=practiceResolution)=>{
-   if(!snapshot||snapshot!==practiceResolution||!practiceResolutionSnapshotIsCurrentAndValid(snapshot))return null;
+   // Resolution 536: Apply authorizes from the locked JSON rollback copy. That copy
+   // is deliberately a different object identity, so prove sealed value identity.
+   if(!snapshot||!practiceResolution||!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution))return null;
+   if(snapshot.signature!==practiceResolution.signature||snapshot.decisionSignature!==practiceResolution.decisionSignature)return null;
+   try{if(JSON.stringify(snapshot)!==JSON.stringify(practiceResolution))return null}catch(_){return null}
    if(typeof withBlock11!=='boolean'||(withBlock11&&Number(snapshot.durationMinutes)!==120))return null;
    if(role!==null){
     if((role!=='pitcher'&&role!=='catcher')||typeof name!=='string'||!name)return null;
