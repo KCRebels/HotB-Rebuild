@@ -5916,26 +5916,51 @@ function bindPractice(){
     // but expose which contract clause rejected a cooperatively verified choice set.
     const sealAudit=()=>{
      const r=practiceResolution,fail=reason=>reason;
-     if(!r||r.signature!==currentPracticeResolutionSignature())return fail('source-signature');
-     if(r.decisionSignature!==practiceResolutionDecisionSignature(r))return fail('decision-signature');
-     const players=r.practicePlayers||[],names=players.map(player=>player?.name),verifiedNames=new Set(names);
-     if(Number(r.durationMinutes)!==120)return fail('duration');
-     if(names.length!==verifiedNames.size)return fail('verified-identity');
-     if(!Array.isArray(practiceSetupState.selectedNames)||practiceSetupState.selectedNames.length!==names.length||practiceSetupState.selectedNames.some((name,index)=>name!==names[index]))return fail('selected-order');
+     if(!r||r!==practiceResolution)return fail('global-transaction');
+     if(typeof r.signature!=='string'||!r.signature||r.signature!==currentPracticeResolutionSignature())return fail('source-signature');
+     if(typeof r.decisionSignature!=='string'||!r.decisionSignature||r.decisionSignature!==practiceResolutionDecisionSignature(r))return fail('decision-signature');
+     const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===120?10:duration===132?11:0,names=players.map(player=>player?.name),verifiedNames=new Set(names);
+     if(!blockCount||!players.length||names.length!==verifiedNames.size)return fail('verified-identity');
+     if(typeof r.canExtend!=='boolean'||r.noPitchersMode!==null)return fail('resolution-shape');
      const clockMinutes=value=>{const m=String(value||'').match(/^(\d{2}):(\d{2})$/);if(!m)return null;const h=Number(m[1]),min=Number(m[2]);return h<24&&min<60?h*60+min:null};
-     if(players.some(player=>clockMinutes(player.arrivalTime)===null||clockMinutes(player.departureTime)===null)){
-      const bad=players.filter(player=>clockMinutes(player.arrivalTime)===null||clockMinutes(player.departureTime)===null).map(player=>player.name+':'+String(player.arrivalTime)+'/'+String(player.departureTime)).join(',');
-      return fail('availability-clock['+bad+']');
+     if(clockMinutes(r.startTime)===null||String(r.startTime)!==String(practiceSetupState.startTime||''))return fail('start-time');
+     if(duration!==120)return fail('duration');
+     for(const player of players){
+      if(!player||String(player.name||'').trim()!==String(player.name||'')||!String(player.name||''))return fail('player-name');
+      if(typeof player.isPitcher!=='boolean'||typeof player.isCatcher!=='boolean'||typeof player.isGuest!=='boolean'||typeof player.prePracticeComplete!=='boolean')return fail('player-role-shape['+player.name+']');
+      if(!Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>blockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock))return fail('availability-range['+player.name+']');
+      if(typeof player.arrivalTime!=='string'||typeof player.departureTime!=='string'||clockMinutes(player.arrivalTime)===null||clockMinutes(player.departureTime)===null)return fail('availability-clock['+player.name+']');
+      if(typeof player.limitations!=='string'||player.limitations.trim()!==player.limitations)return fail('limitations['+player.name+']');
+      if(typeof player.canPitch!=='boolean'||typeof player.requiresPitchWarmup!=='boolean'||typeof player.canCatch!=='boolean')return fail('capability-shape['+player.name+']');
+      if((!player.isPitcher&&(player.canPitch||player.requiresPitchWarmup))||(!player.isCatcher&&player.canCatch)||(!player.canPitch&&player.requiresPitchWarmup))return fail('role-consistency['+player.name+']');
+      const a=practiceAvailability(r.startTime,duration,player.arrivalTime,player.departureTime);
+      if(Number(player.availableFromBlock)!==Number(a.availableFromBlock)||Number(player.availableUntilBlock)!==Number(a.availableUntilBlock))return fail('availability-blocks['+player.name+']');
      }
-     if(players.some(player=>{const a=practiceAvailability(r.startTime,120,player.arrivalTime,player.departureTime);return Number(player.availableFromBlock)!==Number(a.availableFromBlock)||Number(player.availableUntilBlock)!==Number(a.availableUntilBlock)}))return fail('availability-blocks');
-     const choiceKeys=['pitchers','catchers','combinedPitchers','combinedCatchers'];
-     const canonical=v=>Array.isArray(v)&&v.length===new Set(v).size&&v.every((x,i)=>typeof x==='string'&&x.trim()===x&&x&&(i===0||v[i-1].localeCompare(x)<=0));
-     if(!choiceKeys.every(key=>canonical(r[key])))return fail('choice-canonical');
-     if(r.pitchers.some(name=>r.combinedPitchers.includes(name))||r.catchers.some(name=>r.combinedCatchers.includes(name)))return fail('choice-overlap');
+     const arrays=['pitchers','catchers','combinedPitchers','combinedCatchers','errors','notices','auditFailures'];
+     if(!arrays.every(key=>Array.isArray(r[key])))return fail('collection-shape');
+     if(typeof r.rosterGuidance!=='string'||r.rosterGuidance.trim()!==r.rosterGuidance||!r.rosterGuidance)return fail('roster-guidance');
+     if(!r.errors.length)return fail('missing-errors');
+     if(!r.candidateNotices||typeof r.candidateNotices!=='object'||Array.isArray(r.candidateNotices))return fail('candidate-notices-shape');
+     const proto=Object.getPrototypeOf(r.candidateNotices);if(proto!==Object.prototype&&proto!==null)return fail('candidate-notices-prototype');
      const labels=new Set([...r.pitchers.map(name=>'Hitting Only: '+name),...r.catchers.map(name=>'Not Catching: '+name),...(r.canExtend?['Block 11']:[]),...r.combinedPitchers.map(name=>'Hitting Only + Block 11: '+name),...r.combinedCatchers.map(name=>'Not Catching + Block 11: '+name)]);
-     const entries=Object.entries(r.candidateNotices||{});
-     if(entries.length!==labels.size||entries.some(([label])=>!labels.has(label)))return fail('candidate-notices');
-     return 'other-contract';
+     const entries=Object.entries(r.candidateNotices);
+     if(entries.some(([label,values])=>!labels.has(label)||!Array.isArray(values)||values.some(value=>typeof value!=='string'||value.trim()!==value||!value)))return fail('candidate-notices-values');
+     if(entries.length!==labels.size||[...labels].some(label=>!Object.prototype.hasOwnProperty.call(r.candidateNotices,label)))return fail('candidate-notices-coverage');
+     const canonical=values=>values.length===new Set(values).size&&values.every((value,index)=>typeof value==='string'&&value.trim()===value&&value&&(index===0||values[index-1].localeCompare(value)<=0));
+     if(!['errors','notices','auditFailures'].every(key=>canonical(r[key])))return fail('metadata-canonical');
+     if(entries.some(([,values])=>!canonical(values))||entries.some(([label],index)=>index>0&&entries[index-1][0].localeCompare(label)>0))return fail('candidate-notices-canonical');
+     const choiceKeys=['pitchers','catchers','combinedPitchers','combinedCatchers'];
+     if(!choiceKeys.every(key=>canonical(r[key])&&r[key].every(name=>verifiedNames.has(name))))return fail('choice-canonical');
+     const liveRoster=practiceAttendanceRoster(),exact=name=>players.filter(p=>p.name===name).length===1&&liveRoster.filter(p=>p.name===name).length===1;
+     if(!choiceKeys.every(key=>r[key].every(exact)))return fail('choice-identity');
+     const verifiedByName=new Map(players.map(p=>[p.name,p])),liveByName=new Map(liveRoster.map(p=>[p.name,p]));
+     const role=(name,type)=>{const v=verifiedByName.get(name),l=liveByName.get(name);return !!v&&!!l&&(type==='pitcher'?v.isPitcher===true&&v.canPitch===true&&l.isPitcher===true:v.isCatcher===true&&v.canCatch===true&&l.isCatcher===true)};
+     if(!r.pitchers.every(name=>role(name,'pitcher'))||!r.combinedPitchers.every(name=>role(name,'pitcher')))return fail('pitcher-role');
+     if(!r.catchers.every(name=>role(name,'catcher'))||!r.combinedCatchers.every(name=>role(name,'catcher')))return fail('catcher-role');
+     if(r.combinedPitchers.some(name=>r.pitchers.includes(name))||r.combinedCatchers.some(name=>r.catchers.includes(name)))return fail('choice-overlap');
+     if(r.pitchers.some(name=>!players.find(p=>p.name===name)?.canPitch)||r.combinedPitchers.some(name=>!players.find(p=>p.name===name)?.canPitch))return fail('pitcher-capability');
+     if(r.catchers.some(name=>!players.find(p=>p.name===name)?.canCatch)||r.combinedCatchers.some(name=>!players.find(p=>p.name===name)?.canCatch))return fail('catcher-capability');
+     return 'unmapped-contract';
     };
     if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
      const sealReason=sealAudit();
