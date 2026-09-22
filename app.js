@@ -5852,42 +5852,35 @@ function bindPractice(){
      :availablePitchers.length
       ?'HotB could not satisfy every absolute rule with this exact setup. Change attendance, availability, Pitching, or Catching explicitly and build again.'
       :'This practice needs an attending pitcher or another explicit attendance/availability change before HotB can satisfy every absolute rule.';
-   practiceResolution={
-    errors:resolutionErrors,pitchers,catchers,canExtend,combinedPitchers,combinedCatchers,
-    rosterGuidance,practicePlayers,startTime,durationMinutes,noPitchersMode,
-    notices:Array.isArray(practicePlan.fallbackWarnings)?[...new Set(practicePlan.fallbackWarnings.map(value=>String(value||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)):[],
-    auditFailures:[],candidateNotices:sortedCandidateNotices,
-    signature:practiceResolutionSignature(practicePlayers,startTime,durationMinutes),decisionSignature:''
-   };
-   practiceResolution.decisionSignature=practiceResolutionDecisionSignature(practiceResolution);
-   modal='practiceResolution';
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution505',stage:'base-failure-ready',state:'ready',errors:resolutionErrors,at:new Date().toISOString()}))}catch(error){}
+   // Resolution 506: base-build failure display is deliberately independent of
+   // the persisted/actionable Practice Resolution transaction. The previous path
+   // still called practiceResolutionModal(), whose signature/snapshot validator can
+   // reject reconstructed live setup state before any HTML exists. For a no-choice
+   // failure there is nothing to Apply, so render a dedicated informational modal
+   // from the scheduler's authoritative errors and guidance. Actionable Resolution
+   // transactions continue to use the strict validator.
+   const problemItems=resolutionErrors.map(error=>`<li>${esc(error)}</li>`).join('');
+   const noticeItems=(Array.isArray(practicePlan.fallbackWarnings)?[...new Set(practicePlan.fallbackWarnings.map(value=>String(value||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)):[]).map(note=>`<li>${esc(note)}</li>`).join('');
+   const failureHtml=`<div class="modal-backdrop"><div class="modal practice-resolution-modal"><div class="modal-header"><div><div class="small info-kicker">PRACTICE RESOLUTION</div><h2>HotB needs a setup change</h2></div></div><p class="practice-resolution-intro">HotB could not satisfy every absolute practice rule with this exact setup.</p><section class="practice-resolution-problem"><b>What is preventing the build</b><ul>${problemItems}</ul></section>${noticeItems?`<section class="practice-resolution-notices"><b>Automatic equipment / capacity notices</b><ul>${noticeItems}</ul></section>`:''}<section class="practice-resolution-choice"><h3>Change Attendance / Availability</h3><p>${esc(rosterGuidance)}</p><button class="btn red block" id="returnPracticeAttendance">Change Attendance / Availability</button></section></div></div>`;
+   // Clear any stale actionable transaction before rendering the informational
+   // result. This prevents render() from routing through modalContent()'s strict
+   // Practice Resolution validator.
+   practiceResolution=null;
+   modal=null;
    setPracticeBuildControlsLocked(false);
    try{
-    // Resolution 505: a no-choice base failure is explanatory UI, not an
-    // apply-capable persisted transaction. Rendering it through the full global
-    // Resolution snapshot validator made harmless live-DOM normalization differences
-    // (selected-name order / accommodation reconstruction) capable of erasing the
-    // panel before it mounted. Render this already-sealed base failure directly.
-    const resolutionHtml=practiceResolutionModal();
-    if(!resolutionHtml||!resolutionHtml.includes('practice-resolution-modal'))throw new Error('Practice Resolution HTML was not produced.');
+    render();
     const appRoot=document.querySelector('#app');
     if(!appRoot)throw new Error('HotB app root is unavailable.');
-    render();
-    const mounted=document.querySelector('.practice-resolution-modal');
-    if(!mounted){
-     // If the global render safety gate rejected an informational no-choice panel,
-     // restore only that modal HTML after the normal page has rendered. There are no
-     // coaching Apply controls in this branch, so this cannot bypass an apply gate.
-     appRoot.insertAdjacentHTML('beforeend',resolutionHtml);
-     bind();
-    }
+    appRoot.insertAdjacentHTML('beforeend',failureHtml);
+    const returnButton=document.querySelector('#returnPracticeAttendance');
+    if(returnButton)returnButton.addEventListener('click',()=>{document.querySelector('.practice-resolution-modal')?.closest('.modal-backdrop')?.remove();window.scrollTo(0,0)});
     window.scrollTo(0,0);
     if(!document.querySelector('.practice-resolution-modal'))throw new Error('Practice Resolution failure panel did not mount.');
+    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution506',stage:'informational-failure-mounted',state:'ready',errors:resolutionErrors,at:new Date().toISOString()}))}catch(error){}
    }catch(error){
-    console.error('HotB could not publish the base scheduler failure panel.',error);
-    practiceResolution=null;modal=null;practicePlan=null;
-    try{render()}catch(_){}
+    console.error('HotB could not publish the informational scheduler failure panel.',error);
+    practicePlan=null;
     const button=$('#generatePractice');
     if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage='base-failure-publish-failed'}
     alert('HotB could not open the Practice Resolution screen. Nothing was changed. Please review the setup and build again.');
