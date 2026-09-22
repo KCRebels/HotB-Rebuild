@@ -122,6 +122,20 @@ assert.deepEqual(restoredDraft.resolution,unresolved.resolution,'unresolved veri
 assert.equal(restoredDraft.setupState.durationMinutes,120,'unresolved recovery authority must remain the original 120-minute failed practice');
 
 
+let prioritizedParityChecked=0;
+for(const fixture of fixtures){
+ const prioritized=prioritizedResolution(fixture.source);
+ assert.ok(prioritized.plan,`prioritized Resolution must find a safe choice for resolvable fixture ${fixture.count}/${fixture.pitchers}/${fixture.catchers}`);
+ assert.deepEqual(prioritized.plan.feasibilityErrors,[],'prioritized Resolution choice must have no feasibility errors');
+ assert.deepEqual(scheduler.validate(prioritized.plan),[],'prioritized Resolution choice must pass the full production validator');
+ const maxBuilds=1+fixture.pitchers+fixture.catchers+fixture.pitchers+fixture.catchers;
+ assert.ok(prioritized.builds<=maxBuilds,'prioritized Resolution search must never exceed its bounded candidate space');
+ if(fixture.verified.some(choice=>choice.kind==='block-11')){
+  assert.equal(prioritized.kind,'block-11','Block 11 must remain the first safe Resolution choice');
+  assert.equal(prioritized.builds,1,'safe Block 11 must eliminate every role permutation build');
+ }
+ prioritizedParityChecked++;
+}
 let prioritizedFixturesChecked=0;
 for(const fixture of fixtures.filter(x=>x.count===13&&x.pitchers===2&&x.catchers===2)){
  const prioritized=prioritizedResolution(fixture.source);
@@ -146,4 +160,4 @@ if(productionBase.feasibilityErrors.length){
  }
 }
 
-console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${prioritizedFixturesChecked} production-shaped prioritized fixtures; exercised: ${[...exercised].join(', ')})`);
+console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${prioritizedParityChecked} prioritized parity fixtures; ${prioritizedFixturesChecked} production-shaped prioritized fixtures; exercised: ${[...exercised].join(', ')})`);
