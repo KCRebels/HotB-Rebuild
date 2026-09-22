@@ -1181,7 +1181,13 @@ function playerPortalTextUrl(player){
 function coachPortalUrl(){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(db.coachPortal?.portalId||'')}&portalBuild=${PORTAL_BUILD_TOKEN}`}
 function coachPortalShareText(){return standaloneLinkMessage(`${db.coachPortal?.name||'Coach'}’s private HotB Coach Portal`,coachPortalUrl(),`PIN: ${db.coachPortal?.portalPin||''}`)}
 function guestPortalUrl(guest){return `${location.origin}${location.pathname}?${PORTAL_QUERY_KEY}=${encodeURIComponent(guest.portalId||'')}&guest=${encodeURIComponent(guest.portalSecret||'')}&portalBuild=${PORTAL_BUILD_TOKEN}`}
-function guestPortalShareText(guest){return window.HotBSms?.guestPracticeMessage({firstName:practiceFirstName(guest.name),url:guestPortalUrl(guest)})||''}
+function guestPortalShareText(guest){
+ const first=practiceFirstName(guest?.name),url=guestPortalUrl(guest);
+ // Do not depend on the optional SMS helper for the actual portal credential.
+ // The complete practice-only URL carries the secret and is the credential;
+ // Jenkins links intentionally have no separate PIN/password.
+ return window.HotBSms?.guestPracticeMessage?.({firstName:first,url})||standaloneLinkMessage(`${first}’s private HotB Hitting Practice Portal`,url,'Open this same link for each Hitting Practice. No PIN is required.');
+}
 function guestPortalTextUrl(guest){
  const phone=String(guest?.phone||'').replace(/[^\d+]/g,'');
  if(!phone||!guest?.portalId||!guest?.portalSecret)return'';
@@ -5616,7 +5622,7 @@ function bindPlayerPortal(){
  $$('[data-share-portal]').forEach(button=>button.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBPortalShare?.(button.dataset.sharePortal)}));
  $$('[data-text-portal]').forEach(button=>button.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBPortalText?.(button.dataset.textPortal)}));
  $$('[data-share-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamJenkins&&player.name===button.dataset.sharePracticeJenkins))));
- $$('[data-text-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamJenkins&&item.name===button.dataset.textPracticeJenkins),url=guestPortalTextUrl(player);if(url)openSmsComposer(url);else{portalMessage='Create Team Jenkins Portals first.';render()}}));
+ $('[data-text-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamJenkins&&item.name===button.dataset.textPracticeJenkins);if(!player?.portalId||!player?.portalSecret){portalMessage='Create Team Jenkins Portals first.';render();return}const url=guestPortalTextUrl(player);if(url&&!openSmsComposer(url)){portalMessage='HotB could not open Messages on this device. Use Share instead.';render()}}));
  $('#shareCoachPortal')?.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBCoachPortalShare?.()});
  $('#textCoachPortal')?.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBCoachPortalText?.()});
  $$('[data-reset-portal]').forEach(button=>button.addEventListener('click',()=>resetPlayerPortal(db.roster.find(item=>item.name===button.dataset.resetPortal))));
@@ -6310,7 +6316,7 @@ function bindPractice(){
  $('#deactivatePlayerPlans')?.addEventListener('click',deactivatePlayerPlans);
  $$('[data-share-practice-guest]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal([...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.sharePracticeGuest))));
  $('[data-share-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamJenkins&&player.name===button.dataset.sharePracticeJenkins))));
- $('[data-text-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamJenkins&&item.name===button.dataset.textPracticeJenkins),url=guestPortalTextUrl(player);if(url)openSmsComposer(url);else alert('This Team Jenkins practice link is not ready. Activate the practice plan first.')}));
+ $('[data-text-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamJenkins&&item.name===button.dataset.textPracticeJenkins),url=guestPortalTextUrl(player);if(url)openSmsComposer(url);else alert('This Team Jenkins practice link is not ready. Create the Team Jenkins portals first.')}));
  $('#printPracticeCards')?.addEventListener('click',()=>window.print());
 }
 
