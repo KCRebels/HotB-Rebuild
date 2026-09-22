@@ -5880,32 +5880,27 @@ function bindPractice(){
    clearTimeout(buildWatchdog);buildWatchdog=null;
    clearTimeout(buildWatchdogConfirm);buildWatchdogConfirm=null;
   };
-  // Publication callbacks are asynchronous and can outlive the build turn that
-  // scheduled them. Give each publication/recovery handoff its own ownership token
-  // so an older Safari rAF/timer can never render over a newer build or recovery.
+  // A completed build publishes synchronously. render() does not require painted
+  // geometry, so deferring through rAF/timers only creates another iPhone Safari
+  // continuation that can be throttled or stranded after all scheduler work is done.
   let buildPublicationGeneration=0;
   const cancelPracticeBuildPublication=()=>++buildPublicationGeneration;
   const publishPracticeBuildFrame=(stage,callback)=>{
    const publicationGeneration=++buildPublicationGeneration;
    if(buildButton)buildButton.dataset.buildStage=stage;
-   const run=()=>{
+   if(publicationGeneration!==buildPublicationGeneration)return;
+   markBuildProgress();
+   try{callback()}
+   catch(error){
     if(publicationGeneration!==buildPublicationGeneration)return;
-    markBuildProgress();
-    try{callback()}
-    catch(error){
-     if(publicationGeneration!==buildPublicationGeneration)return;
-     console.error('HotB practice build publication failed at '+stage,error);
-     stopBuildWatchdog();
-     setPracticeBuildControlsLocked(false);
-     const button=$('#generatePractice');
-     if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage=stage+'-failed'}
-     // Invalidate any second queued browser callback from this failed handoff.
-     cancelPracticeBuildPublication();
-     alert('HotB built the practice but could not open the next screen at '+stage+': '+String(error?.message||error||'unknown'));
-    }
-   };
-   if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(run,0));
-   else setTimeout(run,16);
+    console.error('HotB practice build publication failed at '+stage,error);
+    stopBuildWatchdog();
+    setPracticeBuildControlsLocked(false);
+    const button=$('#generatePractice');
+    if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage=stage+'-failed'}
+    cancelPracticeBuildPublication();
+    alert('HotB built the practice but could not open the next screen at '+stage+': '+String(error?.message||error||'unknown'));
+   }
   };
   const recoverPracticeBuildSetup=(stage,message=null)=>{
    stopBuildWatchdog();
