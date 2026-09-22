@@ -354,41 +354,6 @@ console.log('Resolution 551 real fixtures',JSON.stringify({
 }));
 
 
-/* Resolution 552: find real-roster fixtures where a combined Block 11 choice is
-   genuinely necessary (the corresponding 120-minute single-role change must fail).
-   Search up to two early departures and ordinary pitcher availability toggles. */
-function firstNecessaryCombinedFixture(kind){
- const pitcherIndexes=realRoster.map((p,i)=>p.isPitcher?i:-1).filter(i=>i>=0);
- const departures=[4,5,6,7,8,9];
- for(let disabledMask=0;disabledMask<(1<<pitcherIndexes.length);disabledMask++){
-  for(let first=0;first<realRoster.length;first++){
-   for(const firstUntil of departures){
-    for(let second=-1;second<realRoster.length;second++){
-     if(second===first)continue;
-     for(const secondUntil of second<0?[10]:departures){
-      const roster=cloneRoster(realRoster);
-      pitcherIndexes.forEach((index,bit)=>{if(disabledMask&(1<<bit)){roster[index].canPitch=false;roster[index].requiresPitchWarmup=false;}});
-      roster[first].availableUntilBlock=firstUntil;
-      if(second>=0)roster[second].availableUntilBlock=secondUntil;
-      const found=resolutionCandidates(roster);
-      const names=kind==='pitcher'?found.combinedPitchers:found.combinedCatchers;
-      if(!names.length)continue;
-      for(const name of names){
-       const single=roster.map(p=>p.name===name?(kind==='pitcher'?{...p,canPitch:false,requiresPitchWarmup:false}:{...p,canCatch:false}):p);
-       const singlePlan=scheduler.buildSchedule(single,'18:00',120);
-       if(!(singlePlan.feasibilityErrors||[]).length&&!scheduler.validate(singlePlan).length)continue;
-       return {disabledMask,first:realRoster[first].name,firstUntil,firstDeparture:clockForUntil(firstUntil),second:second<0?null:realRoster[second].name,secondUntil:second<0?null:secondUntil,secondDeparture:second<0?null:clockForUntil(secondUntil),name,baseErrors:found.baseErrors};
-      }
-     }
-    }
-   }
-  }
- }
- return null;
-}
-const necessaryCombinedPitcher=firstNecessaryCombinedFixture('pitcher');
-const necessaryCombinedCatcher=firstNecessaryCombinedFixture('catcher');
-console.log('Resolution 552 necessary combined fixtures',JSON.stringify({pitcher:necessaryCombinedPitcher,catcher:necessaryCombinedCatcher}));
 
 const catcherDisabled=scenario(9,4,2);
 catcherDisabled[4].canCatch=false;
