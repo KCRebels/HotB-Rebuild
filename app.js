@@ -5962,14 +5962,21 @@ function bindPractice(){
    }
 
    if(!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded){
+    // Resolution 464: if the practice needs a two-part emergency adjustment, prove
+    // the complete combined choice set just as we do for same-duration choices.
+    // Previously the first safe combined pitcher prevented every other pitcher and
+    // every catcher combination from being checked.
     const combinedPitcherSpecs=extendedPlayers.filter(player=>player.canPitch).map(pitcher=>({players:extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:132,label:'Hitting Only + Block 11: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name},choiceName:pitcher.name}));
-    const combinedPitcherResult=verifyOrderedCandidates(combinedPitcherSpecs,'practice-resolution-pitcher-block11','Hitting Only + Block 11',spec=>combinedPitchers.push(spec.choiceName));
+    const combinedPitcherResult=verifyOrderedCandidates(combinedPitcherSpecs,'practice-resolution-pitcher-block11','Hitting Only + Block 11',spec=>combinedPitchers.push(spec.choiceName),true);
     if(combinedPitcherResult==='aborted')return;
-   }
-   if(!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&!combinedPitchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded){
-    const combinedCatcherSpecs=extendedPlayers.filter(player=>player.canCatch).map(catcher=>({players:extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name},choiceName:catcher.name}));
-    const combinedCatcherResult=verifyOrderedCandidates(combinedCatcherSpecs,'practice-resolution-catcher-block11','Not Catching + Block 11',spec=>combinedCatchers.push(spec.choiceName));
-    if(combinedCatcherResult==='aborted')return;
+    if(combinedPitcherResult==='budget')resolutionBudgetExceeded=true;
+
+    if(!resolutionBudgetExceeded){
+     const combinedCatcherSpecs=extendedPlayers.filter(player=>player.canCatch).map(catcher=>({players:extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name},choiceName:catcher.name}));
+     const combinedCatcherResult=verifyOrderedCandidates(combinedCatcherSpecs,'practice-resolution-catcher-block11','Not Catching + Block 11',spec=>combinedCatchers.push(spec.choiceName),true);
+     if(combinedCatcherResult==='aborted')return;
+     if(combinedCatcherResult==='budget')resolutionBudgetExceeded=true;
+    }
    }
    // Candidate fan-out is complete. Normalize once, then enter verified evidence publication.
    solvingPitchers=[...new Set(solvingPitchers)].sort();
