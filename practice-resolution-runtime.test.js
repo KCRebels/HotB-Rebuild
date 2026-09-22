@@ -880,22 +880,26 @@ console.log('Resolution 487 infeasible-candidate short-circuit regression passed
 
 
 
-/* Resolution 492 base-result-only discovery regression.
-   The original setup tap receives exactly one scheduler result. Once that result is
-   infeasible, Resolution publication is data-only: no candidate scheduler, extension
-   modeling, role search, or async continuation is allowed before publication. */
+
+
+/* Resolution 493 direct base-failure publication regression.
+   Once the one authoritative scheduler call returns feasibility errors, the same
+   Build handler must publish the failure panel directly. No secondary discovery,
+   ownership reread, candidate scheduler, timer, or persistence gate may intervene. */
 {
- const app492=require('node:fs').readFileSync('./app.js','utf8');
- const baseOnly=app492.indexOf("stage:'practice-resolution-base-result-only'");
- assert.ok(baseOnly>=0,'failed build must enter base-result-only Resolution discovery');
- const fanout=app492.indexOf('// Candidate fan-out is complete.',baseOnly);
- assert.ok(fanout>baseOnly,'base-result-only block must flow directly to evidence publication');
- const discovery=app492.slice(baseOnly,fanout);
- assert.ok(!discovery.includes('buildSchedule('),'failed-build discovery must not call scheduler again');
- assert.ok(!discovery.includes('practiceResolutionExtendedPlayers('),'failed-build discovery must not model Block 11');
- assert.ok(!discovery.includes('verifyOrderedCandidates'),'failed-build discovery must not create candidate continuation');
- assert.ok(!discovery.includes('setTimeout('),'failed-build discovery must not create an async continuation');
- assert.ok(app492.includes('const solvingPitchers=[],solvingCatchers=[],combinedPitchers=[],combinedCatchers=[]'),'all speculative choice arrays start and remain empty');
- assert.ok(app492.includes('const canExtend=false,resolutionBudgetExceeded=false'),'Block 11 is not speculatively advertised');
+ const app493=require('node:fs').readFileSync('./app.js','utf8');
+ const start=app493.indexOf('// Resolution 493: the failed base scheduler result is already authoritative.');
+ const end=app493.indexOf('if(practicePlan.fallbackWarnings?.length)',start);
+ assert.ok(start>=0&&end>start,'Resolution 493 direct-failure branch must exist');
+ const branch=app493.slice(start,end);
+ assert.ok(branch.includes("stage:'base-failure-direct-publish'"),'direct failure branch records its publication stage');
+ assert.ok(branch.includes("modal='practiceResolution'"),'direct failure branch opens Resolution');
+ assert.ok(branch.includes('setPracticeBuildControlsLocked(false)'),'direct failure branch releases setup lock before rendering');
+ assert.ok(branch.includes('render();'),'direct failure branch renders synchronously');
+ assert.ok(!branch.includes('buildSchedule('),'direct failure branch must never call scheduler again');
+ assert.ok(!branch.includes('buildSetupStillOwned('),'direct failure branch must not reread DOM ownership');
+ assert.ok(!branch.includes('practiceResolutionSnapshotIsCurrentAndValid('),'direct failure branch must not enter candidate snapshot validation');
+ assert.ok(!branch.includes('setTimeout(')&&!branch.includes('requestAnimationFrame('),'direct failure publication must not depend on an iPhone continuation');
+ assert.ok(!branch.includes('persistPracticeDraft(')&&!branch.includes('savePractice'),'direct failure publication must not depend on persistence');
 }
-console.log('Resolution 492 base-result-only discovery regression passed.');
+console.log('Resolution 493 direct base-failure publication regression passed.');
