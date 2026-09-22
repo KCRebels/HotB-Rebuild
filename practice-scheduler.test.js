@@ -436,4 +436,19 @@ assert.ok(makennaLatePitch>=0&&makennaLateWarm>=0&&makennaLatePitch-makennaLateW
 assert.equal(rebels12NoCatchMakennaLatePlan.schedule['Makenna Whitaker'][makennaLateWarm].partner,'Coach','zero-catcher setup must use Coach for Makenna warm-up');
 assert.ok(rebels12NoCatchMakennaLatePlan.schedule['Lydia Copeland'].every(entry=>entry.activity!=='Catch Live'&&entry.activity!=='Catch Warm-Up'),'Lydia Not Catching must remain out of all catcher work');
 
+
+// Resolution 498: exact phone setup after adding Brooklyn 30-minute early departure
+// to the verified Resolution 496 case. This is the configuration that surfaced the
+// Front Toss failure on-device. Preserve it as an exact regression before changing
+// the production search.
+const rebels12NoCatchMakennaLateBrooklynEarly=rebels13.filter(player=>player.name!=='Tayte Stepps').map(player=>{
+ if(player.name==='Lydia Copeland')return {...player,canCatch:false};
+ if(player.name==='Makenna Whitaker')return {...player,availableFromBlock:3};
+ if(player.name==='Brooklyn Gering')return {...player,availableUntilBlock:8};
+ return {...player};
+});
+const rebels12NoCatchMakennaLateBrooklynEarlyPlan=scheduler.buildSchedule(rebels12NoCatchMakennaLateBrooklynEarly,'18:00',120);
+assert.deepEqual(rebels12NoCatchMakennaLateBrooklynEarlyPlan.feasibilityErrors,[],'exact phone setup with Makenna late and Brooklyn early must build without a false Front Toss Resolution');
+assert.deepEqual(scheduler.validate(rebels12NoCatchMakennaLateBrooklynEarlyPlan),[],'exact phone setup with opposite availability limits must pass the full audit');
+
 console.log('practice-scheduler tests passed');
