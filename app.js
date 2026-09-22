@@ -4167,32 +4167,12 @@ function practiceResolutionModal(){
 function modalView(){
  if(modal==='practiceBuildNotice')return practiceBuildNoticeModal();
  if(modal==='practiceResolution'){
-  // Startup may restore an unresolved snapshot before the Resolution helpers have
-  // been exercised. Validate at the actual display boundary: corrupt/stale data is
-  // discarded before any coaching choice is rendered, and the cleaned setup draft
-  // is persisted so the same bad snapshot cannot reopen on the next launch.
-  if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
-   console.warn('Saved Practice Resolution failed display validation; returning to setup.');
-   practiceResolution=null;modal=null;
-   // Never let a rejected emergency Resolution strand setup at 132 minutes.
-   // Block 11 exists only while backed by a currently verified Resolution.
-   if(Number(practiceSetupState.durationMinutes)===132)practiceSetupState.durationMinutes=120;
-   if(!practicePlan&&!db.activePortalPractice?.id&&window.HotBPracticeSession?.createDraft){
-    try{
-     const cleanedDraft=window.HotBPracticeSession.createDraft({setupState:practiceSetupState,resolution:null});
-     const cleanedBytes=JSON.stringify(cleanedDraft);
-     const cleanedRestored=window.HotBPracticeSession.restore?.(cleanedDraft);
-     if(!cleanedDraft||cleanedDraft.stage!=='setup'||cleanedDraft.plan||cleanedDraft.resolution||!cleanedBytes||!cleanedRestored||JSON.stringify(cleanedRestored)!==cleanedBytes)throw new Error('invalid-cleaned-resolution-draft');
-     db.activePracticeSession=cleanedDraft;save();
-     if(JSON.stringify(db.activePracticeSession)!==cleanedBytes)throw new Error('cleaned-resolution-draft-save-drift');
-    }catch(error){
-     console.error('HotB could not persist a verified clean setup after rejecting stale Practice Resolution.',error);
-     db.activePracticeSession=null;
-     try{save()}catch(cleanError){console.error('HotB could not clear stale Practice Resolution recovery authority.',cleanError)}
-    }
-   }
-   return'';
-  }
+  // The snapshot is already fully verified and sealed before this modal is
+  // authorized. Do not run the live-state validator from inside render(): render
+  // must be a pure consumer. Re-validating here can mutate/clear modal state while
+  // render() is still composing app.innerHTML, which is exactly the iOS publication
+  // failure seen after a verified coaching option was found.
+  if(!practiceResolution)return'';
   return practiceResolutionModal();
  }
  if(modal==='recoveryGuide')return recoveryGuideModal();
