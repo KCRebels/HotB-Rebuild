@@ -15,7 +15,7 @@ assert.match(worker,/manifest\\\.webmanifest/,'versioned manifest requests must 
 assert.match(worker,/name\.startsWith\(CACHE_PREFIX\).*name !== CACHE_NAME/,'activation must remove only obsolete HotB caches');
 assert.match(worker,/request\.mode === 'navigate'/,'navigations must have an explicit strategy');
 assert.match(worker,/fetch\(request, \{cache: 'no-store'\}\)/,'online navigations and code must prefer the network');
-assert.match(worker,/cache\.match\(OFFLINE_SHELL\)/,'navigation must retain an offline app-shell fallback');
+assert.match(worker,/cache\.match\(new Request\(new URL\(OFFLINE_SHELL, self\.location\.href\)\.href\)\)/,'navigation must retain an offline app-shell fallback using the canonical absolute cache key');
 assert.match(worker,/self\.skipWaiting\(\)/,'new workers must activate without remaining stuck waiting');
 assert.match(worker,/self\.clients\.claim\(\)/,'new workers must take control of open clients');
 assert.doesNotMatch(worker,/localStorage|indexedDB|deleteDatabase/,'service-worker updates must not touch user data stores');
