@@ -1277,10 +1277,17 @@ async function loadPlayerPortal(){
   try{
    const proof=await portalHash(requestedPortalToken,guestPortalSecret);
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
-   // Guest/Jenkins links use the same Firestore ownership rules as permanent
-   // player portals: claim an unowned link first, then authorize extra devices.
-   try{await portalDoc(requestedPortalToken).update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
-   catch(firstError){if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;if(firstError?.code!=='permission-denied')throw firstError;await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+   // First read the portal type. Jenkins links are permanent bearer links: the
+   // URL secret proves access on every device, so do not bind them to one phone.
+   // Temporary guests retain the original device-claim behavior.
+   const credentialSnapshot=await Promise.race([portalDoc(requestedPortalToken).get(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-credential-read-timeout')),8000))]);
+   if(!credentialSnapshot.exists)throw new Error('portal-credential-missing');
+   const credentialData=credentialSnapshot.data()||{};
+   if(credentialData.pinHash!==proof)throw new Error('portal-credential-invalid');
+   if(credentialData.portalType!=='jenkinsPlayer'){
+    try{await portalDoc(requestedPortalToken).update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+    catch(firstError){if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;if(firstError?.code!=='permission-denied')throw firstError;await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+   }
   }catch(error){
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
    portalBusy=false;portalData=null;portalMessage='This practice link could not be connected. Ask the coach to send a fresh link.';
