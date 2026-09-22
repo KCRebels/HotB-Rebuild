@@ -5832,6 +5832,13 @@ function bindPractice(){
   if(!attendees.length){if(!resolutionApplyBuild)alert('Select at least one player attending practice.');return}
   if(!window.HotBPracticeScheduler){if(!resolutionApplyBuild)alert('The practice scheduler did not load. Close and reopen HotB, then try again.');return}
   const startTime=$('#practiceStartTime').value||'18:00',durationMinutes=Number($('#practiceDuration').value)||120;
+  // Synchronize the in-memory setup snapshot from the exact DOM transaction once,
+  // before scheduler work begins. Resolution publication is read-only after this
+  // boundary, but its signature validator must compare against the setup that was
+  // actually submitted rather than a possibly older draft snapshot.
+  practiceSetupState.selectedNames=attendees.map(player=>player.name);
+  practiceSetupState.startTime=startTime;
+  practiceSetupState.durationMinutes=durationMinutes;
   // Emergency Block 11 is a verified Resolution-only state. A normal/manual build
   // must never inherit 132 minutes from stale DOM, restored form state, or an
   // interrupted apply transaction.
@@ -6015,7 +6022,7 @@ function bindPractice(){
     if(resolutionBuildCount>=RESOLUTION_BUILD_BUDGET){
      if(!resolutionBudgetExceeded)resolutionAuditFailures.push('Practice Resolution stopped because its verified scheduler-build budget was exceeded.');
      resolutionBudgetExceeded=true;
-     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution452',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
+     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution453',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
      return false;
     }
     resolutionBuildCount++;
@@ -6146,7 +6153,7 @@ function bindPractice(){
      setResolutionStage(stage);
      if(button)button.textContent='Checking '+(stageLabels[stage]||'Resolution')+' '+(index+1)+'/'+unique.length+'…';
      const started=typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
-     const diagnosticBase={bundle:'resolution452',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
+     const diagnosticBase={bundle:'resolution453',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
      try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({...diagnosticBase,state:'started'}))}catch(error){}
      const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
      const elapsed=Math.round((typeof performance!=='undefined'&&performance.now?performance.now():Date.now())-started);
@@ -6223,7 +6230,7 @@ function bindPractice(){
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution452',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution453',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
    setResolutionStage('practice-resolution-evidence');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was preparing Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const survivingCandidateLabels=new Set([
@@ -6294,7 +6301,7 @@ function bindPractice(){
    // persistence belongs to the chosen Apply & Build transaction.
    setResolutionStage('practice-resolution-publish');
    modal='practiceResolution';
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution452',stage:'practice-resolution-publish',state:'published',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution453',stage:'practice-resolution-publish',state:'published',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
    publishPracticeBuildFrame('practice-resolution-publish',()=>{
     render();
     setPracticeBuildControlsLocked(false);
