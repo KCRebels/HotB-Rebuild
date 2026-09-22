@@ -452,3 +452,28 @@ for(let index=0;index<recoveryExtended.length;index++){
  assert.equal(accommodation.canCatch,candidate.canCatch,'recovery must preserve verified catching state');
  if(source.availableUntilBlock===10&&candidate.availableUntilBlock===11)assert.notEqual(accommodation.departure,source.departureTime,'Block 11 recovery must not retain the old explicit 120-minute departure');
 }
+
+
+/* Resolution 469 exact recovery-field parity regression.
+   Compact signatures are useful seals, but persisted recovery must reproduce every
+   scheduler-relevant player field exactly for late/early and role-adjusted cases. */
+const recoveryFields469=['name','isPitcher','isCatcher','isGuest','availableFromBlock','availableUntilBlock','arrivalTime','departureTime','limitations','prePracticeComplete','canPitch','requiresPitchWarmup','canCatch'];
+function exactRecoveryParity(expected,actual){
+ return !!expected&&!!actual&&recoveryFields469.every(field=>expected[field]===actual[field]);
+}
+for(const fixture of [base,...matrix]){
+ if(!Array.isArray(fixture))continue;
+ for(const player of fixture){
+  assert.equal(exactRecoveryParity(player,{...player}),true,'identical recovery player must pass exact field parity');
+  const drift={...player,departureTime:String(player.departureTime||'')+'x'};
+  assert.equal(exactRecoveryParity(player,drift),false,'departure drift must fail exact recovery parity');
+  if(player.canPitch){
+   const roleDrift={...player,canPitch:false,requiresPitchWarmup:false};
+   assert.equal(exactRecoveryParity(player,roleDrift),false,'pitching drift must fail exact recovery parity');
+  }
+  if(player.canCatch){
+   const catchDrift={...player,canCatch:false};
+   assert.equal(exactRecoveryParity(player,catchDrift),false,'catching drift must fail exact recovery parity');
+  }
+ }
+}
