@@ -4514,261 +4514,89 @@ function bind(){
    return finishProof(true);
   };
   const rebuildResolvedPractice=(rollbackState,expected)=>{
-   // Transaction ownership helpers must exist outside the try block. If setup fails
-   // before the deferred rebuild is queued, the catch path still needs a valid,
-   // ownership-aware rollback instead of throwing a second ReferenceError.
+   // Resolution 460: Apply the already-verified candidate directly. Candidate
+   // search proved this exact player/timing state with buildSchedule + validate.
+   // Re-entering the setup UI, programmatically clicking Build, then polling for
+   // up to 30 seconds duplicated the scheduler and created a second asynchronous
+   // failure path for every non-default Resolution choice.
    let resolutionDraftId=null,resolutionApplyToken=null;
    const transactionOwnsToken=()=>!!resolutionDraftId&&!!resolutionApplyToken&&practiceResolutionApplyToken===resolutionApplyToken&&practiceResolutionApplyOwnedDraftId===resolutionDraftId;
-   const transactionIsCurrent=()=>transactionOwnsToken()&&(practiceResolutionApplyDraftId===resolutionDraftId||practicePlan?.portalDraftId===resolutionDraftId);
-   const rollbackIfOwned=(message=null)=>{
-    // Only the transaction that still owns the live token may restore its snapshot.
-    // A stale queued callback must never overwrite a newer Resolution/apply.
+   const rollbackIfOwned=message=>{
     if(!transactionOwnsToken())return false;
     const restored=restoreResolutionRollback(rollbackState);
-    // Rollback publication is asynchronous on iPhone. Queue the explanation behind
-    // that paint instead of alerting immediately and blocking the recovery frame.
-    if(restored&&message){
-     const notify=()=>alert(message);
-     if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(notify,0));
-     else setTimeout(notify,16);
-    }
+    if(restored&&message)alert(message);
     return restored;
    };
-   const rollbackInitialFailure=()=>{
-    // Before this apply publishes a token it cannot conflict with a newer apply:
-    // beginResolutionApply still owns the modal lock. Restore the captured verified
-    // snapshot directly so UUID/setup failures cannot strand the Resolution disabled.
-    if(!resolutionApplyToken&&!practiceResolutionApplyToken)return restoreResolutionRollback(rollbackState);
-    return rollbackIfOwned();
+   const fail=(message,error=null)=>{
+    if(error)console.error(message,error);else console.error(message);
+    if(!rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.')&&!practiceResolutionApplyToken)endResolutionApply();
+    return false;
    };
    try{
-    // Allocate the resolved draft identity before leaving the verified Resolution
-    // modal. The Build handler consumes it exactly once; rollback clears it.
-    resolutionDraftId=crypto.randomUUID();
-    // A monotonic apply token makes the deferred rebuild callbacks single-use.
-    // If navigation, rollback, or another Resolution invalidates this transaction,
-    // stale queued callbacks are forbidden from generating or committing a plan.
-    resolutionApplyToken=crypto.randomUUID();
-    practiceResolutionApplyDraftId=resolutionDraftId;
-    practiceResolutionApplyOwnedDraftId=resolutionDraftId;
-    practiceResolutionApplyToken=resolutionApplyToken;
     const verifiedResolution=rollbackState?.resolution;
     if(!resolutionRollbackStateIsValid(rollbackState)||!verifiedResolution||!expected||!Array.isArray(verifiedResolution.practicePlayers)||!verifiedResolution.practicePlayers.length)throw new Error('Verified Practice Resolution snapshot was not available for rebuild.');
-    const selectedNames=verifiedResolution.practicePlayers.map(player=>player.name);
-    const startTime=verifiedResolution.startTime;
-    // The automatic rebuild is driven only by the captured verified transaction.
-    // Never fall back to mutable setup state after the coach has approved a change.
-    practiceSetupState.selectedNames=selectedNames;practiceSetupState.startTime=startTime;
-    practiceResolution=null;modal=null;
-    // Do not persist this transient state. Until the resolved schedule has passed
-    // its postcondition/rules audit and is committed, restart recovery must retain
-    // the original verified Resolution transaction. Do not synchronously rebuild
-    // #app from the Apply tap: iPhone Safari must finish that event turn first.
-    const deferResolutionFrame=callback=>{
-     if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(callback,0));
-     else setTimeout(callback,16);
-    };
-    deferResolutionFrame(()=>{
-     try{
-      // The Resolution modal has now yielded its event turn. Publish the transient
-      // setup only while this exact apply still owns the transaction; a stale frame
-      // must never erase a newer screen.
-      if(!transactionOwnsToken()){console.warn('HotB ignored a stale Practice Resolution setup-publication callback');return}
-      try{render()}
-      catch(error){
-       console.error('HotB Practice Resolution could not open the verified rebuild setup',error);
-       rollbackIfOwned('HotB could not start the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
-       return;
-      }
-      // Workspace teardown deliberately clears the global identities. A callback
-      // that runs afterward is stale and must never resurrect the closed draft.
-      if(!transactionOwnsToken()){console.warn('HotB ignored a stale Practice Resolution rebuild callback');return}
-      if(!transactionIsCurrent()){
-       console.error('HotB Practice Resolution apply lost draft authorization before rebuild');
-       rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
-       return;
-      }
-      const generate=$('#generatePractice');
-      if(!generate)throw new Error('Generate Practice control was not found after resolution apply.');
-      // The Build handler is asynchronous because Practice Resolution yields frames
-      // on iPhone. Dispatch the click, then wait until that exact resolved build has
-      // either produced its authorized plan or clearly finished/failed. The old
-      // zero-ms verifier could race the async click handler and roll back a valid
-      // Resolution before the plan had reached its commit boundary.
-      generate.click();
-      const waitForResolvedBuild=async()=>{
-       const deadline=Date.now()+30000;
-       while(Date.now()<deadline){
-        if(!transactionOwnsToken())return false;
-        if(practicePlan?.portalDraftId===resolutionDraftId)return true;
-        // The automatic Build owns practiceResolutionApplyDraftId until it assigns
-        // that exact identity to the finished plan. If the authorization disappears
-        // without the plan, the build has definitively failed; otherwise keep waiting
-        // across Safari frame yields rather than guessing from button DOM state.
-        if(!practiceResolutionApplyDraftId)return false;
-        await new Promise(resolve=>{
-         if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(resolve,0));
-         else setTimeout(resolve,16);
-        });
-       }
-       return false;
-      };
-      deferResolutionFrame(async()=>{
-       try{
-       const buildReady=await waitForResolvedBuild();
-       if(!buildReady){
-        console.error('HotB Practice Resolution rebuild did not finish before verification');
-        rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
-        return;
-       }
-       if(!transactionOwnsToken()){console.warn('HotB ignored a stale Practice Resolution verification callback');return}
-       if(!transactionIsCurrent()){
-        console.error('HotB Practice Resolution rebuild lost its draft authorization');
-        rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
-        return;
-       }
-       let rebuiltSafe=!!practicePlan&&!practicePlan.feasibilityErrors?.length&&practicePlan.portalDraftId===resolutionDraftId&&resolutionPostcondition(expected);
-       if(practicePlan&&practicePlan.portalDraftId!==resolutionDraftId)console.error('HotB Practice Resolution rebuilt plan changed draft identity');
-       if(rebuiltSafe){
-        // Re-run the immutable postcondition immediately before the authoritative
-        // scheduler audit. This catches any synchronous mutation between the first
-        // proof and commit preparation instead of relying on the earlier result.
-        rebuiltSafe=resolutionPostcondition(expected);
-       }
-       if(rebuiltSafe){
-        try{
-         const audit=window.HotBPracticeScheduler?.validate?.(practicePlan);
-         rebuiltSafe=Array.isArray(audit)&&audit.length===0;
-         if(!rebuiltSafe)console.error('HotB Practice Resolution rebuilt plan failed final rules audit',audit);
-        }catch(error){
-         console.error('HotB Practice Resolution rebuilt plan final audit failed',error);
-         rebuiltSafe=false;
-        }
-       }
-       if(rebuiltSafe){
-        // One final proof at the commit boundary: no render/bind/audit side effect
-        // is allowed to change the resolved schedule after it was verified.
-        rebuiltSafe=resolutionPostcondition(expected);
-       }
-       if(rebuiltSafe){
-        // Commit the resolved setup only after the rebuilt schedule and full rules
-        // audit both pass. Keep the apply lock held through persistence: the
-        // transaction is not complete until restart recovery contains this exact
-        // verified plan and setup.
-        practiceSetupState.selectedNames=(practicePlan.players||[]).map(player=>player.name);
-        practiceSetupState.startTime=practicePlan.startTime;
-        practiceSetupState.durationMinutes=practicePlan.durationMinutes;
-        if(persistPracticeSession()!==true){
-         rebuiltSafe=false;
-         console.error('HotB Practice Resolution rebuilt plan could not be committed to restart recovery');
-        }else{
-         let committed=null;
-         try{committed=window.HotBPracticeSession?.restore?.(db.activePracticeSession)}
-         catch(error){console.error('HotB Practice Resolution committed session restore failed',error);rebuiltSafe=false}
-         const committedPlan=committed?.plan;
-         if(rebuiltSafe&&(!committedPlan||committedPlan.portalDraftId!==resolutionDraftId)){
-          rebuiltSafe=false;
-          console.error('HotB Practice Resolution restart recovery did not retain the resolved draft identity');
-         }else{
-          const livePlan=practicePlan;
-          let committedSafe=false;
-          try{
-           // Verify the serialized/restored copy without allowing an exception to
-           // strand the global practicePlan on the recovery copy.
-           practicePlan=committedPlan;
-           committedSafe=resolutionPostcondition(expected);
-          }finally{
-           practicePlan=livePlan;
-          }
-          if(!committedSafe){
-           rebuiltSafe=false;
-           console.error('HotB Practice Resolution restart recovery failed the resolved postcondition');
-          }
-         }
-        }
-        // Persistence/restore verification can invoke application code. Re-check
-        // ownership at the actual commit boundary so teardown or invalidation that
-        // happens during recovery proof cannot be mistaken for a successful apply.
-        if(rebuiltSafe&&!transactionIsCurrent()){
-         rebuiltSafe=false;
-         console.error('HotB Practice Resolution transaction changed during restart-recovery verification');
-        }
-        if(rebuiltSafe){
-         // The complete committed session must survive production restore exactly.
-         // A restore migration/default is not allowed to become the successful
-         // restart authority for a Resolution apply.
-         if(!committed||JSON.stringify(committed)!==JSON.stringify(db.activePracticeSession)){
-          rebuiltSafe=false;
-          console.error('HotB Practice Resolution committed session changed during restart restore');
-         }
-        }
-        if(rebuiltSafe){
-         // The recovery proof temporarily swaps practicePlan to the restored copy.
-         // Prove that the live plan itself is still the exact session we committed
-         // before consuming transaction ownership. A restore hook or later refactor
-         // must never be able to validate one object and leave different live bytes.
-         const committedSession=db.activePracticeSession;
-         if(!committedSession||JSON.stringify(committedSession.plan)!==JSON.stringify(practicePlan)){
-          rebuiltSafe=false;
-          console.error('HotB Practice Resolution live plan changed after restart-recovery verification');
-         }
-        }
-        if(rebuiltSafe){
-         // Prepare the final UI while this transaction still owns its token. Rendering
-         // is part of the commit handoff: if it throws, ownership remains available
-         // to restore the sealed failed-practice snapshot instead of leaving a
-         // committed session behind a broken/unreleased Resolution UI.
-         modal=practicePlan?.buildNotices?.length?'practiceBuildNotice':null;
-         // Match the normal iPhone build handoff: publish the verified committed
-         // builder on a real paint frame instead of rewriting #app inside the same
-         // async verification turn.
-         await new Promise(resolve=>{
-          if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(resolve,0));
-          else setTimeout(resolve,16);
-         });
-         if(!transactionIsCurrent()){
-          console.error('HotB Practice Resolution transaction changed before final committed render');
-          rollbackIfOwned('HotB could not finish opening the verified rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
-          return;
-         }
-         try{render();window.scrollTo(0,0)}
-         catch(error){
-          console.error('HotB Practice Resolution final committed plan render failed',error);
-          rollbackIfOwned('HotB could not open the verified rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
-          return;
-         }
-         if(!transactionIsCurrent()){
-          console.error('HotB Practice Resolution transaction changed during final committed render');
-          rollbackIfOwned('HotB could not finish opening the verified rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
-          return;
-         }
-         // Consume the transaction identity only after the committed builder has
-         // rendered successfully and ownership still matches this exact draft.
-         practiceResolutionApplyDraftId=null;
-         practiceResolutionApplyOwnedDraftId=null;
-         practiceResolutionApplyToken=null;
-         endResolutionApply();
-         return
-        }
-       }
-       console.error('HotB Practice Resolution rebuild did not produce a verified practice plan');
-       rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
-       }catch(error){
-        console.error('HotB Practice Resolution verification callback failed',error);
-        rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
-       }
-      },0);
-     }catch(error){
-      console.error('HotB Practice Resolution automatic rebuild failed',error);
-      rollbackIfOwned('HotB could not verify the rebuilt practice, so the coaching change was rolled back. Review Practice Resolution and try again.');
+    resolutionDraftId=crypto.randomUUID();resolutionApplyToken=crypto.randomUUID();
+    practiceResolutionApplyDraftId=resolutionDraftId;practiceResolutionApplyOwnedDraftId=resolutionDraftId;practiceResolutionApplyToken=resolutionApplyToken;
+    if(!transactionOwnsToken())throw new Error('Practice Resolution could not establish apply ownership.');
+
+    // Reconstruct exactly the candidate that was authorized by candidateNotices.
+    // No DOM state participates in this build.
+    const source=verifiedResolution.practicePlayers;
+    let candidate=Number(expected.durationMinutes)===132?practiceResolutionExtendedPlayers(source,verifiedResolution.startTime):source.map(player=>({...player}));
+    if(candidate.length!==source.length)throw new Error('Practice Resolution candidate roster changed.');
+    if(expected.role==='pitcher'){
+     candidate=candidate.map(player=>player.name===expected.name?{...player,canPitch:false,requiresPitchWarmup:false}:player);
+    }else if(expected.role==='catcher'){
+     candidate=candidate.map(player=>player.name===expected.name?{...player,canCatch:false}:player);
+    }else if(expected.role!==null&&expected.role!==undefined)throw new Error('Practice Resolution candidate role was invalid.');
+    const changedRoleCount=candidate.filter((player,index)=>player.canPitch!==source[index].canPitch||player.requiresPitchWarmup!==source[index].requiresPitchWarmup||player.canCatch!==source[index].canCatch).length;
+    if(expected.role&&changedRoleCount!==1)throw new Error('Practice Resolution candidate did not contain exactly one authorized role change.');
+    if(!expected.role&&changedRoleCount!==0)throw new Error('Practice Resolution extension unexpectedly changed a role.');
+
+    const plan=window.HotBPracticeScheduler.buildSchedule(candidate,expected.startTime,expected.durationMinutes,{noPitchersMode:null});
+    if(!plan||plan.feasibilityErrors?.length)throw new Error('Verified Practice Resolution candidate no longer builds safely.');
+    const audit=window.HotBPracticeScheduler.validate(plan);
+    if(!Array.isArray(audit)||audit.length)throw new Error('Verified Practice Resolution candidate failed its final rules audit: '+(audit||[]).join(' | '));
+    plan.portalDraftId=resolutionDraftId;
+    practicePlan=plan;
+
+    // The immutable postcondition proves attendee order, timing, availability,
+    // authorized role mutation, station capacities, live roles and exact notices.
+    if(!resolutionPostcondition(expected))throw new Error('Verified Practice Resolution candidate failed its immutable postcondition.');
+    if(!transactionOwnsToken())throw new Error('Practice Resolution lost apply ownership before commit.');
+
+    practiceSetupState.selectedNames=(plan.players||[]).map(player=>player.name);
+    practiceSetupState.startTime=plan.startTime;
+    practiceSetupState.durationMinutes=plan.durationMinutes;
+    // Mirror the verified role flags into setup recovery. Block 11 timing is already
+    // represented by duration and practicePlayerModel will derive the new end time.
+    for(const player of plan.players||[]){
+     const existing=practiceSetupState.accommodations?.[player.name];
+     if(existing){
+      existing.canPitch=player.canPitch===true;
+      existing.requiresPitchWarmup=player.requiresPitchWarmup===true;
+      existing.canCatch=player.canCatch===true;
      }
-    },0);
+    }
+
+    if(persistPracticeSession()!==true)throw new Error('Resolved practice could not be committed to restart recovery.');
+    const committed=window.HotBPracticeSession?.restore?.(db.activePracticeSession);
+    if(!committed||JSON.stringify(committed)!==JSON.stringify(db.activePracticeSession)||committed.plan?.portalDraftId!==resolutionDraftId)throw new Error('Resolved practice did not survive restart recovery exactly.');
+    const livePlan=practicePlan;practicePlan=committed.plan;
+    const committedSafe=resolutionPostcondition(expected);
+    practicePlan=livePlan;
+    if(!committedSafe||JSON.stringify(committed.plan)!==JSON.stringify(livePlan))throw new Error('Resolved restart copy failed the immutable postcondition.');
+    if(!transactionOwnsToken())throw new Error('Practice Resolution lost apply ownership at commit.');
+
+    modal=practicePlan?.buildNotices?.length?'practiceBuildNotice':null;
+    render();window.scrollTo(0,0);
+    if(!transactionOwnsToken())throw new Error('Practice Resolution lost apply ownership during final render.');
+    practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;
+    endResolutionApply();
+    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution460',stage:'resolution-apply',state:'committed',draftId:resolutionDraftId,duration:plan.durationMinutes,role:expected.role||'extension',name:expected.name||'',at:new Date().toISOString()}))}catch(error){}
+    return true;
    }catch(error){
-    console.error('HotB Practice Resolution apply failed',error);
-    if(rollbackInitialFailure()){
-     const notify=()=>alert('HotB could not safely apply that resolution. The coaching change was rolled back.');
-     if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(notify,0));else setTimeout(notify,16);
-    }else if(!practiceResolutionApplyToken)endResolutionApply();
+    return fail('HotB Practice Resolution direct apply failed',error);
    }
   };
   const startVerifiedResolutionApply=(expectedFactory,mutate)=>{
