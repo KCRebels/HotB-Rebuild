@@ -6087,14 +6087,7 @@ function bindPractice(){
      // Publish candidate metadata only after every identity/availability/role proof
      // above succeeds. A failed candidate must leave no residue that can later be
      // mistaken for a verified coaching choice.
-     let candidateEvidence='';
-     try{candidateEvidence=JSON.stringify(candidateNotices)}catch(error){resolutionAuditFailures.push(label+' notice evidence could not be sealed.');return false}
-     verifiedCandidateNotices[label]=candidateNotices;
-     if(JSON.stringify(verifiedCandidateNotices[label])!==candidateEvidence){
-      delete verifiedCandidateNotices[label];
-      resolutionAuditFailures.push(label+' changed while publishing verified candidate evidence.');
-      return false;
-     }
+     verifiedCandidateNotices[label]=candidateNotices.slice();
      return true;
     }catch(error){
      console.error('HotB Practice Resolution build failed',label,error);
@@ -6102,9 +6095,6 @@ function bindPractice(){
      return false;
     }
    };
-   // Cache verification by the complete candidate input. The same combined
-   // Block 11 candidate can be reached through more than one Resolution branch;
-   // iPhone should never pay for an identical full scheduler + rules audit twice.
    const verifyResolutionCandidate=(players,candidateDuration,label,expectedChange=null)=>
     verifyResolutionBuild(players,candidateDuration,label,expectedChange);
    // Candidate fan-out is the expensive part of a 13-player Resolution. Verify candidates in deterministic order against the same sealed setup.
