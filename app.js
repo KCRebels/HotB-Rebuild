@@ -6139,12 +6139,17 @@ function bindPractice(){
      pitcher=>solvingPitchers.push(pitcher.name),
      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
     ))return;
-    if(!runResolutionCandidates(
-     availableCatchers,'practice-resolution-catcher',
-     catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
-     catcher=>solvingCatchers.push(catcher.name),
-     'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
-    ))return;
+    // One verified 120-minute role change is sufficient. If Hitting Only works,
+    // do not spend another scheduler build proving a catcher alternative that is
+    // unnecessary to unblock this practice.
+    if(!solvingPitchers.length){
+     if(!runResolutionCandidates(
+      availableCatchers,'practice-resolution-catcher',
+      catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
+      catcher=>solvingCatchers.push(catcher.name),
+      'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
+     ))return;
+    }
     // Combined role + Block 11 choices are fallback proofs only. They are useful when
     // neither the plain extension nor a one-role 120-minute change is sufficient.
     if(extensionBaselineValid&&!solvingPitchers.length&&!solvingCatchers.length){
