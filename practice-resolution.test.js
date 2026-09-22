@@ -110,8 +110,9 @@ mustNotInclude("match(/^(\\\\d{2}):(\\\\d{2})$/)","Persisted Resolution clock va
 
 
 mustInclude("try{serializedDraft=JSON.stringify(draft)}catch(error){console.error('HotB refused to persist Practice Resolution because its setup draft could not be sealed.',error);return false}","Resolution draft must seal exact bytes before save and contain serialization failure");
-mustInclude("HotB Practice Resolution setup draft changed during save.","Resolution draft must fail closed if save mutates recovery bytes");
-mustInclude("HotB Practice Resolution setup draft failed post-save recovery verification.","Resolution draft must be restorable after the actual save");
+mustInclude("persistedResolution.signature!==resolutionToPersist.signature||persistedResolution.decisionSignature!==resolutionToPersist.decisionSignature","Resolution draft must reject saved decision identity drift");
+mustInclude("if(persistedResolutionBytes!==resolutionBytes)","Resolution draft must preserve the exact verified decision bytes across save");
+mustNotInclude("window.HotBPracticeSession.restore?.(db.activePracticeSession)","Resolution publication persistence must not restore the full saved session on the mobile main thread");
 mustInclude("previousActivePracticeSessionBytes=JSON.stringify(db.activePracticeSession);","Resolution persistence must seal the previous recovery authority before replacement");
 mustInclude("previousActivePracticeSession=previousActivePracticeSessionBytes?JSON.parse(previousActivePracticeSessionBytes):null;","Resolution persistence rollback authority must be isolated from later mutation");
 mustInclude("const restorePreviousDraftAfterFailure=(message,error=null)=>","every post-save Resolution draft failure must use one rollback path");
