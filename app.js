@@ -4274,16 +4274,17 @@ function bind(){
    // before that plan becomes live application state.
    let proofBefore='';
    try{proofBefore=JSON.stringify(plan)}catch(_){return false}
+   const failProof=reason=>{try{sessionStorage.setItem('hotb-resolution-postcondition',String(reason||'unknown'))}catch(_){}return false};
    const finishProof=result=>{
-    if(!result)return false;
-    try{return JSON.stringify(plan)===proofBefore}catch(_){return false}
+    if(!result)return failProof('finish-result');
+    try{return JSON.stringify(plan)===proofBefore||failProof('plan-mutated')}catch(_){return failProof('plan-reseal')}
    };
    if(String(plan.startTime||'')!==String(expected.startTime||''))return false;
    if(Number(plan.durationMinutes)!==Number(expected.durationMinutes))return false;
    if(!Array.isArray(expected.expectedNotices))return false;
    const actualNotices=[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort();
    const expectedNotices=[...new Set(expected.expectedNotices.map(value=>String(value||'').trim()).filter(Boolean))].sort();
-   if(JSON.stringify(actualNotices)!==JSON.stringify(expectedNotices))return false;
+   if(JSON.stringify(actualNotices)!==JSON.stringify(expectedNotices))return failProof('notices');
    const expectedNames=expected.playerNames||[],actualNames=(plan.players||[]).map(player=>player.name);
    const expectedSet=new Set(expectedNames),actualSet=new Set(actualNames);
    if(!Array.isArray(expected.playerNames)||!expectedNames.length||expectedNames.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name))return false;
@@ -4291,11 +4292,11 @@ function bind(){
    if(expectedNames.length!==expectedSet.size||actualNames.length!==actualSet.size)return false;
    // Resolution commit preserves the verified attendee order as transaction data.
    // This keeps plan.players, setup.selectedNames and persisted recovery aligned.
-   if(expectedNames.length!==actualNames.length||actualNames.some((name,index)=>name!==expectedNames[index]))return false;
+   if(expectedNames.length!==actualNames.length||actualNames.some((name,index)=>name!==expectedNames[index]))return failProof('player-order');
    const expectedBlocks=Number(expected.durationMinutes)===132?11:10;
-   if(!Array.isArray(plan.times)||plan.times.length!==expectedBlocks)return false;
+   if(!Array.isArray(plan.times)||plan.times.length!==expectedBlocks)return failProof('times-count');
    const scheduleKeys=Object.keys(plan.schedule||{}),scheduleSet=new Set(scheduleKeys);
-   if(scheduleKeys.length!==scheduleSet.size||scheduleSet.size!==expectedSet.size||expectedNames.some((name,index)=>scheduleKeys[index]!==name))return false;
+   if(scheduleKeys.length!==scheduleSet.size||scheduleSet.size!==expectedSet.size||expectedNames.some((name,index)=>scheduleKeys[index]!==name))return failProof('schedule-key-order');
    for(const name of expectedNames)if(!Array.isArray(plan.schedule?.[name])||plan.schedule[name].length!==expectedBlocks)return false;
    // The rebuilt plan must not merely have the right number of blocks. Every time
    // row must be the exact 12-minute sequence implied by the verified start time.
@@ -4357,8 +4358,8 @@ function bind(){
     }
     totalFrontFours+=[...counts.values()].filter(count=>count===4).length;
    }
-   if(totalFrontFours>1)return false;
-   if(!Array.isArray(plan.liveSessions))return false;
+   if(totalFrontFours>1)return failProof('front-toss-four-count');
+   if(!Array.isArray(plan.liveSessions))return failProof('live-sessions-shape');
    {
     const liveKeys=new Set(),liveRoleKeys=new Set();
     for(const live of plan.liveSessions){
@@ -4485,7 +4486,7 @@ function bind(){
     livePitcherLoads.set(session.pitcher,(livePitcherLoads.get(session.pitcher)||0)+1);
     if(session.catcher!=='9Square')liveCatcherLoads.set(session.catcher,(liveCatcherLoads.get(session.catcher)||0)+1);
    }
-   if([...livePitcherLoads.values()].some(count=>count>2)||[...liveCatcherLoads.values()].some(count=>count>2))return false;
+   if([...livePitcherLoads.values()].some(count=>count>2)||[...liveCatcherLoads.values()].some(count=>count>2))return failProof('live-load-ceiling');
    // Persisted summary metadata must agree with the role records it summarizes.
    // Do not allow a resolved plan whose catcherLoads or pitcherRepeats drifted from
    // liveSessions to pass the transaction boundary.
@@ -4495,7 +4496,7 @@ function bind(){
    if(catcherLoadNames.length!==new Set(catcherLoadNames).size)return false;
    const catcherLoadMap=new Map(plan.catcherLoads.map(item=>[item.name,Number(item.liveBlocks)]));
    const eligibleCatchers=(plan.players||[]).filter(player=>player.isCatcher===true).map(player=>player.name);
-   if(catcherLoadMap.size!==eligibleCatchers.length||eligibleCatchers.some((name,index)=>catcherLoadNames[index]!==name||catcherLoadMap.get(name)!==(liveCatcherLoads.get(name)||0)))return false;
+   if(catcherLoadMap.size!==eligibleCatchers.length||eligibleCatchers.some((name,index)=>catcherLoadNames[index]!==name||catcherLoadMap.get(name)!==(liveCatcherLoads.get(name)||0)))return failProof('catcher-load-summary');
    const repeatedPitchers=[...livePitcherLoads.entries()].filter(([,count])=>count>1).map(([name])=>name).sort();
    if(plan.pitcherRepeats.some(name=>typeof name!=='string'||!name.trim()||name.trim()!==name)||plan.pitcherRepeats.length!==new Set(plan.pitcherRepeats).size)return false;
    const persistedPitcherRepeats=plan.pitcherRepeats.slice().sort();
@@ -4567,7 +4568,11 @@ function bind(){
     // merely to run its postcondition. The verifier now accepts an explicit plan,
     // so the failed Resolution remains the sole live authority until every candidate
     // proof has passed. This removes the last substantial pre-commit mutation.
-    if(!resolutionPostcondition(expected,plan))throw new Error('Verified Practice Resolution candidate failed its immutable postcondition.');
+    if(!resolutionPostcondition(expected,plan)){
+     let postconditionDetail='unknown';
+     try{postconditionDetail=sessionStorage.getItem('hotb-resolution-postcondition')||'unknown'}catch(_){}
+     throw new Error('Verified Practice Resolution candidate failed its immutable postcondition ['+postconditionDetail+'].');
+    }
     if(!transactionOwnsToken())throw new Error('Practice Resolution lost apply ownership before commit.');
 
     // Resolution 471: build a detached setup commit first. The live setup remains
