@@ -82,6 +82,18 @@ for(let count=6;count<=15;count++){
  }
 }
 assert.ok(fixtures.length,'there must be at least one real scheduler state where Practice Resolution converts a failed 120-minute practice into a verified safe alternative');
+let maxPrioritizedBuilds=0;
+for(const fixture of fixtures){
+ const prioritized=prioritizedResolution(fixture.source);
+ assert.ok(prioritized.plan,'bounded production-priority Resolution must find every exhaustively proven resolvable fixture');
+ assert.deepEqual(prioritized.plan.feasibilityErrors,[],'bounded production-priority Resolution must return no feasibility errors');
+ assert.deepEqual(scheduler.validate(prioritized.plan),[],'bounded production-priority Resolution must pass the full validator');
+ maxPrioritizedBuilds=Math.max(maxPrioritizedBuilds,prioritized.builds);
+ // Production stops after the first safe category, so it can never execute more
+ // than Block 11 + every pitcher + every catcher candidate in the source roster.
+ assert.ok(prioritized.builds<=1+fixture.pitchers+fixture.catchers,'bounded Resolution search exceeded its strict category fan-out');
+}
+assert.ok(maxPrioritizedBuilds>0,'bounded Resolution regression must execute real scheduler builds');
 
 const exercised=new Set();
 for(const fixture of fixtures){
