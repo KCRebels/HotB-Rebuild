@@ -5870,6 +5870,7 @@ function bindPractice(){
   const recoverPracticeBuildSetup=(stage,message=null)=>{
    stopBuildWatchdog();
    practicePlan=null;practiceResolution=null;modal=null;
+   setPracticeBuildControlsLocked(false);
    const button=$('#generatePractice');
    if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage=stage}
    // Error recovery is also a screen publication. Defer it to a paint frame so
@@ -5882,6 +5883,21 @@ function bindPractice(){
    });
   };
   const buildSetupStillOwned=()=>!!initialBuildSetupSignature&&buildSetupSignature()===initialBuildSetupSignature;
+  const setPracticeBuildControlsLocked=locked=>{
+   // Build is an asynchronous transaction on iPhone. Freeze every setup control
+   // that can alter scheduler input until publication/recovery owns a fresh screen.
+   document.querySelectorAll('[data-practice-player],#practiceStartTime,#practiceDuration,[data-practice-accommodation],[data-practice-pitching],[data-practice-warmup],[data-practice-catching]').forEach(control=>{
+    if(!control)return;
+    if(locked){
+     if(!Object.prototype.hasOwnProperty.call(control.dataset,'buildWasDisabled'))control.dataset.buildWasDisabled=control.disabled?'1':'0';
+     control.disabled=true;
+    }else{
+     const was=control.dataset.buildWasDisabled;
+     if(was!==undefined){control.disabled=was==='1';delete control.dataset.buildWasDisabled}
+    }
+   });
+  };
+  setPracticeBuildControlsLocked(true);
   const armBuildWatchdog=(stage,timeout=12000)=>{
    buildFinished=false;buildWatchdogStage=stage;
    const generation=++buildWatchdogGeneration;
@@ -5898,6 +5914,7 @@ function bindPractice(){
      return;
     }
     stopBuildWatchdog();
+    setPracticeBuildControlsLocked(false);
     stuckButton.disabled=false;stuckButton.textContent='Build Practice Schedule';
     alert('HotB practice build stopped at '+String(stuckButton.dataset.buildStage||buildWatchdogStage)+'. Please tell me this exact stage.');
    },timeout);
@@ -5905,6 +5922,7 @@ function bindPractice(){
   armBuildWatchdog('scheduler');
   try{practicePlan=window.HotBPracticeScheduler.buildSchedule(practicePlayers,startTime,durationMinutes,{noPitchersMode});armBuildWatchdog('scheduler-returned')}catch(error){
    console.error('HotB practice scheduler failed',error);stopBuildWatchdog();practicePlan=null;
+   setPracticeBuildControlsLocked(false);
    // During an automatic Resolution rebuild, the outer transaction owns rollback.
    // Preserve its token + draft authorization so the queued verifier can restore
    // the original verified Resolution instead of mistaking this failure for stale work.
@@ -5943,6 +5961,7 @@ function bindPractice(){
    // the outer verifier will see this infeasible plan and roll back atomically.
    if(resolutionApplyBuild){
     stopBuildWatchdog();
+    setPracticeBuildControlsLocked(false);
     if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-rebuild-infeasible'}
     return;
    }
@@ -6233,7 +6252,7 @@ function bindPractice(){
    setResolutionStage('practice-resolution-publish');
    await yieldResolutionUI();
    modal='practiceResolution';
-   try{render();stopBuildWatchdog();window.scrollTo(0,0)}
+   try{setPracticeBuildControlsLocked(false);render();stopBuildWatchdog();window.scrollTo(0,0)}
    catch(error){
     console.error('HotB Practice Resolution screen failed',error);
     stopBuildWatchdog();practiceResolution=null;modal=null;persistPracticeDraft();
@@ -6259,6 +6278,7 @@ function bindPractice(){
    // build's heartbeat before returning; otherwise its timer can later fire over
    // the restored Resolution modal and falsely report a stranded build.
    stopBuildWatchdog();
+   setPracticeBuildControlsLocked(false);
    practicePlan=null;
    if(buildButton){buildButton.disabled=false;buildButton.textContent='Build Practice Schedule';buildButton.dataset.buildStage='resolution-identity-mismatch'}
    return;
@@ -6293,10 +6313,10 @@ function bindPractice(){
   }
   if(practicePlan.buildNotices?.length){
    modal='practiceBuildNotice';
-   publishPracticeBuildFrame('practice-build-notice',()=>{render();stopBuildWatchdog();window.scrollTo(0,0)});
+   publishPracticeBuildFrame('practice-build-notice',()=>{setPracticeBuildControlsLocked(false);render();stopBuildWatchdog();window.scrollTo(0,0)});
    return;
   }
-  publishPracticeBuildFrame('practice-plan-publish',()=>{render();stopBuildWatchdog();window.scrollTo(0,0)});
+  publishPracticeBuildFrame('practice-plan-publish',()=>{setPracticeBuildControlsLocked(false);render();stopBuildWatchdog();window.scrollTo(0,0)});
  });
  $('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',limitations:practiceSetupState.accommodations?.[player.name]?.limitations||'',prePracticeComplete:!!player.prePracticeComplete,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={...practiceSetupState,selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;practiceSection='setup';persistPracticeDraft();render();window.scrollTo(0,0)});
  $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;if(practiceCoachOpen)practiceCardsOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
