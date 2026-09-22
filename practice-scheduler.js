@@ -271,29 +271,35 @@
   // blocks, but a player receives a station she has not already used whenever possible.
   const drillSlotsByPlayer=Object.fromEntries(attendees.map(player=>[player.name,schedule[player.name].map((entry,index)=>entry.activity==='Drill'?index:-1).filter(index=>index>=0)]));
   const drillPlayersByBlock=Array.from({length:BLOCK_COUNT},(_,block)=>attendees.filter(player=>schedule[player.name][block].activity==='Drill'));
-  const drillStations=Math.max(1,...Object.values(drillSlotsByPlayer).map(slots=>slots.length),...drillPlayersByBlock.map(list=>Math.ceil(list.length/3)));
-  const usedByPlayer=Object.fromEntries(attendees.map(player=>[player.name,new Set()]));
-  let drillsAssigned=true;
-  for(let block=0;block<BLOCK_COUNT;block++){
-   const drillPlayers=drillPlayersByBlock[block].slice().sort((a,b)=>drillSlotsByPlayer[b.name].length-drillSlotsByPlayer[a.name].length||a.name.localeCompare(b.name));
-   if(!drillPlayers.length)continue;
-   const groupSizes=drillPlayers.length===1?[1]:drillPlayers.length%2?[3,...Array((drillPlayers.length-3)/2).fill(2)]:Array(drillPlayers.length/2).fill(2);
-   const groups=[];let cursor=0;
-   for(const size of groupSizes){groups.push(drillPlayers.slice(cursor,cursor+size));cursor+=size}
-   const available=Array.from({length:drillStations},(_,index)=>index);
-   groups.sort((a,b)=>{
-    const ao=available.filter(station=>a.every(player=>!usedByPlayer[player.name].has(station))).length;
-    const bo=available.filter(station=>b.every(player=>!usedByPlayer[player.name].has(station))).length;
-    return ao-bo;
-   });
-   for(const group of groups){
-    let at=available.findIndex(station=>group.every(player=>!usedByPlayer[player.name].has(station)));
-    if(at<0)at=0;
-    if(at<0){drillsAssigned=false;break}
-    const station=available.splice(at,1)[0];
-    group.forEach(player=>{usedByPlayer[player.name].add(station);schedule[player.name][block].activity=`Drill #${station+1}`});
+  // Drill assignment is bounded by the number of practice blocks. Start with
+  // the minimum station count, then increase only when the no-repeat constraint
+  // cannot be satisfied. This restores the no-repeat guarantee without any
+  // unbounded search: at most BLOCK_COUNT+1 deterministic passes are possible.
+  let drillStations=Math.max(0,...Object.values(drillSlotsByPlayer).map(slots=>slots.length),...drillPlayersByBlock.map(list=>Math.ceil(list.length/3))),drillsAssigned=false;
+  for(let pass=0;pass<=BLOCK_COUNT&&drillStations<=BLOCK_COUNT&&!drillsAssigned;pass++,drillStations++){
+   attendees.forEach(player=>schedule[player.name].forEach(entry=>{if(entry.activity.startsWith('Drill #'))entry.activity='Drill'}));
+   const usedByPlayer=Object.fromEntries(attendees.map(player=>[player.name,new Set()]));
+   let failed=false;
+   for(let block=0;block<BLOCK_COUNT&&!failed;block++){
+    const drillPlayers=drillPlayersByBlock[block].slice().sort((a,b)=>drillSlotsByPlayer[b.name].length-drillSlotsByPlayer[a.name].length||a.name.localeCompare(b.name));
+    if(!drillPlayers.length)continue;
+    const groupSizes=drillPlayers.length===1?[1]:drillPlayers.length%2?[3,...Array((drillPlayers.length-3)/2).fill(2)]:Array(drillPlayers.length/2).fill(2);
+    const groups=[];let cursor=0;
+    for(const size of groupSizes){groups.push(drillPlayers.slice(cursor,cursor+size));cursor+=size}
+    const available=Array.from({length:drillStations},(_,index)=>index);
+    groups.sort((a,b)=>{
+     const ao=available.filter(station=>a.every(player=>!usedByPlayer[player.name].has(station))).length;
+     const bo=available.filter(station=>b.every(player=>!usedByPlayer[player.name].has(station))).length;
+     return ao-bo;
+    });
+    for(const group of groups){
+     const at=available.findIndex(station=>group.every(player=>!usedByPlayer[player.name].has(station)));
+     if(at<0){failed=true;break}
+     const station=available.splice(at,1)[0];
+     group.forEach(player=>{usedByPlayer[player.name].add(station);schedule[player.name][block].activity=`Drill #${station+1}`});
+    }
    }
-   if(!drillsAssigned)break;
+   if(!failed){drillsAssigned=true;break}
   }
   if(!drillsAssigned)warnings.push('The drill stations could not be assigned without a repeat.');
   activeAttendees.forEach(player=>{
