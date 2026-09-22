@@ -648,22 +648,22 @@ console.log('Resolution 487 infeasible-candidate short-circuit regression passed
 
 
 
-/* Resolution 497 verified coaching-option publication contract.
+/* Cooperative verified coaching-option publication contract.
    A genuine base failure may test only bounded coaching compromises. Every option
    exposed to the coach must come from a successful rebuild plus full validator. */
 {
  const app497=require('node:fs').readFileSync('./app.js','utf8');
- const start=app497.indexOf('// Resolution 497: now that the base scheduler');
+ const start=app497.indexOf('const candidateQueue=[]');
  const end=app497.indexOf("modal='practiceResolution'",start);
- assert.ok(start>=0&&end>start,'Resolution 497 verified-option branch must exist');
+ assert.ok(start>=0&&end>start,'cooperative verified-option branch must exist');
  const branch=app497.slice(start,end);
- assert.ok(branch.includes('verifyResolutionCandidate'),'failed base build must verify coaching alternatives');
- assert.ok(branch.includes('window.HotBPracticeScheduler.buildSchedule(players,startTime,duration'),'each alternative must rebuild from explicit candidate players');
+ assert.ok(branch.includes('const verifyCandidate=item=>'),'failed base build must verify coaching alternatives');
+ assert.ok(branch.includes('window.HotBPracticeScheduler.buildSchedule(candidate,startTime,item.duration'),'each alternative must rebuild from explicit candidate players');
  assert.ok(branch.includes('window.HotBPracticeScheduler.validate(plan)'),'each alternative must pass the complete scheduler validator');
  assert.ok(branch.includes("'Hitting Only: '+player.name"),'pitcher Hitting Only must be tested as a coaching option');
  assert.ok(branch.includes("'Not Catching: '+player.name"),'catcher opt-out must be tested as a coaching option');
- assert.ok(branch.includes("'Block 11'"),'emergency Block 11 must be tested as a coaching option');
- assert.ok(branch.includes('sortedCandidateNotices'),'verified option notices must be sealed with the decision');
- assert.ok(app497.includes("bundle:'resolution497'"),'published Resolution must identify the verified-option architecture');
+ assert.ok(branch.includes("label:'Block 11'"),'emergency Block 11 must be tested as a coaching option');
+ assert.ok(branch.includes('candidateNotices'),'verified option notices must be sealed with the decision');
+ assert.ok(branch.includes('const finalizeCandidates=()=>'),'verified candidates must be finalized only after cooperative verification');
 }
-console.log('Resolution 497 verified coaching-option regression passed.');
+console.log('Cooperative verified coaching-option regression passed.');
