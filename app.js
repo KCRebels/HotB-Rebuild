@@ -5916,7 +5916,7 @@ function bindPractice(){
     extendedPlayers=practiceResolutionExtendedPlayers(practicePlayers,startTime);
     extensionBaselineValid=extendedPlayers.length===practicePlayers.length&&extendedPlayers.every(player=>Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=11&&Number(player.availableFromBlock)<Number(player.availableUntilBlock));
    }
-   const verifyOrderedCandidates=(candidates,stage,roleLabel,onSafe)=>{
+   const verifyOrderedCandidates=(candidates,stage,roleLabel,onSafe,collectAllSafe=false)=>{
     const seenShapes=new Set();
     for(let sourceIndex=0;sourceIndex<candidates.length;sourceIndex++){
      const spec=candidates[sourceIndex],shape=resolutionCandidateShape(spec);
@@ -5931,10 +5931,13 @@ function bindPractice(){
      const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
      const elapsed=Math.round((typeof performance!=='undefined'&&performance.now?performance.now():Date.now())-started);
      try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution459',stage,label:spec.label,state:'completed',safe,elapsedMs:elapsed,completedAt:new Date().toISOString()}))}catch(error){}
-     if(safe){onSafe(spec);return 'safe'}
+     if(safe){
+      onSafe(spec);
+      if(!collectAllSafe)return 'safe';
+     }
      if(resolutionBudgetExceeded)return 'budget';
     }
-    return 'none';
+    return collectAllSafe?'complete':'none';
    };
 
    // Preserve every attendee and every role whenever the verified 132-minute plan
@@ -5945,15 +5948,17 @@ function bindPractice(){
    }
 
    if(!canExtend&&!identityBlocked){
+    // Resolution 463: prove the complete same-duration choice set. The old search
+    // stopped at the first safe pitcher, and skipped catchers entirely once any
+    // pitcher worked. That made the modal depend on roster ordering instead of
+    // showing every independently verified coaching choice for this exact practice.
     const pitcherSpecs=availablePitchers.map(pitcher=>({players:practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:durationMinutes,label:'Hitting Only: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name},choiceName:pitcher.name}));
-    const pitcherResult=verifyOrderedCandidates(pitcherSpecs,'practice-resolution-pitcher','Hitting Only',spec=>solvingPitchers.push(spec.choiceName));
+    const pitcherResult=verifyOrderedCandidates(pitcherSpecs,'practice-resolution-pitcher','Hitting Only',spec=>solvingPitchers.push(spec.choiceName),true);
     if(pitcherResult==='aborted')return;
 
-    if(!solvingPitchers.length){
-     const catcherSpecs=availableCatchers.map(catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name},choiceName:catcher.name}));
-     const catcherResult=verifyOrderedCandidates(catcherSpecs,'practice-resolution-catcher','Not Catching',spec=>solvingCatchers.push(spec.choiceName));
-     if(catcherResult==='aborted')return;
-    }
+    const catcherSpecs=availableCatchers.map(catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name},choiceName:catcher.name}));
+    const catcherResult=verifyOrderedCandidates(catcherSpecs,'practice-resolution-catcher','Not Catching',spec=>solvingCatchers.push(spec.choiceName),true);
+    if(catcherResult==='aborted')return;
    }
 
    if(!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded){
