@@ -667,3 +667,20 @@ console.log('Resolution 487 infeasible-candidate short-circuit regression passed
  assert.ok(branch.includes('const finalizeCandidates=()=>'),'verified candidates must be finalized only after cooperative verification');
 }
 console.log('Cooperative verified coaching-option regression passed.');
+
+
+/* Resolution 526 publication handoff regression.
+   The verified snapshot must survive publication, and the temporary checking shell
+   must not be manually detached before render atomically replaces #app. */
+{
+ const source=require('node:fs').readFileSync('./app.js','utf8');
+ const start=source.indexOf("modal='practiceResolution';",source.indexOf('const finalizeCandidates=()=>'));
+ const end=source.indexOf('const runNextCandidate=()=>',start);
+ assert.ok(start>=0&&end>start,'verified Resolution publication handoff must exist');
+ const publish=source.slice(start,end);
+ assert.doesNotMatch(publish,/shell\.remove\(\)/,'publication must not detach the verification shell before render');
+ assert.match(publish,/render\(\);window\.scrollTo\(0,0\)/,'publication must render the verified Resolution directly');
+ assert.match(publish,/const published=document\.querySelector\('\.practice-resolution-modal'\)/,'publication must prove the decision modal mounted');
+ assert.doesNotMatch(publish,/practiceResolution=null/,'a render failure must not destroy the already-verified Resolution evidence');
+}
+console.log('Resolution 526 atomic publication regression passed.');
