@@ -254,9 +254,15 @@
   }
   const liveBlocks=new Set(liveSessions.map(session=>session.block));
   const frontTossAssignments=[];
+  // Resolution 498: Front Toss and Machine share the same remaining-open-block
+  // resource. Solving Front Toss first and Machine second can falsely reject a
+  // practice even when another valid Front Toss partition leaves Machine feasible.
+  // The station solver below can therefore receive a continuation predicate: a
+  // complete Front Toss partition is accepted only when the remaining schedule can
+  // still satisfy Machine exactly once for every attendee.
   // Resolution 409: fixed-station assignment is a bounded deterministic pass.
   // Never search/retry the same 13-player state after catcher/live resolution.
-  function assignStationGroups(playersToAssign,slots,eligible,allowOneFrontTossFour=false){
+  function assignStationGroups(playersToAssign,slots,eligible,allowOneFrontTossFour=false,acceptSolution=null){
    // Resolution 494: solve station grouping as a tiny bounded exact-cover problem
    // instead of greedily filling slots and trying to repair singles afterward.
    // The greedy repair could reject a valid Machine layout when Live/Front Toss had
@@ -311,18 +317,55 @@
     }
     memo.add(key);return null;
    };
-   const solution=search(fullMask,0,false);if(!solution)return null;
-   const assignments=Array.from({length:slots.length},()=>[]);
-   solution.forEach(({slotIndex,names})=>{assignments[slotIndex]=names});
-   return assignments;
+   let solution=search(fullMask,0,false);
+   if(!solution)return null;
+   const materialize=value=>{const assignments=Array.from({length:slots.length},()=>[]);value.forEach(({slotIndex,names})=>{assignments[slotIndex]=names});return assignments};
+   if(!acceptSolution)return materialize(solution);
+   // A continuation-aware caller may reject an otherwise valid exact cover because
+   // it consumes scarce blocks needed by the next mandatory station. Enumerate the
+   // same bounded exact-cover tree while pruning rejected complete leaves.
+   memo.clear();
+   const searchAccepted=(remaining,usedSlots,fourUsed)=>{
+    if(remaining===0){const value=current.slice();return acceptSolution(materialize(value))?value:null}
+    const key=remaining+'|'+usedSlots+'|'+(fourUsed?1:0);if(memo.has(key))return null;
+    let anchor=-1,anchorSlots=null;
+    for(let playerIndex=0;playerIndex<count;playerIndex++)if(remaining&(1<<playerIndex)){
+     const possible=[];for(let slotIndex=0;slotIndex<slots.length;slotIndex++)if(!(usedSlots&(1<<slotIndex))&&(eligibleMasks[slotIndex]&(1<<playerIndex)))possible.push(slotIndex);
+     if(!possible.length){memo.add(key);return null}
+     if(anchorSlots===null||possible.length<anchorSlots.length){anchor=playerIndex;anchorSlots=possible}
+    }
+    for(const slotIndex of anchorSlots){
+     const available=(eligibleMasks[slotIndex]&remaining)>>>0,sizes=allowOneFrontTossFour&&!fourUsed?[3,2,4]:[3,2];
+     for(const size of sizes){
+      if(popcount(available)<size)continue;
+      const others=available&~(1<<anchor);
+      for(const rest of combinations(others,size-1)){
+       const groupMask=(rest|(1<<anchor))>>>0,names=players.filter((_,i)=>groupMask&(1<<i)).map(player=>player.name);
+       if(!players.every((player,i)=>!(groupMask&(1<<i))||eligible(player,slots[slotIndex],slotIndex,names.filter(name=>name!==player.name))))continue;
+       current.push({slotIndex,names});
+       const tail=searchAccepted((remaining&~groupMask)>>>0,(usedSlots|(1<<slotIndex))>>>0,fourUsed||size===4);
+       if(tail)return tail;
+       current.pop();
+      }
+     }
+    }
+    memo.add(key);return null;
+   };
+   const current=[];solution=searchAccepted(fullMask,0,false);return solution?materialize(solution):null;
   }
   const prePracticePlayers=activeAttendees.filter(player=>player.prePracticeComplete),reserveEarlyFront=prePracticePlayers.length>=2&&prePracticePlayers.length<=12;
   const frontTossCandidates=Array.from({length:BLOCK_COUNT},(_,block)=>block).filter(block=>!liveBlocks.has(block));
   const orderedFrontBlocks=frontTossCandidates.slice().sort((a,b)=>(a>=8?0:1)-(b>=8?0:1)||a-b),frontSlots=orderedFrontBlocks.flatMap(block=>[{block,lane:1},{block,lane:2}]);
   if(!feasibilityErrors.length){
    const eligibleFront=(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2));
-   let frontGroups=assignStationGroups(activeAttendees,frontSlots,eligibleFront,false);
-   if(!frontGroups)frontGroups=assignStationGroups(activeAttendees,frontSlots,eligibleFront,true);
+   const leavesMachineFeasible=frontGroups=>{
+    const occupied=Object.fromEntries(activeAttendees.map(player=>[player.name,new Set()]));
+    frontGroups.forEach((names,index)=>names.forEach(name=>occupied[name].add(frontSlots[index].block)));
+    const machineSlots=Array.from({length:BLOCK_COUNT},(_,block)=>({block}));
+    return !!assignStationGroups(activeAttendees,machineSlots,(player,slot)=>isOpen(player,slot.block)&&!occupied[player.name].has(slot.block),false);
+   };
+   let frontGroups=assignStationGroups(activeAttendees,frontSlots,eligibleFront,false,leavesMachineFeasible);
+   if(!frontGroups)frontGroups=assignStationGroups(activeAttendees,frontSlots,eligibleFront,true,leavesMachineFeasible);
    if(!frontGroups)feasibilityErrors.push('Front toss cannot be scheduled exactly once per player while keeping at least 2 players at every station, even after using the one allowed 4-player Front Toss block.');
    else{
     const fourIndex=frontGroups.findIndex(names=>names.length===4);
