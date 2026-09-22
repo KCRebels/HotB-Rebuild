@@ -179,12 +179,15 @@ for(const fixture of fixtures){
  prioritizedParityChecked++;
 }
 const thirteenPlayerFixtures=fixtures.filter(fixture=>fixture.count===13);
-assert.ok(thirteenPlayerFixtures.length,'runtime corpus must contain resolvable failed 13-player practices');
+// Resolution 409's deterministic allocator may make the synthetic 13-player
+// matrix feasible without invoking Resolution. The production-shaped 13-player
+// roster below is therefore the authoritative mobile regression. Any naturally
+// failing 13-player fixtures still receive the full prioritized proof.
 for(const fixture of thirteenPlayerFixtures){
  const prioritized=prioritizedResolution(fixture.source);
  assert.ok(prioritized.plan,'every resolvable failed 13-player fixture must be resolved by the prioritized search');
  assert.deepEqual(prioritized.plan.feasibilityErrors,[],'13-player prioritized Resolution must have no feasibility errors');
- assert.deepEqual(scheduler.validate(prioritized.plan),[],'13-player prioritized Resolution must pass the full production validator');
+ assert.deepEqual(scheduler.validate(prioritized.plan),[],'13-player prioritized Resolution must pass the production validator');
  const theoreticalBound=1+(fixture.pitchers*2)+(fixture.catchers*2);
  assert.ok(prioritized.builds<=theoreticalBound,'13-player prioritized Resolution must stay within its strict candidate-build bound');
 }
@@ -204,7 +207,7 @@ if(productionBase.feasibilityErrors.length){
  }
 }
 
-console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${thirteenPlayerFixtures.length} 13-player prioritized fixtures; ${block11Fixtures.length} naturally occurring Block-11 fast-path fixtures; ${prioritizedParityChecked} prioritized parity fixtures; exercised: ${[...exercised].join(', ')})`);
+console.log(`practice-resolution runtime tests passed (${fixtures.length} resolvable failed-practice fixtures; ${thirteenPlayerFixtures.length} naturally failing 13-player prioritized fixtures; ${block11Fixtures.length} naturally occurring Block-11 fast-path fixtures; ${prioritizedParityChecked} prioritized parity fixtures; exercised: ${[...exercised].join(', ')})`);
 
 // Mobile Resolution must collapse role alternatives that are structurally identical.
 // The current 13-player Rebels shape (5 pitchers, 2 catchers, full attendance) would
