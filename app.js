@@ -6090,19 +6090,30 @@ function bindPractice(){
    }
 
    if(!identityBlocked&&!canExtend&&!solvingPitchers.length&&!solvingCatchers.length&&extensionBaselineValid&&!resolutionBudgetExceeded){
-    // Resolution 467: combined emergency search follows the same first-safe rule.
-    // Try Hitting Only + Block 11 in roster order, then Not Catching + Block 11
-    // only if no pitcher combination is safe.
-    const combinedPitcherSpecs=extendedPlayers.filter(player=>player.canPitch).map(pitcher=>({players:extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:132,label:'Hitting Only + Block 11: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name},choiceName:pitcher.name}));
-    const combinedPitcherResult=verifyOrderedCandidates(combinedPitcherSpecs,'practice-resolution-pitcher-block11','Hitting Only + Block 11',spec=>combinedPitchers.push(spec.choiceName));
-    if(combinedPitcherResult==='aborted')return;
-    if(combinedPitcherResult==='budget')resolutionBudgetExceeded=true;
-
+    // Resolution 485: combined role + Block 11 fan-out is the expensive path that
+    // was visibly stalling iPhone Safari. Do not enumerate every pitcher and catcher
+    // candidate synchronously. Search one deterministic role candidate per tap-path:
+    // the first enabled pitcher, then (only if needed) the first enabled catcher.
+    // Each displayed choice is still independently rebuilt and fully audited; this
+    // changes only breadth, not the safety standard. If neither first candidate is
+    // safe, publish the verified no-choice Resolution and send the coach back to
+    // attendance/availability rather than freezing the UI while exploring the full
+    // Cartesian role list.
+    const firstExtendedPitcher=extendedPlayers.find(player=>player.canPitch);
+    if(firstExtendedPitcher){
+     const spec={players:extendedPlayers.map(player=>player.name===firstExtendedPitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:132,label:'Hitting Only + Block 11: '+firstExtendedPitcher.name,expectedChange:{role:'pitcher',name:firstExtendedPitcher.name},choiceName:firstExtendedPitcher.name};
+     const result=verifyOrderedCandidates([spec],'practice-resolution-pitcher-block11','Hitting Only + Block 11',safeSpec=>combinedPitchers.push(safeSpec.choiceName));
+     if(result==='aborted')return;
+     if(result==='budget')resolutionBudgetExceeded=true;
+    }
     if(!combinedPitchers.length&&!resolutionBudgetExceeded){
-     const combinedCatcherSpecs=extendedPlayers.filter(player=>player.canCatch).map(catcher=>({players:extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name},choiceName:catcher.name}));
-     const combinedCatcherResult=verifyOrderedCandidates(combinedCatcherSpecs,'practice-resolution-catcher-block11','Not Catching + Block 11',spec=>combinedCatchers.push(spec.choiceName));
-     if(combinedCatcherResult==='aborted')return;
-     if(combinedCatcherResult==='budget')resolutionBudgetExceeded=true;
+     const firstExtendedCatcher=extendedPlayers.find(player=>player.canCatch);
+     if(firstExtendedCatcher){
+      const spec={players:extendedPlayers.map(player=>player.name===firstExtendedCatcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+firstExtendedCatcher.name,expectedChange:{role:'catcher',name:firstExtendedCatcher.name},choiceName:firstExtendedCatcher.name};
+      const result=verifyOrderedCandidates([spec],'practice-resolution-catcher-block11','Not Catching + Block 11',safeSpec=>combinedCatchers.push(safeSpec.choiceName));
+      if(result==='aborted')return;
+      if(result==='budget')resolutionBudgetExceeded=true;
+     }
     }
    }
    // Candidate fan-out is complete. Normalize once, then enter verified evidence publication.
