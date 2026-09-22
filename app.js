@@ -4303,7 +4303,20 @@ function bind(){
    // row must be the exact 12-minute sequence implied by the verified start time.
    // This catches shifted, duplicated, skipped, or malformed block clocks before
    // a resolved practice can be committed to restart recovery or player portals.
-   const clockMinutes=value=>{const match=String(value||'').trim().match(/^(\d{1,2}):(\d{2})$/);if(!match)return null;const hour=Number(match[1]),minute=Number(match[2]);return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null};
+   // Scheduler block labels are display times (for example 6:00p), while the
+   // verified setup start is stored as a 24-hour input value (18:00). Parse both
+   // representations into the same minute-of-day value before comparing them.
+   const clockMinutes=value=>{
+    const text=String(value||'').trim().toLowerCase();
+    let match=text.match(/^(\d{1,2}):(\d{2})$/);
+    if(match){const hour=Number(match[1]),minute=Number(match[2]);return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null}
+    match=text.match(/^(\d{1,2}):(\d{2})(a|p)$/);
+    if(!match)return null;
+    let hour=Number(match[1]),minute=Number(match[2]);
+    if(hour<1||hour>12||minute<0||minute>=60)return null;
+    hour=hour%12+(match[3]==='p'?12:0);
+    return hour*60+minute;
+   };
    const verifiedStart=clockMinutes(expected.startTime);
    if(verifiedStart===null)return failProof('postcondition-clause-10');
    if(!plan.times.every((time,index)=>{
