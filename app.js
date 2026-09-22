@@ -5930,6 +5930,15 @@ function bindPractice(){
      // against the same source objects, so avoid serializing every candidate twice
      // on the iPhone production path.
      const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode:null});
+     // Resolution 487: feasibility is the cheap scheduler gate. Do not enter the
+     // full validator or the detailed candidate identity audit for a plan the
+     // scheduler already declared impossible. Most Resolution candidates fail here,
+     // so this removes the largest avoidable verification work from the mobile path.
+     if(!plan||plan.feasibilityErrors?.length){
+      if(!plan)resolutionAuditFailures.push(label+' did not return a schedule.');
+      else resolutionAuditFailures.push(label+' remained infeasible: '+[...new Set(plan.feasibilityErrors.map(error=>String(error||'').trim()).filter(Boolean))].join(' | '));
+      return false;
+     }
      if(!resolutionPlanIsSafe(plan,label))return false;
      const candidateNotices=[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort();
      const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
