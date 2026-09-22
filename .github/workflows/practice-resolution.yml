@@ -35,7 +35,7 @@ jobs:
         run: node practice-scheduler.test.js
       - name: Verify deployed bundle markers
         run: |
-          grep -q "app.js?v=20260921-resolution402" index.html
+          grep -q "app.js?v=20260921-resolution403" index.html
           grep -q "BUILD_VERSION = '2026.09.21.223'" service-worker.js
           grep -q "launch=223" service-worker.js
           ! grep -q "Finalizing Resolution" app.js
