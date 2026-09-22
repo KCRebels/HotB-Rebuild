@@ -5811,7 +5811,7 @@ function bindPractice(){
  $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#endPracticeDraft')?.addEventListener('click',endPracticeDraft);
- $('#generatePractice')?.addEventListener('click',()=>{
+ $('#generatePractice')?.addEventListener('click',async()=>{
   const roster=practiceAttendanceRoster(),attendees=Array.from(document.querySelectorAll('[data-practice-player]:checked')).map(input=>roster[Number(input.dataset.practicePlayer)]).filter(Boolean);
   // Seal the exact setup this build owns so candidate verification cannot publish a plan for different inputs.
   const buildSetupSignature=()=>{
@@ -6022,7 +6022,7 @@ function bindPractice(){
     if(resolutionBuildCount>=RESOLUTION_BUILD_BUDGET){
      if(!resolutionBudgetExceeded)resolutionAuditFailures.push('Practice Resolution stopped because its verified scheduler-build budget was exceeded.');
      resolutionBudgetExceeded=true;
-     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution454',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
+     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution455',stage:'practice-resolution-budget',state:'stopped',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,stoppedAt:new Date().toISOString()}))}catch(error){}
      return false;
     }
     resolutionBuildCount++;
@@ -6139,7 +6139,7 @@ function bindPractice(){
     // scheduling state, never merely the same anonymous multiset of roles.
     return JSON.stringify({duration:Number(spec.duration),players:shape});
    };
-   const runResolutionCandidates=(candidates,stage,buildCandidate,onSafe,ownershipMessage,stopAfterFirst=false)=>{
+   const runResolutionCandidates=async(candidates,stage,buildCandidate,onSafe,ownershipMessage,stopAfterFirst=false)=>{
     const stageLabels={'practice-resolution-pitcher':'Pitcher','practice-resolution-catcher':'Catcher','practice-resolution-pitcher-block11':'Pitcher + Block 11','practice-resolution-catcher-block11':'Catcher + Block 11'};
     const unique=[],seenShapes=new Set();
     for(const candidate of candidates){
@@ -6153,7 +6153,7 @@ function bindPractice(){
      setResolutionStage(stage);
      if(button)button.textContent='Checking '+(stageLabels[stage]||'Resolution')+' '+(index+1)+'/'+unique.length+'…';
      const started=typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
-     const diagnosticBase={bundle:'resolution454',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
+     const diagnosticBase={bundle:'resolution455',stage,label:spec.label,index:index+1,total:unique.length,sourceCandidates:candidates.length,startedAt:new Date().toISOString()};
      try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({...diagnosticBase,state:'started'}))}catch(error){}
      const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
      const elapsed=Math.round((typeof performance!=='undefined'&&performance.now?performance.now():Date.now())-started);
@@ -6166,6 +6166,11 @@ function bindPractice(){
       onSafe(candidate,spec);
       if(stopAfterFirst)return true;
      }
+     // Yield between failed candidate builds. iPhone Safari can defer paint while
+     // several synchronous scheduler/audit passes share one click task; yielding
+     // here makes progress visible and prevents the final candidate status from
+     // becoming the last painted frame while evidence publication continues.
+     if(index<unique.length-1)await new Promise(resolve=>setTimeout(resolve,0));
     }
     return true;
    };
@@ -6184,7 +6189,7 @@ function bindPractice(){
    // make one pitcher Hitting Only. This is the known natural six-player recovery
    // case and avoids an unnecessary 132-minute scheduler pass before it.
    if(!identityBlocked&&availablePitchers.length){
-    if(!runResolutionCandidates(
+    if(!await runResolutionCandidates(
      availablePitchers,'practice-resolution-pitcher',
      pitcher=>({players:practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:durationMinutes,label:'Hitting Only: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name}}),
      pitcher=>solvingPitchers.push(pitcher.name),
@@ -6193,7 +6198,7 @@ function bindPractice(){
    }
    // If no pitcher-only fix works, try the same-duration catcher adjustment.
    if(!solvingPitchers.length&&availableCatchers.length){
-    if(!runResolutionCandidates(
+    if(!await runResolutionCandidates(
      availableCatchers,'practice-resolution-catcher',
      catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
      catcher=>solvingCatchers.push(catcher.name),
@@ -6209,7 +6214,7 @@ function bindPractice(){
    }
    if(!solvingPitchers.length&&!solvingCatchers.length&&!canExtend&&extensionBaselineValid){
     const combinedPitcherCandidates=extendedPlayers.filter(player=>player.canPitch);
-    if(!runResolutionCandidates(
+    if(!await runResolutionCandidates(
      combinedPitcherCandidates,'practice-resolution-pitcher-block11',
      pitcher=>({players:extendedPlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:132,label:'Hitting Only + Block 11: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name}}),
      pitcher=>combinedPitchers.push(pitcher.name),
@@ -6218,7 +6223,7 @@ function bindPractice(){
    }
    if(!solvingPitchers.length&&!solvingCatchers.length&&!canExtend&&!combinedPitchers.length&&extensionBaselineValid){
     const combinedCatcherCandidates=extendedPlayers.filter(player=>player.canCatch);
-    if(!runResolutionCandidates(
+    if(!await runResolutionCandidates(
      combinedCatcherCandidates,'practice-resolution-catcher-block11',
      catcher=>({players:extendedPlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
      catcher=>combinedCatchers.push(catcher.name),
@@ -6230,7 +6235,7 @@ function bindPractice(){
    solvingCatchers=[...new Set(solvingCatchers)].sort();
    combinedPitchers=[...new Set(combinedPitchers)].filter(name=>!solvingPitchers.includes(name)).sort();
    combinedCatchers=[...new Set(combinedCatchers)].filter(name=>!solvingCatchers.includes(name)).sort();
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution454',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution455',stage:'practice-resolution-evidence',state:'candidate-search-complete',at:new Date().toISOString(),canExtend,solvingPitchers:[...solvingPitchers],solvingCatchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}))}catch(error){}
    setResolutionStage('practice-resolution-evidence');
    if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was preparing Practice Resolution evidence. Nothing was committed. Please review the setup and build again.');return}
    const survivingCandidateLabels=new Set([
@@ -6286,7 +6291,7 @@ function bindPractice(){
    // Rewriting selectedNames/timing here created a second, unnecessary state edge
    // between a safe candidate and modal publication on iPhone Safari.
    const publicationSnapshotValid=practiceResolutionSnapshotIsCurrentAndValid(practiceResolution);
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution454',stage:'practice-resolution-snapshot',state:publicationSnapshotValid?'valid':'invalid',at:new Date().toISOString(),signatureMatch:practiceResolution.signature===currentPracticeResolutionSignature(),selectedNames:[...(practiceSetupState.selectedNames||[])],verifiedNames:practiceResolution.practicePlayers.map(player=>player.name),startTime:practiceSetupState.startTime,durationMinutes:practiceSetupState.durationMinutes}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution455',stage:'practice-resolution-snapshot',state:publicationSnapshotValid?'valid':'invalid',at:new Date().toISOString(),signatureMatch:practiceResolution.signature===currentPracticeResolutionSignature(),selectedNames:[...(practiceSetupState.selectedNames||[])],verifiedNames:practiceResolution.practicePlayers.map(player=>player.name),startTime:practiceSetupState.startTime,durationMinutes:practiceSetupState.durationMinutes}))}catch(error){}
    if(!publicationSnapshotValid){
     console.error('HotB refused to publish an internally inconsistent Practice Resolution.');
     // Nothing from this failed Resolution has been committed yet. Recovery owns
@@ -6303,7 +6308,7 @@ function bindPractice(){
    // persistence belongs to the chosen Apply & Build transaction.
    setResolutionStage('practice-resolution-publish');
    modal='practiceResolution';
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution454',stage:'practice-resolution-publish',state:'published',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution455',stage:'practice-resolution-publish',state:'published',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
    publishPracticeBuildFrame('practice-resolution-publish',()=>{
     render();
     setPracticeBuildControlsLocked(false);
@@ -6313,7 +6318,7 @@ function bindPractice(){
     // instead of leaving the coach staring at the last gray candidate message.
     const mountedResolution=document.querySelector('.practice-resolution-modal');
     if(!mountedResolution)throw new Error('Practice Resolution modal did not mount after verified publication.');
-    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution454',stage:'practice-resolution-publish',state:'mounted',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choiceCount:solvingPitchers.length+solvingCatchers.length+(canExtend?1:0)+combinedPitchers.length+combinedCatchers.length}))}catch(error){}
+    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution455',stage:'practice-resolution-publish',state:'mounted',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choiceCount:solvingPitchers.length+solvingCatchers.length+(canExtend?1:0)+combinedPitchers.length+combinedCatchers.length}))}catch(error){}
     // Once the modal exists, the old Build button must not remain the visible
     // transaction owner. A real-device gray-button screenshot after this marker
     // therefore proves stale assets rather than an ambiguous publication stall.
