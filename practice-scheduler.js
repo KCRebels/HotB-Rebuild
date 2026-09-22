@@ -50,8 +50,7 @@
   if(unnamedCount)feasibilityErrors.push('Every attending player must have a name before HotB can build safely.');
   if(invalidAvailability.length)feasibilityErrors.push(`Practice has invalid availability for: ${[...new Set(invalidAvailability)].join(', ')}. Correct the arrival/departure information before building.`);
   if(duplicateNames.length)feasibilityErrors.push(`Practice has duplicate player names: ${duplicateNames.join(', ')}. Each attendee must be uniquely identified before HotB can build safely.`);
-  if(activeAttendees.length===0)feasibilityErrors.push('At least two available players are required to build a practice.');
-  else if(activeAttendees.length===1)feasibilityErrors.push('At least two available players are required because every hitting station must have 2–3 players.');
+  if(activeAttendees.length<2)feasibilityErrors.push('At least two attending players are required because every hitting station must have 2–3 players.');
   // Removed unused recursive grouped-assignment solver from the production build path.
   const pitchers=activeAttendees.filter(player=>player.canPitch),catchers=activeAttendees.filter(player=>player.canCatch);
   const liveSessions=[],coachPitch=false;
