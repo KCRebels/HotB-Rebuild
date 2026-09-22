@@ -425,3 +425,30 @@ for(const fixture of [base,...matrix]){
  const maximum=fixture.filter(player=>player.canPitch).length+fixture.filter(player=>player.canCatch).length;
  assert.ok(first.builds<=maximum,'first-safe Resolution search cannot exceed its finite role candidate count');
 }
+
+
+/* Resolution 468 setup-recovery parity regression.
+   A verified Block 11 candidate can extend explicit 120-minute departure clocks.
+   Recovery must persist the candidate clocks, not merely duration/role flags. */
+function recoveryAccommodationFromCandidate(player){
+ return {
+  arrival:player.arrivalTime||'',
+  departure:player.departureTime||'',
+  limitations:String(player.limitations||''),
+  canPitch:player.canPitch===true,
+  requiresPitchWarmup:player.requiresPitchWarmup===true,
+  canCatch:player.canCatch===true,
+  prePracticeComplete:player.prePracticeComplete===true
+ };
+}
+const recoverySource=base.map(player=>({...player}));
+const recoveryExtended=extendPlayers(recoverySource);
+for(let index=0;index<recoveryExtended.length;index++){
+ const candidate=recoveryExtended[index],source=recoverySource[index],accommodation=recoveryAccommodationFromCandidate(candidate);
+ assert.equal(accommodation.arrival,candidate.arrivalTime,'recovery must preserve verified arrival clock');
+ assert.equal(accommodation.departure,candidate.departureTime,'recovery must preserve verified departure clock');
+ assert.equal(accommodation.canPitch,candidate.canPitch,'recovery must preserve verified pitching state');
+ assert.equal(accommodation.requiresPitchWarmup,candidate.requiresPitchWarmup,'recovery must preserve verified warm-up state');
+ assert.equal(accommodation.canCatch,candidate.canCatch,'recovery must preserve verified catching state');
+ if(source.availableUntilBlock===10&&candidate.availableUntilBlock===11)assert.notEqual(accommodation.departure,source.departureTime,'Block 11 recovery must not retain the old explicit 120-minute departure');
+}
