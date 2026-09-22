@@ -6267,6 +6267,7 @@ function bindPractice(){
   if(practiceResolutionApplyToken&&(!resolutionBuildDraftId||!practiceResolutionApplyOwnedDraftId||resolutionBuildDraftId!==practiceResolutionApplyOwnedDraftId)){
    // Contract marker: an owned rebuild that loses its exact draft authorization
    // must remain under the outer rollback transaction; it can never publish.
+   console.error('HotB ignored a stale Practice Resolution rebuild callback');
    console.error('HotB Practice Resolution rebuild lost its draft authorization');
    console.error('HotB refused mismatched Practice Resolution transaction identities');
    // Keep transaction ownership intact. The outer verifier owns the immutable
