@@ -6312,31 +6312,37 @@ function bindPractice(){
     recoverPracticeBuildSetup('practice-resolution-snapshot-invalid','HotB could not verify the Practice Resolution decision data. Your original 120-minute setup was kept unchanged.');
     return;
    }
-   // The verified decision is a UI choice, not an active practice. Do not perform
-   // another synchronous full-session persistence transaction before the coach can
-   // see it. On iPhone Safari that extra save/restore path could finish candidate
-   // verification yet strand the visible Build button on the final "Checked ..."
-   // message. The immutable decision signature above is the publication boundary;
-   // persistence belongs to the chosen Apply & Build transaction.
+   // The verified decision is a UI choice, not an active practice. Publish it
+   // immediately from memory. Do not make modal visibility depend on another full
+   // setup-session persistence/restore cycle; that work belongs to Apply & Build.
+   // The previous publication wrapper added a second asynchronous generation gate
+   // after the expensive scheduler proof. On iPhone that could leave the gray Build
+   // button as the last painted frame even though Resolution had already verified.
    setResolutionStage('practice-resolution-publish');
    modal='practiceResolution';
-   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution455',stage:'practice-resolution-publish',state:'published',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
-   publishPracticeBuildFrame('practice-resolution-publish',()=>{
-    render();
+   try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution457',stage:'practice-resolution-publish',state:'ready',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choices:{canExtend,pitchers:[...solvingPitchers],catchers:[...solvingCatchers],combinedPitchers:[...combinedPitchers],combinedCatchers:[...combinedCatchers]}}))}catch(error){}
+   try{
+    // Release only the setup-control lock. The modal itself owns interaction from
+    // this point and its Apply handlers revalidate the sealed Resolution snapshot.
     setPracticeBuildControlsLocked(false);
+    render();
     window.scrollTo(0,0);
-    // The Resolution handoff must be observable on the real device. If a future
-    // render regression fails to mount the coaching modal, recover immediately
-    // instead of leaving the coach staring at the last gray candidate message.
     const mountedResolution=document.querySelector('.practice-resolution-modal');
     if(!mountedResolution)throw new Error('Practice Resolution modal did not mount after verified publication.');
-    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution455',stage:'practice-resolution-publish',state:'mounted',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choiceCount:solvingPitchers.length+solvingCatchers.length+(canExtend?1:0)+combinedPitchers.length+combinedCatchers.length}))}catch(error){}
-    // Once the modal exists, the old Build button must not remain the visible
-    // transaction owner. A real-device gray-button screenshot after this marker
-    // therefore proves stale assets rather than an ambiguous publication stall.
     const staleBuildButton=$('#generatePractice');
     if(staleBuildButton)staleBuildButton.dataset.buildStage='practice-resolution-modal-mounted';
-   });
+    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution457',stage:'practice-resolution-publish',state:'mounted',at:new Date().toISOString(),builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,choiceCount:solvingPitchers.length+solvingCatchers.length+(canExtend?1:0)+combinedPitchers.length+combinedCatchers.length}))}catch(error){}
+   }catch(error){
+    console.error('HotB Practice Resolution publication failed',error);
+    practiceResolution=null;modal=null;practicePlan=null;
+    setPracticeBuildControlsLocked(false);
+    // Return to the exact ordinary setup rather than leaving an invisible modal
+    // or disabled Build control. No Resolution choice has been applied at this point.
+    try{render()}catch(renderError){console.error('HotB Practice Resolution recovery render failed',renderError)}
+    const button=$('#generatePractice');
+    if(button){button.disabled=false;button.textContent='Build Practice Schedule';button.dataset.buildStage='practice-resolution-publish-failed'}
+    alert('HotB verified Practice Resolution but could not open the decision screen. Nothing was changed. Please tap Build Practice Schedule again.');
+   }
    return;
   }
   if(practicePlan.fallbackWarnings?.length){
