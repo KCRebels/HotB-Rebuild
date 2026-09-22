@@ -6051,7 +6051,7 @@ function bindPractice(){
     extendedPlayers=practiceResolutionExtendedPlayers(practicePlayers,startTime);
     extensionBaselineValid=extendedPlayers.length===practicePlayers.length&&extendedPlayers.every(player=>Number.isInteger(Number(player.availableFromBlock))&&Number.isInteger(Number(player.availableUntilBlock))&&Number(player.availableFromBlock)>=0&&Number(player.availableUntilBlock)<=11&&Number(player.availableFromBlock)<Number(player.availableUntilBlock));
    }
-   const verifyOrderedCandidates=(candidates,stage,roleLabel,onSafe)=>{
+   const verifyOrderedCandidates=async(candidates,stage,roleLabel,onSafe)=>{
     // Resolution 473: candidates are already a finite, deterministic list and the
     // search stops at the first safe result. Do not call the obsolete structural
     // dedupe helper here: after the earlier refactor that helper no longer exists,
@@ -6063,6 +6063,14 @@ function bindPractice(){
      setResolutionStage(stage);
      const button=$('#generatePractice');
      if(button)button.textContent='Checking '+roleLabel+'…';
+     // Resolution 488: give iPhone Safari a real event-loop boundary before every
+     // candidate scheduler build. A bounded search can still be one long synchronous
+     // JavaScript task; Safari may leave the last painted gray status box onscreen
+     // even though later stages were reached. Yielding here lets the status paint,
+     // resets the browser long-task window, and then re-proves setup ownership before
+     // touching the scheduler.
+     await new Promise(resolve=>setTimeout(resolve,0));
+     if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed','The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.');return 'aborted'}
      const started=typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
      try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution459',stage,label:spec.label,state:'started',sourceIndex:sourceIndex+1,sourceTotal:candidates.length,startedAt:new Date().toISOString()}))}catch(error){}
      const safe=verifyResolutionBuild(spec.players,spec.duration,spec.label,spec.expectedChange);
@@ -6083,7 +6091,7 @@ function bindPractice(){
    }else if(extensionBaselineValid){
     // Preserve every attendee and every role whenever the verified 132-minute plan
     // works. This is one scheduler proof for the normal full-roster congestion case.
-    const result=verifyOrderedCandidates([{players:extendedPlayers,duration:132,label:'Block 11',expectedChange:null}],'practice-resolution-block11','Block 11',()=>{canExtend=true});
+    const result=await verifyOrderedCandidates([{players:extendedPlayers,duration:132,label:'Block 11',expectedChange:null}],'practice-resolution-block11','Block 11',()=>{canExtend=true});
     if(result==='aborted')return;
    }
 
@@ -6095,7 +6103,7 @@ function bindPractice(){
     const firstPitcher=availablePitchers[0]||null;
     if(firstPitcher){
      const spec={players:practicePlayers.map(player=>player.name===firstPitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:durationMinutes,label:'Hitting Only: '+firstPitcher.name,expectedChange:{role:'pitcher',name:firstPitcher.name},choiceName:firstPitcher.name};
-     const result=verifyOrderedCandidates([spec],'practice-resolution-pitcher','Hitting Only',safeSpec=>solvingPitchers.push(safeSpec.choiceName));
+     const result=await verifyOrderedCandidates([spec],'practice-resolution-pitcher','Hitting Only',safeSpec=>solvingPitchers.push(safeSpec.choiceName));
      if(result==='aborted')return;
      if(result==='budget')resolutionBudgetExceeded=true;
     }
@@ -6103,7 +6111,7 @@ function bindPractice(){
      const firstCatcher=availableCatchers[0]||null;
      if(firstCatcher){
       const spec={players:practicePlayers.map(player=>player.name===firstCatcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+firstCatcher.name,expectedChange:{role:'catcher',name:firstCatcher.name},choiceName:firstCatcher.name};
-      const result=verifyOrderedCandidates([spec],'practice-resolution-catcher','Not Catching',safeSpec=>solvingCatchers.push(safeSpec.choiceName));
+      const result=await verifyOrderedCandidates([spec],'practice-resolution-catcher','Not Catching',safeSpec=>solvingCatchers.push(safeSpec.choiceName));
       if(result==='aborted')return;
       if(result==='budget')resolutionBudgetExceeded=true;
      }
@@ -6123,7 +6131,7 @@ function bindPractice(){
     const firstExtendedPitcher=extendedPlayers.find(player=>player.canPitch);
     if(firstExtendedPitcher){
      const spec={players:extendedPlayers.map(player=>player.name===firstExtendedPitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:132,label:'Hitting Only + Block 11: '+firstExtendedPitcher.name,expectedChange:{role:'pitcher',name:firstExtendedPitcher.name},choiceName:firstExtendedPitcher.name};
-     const result=verifyOrderedCandidates([spec],'practice-resolution-pitcher-block11','Hitting Only + Block 11',safeSpec=>combinedPitchers.push(safeSpec.choiceName));
+     const result=await verifyOrderedCandidates([spec],'practice-resolution-pitcher-block11','Hitting Only + Block 11',safeSpec=>combinedPitchers.push(safeSpec.choiceName));
      if(result==='aborted')return;
      if(result==='budget')resolutionBudgetExceeded=true;
     }
@@ -6131,7 +6139,7 @@ function bindPractice(){
      const firstExtendedCatcher=extendedPlayers.find(player=>player.canCatch);
      if(firstExtendedCatcher){
       const spec={players:extendedPlayers.map(player=>player.name===firstExtendedCatcher.name?{...player,canCatch:false}:player),duration:132,label:'Not Catching + Block 11: '+firstExtendedCatcher.name,expectedChange:{role:'catcher',name:firstExtendedCatcher.name},choiceName:firstExtendedCatcher.name};
-      const result=verifyOrderedCandidates([spec],'practice-resolution-catcher-block11','Not Catching + Block 11',safeSpec=>combinedCatchers.push(safeSpec.choiceName));
+      const result=await verifyOrderedCandidates([spec],'practice-resolution-catcher-block11','Not Catching + Block 11',safeSpec=>combinedCatchers.push(safeSpec.choiceName));
       if(result==='aborted')return;
       if(result==='budget')resolutionBudgetExceeded=true;
      }
