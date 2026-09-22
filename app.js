@@ -4846,50 +4846,46 @@ function bind(){
    if(!choiceAuthorized)return null;
    return {role,name,startTime:verifiedStart,durationMinutes,playerNames:basePlayers.map(player=>player.name),expectedNotices:[...noticeMap[candidateLabel]],availability:Object.fromEntries(expectedPlayers.map(player=>[player.name,{availableFromBlock:player.availableFromBlock,availableUntilBlock:player.availableUntilBlock,arrivalTime:player.arrivalTime||'',departureTime:player.departureTime||'',limitations:String(player.limitations||'')}])),baselineRoles:Object.fromEntries(basePlayers.map(player=>[player.name,{canPitch:player.canPitch===true,requiresPitchWarmup:player.requiresPitchWarmup===true,canCatch:player.canCatch===true,prePracticeComplete:player.prePracticeComplete===true,isPitcher:player.isPitcher===true,isCatcher:player.isCatcher===true,isGuest:player.isGuest===true}]))};
   };
-  const applyResolutionAccommodation=(name,role,withBlock11=false)=>{
-   // This is the mutation boundary for a verified coaching choice. Re-check the
-   // complete snapshot here even though the button handler already verified it.
-   if(!practiceResolutionSnapshotIsCurrentAndValid())return false;
-   if(role!=='pitcher'&&role!=='catcher')return false;
-   if(typeof withBlock11!=='boolean')return false;
-   if(withBlock11&&Number(practiceResolution.durationMinutes)!==120)return false;
-   if(withBlock11){
-    const extended=practiceResolutionExtendedPlayers(practiceResolution.practicePlayers||[],practiceResolution.startTime);
-    if(extended.length!==(practiceResolution.practicePlayers||[]).length||extended.some(player=>Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)<0))return false;
+  // Resolution 470: applying a verified choice no longer mutates live Practice
+  // Setup before the scheduler rebuild. The immutable Resolution snapshot already
+  // contains every input needed to reconstruct the candidate. rebuildResolvedPractice
+  // owns the only setup mutation, and does it only after build + audit + immutable
+  // postcondition all succeed. This removes the transient 132-minute/role state that
+  // previously had to be rolled back if the direct rebuild failed.
+  const authorizeResolutionApply=(role=null,name=null,withBlock11=false,snapshot=practiceResolution)=>{
+   if(!snapshot||snapshot!==practiceResolution||!practiceResolutionSnapshotIsCurrentAndValid(snapshot))return false;
+   if(typeof withBlock11!=='boolean'||(withBlock11&&Number(snapshot.durationMinutes)!==120))return false;
+   if(role===null){
+    if(name!==null||!withBlock11||snapshot.canExtend!==true)return false;
+   }else{
+    if(role!=='pitcher'&&role!=='catcher'||typeof name!=='string'||!name)return false;
+    const target=findResolutionRosterIndex(name,role);
+    if(!target)return false;
+    const verified=(snapshot.practicePlayers||[]).filter(player=>player.name===name);
+    if(verified.length!==1)return false;
+    if(role==='pitcher'&&verified[0].canPitch!==true)return false;
+    if(role==='catcher'&&verified[0].canCatch!==true)return false;
+    const allowed=role==='pitcher'?(withBlock11?snapshot.combinedPitchers:snapshot.pitchers):(withBlock11?snapshot.combinedCatchers:snapshot.catchers);
+    if(!Array.isArray(allowed)||!allowed.includes(name))return false;
    }
-   const target=findResolutionRosterIndex(name,role);if(!target)return false;
-   const verifiedPlayers=(practiceResolution.practicePlayers||[]).filter(player=>player.name===name);
-   if(verifiedPlayers.length!==1)return false;
-   const verifiedPlayer=verifiedPlayers[0];
-   // Preserve the exact availability/limitation state that was audited. Only the
-   // coach-approved role flag is allowed to change during resolution.
-   let accommodation;
-   try{accommodation=structuredClone(practiceSetupState.accommodations?.[name]||practiceAccommodation(target.roster[target.index]))}
-   catch(error){console.error('HotB Practice Resolution accommodation clone failed',error);return false}
-   // The accommodation being mutated must still recreate the exact verified source
-   // player. Otherwise a stale/malformed setup object could receive the approved
-   // role change even though that exact state was never candidate-verified.
-   const sourceModel=practicePlayerModel(target.roster[target.index],accommodation,practiceResolution.startTime,practiceResolution.durationMinutes);
-   const sourceFields=['name','isPitcher','isCatcher','isGuest','availableFromBlock','availableUntilBlock','arrivalTime','departureTime','limitations','prePracticeComplete','canPitch','requiresPitchWarmup','canCatch'];
-   if(sourceFields.some(field=>sourceModel[field]!==verifiedPlayer[field]))return false;
-   if(role==='pitcher'){if(!verifiedPlayer.canPitch)return false;accommodation.canPitch=false;accommodation.requiresPitchWarmup=false}
-   else if(role==='catcher'){if(!verifiedPlayer.canCatch)return false;accommodation.canCatch=false}
-   practiceSetupState.accommodations[name]=accommodation;
-   practiceSetupState.durationMinutes=withBlock11?132:Number(practiceResolution.durationMinutes);
+   if(withBlock11){
+    const extended=practiceResolutionExtendedPlayers(snapshot.practicePlayers||[],snapshot.startTime);
+    if(extended.length!==(snapshot.practicePlayers||[]).length||extended.some(player=>Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)<0))return false;
+   }
    return true;
   };
   $('#applyPracticePitcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('pitcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState('pitcher',picked,false,snapshot),()=>applyResolutionAccommodation(picked,'pitcher'));
+   const picked=$('input[name="practiceResolutionPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('pitcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState('pitcher',picked,false,snapshot),snapshot=>authorizeResolutionApply('pitcher',picked,false,snapshot));
   });
   $('#applyPracticeCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('catcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState('catcher',picked,false,snapshot),()=>applyResolutionAccommodation(picked,'catcher'));
+   const picked=$('input[name="practiceResolutionCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('catcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState('catcher',picked,false,snapshot),snapshot=>authorizeResolutionApply('catcher',picked,false,snapshot));
   });
-  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;if(!verifiedResolutionChoice('extension')){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState(null,null,true,snapshot),snapshot=>{if(Number(snapshot.durationMinutes)!==120||snapshot.canExtend!==true)return false;const extended=practiceResolutionExtendedPlayers(snapshot.practicePlayers||[],snapshot.startTime);if(extended.length!==(snapshot.practicePlayers||[]).length||extended.some(player=>Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)<0))return false;practiceSetupState.durationMinutes=132;return true})});
+  $('#applyPracticeExtensionResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;if(!verifiedResolutionChoice('extension')){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState(null,null,true,snapshot),snapshot=>authorizeResolutionApply(null,null,true,snapshot))});
   $('#applyPracticeCombinedResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionCombinedPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('combinedPitcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState('pitcher',picked,true,snapshot),()=>applyResolutionAccommodation(picked,'pitcher',true));
+   const picked=$('input[name="practiceResolutionCombinedPitcher"]:checked')?.value;if(!picked){alert('Choose the pitcher who will be Hitting Only for this practice.');return}if(!verifiedResolutionChoice('combinedPitcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState('pitcher',picked,true,snapshot),snapshot=>authorizeResolutionApply('pitcher',picked,true,snapshot));
   });
   $('#applyPracticeCombinedCatcherResolution')?.addEventListener('click',()=>{if(!resolutionStillCurrent())return;
-   const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('combinedCatcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState('catcher',picked,true,snapshot),()=>applyResolutionAccommodation(picked,'catcher',true));
+   const picked=$('input[name="practiceResolutionCombinedCatcher"]:checked')?.value;if(!picked){alert('Choose the catcher who will not catch this practice.');return}if(!verifiedResolutionChoice('combinedCatcher',picked)){rejectUnverifiedResolution();return}runVerifiedResolutionApply(snapshot=>expectedResolutionState('catcher',picked,true,snapshot),snapshot=>authorizeResolutionApply('catcher',picked,true,snapshot));
   });
   $('#returnPracticeAttendance')?.addEventListener('click',()=>{
    // Resolution 465: leaving the decision screen is not a scheduler transaction.
