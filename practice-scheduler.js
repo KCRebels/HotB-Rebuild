@@ -187,47 +187,62 @@
   // Resolution 409: fixed-station assignment is a bounded deterministic pass.
   // Never search/retry the same 13-player state after catcher/live resolution.
   function assignStationGroups(playersToAssign,slots,eligible,allowOneFrontTossFour=false){
-   const assignments=Array.from({length:slots.length},()=>[]);
-   const ordered=playersToAssign.slice().sort((a,b)=>{
-    const ac=slots.reduce((n,slot,index)=>n+(eligible(a,slot,index,assignments[index])?1:0),0);
-    const bc=slots.reduce((n,slot,index)=>n+(eligible(b,slot,index,assignments[index])?1:0),0);
-    return ac-bc||a.name.localeCompare(b.name);
+   // Resolution 494: solve station grouping as a tiny bounded exact-cover problem
+   // instead of greedily filling slots and trying to repair singles afterward.
+   // The greedy repair could reject a valid Machine layout when Live/Front Toss had
+   // already fragmented player availability. There are at most 13 players and 20
+   // Front Toss slots (10 Machine slots), so a deterministic memoized search over
+   // the player bitmask is both complete and tightly bounded.
+   const players=playersToAssign.slice(),count=players.length;
+   if(!count)return Array.from({length:slots.length},()=>[]);
+   if(count>30)return null;
+   const eligibleMasks=slots.map((slot,index)=>{
+    let mask=0;
+    players.forEach((player,playerIndex)=>{if(eligible(player,slot,index,[]))mask|=(1<<playerIndex)});
+    return mask>>>0;
    });
-   const maxSize=allowOneFrontTossFour?4:3;
-   for(const player of ordered){
-    const candidates=slots.map((slot,index)=>({slot,index,count:assignments[index].length}))
-     .filter(item=>item.count<maxSize&&eligible(player,item.slot,item.index,assignments[item.index])&&(item.count<3||!assignments.some(group=>group.length===4)))
-     .sort((a,b)=>{
-      const rank=n=>n===1?0:n===2?1:2;
-      return rank(a.count)-rank(b.count)||a.index-b.index;
-     });
-    const chosen=candidates[0];
-    if(!chosen)return null;
-    assignments[chosen.index].push(player.name);
-   }
-   // Repair isolated singles in one bounded sweep. Moves are validated against
-   // the destination; no mutation is retried and no recursive/backtracking path exists.
-   for(let index=0;index<assignments.length;index++){
-    if(assignments[index].length!==1)continue;
-    const name=assignments[index][0],player=playersToAssign.find(item=>item.name===name);
-    const target=assignments.map((group,i)=>({group,i}))
-     .find(item=>item.i!==index&&item.group.length===2&&eligible(player,slots[item.i],item.i,item.group));
-    if(target){target.group.push(name);assignments[index]=[];continue}
-    const donor=assignments.map((group,i)=>({group,i}))
-     .find(item=>item.i!==index&&item.group.length===3&&item.group.some(donorName=>{
-      const donorPlayer=playersToAssign.find(p=>p.name===donorName);
-      return donorPlayer&&eligible(donorPlayer,slots[index],index,assignments[index]);
-     }));
-    if(donor){
-     const donorAt=donor.group.findIndex(donorName=>{
-      const donorPlayer=playersToAssign.find(p=>p.name===donorName);
-      return donorPlayer&&eligible(donorPlayer,slots[index],index,assignments[index]);
-     });
-     assignments[index].push(donor.group.splice(donorAt,1)[0]);
+   const fullMask=((1<<count)-1)>>>0,memo=new Set();
+   const popcount=value=>{let n=value>>>0,c=0;while(n){n&=n-1;c++}return c};
+   const combinations=(mask,size)=>{
+    const bits=[];for(let i=0;i<count;i++)if(mask&(1<<i))bits.push(i);
+    const out=[];
+    const choose=(at,left,value)=>{if(left===0){out.push(value>>>0);return}for(let i=at;i<=bits.length-left;i++)choose(i+1,left-1,value|(1<<bits[i]))};
+    choose(0,size,0);return out;
+   };
+   const search=(remaining,startSlot,fourUsed)=>{
+    if(!remaining)return [];
+    const key=remaining+'|'+startSlot+'|'+(fourUsed?1:0);if(memo.has(key))return null;
+    // Pick the most constrained remaining player. Every chosen group is anchored
+    // to that player, which avoids generating the same partition in many orders.
+    let anchor=-1,anchorSlots=null;
+    for(let playerIndex=0;playerIndex<count;playerIndex++)if(remaining&(1<<playerIndex)){
+     const possible=[];for(let slotIndex=startSlot;slotIndex<slots.length;slotIndex++)if(eligibleMasks[slotIndex]&(1<<playerIndex))possible.push(slotIndex);
+     if(!possible.length){memo.add(key);return null}
+     if(anchorSlots===null||possible.length<anchorSlots.length){anchor=playerIndex;anchorSlots=possible}
     }
-   }
-   const fours=assignments.filter(group=>group.length===4).length;
-   return assignments.every(group=>group.length===0||group.length===2||group.length===3||(allowOneFrontTossFour&&group.length===4))&&fours<=1?assignments:null;
+    for(const slotIndex of anchorSlots){
+     const available=(eligibleMasks[slotIndex]&remaining)>>>0;
+     const sizes=allowOneFrontTossFour&&!fourUsed?[3,2,4]:[3,2];
+     for(const size of sizes){
+      if(popcount(available)<size)continue;
+      const others=available&~(1<<anchor);
+      for(const rest of combinations(others,size-1)){
+       const groupMask=(rest|(1<<anchor))>>>0;
+       // Group-level eligibility can depend on peers. Recheck each member against
+       // the actual proposed group rather than assuming the empty-group mask is enough.
+       const names=players.filter((_,i)=>groupMask&(1<<i)).map(player=>player.name);
+       if(!players.every((player,i)=>!(groupMask&(1<<i))||eligible(player,slots[slotIndex],slotIndex,names.filter(name=>name!==player.name))))continue;
+       const tail=search((remaining&~groupMask)>>>0,slotIndex+1,fourUsed||size===4);
+       if(tail)return [{slotIndex,names},...tail];
+      }
+     }
+    }
+    memo.add(key);return null;
+   };
+   const solution=search(fullMask,0,false);if(!solution)return null;
+   const assignments=Array.from({length:slots.length},()=>[]);
+   solution.forEach(({slotIndex,names})=>{assignments[slotIndex]=names});
+   return assignments;
   }
   const prePracticePlayers=activeAttendees.filter(player=>player.prePracticeComplete),reserveEarlyFront=prePracticePlayers.length>=2&&prePracticePlayers.length<=12;
   const frontTossCandidates=Array.from({length:BLOCK_COUNT},(_,block)=>block).filter(block=>!liveBlocks.has(block));
