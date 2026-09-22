@@ -6245,6 +6245,14 @@ function bindPractice(){
     for(const label of Object.keys(verifiedCandidateNotices))delete verifiedCandidateNotices[label];
    }
    const hasVerifiedResolution=!!(solvingPitchers.length||solvingCatchers.length||canExtend||combinedPitchers.length||combinedCatchers.length);
+   // Budget exhaustion is a transaction failure, not merely another infeasible
+   // candidate. Never publish a partial set of choices after the verifier stops.
+   if(resolutionBudgetExceeded){
+    solvingPitchers=[];solvingCatchers=[];canExtend=false;combinedPitchers=[];combinedCatchers=[];
+    for(const label of Object.keys(verifiedCandidateNotices))delete verifiedCandidateNotices[label];
+    recoverPracticeBuildSetup('practice-resolution-budget-exceeded','HotB stopped Practice Resolution before it could exceed its safe scheduler-build limit. Nothing was committed. Please review the setup and build again.');
+    return;
+   }
    // Evidence and setup ownership were proven immediately above. Build the sealed
    // decision directly instead of adding two more UI/state transitions on the same tap.
    const rosterGuidance=identityBlocked?'HotB found attendee identity or availability information that must be corrected before resolution. Fix the roster/guest or arrival/departure entry and build again; HotB will not guess or silently normalize it.':resolutionAuditFailures.length&&!hasVerifiedResolution?'HotB could not verify a safe automatic resolution because one or more verification builds/audits did not complete. Change attendance or availability, or build again after correcting the reported verification problem.':availablePitchers.length?'If HotB cannot prove another one-practice solution works, change attendance or availability here. HotB will not choose a hitter to remove.':'HotB needs a change to attendance or availability before it can satisfy every absolute rule.';
