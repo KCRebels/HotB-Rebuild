@@ -584,3 +584,25 @@ assert.equal(uniqueRosterMatch474(roster474,'Missing Player'),null,'missing live
 const duplicate474=[...roster474,{name:roster474[0].name}];
 assert.equal(uniqueRosterMatch474(duplicate474,roster474[0].name),null,'duplicate live roster identity must reject instead of selecting first match');
 assert.equal(JSON.stringify(roster474),rosterBytes474,'live-roster authorization must be read-only');
+
+
+/* Resolution 475 source-model validation regression.
+   Candidate search must fail closed from actual attendee data even if scheduler
+   feasibility wording does not contain one of the historical regex phrases. */
+function sourceModelInvalid475(players,duration=120){
+ const blockCount=duration===132?11:duration===120?10:0,names=players.map(player=>String(player?.name||''));
+ if(!blockCount||!players.length||names.some(name=>!name||name.trim()!==name)||new Set(names).size!==names.length)return true;
+ return players.some(player=>{
+  if(!player||typeof player.isPitcher!=='boolean'||typeof player.isCatcher!=='boolean'||typeof player.isGuest!=='boolean'||typeof player.prePracticeComplete!=='boolean')return true;
+  if(typeof player.canPitch!=='boolean'||typeof player.requiresPitchWarmup!=='boolean'||typeof player.canCatch!=='boolean')return true;
+  if(!player.isPitcher&&(player.canPitch||player.requiresPitchWarmup)||!player.canPitch&&player.requiresPitchWarmup||!player.isCatcher&&player.canCatch)return true;
+  if(typeof player.arrivalTime!=='string'||typeof player.departureTime!=='string'||typeof player.limitations!=='string'||player.limitations.trim()!==player.limitations)return true;
+  return !Number.isInteger(Number(player.availableFromBlock))||!Number.isInteger(Number(player.availableUntilBlock))||Number(player.availableFromBlock)<0||Number(player.availableUntilBlock)>blockCount||Number(player.availableFromBlock)>=Number(player.availableUntilBlock);
+ });
+}
+assert.equal(sourceModelInvalid475(base),false,'valid Resolution fixture must pass source-model validation');
+assert.equal(sourceModelInvalid475([...base,{...base[0]}]),true,'duplicate attendee identity must fail from source data');
+assert.equal(sourceModelInvalid475(base.map((player,index)=>index?player:{...player,name:' '+player.name})),true,'untrimmed attendee identity must fail from source data');
+assert.equal(sourceModelInvalid475(base.map((player,index)=>index?player:{...player,canPitch:false,requiresPitchWarmup:true})),true,'warm-up without pitching must fail from source data');
+assert.equal(sourceModelInvalid475(base.map((player,index)=>index?player:{...player,availableFromBlock:8,availableUntilBlock:4})),true,'reversed availability must fail from source data');
+assert.equal(sourceModelInvalid475(base,144),true,'unsupported Resolution duration must fail from source data');
