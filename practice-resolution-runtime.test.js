@@ -650,3 +650,17 @@ assert.deepEqual(authorizedChoice478(gate478,'catcher','C2',true),{role:'catcher
 assert.deepEqual(authorizedChoice478(gate478,null,null,true),{role:null,name:null,durationMinutes:132});
 assert.equal(authorizedChoice478(gate478,'pitcher','C1',false),null);
 assert.equal(JSON.stringify(gate478),gateBytes478,'single Resolution authorization gate must be read-only');
+
+
+/* Resolution 479 identity regression.
+   Snapshot validation must reject ambiguous live roster identity before a Map-style
+   lookup can collapse duplicate names to one record. */
+function exactChoiceIdentity479(verifiedPlayers,liveRoster,name){
+ return verifiedPlayers.filter(player=>player.name===name).length===1&&liveRoster.filter(player=>player.name===name).length===1;
+}
+const verified479=controlledKcSix.map(player=>({...player}));
+const live479=controlledKcSix.map(player=>({...player}));
+assert.equal(exactChoiceIdentity479(verified479,live479,verified479[0].name),true);
+assert.equal(exactChoiceIdentity479(verified479,[...live479,{...live479[0]}],verified479[0].name),false,'duplicate live roster identity must invalidate a persisted Resolution choice');
+assert.equal(exactChoiceIdentity479([...verified479,{...verified479[0]}],live479,verified479[0].name),false,'duplicate verified identity must invalidate a Resolution choice');
+assert.equal(exactChoiceIdentity479(verified479,live479,'Missing Player'),false,'missing identity must invalidate a Resolution choice');
