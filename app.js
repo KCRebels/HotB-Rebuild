@@ -5909,7 +5909,7 @@ function bindPractice(){
    // pitcher + one same-duration catcher + one combined pitcher + one combined
    // catcher. Any future code that accidentally reintroduces exhaustive fan-out
    // will stop safely instead of regressing to an iPhone freeze.
-   const candidateSearchCapacity=identityBlocked?0:(Number(durationMinutes)===120?1:0);
+   const candidateSearchCapacity=0;
    const RESOLUTION_BUILD_BUDGET=identityBlocked?1:candidateSearchCapacity+1;
    let resolutionBuildCount=1,resolutionBudgetExceeded=false;
    // The base scheduler attempt above is build #1. Candidate verification is intentionally single-build. buildSchedule already
@@ -6089,10 +6089,14 @@ function bindPractice(){
     canExtend=false;solvingPitchers=[];solvingCatchers=[];combinedPitchers=[];combinedCatchers=[];
     try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution472',stage:'practice-resolution-source-invalid',state:'candidate-search-bypassed',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,errors:[...errors],at:new Date().toISOString()}))}catch(error){}
    }else if(extensionBaselineValid){
-    // Preserve every attendee and every role whenever the verified 132-minute plan
-    // works. This is one scheduler proof for the normal full-roster congestion case.
-    const result=await verifyOrderedCandidates([{players:extendedPlayers,duration:132,label:'Block 11',expectedChange:null}],'practice-resolution-block11','Block 11',()=>{canExtend=true});
-    if(result==='aborted')return;
+    // Resolution 491: never run another full scheduler from the failed setup tap.
+    // The iPhone trace walked backward one candidate at a time as speculative
+    // alternatives were removed: combined role+11, role-only, then Block 11. That
+    // proves the durable boundary is the failed base build itself. Publish Resolution
+    // immediately; Block 11 remains an explicit coaching option only after a fresh
+    // setup/build transaction, never as hidden speculative work behind a gray button.
+    canExtend=false;
+    try{sessionStorage.setItem('hotb-resolution-diagnostic',JSON.stringify({bundle:'resolution491',stage:'practice-resolution-block11-search-bypassed',state:'returned-to-coach',builds:resolutionBuildCount,budget:RESOLUTION_BUILD_BUDGET,at:new Date().toISOString()}))}catch(error){}
    }
 
    if(!identityBlocked&&!canExtend&&!resolutionBudgetExceeded){
