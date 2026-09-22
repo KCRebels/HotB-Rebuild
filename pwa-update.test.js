@@ -29,10 +29,10 @@ assert.match(client,/registration\.waiting[\s\S]*showUpdate\('waiting-worker'\)/
 assert.match(client,/installed-worker/,'a newly installed worker behind a controlled page must surface the update notice');
 
 assert.ok(index.includes('pwa-update.js'),'canonical app entry point must register update handling');
-assert.match(fresh,/launch=230/,'legacy recovery shell must redirect directly to the current canonical launch');
+assert.match(fresh,/launch=231/,'legacy recovery shell must redirect directly to the current canonical launch');
 assert.doesNotMatch(fresh,/launch=136/,'legacy recovery shell must not send installed iPhones through the stale launch route');
-assert.equal(manifest.start_url,'./?source=pwa&launch=230','the installed app must open the current canonical build-230 network-first entry point');
-assert.match(index,/manifest\.webmanifest\?v=20260922-launch230/,'canonical shell must cache-bust the manifest at the current installed-app generation');
+assert.equal(manifest.start_url,'./?source=pwa&launch=231','the installed app must open the current canonical build-231 network-first entry point');
+assert.match(index,/manifest\.webmanifest\?v=20260922-launch231/,'canonical shell must cache-bust the manifest at the current installed-app generation');
 assert.doesNotMatch(index,/manifest\.webmanifest\?v=20260921-launch226/,'canonical shell must not keep advertising the stale launch-138 manifest URL');
 assert.match(app,/Version:.*HOTB_BUILD_VERSION/,'the Home page must display the running build');
 
