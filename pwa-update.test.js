@@ -24,7 +24,7 @@ assert.match(client,/UPDATE NOW/,'the update notice must provide a reload action
 assert.ok(index.includes('pwa-update.js'),'canonical app entry point must register update handling');
 assert.match(fresh,/launch=226/,'legacy recovery shell must redirect directly to the current canonical launch');
 assert.doesNotMatch(fresh,/launch=136/,'legacy recovery shell must not send installed iPhones through the stale launch route');
-assert.equal(manifest.start_url,'./?source=pwa','the installed app must open the canonical network-first entry point');
+assert.equal(manifest.start_url,'./?source=pwa&launch=226','the installed app must open the current canonical build-226 network-first entry point');
 assert.match(app,/Version:.*HOTB_BUILD_VERSION/,'the Home page must display the running build');
 
 console.log('pwa-update tests passed');
