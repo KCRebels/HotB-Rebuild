@@ -498,3 +498,25 @@ assert.equal(authorizeChoice470(authSnapshot470,'catcher','C2',true),true);
 assert.equal(authorizeChoice470(authSnapshot470,null,null,true),true);
 assert.equal(authorizeChoice470(authSnapshot470,'pitcher','C1',false),false);
 assert.equal(JSON.stringify(authSnapshot470),authBytes470,'Resolution authorization must not mutate its snapshot');
+
+
+/* Resolution 471 atomic setup-commit regression.
+   Candidate setup is prepared off to the side; authorization and candidate
+   preparation cannot change the failed source setup before commit. */
+function detachedSetup471(source,players,startTime,duration){
+ const detached=JSON.parse(JSON.stringify(source));
+ detached.selectedNames=players.map(player=>player.name);
+ detached.startTime=startTime;
+ detached.durationMinutes=duration;
+ detached.accommodations={...(detached.accommodations||{})};
+ for(const player of players)detached.accommodations[player.name]=recoveryAccommodationFromCandidate(player);
+ return detached;
+}
+const sourceSetup471={selectedNames:base.map(player=>player.name),startTime:'18:00',durationMinutes:120,accommodations:Object.fromEntries(base.map(player=>[player.name,recoveryAccommodationFromCandidate(player)]))};
+const sourceBytes471=JSON.stringify(sourceSetup471);
+const extended471=extendPlayers(base.map(player=>({...player})));
+const detached471=detachedSetup471(sourceSetup471,extended471,'18:00',132);
+assert.equal(JSON.stringify(sourceSetup471),sourceBytes471,'detached Resolution setup preparation must not mutate source setup');
+assert.equal(detached471.durationMinutes,132,'detached Resolution setup must carry candidate duration');
+assert.deepEqual(detached471.selectedNames,extended471.map(player=>player.name),'detached Resolution setup must preserve candidate order');
+for(const player of extended471)assert.equal(detached471.accommodations[player.name].departure,player.departureTime,'detached Resolution setup must carry verified candidate departure');
