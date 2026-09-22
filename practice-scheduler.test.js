@@ -345,7 +345,7 @@ for(const fixture of [realPitcherFixture,realCatcherFixture,realCombinedPitcherF
  assert.ok(fixture.early<0||realRoster[fixture.early].name,'real fixture must resolve to an actual player identity');
  assert.match(fixture.departure,/^\\d{2}:\\d{2}$/,'real fixture must expose an exact clock departure');
 }
-// Resolution 551 rerun marker: real roster fixture output is a required CI artifact.\nconsole.log('Resolution 551 real fixtures',JSON.stringify({
+// Resolution 551 rerun marker 2: real roster fixture output is a required CI artifact.\nconsole.log('Resolution 551 real fixtures',JSON.stringify({
  pitcher:realPitcherFixture&&{disabledMask:realPitcherFixture.disabledMask,early:realPitcherFixture.early<0?null:realRoster[realPitcherFixture.early].name,until:realPitcherFixture.until,departure:realPitcherFixture.departure,names:realPitcherFixture.found.pitchers},
  catcher:realCatcherFixture&&{disabledMask:realCatcherFixture.disabledMask,early:realCatcherFixture.early<0?null:realRoster[realCatcherFixture.early].name,until:realCatcherFixture.until,departure:realCatcherFixture.departure,names:realCatcherFixture.found.catchers},
  combinedPitcher:realCombinedPitcherFixture&&{disabledMask:realCombinedPitcherFixture.disabledMask,early:realCombinedPitcherFixture.early<0?null:realRoster[realCombinedPitcherFixture.early].name,until:realCombinedPitcherFixture.until,departure:realCombinedPitcherFixture.departure,names:realCombinedPitcherFixture.found.combinedPitchers},
