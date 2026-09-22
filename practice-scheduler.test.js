@@ -296,6 +296,8 @@ const elevenBlockPlan=scheduler.buildSchedule(elevenBlockRoster,'18:00',132);
 assert.equal(elevenBlockPlan.blocks.length,11,'132-minute emergency practice must contain exactly eleven blocks');
 assert.ok(Object.values(elevenBlockPlan.schedule).every(entries=>entries.length===11),'every player schedule must carry Block 11');
 assert.deepEqual(scheduler.validate(elevenBlockPlan),[],'verified eleven-block practice must pass the complete rules audit');
+assert.ok(elevenBlockPlan.liveSessions.every(session=>session.block>=3&&session.block<=10),'132-minute Live sessions must stay inside Blocks 4-11');
+assert.ok(elevenBlockPlan.liveSessions.every(session=>session.block<elevenBlockPlan.blocks.length),'132-minute Live metadata must never exceed the generated block count');
 
 
 const disableFirstMatching=(roster,predicate,changes)=>{
