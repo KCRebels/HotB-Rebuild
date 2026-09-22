@@ -6001,13 +6001,15 @@ function bindPractice(){
     }
    };
    const verifiedCandidateNotices={};
+   // Candidate verification is intentionally single-build. buildSchedule already
+   // returns fresh normalized player/schedule objects; cloning every 13-player
+   // candidate before every scheduler pass added avoidable allocation/GC pressure
+   // on iPhone Safari during the exact failure path we are trying to resolve.
    const verifyResolutionBuild=(players,duration,label,expectedChange=null)=>{
     try{
-     // Candidate verification must be observational. The production scheduler may
-     // evolve, so never let a verification build mutate the sealed failed-practice
-     // player objects that later candidates, rollback, and signatures depend on.
-     const buildPlayers=structuredClone(players);
-     const plan=window.HotBPracticeScheduler.buildSchedule(buildPlayers,startTime,duration,{noPitchersMode:null});
+     const sourceSeal=practiceResolutionSignature(players,startTime,duration);
+     const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode:null});
+     if(sourceSeal!==practiceResolutionSignature(players,startTime,duration)){resolutionAuditFailures.push(label+' changed its source data during verification.');return false}
      if(!resolutionPlanIsSafe(plan,label))return false;
      const candidateNotices=[...new Set((plan.fallbackWarnings||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort();
      const expectedNames=players.map(player=>player.name),actualNames=(plan.players||[]).map(player=>player.name);
@@ -6098,13 +6100,17 @@ function bindPractice(){
    const verifyResolutionCandidate=(players,candidateDuration,label,expectedChange=null)=>
     verifyResolutionBuild(players,candidateDuration,label,expectedChange);
    // Candidate fan-out is the expensive part of a 13-player Resolution. Verify candidates in deterministic order against the same sealed setup.
-   const runResolutionCandidates=(candidates,stage,buildCandidate,onSafe,ownershipMessage)=>{
+   const runResolutionCandidates=(candidates,stage,buildCandidate,onSafe,ownershipMessage,stopAfterFirst=false)=>{
+    setResolutionStage(stage);
     for(let index=0;index<candidates.length;index++){
-     setResolutionStage(stage);
      if(!buildSetupStillOwned()){recoverPracticeBuildSetup('practice-build-setup-changed',ownershipMessage);return false}
      const candidate=candidates[index],spec=buildCandidate(candidate);
-     if(verifyResolutionCandidate(spec.players,spec.duration,spec.label,spec.expectedChange))onSafe(candidate,spec);
-     
+     if(verifyResolutionCandidate(spec.players,spec.duration,spec.label,spec.expectedChange)){
+      onSafe(candidate,spec);
+      // One verified role alternative is enough to unblock the coach. Do not keep
+      // solving equivalent permutations merely to populate a longer modal.
+      if(stopAfterFirst)return true;
+     }
     }
     return true;
    };
@@ -6131,13 +6137,13 @@ function bindPractice(){
      availablePitchers,'practice-resolution-pitcher',
      pitcher=>({players:practicePlayers.map(player=>player.name===pitcher.name?{...player,canPitch:false,requiresPitchWarmup:false}:player),duration:durationMinutes,label:'Hitting Only: '+pitcher.name,expectedChange:{role:'pitcher',name:pitcher.name}}),
      pitcher=>solvingPitchers.push(pitcher.name),
-     'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.'
+     'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
     ))return;
     if(!runResolutionCandidates(
      availableCatchers,'practice-resolution-catcher',
      catcher=>({players:practicePlayers.map(player=>player.name===catcher.name?{...player,canCatch:false}:player),duration:durationMinutes,label:'Not Catching: '+catcher.name,expectedChange:{role:'catcher',name:catcher.name}}),
      catcher=>solvingCatchers.push(catcher.name),
-     'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.'
+     'The practice setup changed while HotB was verifying Practice Resolution. Nothing was committed. Please review the setup and build again.',true
     ))return;
     // Combined role + Block 11 choices are fallback proofs only. They are useful when
     // neither the plain extension nor a one-role 120-minute change is sufficient.
