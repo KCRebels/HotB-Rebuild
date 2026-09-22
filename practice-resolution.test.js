@@ -250,5 +250,7 @@ mustInclude("resolutionBuildCount>=RESOLUTION_BUILD_BUDGET","production Resoluti
 mustInclude("practice-resolution-budget","budget exhaustion must leave a real-device diagnostic instead of appearing frozen");
 mustInclude("if(resolutionBudgetExceeded){","budget exhaustion must abort the entire Resolution transaction instead of publishing partial verified choices");
 mustInclude("practice-resolution-budget-exceeded","budget exhaustion must restore the editable build setup with an explicit recovery reason");
+mustInclude("'practice-resolution-budget-exceeded':'Resolution Stopped Safely…'","budget recovery must expose a distinct on-device stage instead of looking like the last candidate froze");
+mustInclude("setResolutionStage('practice-resolution-budget-exceeded')","budget recovery must publish its safe-stop stage before restoring setup");
 mustInclude("+'/'+unique.length+' — '","completed candidate status must report the deduplicated candidate count, not the pre-collapse source count");
 console.log('practice-resolution static contract tests passed');
