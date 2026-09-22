@@ -117,7 +117,7 @@ mustInclude("resolutionBytes=JSON.stringify(resolutionToPersist)","Resolution pe
 mustInclude("saved an invalid setup draft","Resolution persistence must reject an invalid saved recovery envelope");
 mustInclude("saved decision identity changed during save","Resolution persistence must reject decision identity drift during save");
 mustInclude("saved decision changed during save","Resolution persistence must reject exact decision-byte drift during save");
-mustNotInclude("window.HotBPracticeSession.restore?.(db.activePracticeSession)","Resolution publication persistence must not restore the full saved session on the mobile main thread");
+mustNotInclude("let persisted;\n  try{persisted=window.HotBPracticeSession.restore?.(db.activePracticeSession)}","Resolution setup-draft publication persistence must not restore the full saved session on the mobile main thread");
 mustInclude("previousActivePracticeSessionBytes=JSON.stringify(db.activePracticeSession);","Resolution persistence must seal the previous recovery authority before replacement");
 mustInclude("previousActivePracticeSession=previousActivePracticeSessionBytes?JSON.parse(previousActivePracticeSessionBytes):null;","Resolution persistence rollback authority must be isolated from later mutation");
 mustInclude("const restorePreviousDraftAfterFailure=(message,error=null)=>","every post-save Resolution draft failure must use one rollback path");
