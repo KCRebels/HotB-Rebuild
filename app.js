@@ -5977,10 +5977,21 @@ function bindPractice(){
       armBuildWatchdog(confirmedButton.dataset.buildStage||'practice-plan-publication-wait',timeout);
       return;
      }
+     const confirmedStage=String(confirmedButton.dataset.buildStage||confirmStage);
+     if(confirmedStage.startsWith('practice-resolution')){
+      // Resolution deliberately crosses many browser task/paint boundaries. Safari
+      // can defer those continuations long enough for a timer to look expired even
+      // though the transaction is still owned and progressing. Never let the
+      // diagnostic watchdog terminate Resolution; refresh the quiet-period probe.
+      console.warn('HotB Resolution watchdog observed a quiet period at '+confirmedStage+'; continuing transaction.');
+      markBuildProgress();
+      armBuildWatchdog(confirmedStage,30000);
+      return;
+     }
      stopBuildWatchdog();
      setPracticeBuildControlsLocked(false);
      confirmedButton.disabled=false;confirmedButton.textContent='Build Practice Schedule';
-     alert('HotB practice build stopped at '+String(confirmedButton.dataset.buildStage||confirmStage)+'. Please tell me this exact stage.');
+     alert('HotB practice build stopped at '+confirmedStage+'. Please tell me this exact stage.');
     };
     if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{buildWatchdogConfirm=setTimeout(confirm,100)});
     else buildWatchdogConfirm=setTimeout(confirm,150);
