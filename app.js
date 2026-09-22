@@ -4653,7 +4653,7 @@ function bind(){
     try{lockedResolutionBytes=JSON.stringify(rollbackState.resolution)}catch(error){throw new Error('Practice Resolution locked snapshot could not be sealed.')}
     const liveSetupBytes=JSON.stringify(practiceSetupState),liveResolutionBytes=JSON.stringify(practiceResolution),liveSessionBytes=JSON.stringify(db.activePracticeSession);
     const expected=authorizedExpectedFactory(rollbackState.resolution);
-    if(!expected)throw new Error('Practice Resolution choice could not be authorized and derived.');
+    if(!expected)return {started:false,reason:'unverified'};
     if(JSON.stringify(rollbackState.resolution)!==lockedResolutionBytes)throw new Error('Practice Resolution authorization changed the locked snapshot.');
     if(JSON.stringify(practiceSetupState)!==liveSetupBytes||JSON.stringify(practiceResolution)!==liveResolutionBytes||JSON.stringify(db.activePracticeSession)!==liveSessionBytes)throw new Error('Practice Resolution authorization mutated live state.');
     if(!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution))throw new Error('Practice Resolution became stale during authorization.');
@@ -4669,7 +4669,7 @@ function bind(){
   const runVerifiedResolutionApply=(authorizedExpectedFactory)=>{
    const result=startVerifiedResolutionApply(authorizedExpectedFactory);
    if(result.started)return true;
-   if(result.reason==='stale')rejectUnverifiedResolution();
+   if(result.reason==='stale'||result.reason==='unverified')rejectUnverifiedResolution();
    else if(result.reason==='busy')console.warn('HotB ignored a duplicate Practice Resolution apply while another apply is running.');
    else if(result.reason!=='handled')alert('HotB could not safely start that verified resolution. Your Practice Resolution was kept unchanged so you can try again.');
    return false;
