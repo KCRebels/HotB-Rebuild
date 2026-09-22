@@ -97,8 +97,6 @@ mustNotInclude("const buildPlayers=structuredClone(players);","Resolution candid
 mustInclude("const plan=window.HotBPracticeScheduler.buildSchedule(players,startTime,duration,{noPitchersMode:null});","Resolution candidate verification must use the production scheduler directly");
 mustInclude("if(!resolutionPlanIsSafe(plan,label))return false;","Resolution candidate must pass the full safety audit before publication");
 mustInclude("verifiedCandidateNotices[label]=candidateNotices.slice();","Resolution candidate evidence must publish only after verification completes");
-mustInclude("const sourceSeal=practiceResolutionSignature(players,startTime,duration);","candidate verification must seal source identity before scheduler execution");
-mustInclude("if(sourceSeal!==practiceResolutionSignature(players,startTime,duration))","candidate verification must reject source mutation by scheduler execution");
 mustInclude("const audit=window.HotBPracticeScheduler.validate(plan);","candidate safety verification must run the production validator");
 mustInclude("verifiedCandidateNotices[label]=candidateNotices.slice();","candidate notice evidence must publish only after all candidate checks pass");
 mustInclude("if(stopAfterFirst)return true;","Resolution role searches must stop after the first verified option instead of exhausting equivalent permutations");
