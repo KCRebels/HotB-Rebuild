@@ -1119,13 +1119,10 @@ async function initCloud(){
    // auth observer: Firestore/Auth can deliver additional state callbacks while
    // the read is pending, and a second generation would cancel the first loader.
    if(portalToken&&!portalUnsubscribe&&!portalData){
-    // Every auth-state callback invalidates any in-flight portal attempt that
-    // started under the previous auth state. Start one fresh authoritative load.
-    // This is especially important on iOS where anonymous sign-in itself emits
-    // another auth callback while the first loader is awaiting that sign-in.
-    portalLoadGeneration++;
-    portalBusy=false;
-    loadPlayerPortal();
+    // Start only when no loader owns the portal. The loader now performs the
+    // anonymous sign-in itself for practice links, so the callback produced by
+    // that sign-in must not cancel the successful in-flight attempt.
+    if(portalLoadGeneration===0||!portalBusy)loadPlayerPortal();
    }
    if(route==='home'||route==='portal')render();
   });
@@ -1244,12 +1241,19 @@ async function loadPlayerPortal(){
  portalBusy=true;portalMessage='';
  if(!portalAuthUser){
   try{
-   // Firebase may already have restored an anonymous session before this function
-   // runs. Reuse it instead of issuing another anonymous sign-in request.
+   // Reuse an already-restored session. For a private practice URL, if there is
+   // no session yet, sign in anonymously immediately. Waiting for a separate
+   // auth-state restoration callback created an iOS first-open race where the
+   // user had to press Retry even though the second attempt always succeeded.
    portalAuthUser=cloudAuth.currentUser||null;
-   if(!portalAuthUser){
-    // Do not replace a still-restoring persisted player session with a new
-    // anonymous identity. Wait for the first auth callback before creating one.
+   if(!portalAuthUser&&guestPortalSecret){
+    const credential=await Promise.race([
+     cloudAuth.signInAnonymously(),
+     new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
+    ]);
+    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
+    portalAuthUser=credential?.user||cloudAuth.currentUser||null;
+   }else if(!portalAuthUser){
     if(!cloudAuthReady){
      const restoredAuthUser=await waitForPortalAuthState();
      if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
