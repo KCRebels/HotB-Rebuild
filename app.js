@@ -2657,10 +2657,43 @@ function playerPracticePortalPayload(name,activatedAt=null,clockOverride=null){
  const drillAssignments=[...assigned].map(([name,location])=>({name,location})),assignedDrills=drillAssignments.map(item=>item.name);
  return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,blockCount:practicePlan.times?.length||10,activatedAt:activatedAt||new Date().toISOString(),clock:clockOverride||{status:'not-started',startedAt:null,endedAt:null},schedule:portalSchedule,drills:assignedDrills,drillAssignments};
 }
+function buildCoachPracticeSchedule(plan,drills=[]){
+ const blockCount=plan?.times?.length||plan?.blocks?.length||0;
+ if(!plan||!blockCount)return [];
+ const first=name=>practiceFirstName(name||'');
+ return Array.from({length:blockCount},(_,index)=>{
+  const entries=Object.entries(plan.schedule||{}).map(([name,rows])=>({name,entry:rows?.[index]})).filter(item=>item.entry);
+  const namesFor=predicate=>entries.filter(item=>predicate(item.entry,item.name)).map(item=>first(item.name));
+  const coachWarmups=namesFor(entry=>entry.activity==='Pitch Warm-Up'&&entry.partner==='Coach');
+  const front=entries.filter(item=>String(item.entry.activity||'').startsWith('Front Toss Lane ')).sort((a,b)=>String(a.entry.activity).localeCompare(String(b.entry.activity)));
+  const machine=entries.filter(item=>item.entry.activity==='Machine');
+  const live=(plan.liveSessions||[]).find(session=>Number(session.block)===index);
+  const drillsInBlock=entries.filter(item=>String(item.entry.activity||'').startsWith('Drill #')).sort((a,b)=>String(a.entry.activity).localeCompare(String(b.entry.activity)));
+  let assignment='Coaching';
+  if(coachWarmups.length)assignment=`Catch Pitch Warm-Up — ${coachWarmups[0]}`;
+  else if(front.length){
+   const lane=String(front[0].entry.activity).match(/Lane\s+(\d+)/i)?.[1]||'1';
+   const hitters=front.filter(item=>item.entry.activity===front[0].entry.activity).map(item=>first(item.name)).join(', ');
+   assignment=`Throw Front Toss — Lane ${lane}${plan.frontTossFocus&&plan.frontTossFocus!=='Standard'?` — ${plan.frontTossFocus}`:''}${hitters?` — ${hitters}`:''}`;
+  }else if(machine.length){
+   const hitters=machine.map(item=>first(item.name)).join(', ');
+   assignment=`Run Machine${plan.machineFocus&&plan.machineFocus!=='Standard'?` — ${plan.machineFocus}`:''}${hitters?` — ${hitters}`:''}`;
+  }else if(index===0)assignment='Help Lead Warm-Up';
+  else if(index===1)assignment='Help With Tee Work';
+  else if(live)assignment=`Live Support — ${first(live.pitcher)} (${first(live.catcher)||'9Square'})`;
+  else if(drillsInBlock.length){
+   const station=Number(String(drillsInBlock[0].entry.activity).match(/\d+/)?.[0])||1,drill=drills[station-1]?.name||`Drill Station ${station}`;
+   const players=drillsInBlock.filter(item=>item.entry.activity===drillsInBlock[0].entry.activity).map(item=>first(item.name)).join(', ');
+   assignment=`Help With ${drill}${players?` — ${players}`:''}`;
+  }
+  const time=plan.times?.[index],block=plan.blocks?.[index];
+  return {block:index+1,time:time?`${time.start}–${time.end}`:block?`${block.start}–${block.end}`:'',assignment};
+ });
+}
 function coachPracticePortalPayload(activatedAt=null){
  if(!practicePlan)throw new Error('coach-portal-practice-missing');
  const recovered=Array.isArray(practicePlan.recoveredCoachSchedule)&&practicePlan.recoveredCoachSchedule.length?structuredClone(practicePlan.recoveredCoachSchedule):null;
- const built=window.HotBCoachPractice?.build?.(practicePlan,practiceChosenDrills);
+ const built=buildCoachPracticeSchedule(practicePlan,practiceChosenDrills);
  const rawSchedule=recovered||(Array.isArray(built)?built:[]);
  const blockCount=practicePlan.times?.length||practicePlan.blocks?.length||10;
  const schedule=Array.from({length:blockCount},(_,index)=>{
@@ -2981,7 +3014,7 @@ async function syncPlayerPracticeClock(){
  if(coachId&&ids.includes(coachId)){
   try{
    const coachSnapshot=await portalDoc(coachId).get(),remote=coachSnapshot.exists?coachSnapshot.data()?.activePractice:null;
-   if(remote?.id===activeId&&(!Array.isArray(remote.schedule)||remote.schedule.length===0)){
+   if(remote?.id===activeId&&(!Array.isArray(remote.schedule)||remote.schedule.length===0||remote.schedule.every(entry=>String(entry?.assignment||'').trim()==='Coaching'))){
     const repaired=coachPracticePortalPayload(remote.activatedAt||db.activePortalPractice?.activatedAt||new Date().toISOString());
     await portalDoc(coachId).update({'activePractice.schedule':repaired.schedule,'activePractice.blockCount':repaired.blockCount,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
    }
