@@ -2292,9 +2292,10 @@ function portalLoginView(){
 function coachPortalPracticeView(){
  const practice=portalData?.activePractice,name=portalData?.firstName||practiceFirstName(portalData?.coachName)||'Coach',clock=portalPracticeClockValues(practice),current=Number(clock.currentBlock)||0;
  const locallyEnded=!!practice&&clock.ended,blockCount=Math.max(1,Number(practice?.blockCount)||10),clockReady=!practice||['Not Started','DONE!'].includes(clock.block)||clock.block==='ROTATE'||(Number(clock.currentBlock)>=1&&Number(clock.currentBlock)<=blockCount);
+ const publishedSchedule=Array.isArray(practice?.schedule)?practice.schedule:[],displaySchedule=practice&&publishedSchedule.length?publishedSchedule:Array.from({length:blockCount},(_,index)=>({block:index+1,time:'',assignment:'Coaching'}));
  if(locallyEnded)return `${portalHeader('Coach Portal')}<main class="portal-page"><section class="portal-empty"><span>COACH PORTAL</span><h2>Practice Complete</h2><p>This practice has ended. HotB is waiting for the final cloud cleanup.</p></section></main>`;
  if(practice&&!clockReady)return `${portalHeader('Coach Portal')}<main class="portal-page"><section class="portal-empty"><span>COACH PORTAL</span><h2>Syncing Practice</h2><p>HotB is verifying the live practice clock before showing coaching assignments.</p></section></main>`;
- return `${portalHeader('Coach Portal')}<main class="portal-page"><section class="portal-welcome ${practice?'active':''}"><span>${practice?'ACTIVE PRACTICE':'COACH PORTAL'}</span><h2>Hi, ${esc(name)}</h2><p>${practice?'Your current coaching assignments are below.':'No practice is active right now.'}</p></section>${practice?`<section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">${esc(clock.block)}</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">${esc(clock.left)}</b></div></section><article class="practice-player-card portal-player-card portal-coach-card"><header><h2>${esc(name)} <small>(Coach)</small></h2></header><ol>${(practice.schedule||[]).map(entry=>`<li data-portal-block="${entry.block}"${current>0&&Number(entry.block)<current?' hidden':''}><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span><strong>${esc(entry.assignment)}</strong></li>`).join('')}</ol></article>`:''}</main>`;
+ return `${portalHeader('Coach Portal')}<main class="portal-page"><section class="portal-welcome ${practice?'active':''}"><span>${practice?'ACTIVE PRACTICE':'COACH PORTAL'}</span><h2>Hi, ${esc(name)}</h2><p>${practice?'Your current coaching assignments are below.':'No practice is active right now.'}</p></section>${practice?`<section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">${esc(clock.block)}</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">${esc(clock.left)}</b></div></section><article class="practice-player-card portal-player-card portal-coach-card"><header><h2>${esc(name)} <small>(Coach)</small></h2></header><ol>${displaySchedule.map(entry=>`<li data-portal-block="${entry.block}"${current>0&&Number(entry.block)<current?' hidden':''}><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span><strong>${esc(entry.assignment||'Coaching')}</strong></li>`).join('')}</ol></article>`:''}</main>`;
 }
 function guestPortalEndedView(){return `${portalHeader('Hitting Practice')}<main class="portal-page"><section class="portal-empty"><span>GUEST ACCESS</span><h2>This Practice Has Ended</h2><p>This temporary link is no longer active.</p></section></main>`}
 function guestPortalWaitingView(){const first=portalData?.firstName||practiceFirstName(portalData?.playerName||portalData?.coachName),jenkins=portalData?.portalType==='jenkinsPlayer';return `${portalHeader('Hitting Practice')}<main class="portal-page"><section class="portal-empty"><span>${jenkins?'PRACTICE ACCESS':'GUEST ACCESS CONFIRMED'}</span><h2>Hi, ${esc(first)}</h2><p>${jenkins?'No practice is active right now. Use this same link the next time you practice with us.':'You’re connected to tonight’s HotB practice. Your practice plan is not ready yet.'}</p></section></main>`}
@@ -2973,6 +2974,19 @@ async function syncPlayerPracticeClock(){
   return active?.id===activeId;
  }catch(error){return false}}));
  if(preflight.some(ok=>!ok)){console.warn('Player portal clock preflight mismatch');return false}
+ // Repair an older Bob publication that has the correct live practice/clock but
+ // was activated before coach schedule rows were included. This changes only the
+ // schedule fields; it never resets or replaces the live clock.
+ const coachId=db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId;
+ if(coachId&&ids.includes(coachId)){
+  try{
+   const coachSnapshot=await portalDoc(coachId).get(),remote=coachSnapshot.exists?coachSnapshot.data()?.activePractice:null;
+   if(remote?.id===activeId&&(!Array.isArray(remote.schedule)||remote.schedule.length===0)){
+    const repaired=coachPracticePortalPayload(remote.activatedAt||db.activePortalPractice?.activatedAt||new Date().toISOString());
+    await portalDoc(coachId).update({'activePractice.schedule':repaired.schedule,'activePractice.blockCount':repaired.blockCount,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   }
+  }catch(error){console.warn('Coach card schedule repair deferred',error)}
+ }
  const batch=cloudStore.batch();
  ids.forEach(id=>batch.update(portalDoc(id),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
  try{await batch.commit()}catch(error){console.warn('Player portal clock batch failed',error);return false}
