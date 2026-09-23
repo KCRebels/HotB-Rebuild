@@ -33,3 +33,5 @@ assert.ok(!app.includes("portal-credential-read-timeout"),'Jenkins portal does n
 
 
 assert.ok(app.includes("if(!portalAuthUser&&guestPortalSecret)"),'practice link performs anonymous auth inside its own first loader');
+
+assert.ok(app.includes("if(portalLoadGeneration===0)loadPlayerPortal()"),'opening UI busy state cannot suppress first Jenkins portal load');
