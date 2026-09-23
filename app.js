@@ -1284,16 +1284,15 @@ async function loadPlayerPortal(){
   try{
    const proof=await portalHash(requestedPortalToken,guestPortalSecret);
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
-   // First read the portal type. Jenkins links are permanent bearer links: the
-   // URL secret proves access on every device, so do not bind them to one phone.
-   // Temporary guests retain the original device-claim behavior.
-   const credentialSnapshot=await Promise.race([portalDoc(requestedPortalToken).get(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-credential-read-timeout')),8000))]);
-   if(!credentialSnapshot.exists)throw new Error('portal-credential-missing');
-   const credentialData=credentialSnapshot.data()||{};
-   if(credentialData.pinHash!==proof)throw new Error('portal-credential-invalid');
-   if(credentialData.portalType!=='jenkinsPlayer'){
-    try{await portalDoc(requestedPortalToken).update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
-    catch(firstError){if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;if(firstError?.code!=='permission-denied')throw firstError;await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+   // Jenkins links use the existing secure claim path so they work with the
+   // currently deployed Firestore rules. The URL secret supplies the proof
+   // automatically; the player never sees or enters a PIN. This avoids needing
+   // a pre-claim document read, which production rules intentionally block.
+   try{await portalDoc(requestedPortalToken).update({ownerUid:portalAuthUser.uid,pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+   catch(firstError){
+    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
+    if(firstError?.code!=='permission-denied')throw firstError;
+    await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
    }
   }catch(error){
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
