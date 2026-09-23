@@ -5642,7 +5642,7 @@ function bindPlayerPortal(){
  // listeners cannot duplicate an iOS Share/Messages handoff.
  $$('[data-share-portal]').forEach(button=>button.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBPortalShare?.(button.dataset.sharePortal)}));
  $$('[data-text-portal]').forEach(button=>button.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBPortalText?.(button.dataset.textPortal)}));
- $$('[data-share-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamJenkins&&player.name===button.dataset.sharePracticeJenkins))));
+ $$$('[data-share-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamJenkins&&player.name===button.dataset.sharePracticeJenkins))));
  $('[data-text-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamJenkins&&item.name===button.dataset.textPracticeJenkins);if(!player?.portalId||!player?.portalSecret){portalMessage='Create Team Jenkins Portals first.';render();return}const url=guestPortalTextUrl(player);if(url&&!openSmsComposer(url)){portalMessage='HotB could not open Messages on this device. Use Share instead.';render()}}));
  $('#shareCoachPortal')?.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBCoachPortalShare?.()});
  $('#textCoachPortal')?.addEventListener('click',event=>{if(event.__hotbPortalDeliveryHandled)return;window.HotBCoachPortalText?.()});
@@ -6336,7 +6336,7 @@ function bindPractice(){
  $('#activatePlayerPlans')?.addEventListener('click',activatePlayerPlans);
  $('#deactivatePlayerPlans')?.addEventListener('click',deactivatePlayerPlans);
  $$('[data-share-practice-guest]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal([...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.sharePracticeGuest))));
- $('[data-share-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamJenkins&&player.name===button.dataset.sharePracticeJenkins))));
+ $$('[data-share-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamJenkins&&player.name===button.dataset.sharePracticeJenkins))));
  $('[data-text-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamJenkins&&item.name===button.dataset.textPracticeJenkins),url=guestPortalTextUrl(player);if(url)openSmsComposer(url);else alert('This Team Jenkins practice link is not ready. Create the Team Jenkins portals first.')}));
  $('#printPracticeCards')?.addEventListener('click',()=>window.print());
 }
