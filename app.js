@@ -1119,10 +1119,10 @@ async function initCloud(){
    // auth observer: Firestore/Auth can deliver additional state callbacks while
    // the read is pending, and a second generation would cancel the first loader.
    if(portalToken&&!portalUnsubscribe&&!portalData){
-    // Start only when no loader owns the portal. The loader now performs the
-    // anonymous sign-in itself for practice links, so the callback produced by
-    // that sign-in must not cancel the successful in-flight attempt.
-    if(portalLoadGeneration===0||!portalBusy)loadPlayerPortal();
+    // portalBusy begins true purely to render "Opening Your Portal"; it does not
+    // mean a loader exists. Generation 0 is therefore the reliable first-load
+    // signal. Later auth callbacks must not start a competing loader.
+    if(portalLoadGeneration===0)loadPlayerPortal();
    }
    if(route==='home'||route==='portal')render();
   });
@@ -6781,12 +6781,14 @@ catch(error){
 if(portalToken){
  const portalStartupGuard=setTimeout(()=>{
   if(portalBusy&&!portalData){
-   // If Firebase auth restored but the first portal loader never actually
-   // started, start it here instead of asking the player to press Retry.
    if(cloudAuthReady&&cloudAuth&&cloudStore&&portalLoadGeneration===0){loadPlayerPortal();return}
-   portalBusy=false;
-   portalMessage=guestPortalSecret?'HotB could not finish opening this Hitting Practice link. Please reopen the link.':'HotB could not finish the secure portal connection. Please refresh this private link once.';
-   render();
+   // A real loader may still be completing an iOS auth/Firestore transition.
+   // Give it one additional window before exposing any recovery control.
+   if(portalLoadGeneration>0){
+    setTimeout(()=>{if(portalBusy&&!portalData){portalBusy=false;portalMessage=guestPortalSecret?'HotB could not finish opening this Hitting Practice link. Please reopen the link.':'HotB could not finish the secure portal connection. Please refresh this private link once.';render()}},10000);
+    return;
+   }
+   portalBusy=false;portalMessage=guestPortalSecret?'HotB could not finish opening this Hitting Practice link. Please reopen the link.':'HotB could not finish the secure portal connection. Please refresh this private link once.';render();
   }
  },12000);
  window.addEventListener('pagehide',()=>clearTimeout(portalStartupGuard),{once:true});
