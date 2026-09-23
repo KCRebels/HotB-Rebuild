@@ -1119,12 +1119,10 @@ async function initCloud(){
    // auth observer: Firestore/Auth can deliver additional state callbacks while
    // the read is pending, and a second generation would cancel the first loader.
    if(portalToken&&!portalUnsubscribe&&!portalData){
-    // Auth callbacks can arrive more than once on iOS. A previous portal attempt
-    // may have incremented the generation but exited before installing a listener.
-    // In that state the old ===0 guard leaves the screen on "Opening Your Portal"
-    // forever. Retry whenever there is no live listener/data and no active loader.
-    if(!portalBusy)loadPlayerPortal();
-    else if(portalLoadGeneration===0)loadPlayerPortal();
+    // The auth callback is the authoritative start signal. Do not let the
+    // initial page-level "opening" flag suppress the first real load; that flag
+    // is UI state, not evidence that a loader is running.
+    if(portalLoadGeneration===0||!portalBusy)loadPlayerPortal();
    }
    if(route==='home'||route==='portal')render();
   });
@@ -6776,8 +6774,11 @@ catch(error){
 if(portalToken){
  const portalStartupGuard=setTimeout(()=>{
   if(portalBusy&&!portalData){
+   // If Firebase auth restored but the first portal loader never actually
+   // started, start it here instead of asking the player to press Retry.
+   if(cloudAuthReady&&cloudAuth&&cloudStore&&portalLoadGeneration===0){loadPlayerPortal();return}
    portalBusy=false;
-   portalMessage=guestPortalSecret?'HotB could not finish opening this Hitting Practice link. Tap Retry Practice Portal.':'HotB could not finish the secure portal connection. Please refresh this private link once.';
+   portalMessage=guestPortalSecret?'HotB could not finish opening this Hitting Practice link. Please reopen the link.':'HotB could not finish the secure portal connection. Please refresh this private link once.';
    render();
   }
  },12000);
