@@ -1119,10 +1119,13 @@ async function initCloud(){
    // auth observer: Firestore/Auth can deliver additional state callbacks while
    // the read is pending, and a second generation would cancel the first loader.
    if(portalToken&&!portalUnsubscribe&&!portalData){
-    // The auth callback is the authoritative start signal. Do not let the
-    // initial page-level "opening" flag suppress the first real load; that flag
-    // is UI state, not evidence that a loader is running.
-    if(portalLoadGeneration===0||!portalBusy)loadPlayerPortal();
+    // Every auth-state callback invalidates any in-flight portal attempt that
+    // started under the previous auth state. Start one fresh authoritative load.
+    // This is especially important on iOS where anonymous sign-in itself emits
+    // another auth callback while the first loader is awaiting that sign-in.
+    portalLoadGeneration++;
+    portalBusy=false;
+    loadPlayerPortal();
    }
    if(route==='home'||route==='portal')render();
   });
