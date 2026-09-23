@@ -2657,9 +2657,17 @@ function playerPracticePortalPayload(name,activatedAt=null,clockOverride=null){
  return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,blockCount:practicePlan.times?.length||10,activatedAt:activatedAt||new Date().toISOString(),clock:clockOverride||{status:'not-started',startedAt:null,endedAt:null},schedule:portalSchedule,drills:assignedDrills,drillAssignments};
 }
 function coachPracticePortalPayload(activatedAt=null){
- const schedule=Array.isArray(practicePlan?.recoveredCoachSchedule)&&practicePlan.recoveredCoachSchedule.length?structuredClone(practicePlan.recoveredCoachSchedule):(window.HotBCoachPractice?.build(practicePlan,practiceChosenDrills)||[]);
- const planBlockCount=practicePlan.times?.length||10,players=practicePlan.players.filter(player=>(player.availableFromBlock??0)<(player.availableUntilBlock??planBlockCount)).map(player=>({name:practiceFirstName(player.name),role:practiceRole(practicePlayerByName(player.name)||player),schedule:playerPracticePortalPayload(player.name,activatedAt).schedule}));
- return{id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',coachName:db.coachPortal?.name||'Coach',startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,blockCount:practicePlan.times?.length||10,activatedAt:activatedAt||new Date().toISOString(),clock:practiceClockPortalPayload(),schedule,players,drills:practiceAllSelectedDrills().map(drill=>drill.name)};
+ if(!practicePlan)throw new Error('coach-portal-practice-missing');
+ const recovered=Array.isArray(practicePlan.recoveredCoachSchedule)&&practicePlan.recoveredCoachSchedule.length?structuredClone(practicePlan.recoveredCoachSchedule):null;
+ const built=window.HotBCoachPractice?.build?.(practicePlan,practiceChosenDrills);
+ const rawSchedule=recovered||(Array.isArray(built)?built:[]);
+ const blockCount=practicePlan.times?.length||practicePlan.blocks?.length||10;
+ const schedule=Array.from({length:blockCount},(_,index)=>{
+  const source=rawSchedule[index]||{},time=practicePlan.times?.[index],block=practicePlan.blocks?.[index];
+  return {block:Number(source.block)||index+1,time:source.time||(time?`${time.start}–${time.end}`:block?`${block.start}–${block.end}`:''),assignment:String(source.assignment||'Coaching').trim()||'Coaching'};
+ });
+ const players=(practicePlan.players||[]).filter(player=>(player.availableFromBlock??0)<(player.availableUntilBlock??blockCount)).map(player=>({name:practiceFirstName(player.name),role:practiceRole(practicePlayerByName(player.name)||player),schedule:playerPracticePortalPayload(player.name,activatedAt).schedule}));
+ return{id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',coachName:db.coachPortal?.name||'Coach',startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,blockCount,activatedAt:activatedAt||new Date().toISOString(),clock:practiceClockPortalPayload(),schedule,players,drills:practiceAllSelectedDrills().map(drill=>drill.name)};
 }
 function archiveCompletedPractice(completedAt=new Date()){
  if(!practicePlan||!window.HotBPracticeHistory)return;
