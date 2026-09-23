@@ -5438,6 +5438,22 @@ async function endPracticeDraft(){
 }
 let practiceResolutionApplyDraftId=null,practiceResolutionApplyToken=null,practiceResolutionApplyOwnedDraftId=null;
 let practiceResumeVerificationBusy=false;
+async function repairActiveCoachSchedule(){
+ if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return false;
+ const coachId=db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId;
+ if(!coachId)return false;
+ try{
+  const snapshot=await portalDoc(coachId).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null;
+  if(remote?.id!==practicePlan.portalDraftId)return false;
+  const repaired=coachPracticePortalPayload(remote.activatedAt||db.activePortalPractice?.activatedAt||new Date().toISOString());
+  if(!Array.isArray(repaired.schedule)||!repaired.schedule.length)return false;
+  const current=Array.isArray(remote.schedule)?remote.schedule:[],bad=!current.length||current.every(entry=>String(entry?.assignment||'').trim()==='Coaching');
+  if(!bad)return true;
+  await portalDoc(coachId).update({'activePractice.schedule':repaired.schedule,'activePractice.blockCount':repaired.blockCount,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  const verify=await portalDoc(coachId).get(),published=verify.exists?verify.data()?.activePractice:null;
+  return published?.id===practicePlan.portalDraftId&&Array.isArray(published.schedule)&&published.schedule.length===repaired.schedule.length&&published.schedule.some(entry=>String(entry?.assignment||'').trim()&&String(entry.assignment).trim()!=='Coaching');
+ }catch(error){console.warn('Active coach schedule repair failed',error);return false}
+}
 async function resumeRecoveredPracticeClock(){
  if(practiceResumeVerificationBusy||!practicePlan||!practiceClock.running)return;
  // Auth restoration can lag local-session restoration on iPhone/PWA startup.
@@ -5459,6 +5475,10 @@ async function resumeRecoveredPracticeClock(){
   alert('HotB restored this practice, but could not verify the same live clock on every portal. The coach timer is paused so it cannot overwrite the player portals. Check the connection and reopen Practice.');
   return;
  }
+ // Clock verification is read-only, so an app reopen previously never executed
+ // the coach-card repair path. Repair Bob here while the exact live publication
+ // has just been verified; this does not alter the clock or player schedules.
+ await repairActiveCoachSchedule();
  updatePracticeClock();
  if(practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
  }finally{practiceResumeVerificationBusy=false}
