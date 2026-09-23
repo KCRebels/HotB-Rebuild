@@ -2511,7 +2511,7 @@ function updatePortalPracticeClock(){
   if(nextEntry){const details=portalNextAssignmentDetails(nextEntry.assignment),jenkins=portalData?.portalType==='jenkinsPlayer',practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType),drillAllowed=!jenkins&&!!details.drill&&(!practiceOnly||(portalData?.activePractice?.drills||[]).includes(details.drill));nextHeading.textContent=details.heading;nextDetail.textContent=details.detail;nextDetail.hidden=!details.detail;nextButton.dataset.portalPracticeDrill=drillAllowed?details.drill:'';nextButton.classList.toggle('has-drill',drillAllowed);const hint=nextButton.querySelector('small');if(hint)hint.hidden=!drillAllowed}
  }
  const current=Number(values.currentBlock)||0,done=values.block==='DONE!',practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType),coachPractice=portalData?.portalType==='coach'&&portalView!=='evaluation';
- if(practiceOnly||coachPractice)$('[data-portal-block]').forEach(row=>row.hidden=done||current>0&&Number(row.dataset.portalBlock)<current);
+ if(practiceOnly||coachPractice)$$('[data-portal-block]').forEach(row=>row.hidden=done||current>0&&Number(row.dataset.portalBlock)<current);
  if(practiceOnly){const drills=$('.portal-practice-drills');if(drills)drills.hidden=done;if(nextPanel&&done)nextPanel.hidden=true;if(done&&portalView==='library'){portalView='practice';portalSelectedDrill='';portalLibraryReturnView='library';render();return}}
 }
 function practiceActivityLabel(activity,plan=null){
