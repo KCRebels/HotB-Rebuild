@@ -1519,15 +1519,20 @@ async function setupJenkinsCoachPortal(){
  if(!cloudUser||!cloudStore||cloudBusy)return;
  const coach=db.jenkinsCoachPortal||(db.jenkinsCoachPortal={name:'Mark Jenkins',phone:'913-484-5626',portalId:'',portalSecret:''});
  const original=structuredClone(coach);cloudBusy=true;portalMessage='Preparing Mark’s Hitting Practice coach portal…';render();
+ let watchdog=setTimeout(()=>{if(!cloudBusy)return;cloudBusy=false;portalMessage='Mark’s portal setup stopped before cloud verification. Nothing else was changed. Tap Create Mark Portal again.';render()},12000);
  try{
   coach.name='Mark Jenkins';coach.phone='913-484-5626';coach.portalId=coach.portalId||newPortalId();coach.portalSecret=coach.portalSecret||newGuestSecret();
-  const pinHash=await portalHash(coach.portalId,coach.portalSecret),ref=portalDoc(coach.portalId),existing=await ref.get(),remote=existing.exists?existing.data():null;
-  if(remote?.portalType&&remote.portalType!=='guestCoach')throw new Error('jenkins-coach-type-mismatch');
-  if(remote?.coachName&&remote.coachName!=='Mark Jenkins')throw new Error('jenkins-coach-identity-mismatch');
-  await ref.set({portalType:'guestCoach',coachName:'Mark Jenkins',firstName:'Mark',phone:coach.phone,pinHash,ownerUid:remote?.ownerUid||null,expired:false,accessStatus:'waiting',activePractice:remote?.activePractice||null,isTeamJenkinsCoach:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-  const verified=await ref.get(),data=verified.exists?verified.data():null;if(!data||data.portalType!=='guestCoach'||data.coachName!=='Mark Jenkins'||data.expired)throw new Error('jenkins-coach-verification-failed');
-  localStorage.setItem(DBKEY,JSON.stringify(db));cloudBusy=false;portalMessage='Mark’s permanent Hitting Practice coach link is ready.';render();
- }catch(error){db.jenkinsCoachPortal=original;cloudBusy=false;portalMessage='Mark’s Hitting Practice coach portal could not be created. Nothing else was changed.';console.error(error);render()}
+  const pinHash=await portalHash(coach.portalId,coach.portalSecret),ref=portalDoc(coach.portalId);
+  // Mark is a permanent practice-only coach, but his secret-link claim model is
+  // intentionally the same proven model used by Team Jenkins player portals.
+  // Do not pre-read a brand-new document: on Safari that extra Firestore read can
+  // stall the setup UI before the create ever happens.
+  await Promise.race([ref.set({portalType:'guestCoach',coachName:'Mark Jenkins',firstName:'Mark',phone:coach.phone,pinHash,ownerUid:null,expired:false,accessStatus:'waiting',activePractice:null,isTeamJenkinsCoach:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('jenkins-coach-write-timeout')),8000))]);
+  portalMessage='Verifying Mark’s Hitting Practice coach portal…';render();
+  const verified=await Promise.race([ref.get(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('jenkins-coach-verify-timeout')),8000))]),data=verified.exists?verified.data():null;
+  if(!data||data.portalType!=='guestCoach'||data.coachName!=='Mark Jenkins'||data.expired)throw new Error('jenkins-coach-verification-failed');
+  clearTimeout(watchdog);watchdog=null;localStorage.setItem(DBKEY,JSON.stringify(db));cloudBusy=false;portalMessage='Mark’s permanent Hitting Practice coach link is ready.';render();
+ }catch(error){clearTimeout(watchdog);watchdog=null;db.jenkinsCoachPortal=original;cloudBusy=false;const reason=String(error?.message||error||'unknown');portalMessage=`Mark’s Hitting Practice coach portal could not be created (${reason}). Nothing else was changed.`;console.error(error);render()}
 }
 async function setupJenkinsPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return;
