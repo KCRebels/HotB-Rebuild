@@ -31,4 +31,5 @@ assert.ok((app.match(/\$\$\('\[data-share-practice-jenkins\]'\)/g)||[]).length>=
 assert.ok(app.includes("Jenkins links use the existing secure claim path"),'Jenkins portal uses production-compatible secure claim path');
 assert.ok(!app.includes("portal-credential-read-timeout"),'Jenkins portal does not require a forbidden pre-claim Firestore read');
 
-assert.ok(app.includes("portalLoadGeneration++;\n    portalBusy=false;\n    loadPlayerPortal();"),'auth transition cancels stale Jenkins loader and immediately starts a fresh authoritative load');
+
+assert.ok(app.includes("if(!portalAuthUser&&guestPortalSecret)"),'practice link performs anonymous auth inside its own first loader');
