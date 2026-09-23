@@ -1625,7 +1625,7 @@ async function setupCoachPortal(){
    if(remoteExisting.coachName&&remoteExisting.coachName!==name)throw new Error('portal-coach-identity-mismatch');
    if(remoteExisting.portalType&&remoteExisting.portalType!=='coach')throw new Error('portal-coach-type-mismatch');
   }
-  const activePractice=db.activePortalPractice?.id===practicePlan?.portalDraftId?coachPracticePortalPayload(db.activePortalPractice?.activatedAt||null):null,remoteActive=existing.exists?(existing.data()||{}).activePractice:null;
+  const hasCurrentPractice=!!practicePlan&&db.activePortalPractice?.id===practicePlan.portalDraftId,activePractice=hasCurrentPractice?coachPracticePortalPayload(db.activePortalPractice?.activatedAt||null):null,remoteActive=existing.exists?(existing.data()||{}).activePractice:null;
   if(remoteActive&&activePractice&&remoteActive.id!==activePractice.id)throw new Error('coach-active-practice-conflict');
   const portalUpdate={portalType:'coach',coachName:name,firstName:practiceFirstName(name),pinHash:db.coachPortal.portalPinHash,...(!existing.exists?{ownerUid:null,activePractice}:{}),evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
   await ref.set(portalUpdate,{merge:true});
