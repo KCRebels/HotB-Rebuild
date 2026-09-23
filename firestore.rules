@@ -25,7 +25,15 @@ service cloud.firestore {
         || (
           signedIn()
           && (
-            resource.data.ownerUid == request.auth.uid
+            // Team Jenkins Hitting-Practice-only portals are permanent bearer
+            // links. Their URL secret is verified by the app against pinHash;
+            // allow the anonymous client to read the portal document so that
+            // verification can happen before any device claim.
+            (
+              request.auth.token.firebase.sign_in_provider == 'anonymous'
+              && resource.data.portalType == 'jenkinsPlayer'
+            )
+            || resource.data.ownerUid == request.auth.uid
             || (
               resource.data.keys().hasAny(['authorizedUids'])
               && resource.data.authorizedUids.hasAny([request.auth.uid])
