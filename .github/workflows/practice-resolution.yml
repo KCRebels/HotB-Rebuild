@@ -53,7 +53,7 @@ jobs:
         run: node pwa-update.test.js
       - name: Verify deployed bundle markers
         run: |
-          test "$(grep -o "app.js?v=20260922-jenkins551" index.html | wc -l)" -eq 2
+          test "$(grep -o "app.js?v=20260922-jenkins552" index.html | wc -l)" -eq 2
           ! grep -q "app.js?v=20260922-resolution539" index.html
           ! grep -q "app.js?v=20260922-resolution452" index.html
           grep -q "styles.css?v=20260922-jenkins232" index.html
