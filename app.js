@@ -2679,7 +2679,7 @@ async function clearActivePlayerPlans(){
  const batch=cloudStore.batch();
  const activeNames=new Set(db.activePortalPractice?.players||[]),persistedPlayerPortals=db.activePortalPractice?.playerPortals||[];
  const persistedIds=new Set(persistedPlayerPortals.map(entry=>entry.portalId));
- const coachPortalId=db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId;
+ const coachPortalId=db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,jenkinsCoachPortalId=db.activePortalPractice?.jenkinsCoachPortalId||db.jenkinsCoachPortal?.portalId;
  const guestPortalIds=new Set([...(db.activePortalPractice?.guestPlayerPortalIds||[]),...(db.activePortalPractice?.guestCoachPortalIds||[]),...practiceGuestPlayers().filter(guest=>activeNames.has(guest.name)).map(guest=>guest.portalId),...practiceGuestCoaches().map(guest=>guest.portalId)].filter(Boolean));
  // Cleanup is update-only. Ending a practice must never recreate a missing
  // permanent/coach/guest portal document as a partial stale record.
@@ -2687,6 +2687,7 @@ async function clearActivePlayerPlans(){
   ...persistedPlayerPortals.map(entry=>({id:entry.portalId,isTeamJenkins:!!entry.isTeamJenkins,data:entry.isTeamJenkins?jenkinsPortalCleanupPayload(db.roster.find(item=>item.name===entry.name),entry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
   ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).map(player=>({id:player.portalId,isTeamJenkins:!!player.isTeamJenkins,data:player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
   ...(coachPortalId?[{id:coachPortalId,data:{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}]:[]),
+  ...(jenkinsCoachPortalId?[{id:jenkinsCoachPortalId,data:{activePractice:null,expired:false,accessStatus:'waiting',updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}]:[]),
   ...[...guestPortalIds].map(id=>({id,isGuest:true,data:{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}))
  ];
  const existingCleanup=await Promise.all(cleanupTargets.map(async target=>{const snapshot=await portalDoc(target.id).get();if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==practicePlan.portalDraftId)throw new Error('portal-clear-newer-practice-conflict');
@@ -2704,6 +2705,7 @@ async function clearActivePlayerPlans(){
   ...persistedPlayerPortals.map(entry=>entry.portalId),
   ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)).map(player=>player.portalId),
   coachPortalId,
+  jenkinsCoachPortalId,
   ...guestPortalIds
  ].filter(Boolean))];
  if(!verifyIds.length)throw new Error('portal-clear-no-targets');
@@ -2950,6 +2952,7 @@ async function syncPlayerPracticeClock(){
  const clock=practiceClockPortalPayload(),activeId=practicePlan.portalDraftId,ids=[...new Set([
   ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),
   db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
+  db.activePortalPractice?.jenkinsCoachPortalId||db.jenkinsCoachPortal?.portalId,
   ...(db.activePortalPractice?.guestPlayerPortalIds||[]),
   ...(db.activePortalPractice?.guestCoachPortalIds||[])
  ].filter(Boolean))];
@@ -3009,6 +3012,7 @@ async function activatePlayerPlans(){
    ...permanentPlayers.map(player=>({id:player.portalId,type:'player',name:player.name})),
    ...jenkinsPlayers.map(player=>({id:player.portalId,type:'jenkinsPlayer',name:player.name})),
    ...(db.coachPortal?.portalId?[{id:db.coachPortal.portalId,type:'coach',name:db.coachPortal.name||''}]:[]),
+   ...(db.jenkinsCoachPortal?.portalId?[{id:db.jenkinsCoachPortal.portalId,type:'guestCoach',name:'Mark Jenkins',isTeamJenkinsCoach:true}]:[]),
    ...activeGuests.map(guest=>({id:guest.portalId,type:'guestPlayer',name:guest.name})),
    ...activeGuestCoaches.map(guest=>({id:guest.portalId,type:'guestCoach',name:guest.name}))
   ];
@@ -3045,9 +3049,10 @@ async function activatePlayerPlans(){
   permanentPlayers.forEach(player=>batch.update(portalDoc(player.portalId),{activePractice:{...playerPracticePortalPayload(player.name,activationTimestamp),clock:{status:'not-started',startedAt:null,endedAt:null}},updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
   jenkinsPlayers.forEach(player=>batch.update(portalDoc(player.portalId),jenkinsPortalResetPayload(player,playerPracticePortalPayload(player.name,activationTimestamp),'active')));
   if(db.coachPortal?.portalId)batch.update(portalDoc(db.coachPortal.portalId),{activePractice:coachPracticePortalPayload(activationTimestamp),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  if(db.jenkinsCoachPortal?.portalId){const activePractice={...coachPracticePortalPayload(activationTimestamp),coachName:'Mark Jenkins'};batch.update(portalDoc(db.jenkinsCoachPortal.portalId),{expired:false,accessStatus:'active',activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})}
   for(const guest of activeGuests)batch.update(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice:playerPracticePortalPayload(guest.name,activationTimestamp),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
   for(const guest of activeGuestCoaches){const activePractice={...coachPracticePortalPayload(activationTimestamp),coachName:guest.name};batch.update(portalDoc(guest.portalId),{expired:false,accessStatus:'active',activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})}
-  const pendingPortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:activationTimestamp,players:[...attending],playerPortals:db.roster.filter(player=>attending.has(player.name)&&player.portalId).map(player=>({name:player.name,portalId:player.portalId,isTeamJenkins:!!player.isTeamJenkins})),guestPlayerPortalIds:practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).map(guest=>guest.portalId),guestCoachPortalIds:practiceGuestCoaches().filter(guest=>guest.portalId).map(guest=>guest.portalId),coachPortalId:db.coachPortal?.portalId||''};
+  const pendingPortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:activationTimestamp,players:[...attending],playerPortals:db.roster.filter(player=>attending.has(player.name)&&player.portalId).map(player=>({name:player.name,portalId:player.portalId,isTeamJenkins:!!player.isTeamJenkins})),guestPlayerPortalIds:practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).map(guest=>guest.portalId),guestCoachPortalIds:practiceGuestCoaches().filter(guest=>guest.portalId).map(guest=>guest.portalId),jenkinsCoachPortalId:db.jenkinsCoachPortal?.portalId||'',coachPortalId:db.coachPortal?.portalId||''};
   // Do not mark the practice locally active until Firebase has accepted every portal update.
   try{await batch.commit()}
   catch(error){throw error}
@@ -3056,6 +3061,7 @@ async function activatePlayerPlans(){
   const verifyIds=[...new Set([
    ...pendingPortalPractice.playerPortals.map(entry=>entry.portalId),
    pendingPortalPractice.coachPortalId,
+   pendingPortalPractice.jenkinsCoachPortalId,
    ...pendingPortalPractice.guestPlayerPortalIds,
    ...pendingPortalPractice.guestCoachPortalIds
   ].filter(Boolean))];
@@ -3074,9 +3080,9 @@ async function activatePlayerPlans(){
     const remote=snapshot.exists?snapshot.data():null,active=remote?.activePractice;
     if(active?.id!==practicePlan.portalDraftId)continue;
     if(active?.activatedAt!==activationTimestamp)throw new Error('portal-activation-rollback-conflict');
-    const isGuest=pendingPortalPractice.guestPlayerPortalIds.includes(id)||pendingPortalPractice.guestCoachPortalIds.includes(id);
+    const isJenkinsCoach=id===pendingPortalPractice.jenkinsCoachPortalId,isGuest=!isJenkinsCoach&&(pendingPortalPractice.guestPlayerPortalIds.includes(id)||pendingPortalPractice.guestCoachPortalIds.includes(id));
     const playerEntry=pendingPortalPractice.playerPortals.find(entry=>entry.portalId===id);
-    const data=isGuest?{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}:playerEntry?.isTeamJenkins?jenkinsPortalCleanupPayload(db.roster.find(item=>item.portalId===id),playerEntry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    const data=isJenkinsCoach?{activePractice:null,expired:false,accessStatus:'waiting',updatedAt:firebase.firestore.FieldValue.serverTimestamp()}:isGuest?{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}:playerEntry?.isTeamJenkins?jenkinsPortalCleanupPayload(db.roster.find(item=>item.portalId===id),playerEntry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
     rollback.update(portalDoc(id),data);rollbackCount++;
    }
    if(rollbackCount)await rollback.commit();
@@ -5407,6 +5413,7 @@ async function verifyPublishedPracticeClock(){
  const clock=practiceClockPortalPayload(),activeId=practicePlan.portalDraftId,ids=[...new Set([
   ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),
   db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
+  db.activePortalPractice?.jenkinsCoachPortalId||db.jenkinsCoachPortal?.portalId,
   ...(db.activePortalPractice?.guestPlayerPortalIds||[]),
   ...(db.activePortalPractice?.guestCoachPortalIds||[])
  ].filter(Boolean))];
@@ -5473,6 +5480,7 @@ async function beginPracticeClock(){
   // changing local state because its mismatch guard can strand running players.
   const failedStartedAt=new Date(practiceClock.startAt).toISOString(),activeId=practicePlan.portalDraftId,resetClock={status:'not-started',startedAt:null,endedAt:null},ids=[...new Set([
    ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
+   db.activePortalPractice?.jenkinsCoachPortalId||db.jenkinsCoachPortal?.portalId,
    ...(db.activePortalPractice?.guestPlayerPortalIds||[]),...(db.activePortalPractice?.guestCoachPortalIds||[])
   ].filter(Boolean))];
   practiceClock={running:false,finished:false,endAnnounced:false,startAt:null,lastBlock:0,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
@@ -5489,6 +5497,7 @@ async function beginPracticeClock(){
  const expectedStartedAt=new Date(practiceClock.startAt).toISOString(),startVerifyIds=[...new Set([
   ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),
   db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
+  db.activePortalPractice?.jenkinsCoachPortalId||db.jenkinsCoachPortal?.portalId,
   ...(db.activePortalPractice?.guestPlayerPortalIds||[]),
   ...(db.activePortalPractice?.guestCoachPortalIds||[])
  ].filter(Boolean))];
@@ -5552,6 +5561,7 @@ async function finishPracticeClock(automatic=false){
    // touched. This converges a split finish before cleanup is allowed.
    const activeId=practicePlan.portalDraftId,finishedClock=practiceClockPortalPayload(),ids=[...new Set([
     ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
+    db.activePortalPractice?.jenkinsCoachPortalId||db.jenkinsCoachPortal?.portalId,
     ...(db.activePortalPractice?.guestPlayerPortalIds||[]),...(db.activePortalPractice?.guestCoachPortalIds||[])
    ].filter(Boolean))];
    const repair=await Promise.allSettled(ids.map(async id=>{const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null;if(remote?.id!==activeId)throw new Error('finish-repair-practice-mismatch');const rc=remote.clock||{};if(rc.status==='finished'&&rc.endedAt===finishedClock.endedAt)return true;if(rc.status==='running'&&rc.startedAt===finishedClock.startedAt){await portalDoc(id).update({'activePractice.clock':finishedClock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});return true}throw new Error('finish-repair-clock-conflict')}));
