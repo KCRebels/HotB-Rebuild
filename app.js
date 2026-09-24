@@ -5510,6 +5510,19 @@ async function resumeRecoveredPracticeClock(){
  const clockVerified=await verifyPublishedPracticeClock();
  if(clockVerified!==true){
   if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
+  // A Start attempt can be interrupted after the local running clock is saved but
+  // before the atomic portal clock write completes (especially on iPhone/PWA
+  // visibility changes). If every published target still proves this exact
+  // practice is uniformly Not Started, the cloud publication is authoritative:
+  // restore the coach to Not Started instead of trapping the practice behind a
+  // false recovered-clock mismatch. Never use this recovery for mixed/running,
+  // missing, unreadable, or different-practice portal state.
+  const portalsStillNotStarted=await verifyPublishedPracticeNotStarted();
+  if(portalsStillNotStarted===true){
+   practiceClock={running:false,finished:false,endAnnounced:false,startAt:null,lastBlock:0,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
+   persistPracticeSession();render();
+   return;
+  }
   alert('HotB restored this practice, but could not verify the same live clock on every portal. The coach timer is paused so it cannot overwrite the player portals. Check the connection and reopen Practice.');
   return;
  }
@@ -5520,6 +5533,22 @@ async function resumeRecoveredPracticeClock(){
  updatePracticeClock();
  if(practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
  }finally{practiceResumeVerificationBusy=false}
+}
+async function verifyPublishedPracticeNotStarted(){
+ if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return false;
+ const activeId=practicePlan.portalDraftId,ids=[...new Set([
+  ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),
+  db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
+  db.activePortalPractice?.jenkinsCoachPortalId||db.jenkinsCoachPortal?.portalId,
+  ...(db.activePortalPractice?.guestPlayerPortalIds||[]),
+  ...(db.activePortalPractice?.guestCoachPortalIds||[])
+ ].filter(Boolean))];
+ if(!ids.length)return false;
+ const verification=await Promise.all(ids.map(async id=>{try{
+  const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null,remoteClock=remote?.clock||{};
+  return remote?.id===activeId&&remoteClock.status==='not-started'&&!remoteClock.startedAt&&!remoteClock.endedAt;
+ }catch(error){return false}}));
+ return verification.every(Boolean);
 }
 async function verifyPublishedPracticeClock(){
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return false;
