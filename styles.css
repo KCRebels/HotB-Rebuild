@@ -1182,3 +1182,35 @@ html,body,button,a,[role="button"]{touch-action:manipulation}
 
 /* Permanent player portal: private, read-only evaluation. */
 .portal-player-evaluation{display:grid;gap:13px}.portal-eval-section{padding:15px;border:2px solid #d5dcda;border-radius:15px;background:#fff}.portal-eval-section-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:11px}.portal-eval-section-head h3{margin:0;color:#101828;font-size:22px}.portal-eval-section-head>span{color:#667085;font-size:12px;font-weight:850}.portal-eval-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.portal-eval-metric{display:grid;place-items:center;gap:3px;min-height:76px;padding:9px 5px;border:1px solid #dfe4e2;border-radius:11px;background:#f7f8f8;text-align:center}.portal-eval-metric b{color:#101828;font-size:24px;line-height:1}.portal-eval-metric span{color:#667085;font-size:11px;font-weight:900;text-transform:uppercase}.portal-eval-private,.portal-eval-empty{margin:11px 0 0;color:#667085;font-size:12px;font-weight:750;line-height:1.4}.portal-eval-heat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.portal-eval-heat>div{display:grid;place-items:center;gap:3px;min-height:54px;border:1px solid #dfe4e2;border-radius:9px;background:#f7f8f8}.portal-eval-heat span{color:#667085;font-size:10px;font-weight:900}.portal-eval-heat b{font-size:18px}.portal-eval-list{display:grid;gap:7px}.portal-eval-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 11px;border:1px solid #dfe4e2;border-radius:10px;background:#f7f8f8}.portal-eval-row>span:first-child{display:grid;gap:2px}.portal-eval-row small{color:#667085;font-size:11px;font-weight:750}.portal-eval-row>span:last-child{color:#596579;font-size:12px;font-weight:800}.portal-eval-row>span:last-child b{color:#101828;font-size:15px}@media(max-width:560px){.portal-eval-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.portal-eval-heat{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+
+/* Player portal Evaluation: match the compact coach Evaluation proportions on phones. */
+@media(max-width:560px){
+  .portal-player-evaluation{display:block;padding-top:8px}
+  .portal-player-evaluation .player-card{margin:0 8px 7px}
+  .portal-player-evaluation .eval-tiles{margin:8px;gap:7px}
+  .portal-player-evaluation .eval-tile{min-height:112px;padding:10px;border-radius:11px}
+  .portal-player-evaluation .eval-tile-head{margin-bottom:10px}
+  .portal-player-evaluation .metric-title{min-height:33px;padding:4px 7px;border-radius:7px;font-size:14px}
+  .portal-player-evaluation .eval-tile>.value{font-size:clamp(24px,7vw,30px);padding:2px 0}
+  .portal-player-evaluation .eval-tile>.note{font-size:10px;margin-top:auto;padding-top:0}
+  .portal-player-evaluation .performance,
+  .portal-player-evaluation .athletic,
+  .portal-player-evaluation .pitcher-performance{margin:8px;padding:11px;border-radius:12px}
+  .portal-player-evaluation .performance h2,
+  .portal-player-evaluation .athletic-head h2,
+  .portal-player-evaluation .pitcher-performance h2{font-size:21px}
+  .portal-player-evaluation .performance-head{margin-bottom:8px}
+  .portal-player-evaluation .performance-sample{margin-top:4px}
+  .portal-player-evaluation .perf-grid{gap:5px}
+  .portal-player-evaluation .perf{padding:10px 2px;border-radius:8px;min-height:61px}
+  .portal-player-evaluation .perf>b{font-size:22px}
+  .portal-player-evaluation .perf-label-row{margin-top:5px}
+  .portal-player-evaluation .perf-metric{min-height:27px;padding:3px 5px;border-radius:6px;font-size:11px}
+  .portal-player-evaluation .measure-grid{gap:6px}
+  .portal-player-evaluation .measure{padding:9px;min-height:100px}
+  .portal-player-evaluation .measure h3{font-size:14px}
+  .portal-player-evaluation .measure .best{font-size:20px;margin-top:10px}
+  .portal-player-evaluation .measure .note{font-size:9px;margin-top:8px}
+  .portal-player-evaluation .portal-eval-private{margin:8px 10px 14px;font-size:10px}
+}
