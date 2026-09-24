@@ -1271,3 +1271,9 @@ html,body,button,a,[role="button"]{touch-action:manipulation}
 .portal-eval-count-key{display:flex;gap:5px;font-size:13px;font-weight:950;margin-bottom:7px}
 .portal-eval-count-list{display:grid;gap:5px}.portal-eval-count-row{display:grid;grid-template-columns:minmax(38px,1fr) repeat(7,auto);gap:5px;align-items:center;background:#f2f3f4;border-radius:8px;padding:7px;font-size:12px;font-weight:900}.portal-eval-count-row>b{font-size:14px}
 .portal-eval-pitch-grid{display:grid;gap:6px}.portal-eval-row{display:flex;justify-content:space-between;align-items:center;background:#111;color:#fff;border-radius:8px;padding:9px 10px;font-size:12px}.portal-eval-row>span:first-child{display:flex;gap:8px;align-items:baseline}.portal-eval-row small{color:#bbb}
+
+/* New Game scrimmage control: phone-sized, below pitcher row */
+.game-scrimmage-option{display:flex;align-items:center;gap:14px;margin-top:18px;min-height:52px;font-size:20px;font-weight:800;cursor:pointer;touch-action:manipulation}
+.game-scrimmage-option input{width:28px;height:28px;min-width:28px;margin:0;accent-color:#111;cursor:pointer}
+.game-scrimmage-option span{line-height:1.1}
+@media(max-width:600px){.game-scrimmage-option{min-height:58px;font-size:22px;gap:16px}.game-scrimmage-option input{width:32px;height:32px;min-width:32px}}
