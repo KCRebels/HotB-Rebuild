@@ -93,7 +93,7 @@
    await loadPortalScript('practice-session.js?v=20260921-resolution325','P30-TIMING');
    await loadPortalScript('drill-library.js?v=20260904-restored133','P31-DRILLS');
    await loadPortalScript('sms-links.js?v=20260919-smslinks180','P32-SMS');
-   await loadPortalScript('app.js?v=20260923-playereval592','P29-DOWNLOAD');
+   await loadPortalScript('app.js?v=20260923-playereval593','P29-DOWNLOAD');
    window.__HOTB_APP_SCRIPT_LOADED__=true;
    // app.js owns the live portal connection status from this point forward.
    // No shell watchdog may overwrite its Firebase/auth/read progress UI.
@@ -102,24 +102,6 @@
    if(app)app.innerHTML='<div class="app portal-app"><main class="portal-page"><section class="portal-welcome"><span>PRIVATE ACCESS</span><h2>Portal Script Error</h2><p>HotB could not download the portal program. Error code: '+code+'</p></section></main></div>';
   }
  })();
-}catch(_){}})();
-</script><script>
-(()=>{try{
- if(!new URLSearchParams(location.search).has('portal'))return;
- const originalFetch=window.fetch;
- window.fetch=(input,init)=>{
-  try{
-   const raw=typeof input==='string'?input:(input&&input.url)||'';
-   if(/\/app\.js(?:\?|$)/.test(raw)){
-    const url=new URL(raw,location.href);
-    url.searchParams.set('portalbuild','589');
-    url.searchParams.set('t',Date.now().toString());
-    input=url.href;
-    init=Object.assign({},init||{},{cache:'no-store'});
-   }
-  }catch(_){}
-  return originalFetch.call(window,input,init);
- };
 }catch(_){}})();
 </script><script>if(!new URLSearchParams(location.search).has("portal")){const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;s.defer=true;document.head.appendChild(s)}</script>
 <script>
