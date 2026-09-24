@@ -3149,41 +3149,15 @@ async function activatePlayerPlans(){
   // Do not mark the practice locally active until Firebase has accepted every portal update.
   try{await batch.commit()}
   catch(error){throw error}
-  // Verify every player, coach, guest and Jenkins portal actually received
-  // this exact practice before the coach device records it as active.
-  const verifyIds=[...new Set([
-   ...pendingPortalPractice.playerPortals.map(entry=>entry.portalId),
-   pendingPortalPractice.coachPortalId,
-   pendingPortalPractice.jenkinsCoachPortalId,
-   ...pendingPortalPractice.guestPlayerPortalIds,
-   ...pendingPortalPractice.guestCoachPortalIds
-  ].filter(Boolean))];
-  if(!verifyIds.length)throw new Error('portal-activation-no-targets');
-  const verification=await Promise.all(verifyIds.map(async id=>{
-   const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data():null,active=remote?.activePractice;
-   return !!remote&&active?.id===practicePlan.portalDraftId&&active?.activatedAt===activationTimestamp&&active?.clock?.status==='not-started'&&!active?.clock?.startedAt;
-  }));
-  if(verification.some(ok=>!ok)){
-   // Firebase batches are atomic, but a successful commit followed by an
-   // uncertain/stale read must not leave a published practice that the coach
-   // device refuses to remember. Roll back only this exact activation version.
-   const rollback=cloudStore.batch();let rollbackCount=0;
-   const rollbackReads=await Promise.all(verifyIds.map(async id=>({id,snapshot:await portalDoc(id).get()})));
-   for(const {id,snapshot} of rollbackReads){
-    const remote=snapshot.exists?snapshot.data():null,active=remote?.activePractice;
-    if(active?.id!==practicePlan.portalDraftId)continue;
-    if(active?.activatedAt!==activationTimestamp)throw new Error('portal-activation-rollback-conflict');
-    const isJenkinsCoach=id===pendingPortalPractice.jenkinsCoachPortalId,isGuest=!isJenkinsCoach&&(pendingPortalPractice.guestPlayerPortalIds.includes(id)||pendingPortalPractice.guestCoachPortalIds.includes(id));
-    const playerEntry=pendingPortalPractice.playerPortals.find(entry=>entry.portalId===id);
-    const data=isJenkinsCoach?{activePractice:null,expired:false,accessStatus:'waiting',updatedAt:firebase.firestore.FieldValue.serverTimestamp()}:isGuest?{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}:playerEntry?.isTeamJenkins?jenkinsPortalCleanupPayload(db.roster.find(item=>item.portalId===id),playerEntry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
-    rollback.update(portalDoc(id),data);rollbackCount++;
-   }
-   if(rollbackCount)await rollback.commit();
-   const rollbackVerified=await Promise.all(verifyIds.map(async id=>{const snapshot=await portalDoc(id).get();return !snapshot.exists||!snapshot.data()?.activePractice}));
-   if(rollbackVerified.some(ok=>!ok))throw new Error('portal-activation-rollback-verification-failed');
-   throw new Error('portal-activation-verification-failed');
-  }
-  // Firebase publication is now verified. Record the local pointer exactly once.
+  // Firestore batch.commit() is atomic: if it resolves, every queued portal
+  // update was accepted as one transaction. The preflight above already proved
+  // every target exists, has the correct identity/type, and has no live conflict.
+  // A second full read of every portal after a successful atomic commit added
+  // tens of seconds on iPhone without increasing write atomicity. Record the
+  // exact activation locally now; Start still performs its own live-clock
+  // preflight/read-back before changing any portal clock.
+  if(!activationTargets.length)throw new Error('portal-activation-no-targets');
+  // Firebase publication is now committed. Record the local pointer exactly once.
   // persistPracticeSession() already saves the entire DB; the old second save()
   // duplicated a full localStorage write and could be the write that crossed
   // Safari's quota after a successful portal publication.
