@@ -1563,8 +1563,9 @@ async function setupJenkinsPortals(){
   render();
  }
 }
-async function setupPlayerPortals(){
- if(!cloudUser||!cloudStore||cloudBusy)return;
+async function setupPlayerPortals(fromButton=false){
+ if(!cloudUser||!cloudStore){portalMessage='Player refresh cannot start because the coach cloud connection is not ready. Reopen HotB and try again.';render();return}
+ if(cloudBusy){portalMessage='Player refresh is waiting because another cloud operation is still running. Try again after the cloud status finishes.';render();return}
  cloudBusy=true;portalMessage='Refreshing player records…';render();
  const players=db.roster.filter(item=>!item.isGuest&&!item.isTeamJenkins),originals=players.map(player=>({player,portalId:player.portalId,portalPin:player.portalPin,portalPinHash:player.portalPinHash}));
  const timed=(promise,label,ms=8000)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+'-timeout')),ms))]);
@@ -5770,7 +5771,7 @@ function bindPlayerPortal(){
  // Evaluation bindings belong only to the coach portal's evaluation subview.
  // Player/PIN portal startup must not depend on the optional evaluation module.
  if(portalData?.portalType==='coach'&&portalView==='evaluation'&&typeof bindEval==='function')bindEval();
- $('#setupPlayerPortals')?.addEventListener('click',setupPlayerPortals);
+ $('#setupPlayerPortals')?.addEventListener('click',()=>{portalMessage='Refresh request received…';render();setTimeout(()=>setupPlayerPortals(true),0)});
  $('#setupJenkinsCoachPortal')?.addEventListener('click',setupJenkinsCoachPortal);
  $('#shareJenkinsCoachPortal')?.addEventListener('click',async()=>{const coach=db.jenkinsCoachPortal;if(!coach?.portalId||!coach?.portalSecret)return;const share={title:"Mark’s HotB Hitting Practice",text:jenkinsCoachPortalShareText()};try{if(navigator.share)await navigator.share(share);else{await navigator.clipboard.writeText(share.text);alert("Mark’s practice link copied.")}}catch(error){if(error?.name!=='AbortError')alert("Mark’s link could not be shared.")}});
  $('#textJenkinsCoachPortal')?.addEventListener('click',()=>{const coach=db.jenkinsCoachPortal;if(!coach?.portalId||!coach?.portalSecret)return;const url=smsComposeUrl(coach.phone,jenkinsCoachPortalShareText());if(url)openSmsComposer(url)});
