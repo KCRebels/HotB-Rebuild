@@ -1243,3 +1243,21 @@ html,body,button,a,[role="button"]{touch-action:manipulation}
   .portal-player-evaluation .measure .best{font-size:18px;margin-top:7px}
   .portal-player-evaluation .measure .note{margin-top:6px}
 }
+
+
+/* Final portal-only evaluation density: same information, less dead vertical space. */
+@media(max-width:560px){
+ .portal-player-evaluation .portal-eval-profile{margin-bottom:2px!important}
+ .portal-player-evaluation .eval-tiles{margin-top:4px;margin-bottom:4px}
+ .portal-player-evaluation .eval-tile{min-height:86px;padding:7px 6px}
+ .portal-player-evaluation .eval-tile-head{margin-bottom:3px}
+ .portal-player-evaluation .metric-title{min-height:27px;font-size:11px}
+ .portal-player-evaluation .eval-tile>.value{font-size:25px}
+ .portal-player-evaluation .eval-tile>.note{font-size:8.5px}
+ .portal-player-evaluation .performance{margin-top:4px;margin-bottom:4px;padding:9px}
+ .portal-player-evaluation .performance h2{font-size:19px}
+ .portal-player-evaluation .perf{min-height:50px;padding:6px 2px 5px}
+ .portal-player-evaluation .perf>b{font-size:19px}
+ .portal-player-evaluation .perf-metric{min-height:22px;font-size:9px}
+ .portal-player-evaluation .athletic{margin-top:4px}
+}
