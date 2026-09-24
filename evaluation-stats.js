@@ -28,7 +28,7 @@
 
  function isSlapHitter(player){return String(player?.side||'').toUpperCase()==='SL'}
  function evaluationResultRate(player,stats){
-  return isSlapHitter(player)?{label:'QAB%',key:'qabPct',value:stats?.qabPct}:{label:'HHB%',key:'hhbPct',value:stats?.hhbPct};
+  return isSlapHitter(player)?{label:'IPA%',key:'ipaPct',value:stats?.ipaPct}:{label:'HHB%',key:'hhbPct',value:stats?.hhbPct};
  }
 
  function plateAppearanceType(pa){
@@ -53,6 +53,11 @@
   const type=plateAppearanceType(pa);
   return type.hit||type.walk||type.hitByPitch||type.sacrifice||Boolean(pa?.sac)||
    Number(pa?.rbiCount??(pa?.rbi?1:0))>0||Boolean(pa?.rba)||Boolean(pa?.hhb)||Number(pa?.pitchCount)>=8;
+ }
+ function isImpactPlateAppearance(pa){
+  const type=plateAppearanceType(pa);
+  return type.reach||type.sacrifice||Boolean(pa?.sac)||
+   Number(pa?.rbiCount??(pa?.rbi?1:0))>0||Boolean(pa?.rba)||Number(pa?.pitchCount)>=8;
  }
 
  function countPerformance(pas,bucket){
@@ -152,7 +157,7 @@
  }
 
  function statsForPAs(pas){
-  let AB=0,H=0,TB=0,BB=0,HBP=0,K=0,contact=0,SF=0,RBI=0,HHB=0,WEAK=0,battedBalls=0,trackedHHB=0,QAB=0,REACH=0;
+  let AB=0,H=0,TB=0,BB=0,HBP=0,K=0,contact=0,SF=0,RBI=0,HHB=0,WEAK=0,battedBalls=0,trackedHHB=0,QAB=0,IPA=0,REACH=0;
   pas.forEach(pa=>{
     const type=plateAppearanceType(pa);
     if(type.atBat)AB++;
@@ -167,6 +172,7 @@
     if(pa.weak)WEAK++;
     if(isTrackedBallInPlay(pa)){battedBalls++;if(pa.hhb)trackedHHB++}
     if(isQualityAtBat(pa))QAB++;
+    if(isImpactPlateAppearance(pa))IPA++;
     if(type.reach)REACH++;
   });
   const PA=pas.length,AVG=AB?H/AB:0,obDen=AB+BB+HBP+SF,OBP=obDen?(H+BB+HBP)/obDen:0,SLG=AB?TB/AB:0;
@@ -175,11 +181,11 @@
   // internally consistent from the saved PA record: ABs ending with contact / official ABs.
   // SACs are excluded from both sides because they are not official ABs.
   const contactPct=AB?contact/AB:0,kPct=PA?K/PA:0,bbPct=PA?BB/PA:0;
-  const hhbPct=battedBalls?trackedHHB/battedBalls:0,qabPct=PA?QAB/PA:0,reachPct=PA?REACH/PA:0;
+  const hhbPct=battedBalls?trackedHHB/battedBalls:0,qabPct=PA?QAB/PA:0,ipaPct=PA?IPA/PA:0,reachPct=PA?REACH/PA:0;
   // Authoritative HotB Runs Produced model used by Evaluation and team comparisons.
   const rp = H + Math.max(0,TB-H)*0.65 + BB*0.7 + HBP*0.7 + RBI*0.75 + HHB*0.25 - WEAK*0.25;
-  return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,reachPct,rp};
+  return {PA,AB,H,TB,BB,HBP,K,SF,RBI,HHB,WEAK,battedBalls,QAB,IPA,REACH,AVG,OBP,SLG,OPS,contactPct,kPct,bbPct,hhbPct,qabPct,ipaPct,reachPct,rp};
  }
 
- return{statsForPAs,isTrackedBallInPlay,isStrikeResult,formatPercent,formatAverage,plateAppearanceKey,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,plateAppearanceType,isQualityAtBat,countPerformance,pitchMatchesHeatResult,heatZoneValues,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,executionTotalsFromGames,playerEvaluationData,evaluationSnapshot,pitchPerformance,hotBMetrics};
+ return{statsForPAs,isTrackedBallInPlay,isStrikeResult,formatPercent,formatAverage,plateAppearanceKey,firstPitchStrikeRate,isSlapHitter,evaluationResultRate,plateAppearanceType,isQualityAtBat,isImpactPlateAppearance,countPerformance,pitchMatchesHeatResult,heatZoneValues,normalizeHeatZone,heatZoneIndex,pitchResultType,pitchExecutesPlan,executionFromPitches,executionTotalsFromPAs,executionTotalsFromGames,playerEvaluationData,evaluationSnapshot,pitchPerformance,hotBMetrics};
 });
