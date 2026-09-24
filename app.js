@@ -1588,7 +1588,7 @@ async function setupPlayerPortals(fromButton=false){
    const localActive=localPracticeId&&localPracticeId===practicePlan?.portalDraftId&&db.activePortalPractice?.players?.includes(player.name)
     ?playerPracticePortalPayload(player.name,db.activePortalPractice?.activatedAt||null,practiceClockPortalPayload()):null;
    if(remoteActive&&localActive&&remoteActive.id!==localActive.id)throw new Error('portal-active-practice-conflict');
-   const portalUpdate={portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),pinHash:player.portalPinHash,evaluationData:playerEvaluationPortalPayload(player.name),...(!existing.exists?{ownerUid:null,focus:null,activePractice:localActive}:{}),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+   const evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;const portalUpdate={portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),pinHash:player.portalPinHash,evaluationData,evaluationVersion,...(!existing.exists?{ownerUid:null,focus:null,activePractice:localActive}:{}),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
    batch.set(portalDoc(player.portalId),portalUpdate,{merge:true});
   });
   await timed(batch.commit(),'player-portal-write',10000);
@@ -1596,12 +1596,12 @@ async function setupPlayerPortals(fromButton=false){
   const playerVerification=players.map((player,index)=>{
    const snapshot=verificationSnapshots[index],remote=snapshot.exists?snapshot.data():null;
    const shouldBeActive=!!(db.activePortalPractice?.id&&db.activePortalPractice.id===practicePlan?.portalDraftId&&db.activePortalPractice.players?.includes(player.name));
-   return !!remote&&remote.portalType==='player'&&remote.playerName===player.name&&remote.pinHash===player.portalPinHash&&!!remote.evaluationData&&Array.isArray(remote.evaluationData.roster)&&remote.evaluationData.roster.some(item=>item.name===player.name)&&(!shouldBeActive||remote.activePractice?.id===practicePlan.portalDraftId);
+   const expected=playerEvaluationPortalPayload(player.name),actual=remote?.evaluationData;return !!remote&&remote.portalType==='player'&&remote.playerName===player.name&&remote.pinHash===player.portalPinHash&&!!actual&&actual.evaluationFilterLabel===expected.evaluationFilterLabel&&actual.savedGames?.length===expected.savedGames?.length&&actual.savedGames?.reduce((n,g)=>n+(g.plateAppearances?.length||0),0)===expected.savedGames?.reduce((n,g)=>n+(g.plateAppearances?.length||0),0)&&Array.isArray(actual.roster)&&actual.roster.some(item=>item.name===player.name)&&(!shouldBeActive||remote.activePractice?.id===practicePlan.portalDraftId);
   });
   if(playerVerification.some(ok=>!ok))throw new Error('player-portal-refresh-verification-failed');
   db.route=route;localStorage.setItem(DBKEY,JSON.stringify(db));
   if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
-  portalMessage='Player records refreshed, including My Evaluation. Existing permanent links were kept.';
+  portalMessage=`Player records refreshed and verified, including My Evaluation (${activeDateFilterLabel()}). Existing permanent links were kept.`;
   scheduleCloudBackup();
  }catch(error){
   originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});
