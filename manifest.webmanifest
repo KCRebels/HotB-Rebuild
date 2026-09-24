@@ -3,7 +3,7 @@
   "short_name": "HotB",
   "description": "KC Rebels Regional hitting and player evaluation app",
   "id": "./",
-  "start_url": "./?source=pwa&launch=231",
+  "start_url": "./?source=pwa&launch=288",
   "scope": "./",
   "display": "standalone",
   "display_override": ["standalone"],
