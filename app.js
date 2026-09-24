@@ -5729,11 +5729,12 @@ async function finishPracticeClock(automatic=false){
  archiveCompletedPractice(completedAt);
  if(!practiceClock.endAnnounced){practiceClock.endAnnounced=true;practiceEndSpeech=speakPracticeClock('Times Up, Good Practice, Please start to clean up')}
  persistPracticeSession();
- // The local finish is authoritative for the coach UI. Show DONE immediately
- // while the verified portal finish/cleanup transaction continues in the
- // background. This keeps slow Firestore reads from making the screen appear
- // frozen even though the clock and end announcement have already stopped.
- render();
+ // One DONE tap ends the coach-facing practice immediately. Keep the completed
+ // plan/session in memory for the background portal cleanup, but move the coach
+ // back to the Practice hub now instead of leaving a tappable DONE button that
+ // can enter the old retry/Closing path.
+ if(!automatic){practiceSection='hub';render();window.scrollTo(0,0)}
+ else render();
  // Publish the finished clock before removing activePractice. This gives every
  // already-open portal an authoritative Practice Complete state immediately,
  // even if the subsequent cleanup/read-back takes a moment or must be retried.
@@ -5758,7 +5759,7 @@ async function finishPracticeClock(automatic=false){
    }
   }
  }
- const endingSpeech=practiceEndSpeech;render();
+ const endingSpeech=practiceEndSpeech;if(automatic)render();
  if(automatic&&Array.isArray(practicePlan?.recoveredCoachSchedule)&&practicePlan.recoveredCoachSchedule.length&&!shouldClearPortals){
   return;
  }
