@@ -1493,9 +1493,10 @@ async function claimPlayerPortal(pin){
  }
 }
 function schedulePlayerEvaluationPortalSync(delay=2200){
- if(!cloudUser||!cloudStore||portalToken)return;
+ if(!cloudStore||portalToken)return;
  clearTimeout(playerEvalSyncTimer);
  playerEvalSyncTimer=setTimeout(async()=>{
+  if(!cloudUser){schedulePlayerEvaluationPortalSync(3000);return}
   if(cloudBusy){schedulePlayerEvaluationPortalSync(5000);return}
   // Evaluation sync is background convenience data. Never create an aggressive
   // retry loop when Firestore rejects a request (including daily quota limits).
