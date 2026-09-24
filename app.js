@@ -1578,25 +1578,14 @@ async function setupPlayerPortals(fromButton=false){
    if(!player.portalPin)player.portalPin=newPortalPin();
    player.portalPinHash=await portalHash(player.portalId,player.portalPin);
   }
-  const existingSnapshots=[];
-  // Read portal identities in small groups. iPhone Safari/Firestore can time out
-  // when all 13 portal documents are requested simultaneously.
-  for(let i=0;i<players.length;i+=4){
-   const group=players.slice(i,i+4);
-   const snapshots=await timed(Promise.all(group.map(player=>portalDoc(player.portalId).get())),'player-portal-read',15000);
-   existingSnapshots.push(...snapshots);
-  }
   const batch=cloudStore.batch();
-  players.forEach((player,index)=>{
-   const existing=existingSnapshots[index],remote=existing.exists?(existing.data()||{}):{};
-   if(remote.playerName&&remote.playerName!==player.name)throw new Error('portal-player-identity-mismatch');
-   if(remote.portalType&&remote.portalType!=='player')throw new Error('portal-player-type-mismatch');
-   const localPracticeId=db.activePortalPractice?.id||'',remoteActive=remote.activePractice||null;
-   const localActive=localPracticeId&&localPracticeId===practicePlan?.portalDraftId&&db.activePortalPractice?.players?.includes(player.name)
-    ?playerPracticePortalPayload(player.name,db.activePortalPractice?.activatedAt||null,practiceClockPortalPayload()):null;
-   if(remoteActive&&localActive&&remoteActive.id!==localActive.id)throw new Error('portal-active-practice-conflict');
-   const evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;const portalUpdate={portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),pinHash:player.portalPinHash,evaluationData,evaluationVersion,...(!existing.exists?{ownerUid:null,focus:null,activePractice:localActive}:{}),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
-   batch.set(portalDoc(player.portalId),portalUpdate,{merge:true});
+  players.forEach(player=>{
+   // Existing permanent roster portals are keyed by each player's saved portalId.
+   // Refresh only the evaluation payload and stable identity fields; do not read,
+   // recreate, reset, or alter ownership/practice state. This avoids Safari's
+   // unreliable multi-document preflight reads while preserving permanent links.
+   const evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
+   batch.update(portalDoc(player.portalId),{portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
   });
   await timed(batch.commit(),'player-portal-write',10000);
   // The batch commit is the authoritative success point. A second round of
