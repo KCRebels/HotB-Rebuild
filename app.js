@@ -5552,8 +5552,12 @@ function speakPracticeClock(message,quiet=false){
  });
 }
 function updatePracticeClock(){
- if(!practicePlan||!practiceClock.running)return;
+ // A DONE tap is a hard local boundary. Never allow an interval callback that
+ // was already queued before clearInterval() to emit block/rotate speech while
+ // the remote finish transaction is still completing.
+ if(!practicePlan||!practiceClock.running||practiceClock.finished||practiceCompletionBusy)return;
  const now=Date.now(),state=window.HotBPracticeSession?.timing(practicePlan,practiceClock,now);
+ if(!practiceClock.running||practiceClock.finished||practiceCompletionBusy)return;
  const currentBlock=$('#practiceCurrentBlock'),timeLeft=$('#practiceTimeLeft');
  if(!state){
   if(currentBlock)currentBlock.textContent='DONE!';
@@ -5713,6 +5717,10 @@ async function finishPracticeClock(automatic=false){
  try{
  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
  practiceClock.running=false;practiceClock.finished=true;
+ // Stop any queued "Two minutes", "Rotate", or "Begin Block" utterance from the
+ // live clock before the finish announcement. Remote cleanup may take time, but
+ // no live-practice voice command is allowed after DONE.
+ if('speechSynthesis'in window)window.speechSynthesis.cancel();
  const scheduledEnd=practiceClock.startAt&&practicePlan&&window.HotBPracticeSession?.layout?practiceClock.startAt+window.HotBPracticeSession.layout(practicePlan).totalMs:0,completedAt=new Date(practiceClock.completedAt||(automatic&&scheduledEnd?scheduledEnd:Date.now()));
  practiceClock.completedAt=completedAt.toISOString();
  const shouldClearPortals=db.activePortalPractice?.id===practicePlan?.portalDraftId;
