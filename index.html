@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="HotB" />
   <title>HotB</title>
-  <script>if(!new URLSearchParams(window.location.search).has('portal')){const manifest=document.createElement('link');manifest.rel='manifest';manifest.href='manifest.webmanifest?v=20260924-launch288';document.head.appendChild(manifest)}</script>
+  <script>if(!new URLSearchParams(window.location.search).has('portal')){const manifest=document.createElement('link');manifest.rel='manifest';manifest.href='manifest.webmanifest?v=20260924-launch289';document.head.appendChild(manifest)}</script>
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-v3.png?v=20260901-portal106" />
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon-v3.png?v=20260901-portal106" />
   <link rel="icon" type="image/png" sizes="192x192" href="hotb-icon-v3-192.png" /><link rel="icon" type="image/png" sizes="512x512" href="hotb-icon-v3-512.png" />
@@ -42,7 +42,7 @@
   if('caches' in window)caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('hotb-app-')).map(key=>caches.delete(key)))).catch(()=>{});
 }catch(_){}})();
 </script>
-<script src="pwa-update.js?v=20260924-pwa288"></script><script>
+<script src="pwa-update.js?v=20260924-pwa289"></script><script>
 (()=>{try{
  if(!new URLSearchParams(location.search).has('portal'))return;
  // Arm the startup watchdog only after app.js has actually been requested.
