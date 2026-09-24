@@ -1565,46 +1565,49 @@ async function setupJenkinsPortals(){
 }
 async function setupPlayerPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return;
- cloudBusy=true;portalMessage='Creating private player portals…';render();
+ cloudBusy=true;portalMessage='Refreshing player records…';render();
  const players=db.roster.filter(item=>!item.isGuest&&!item.isTeamJenkins),originals=players.map(player=>({player,portalId:player.portalId,portalPin:player.portalPin,portalPinHash:player.portalPinHash}));
+ const timed=(promise,label,ms=8000)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+'-timeout')),ms))]);
  try{
-  const batch=cloudStore.batch();
+  // Read every existing portal concurrently. The old refresh waited for 13
+  // Firestore reads one after another, so one slow mobile read could make the
+  // button appear frozen for a very long time.
   for(const player of players){
    if(!player.portalId)player.portalId=newPortalId();
    if(!player.portalPin)player.portalPin=newPortalPin();
    player.portalPinHash=await portalHash(player.portalId,player.portalPin);
-   const existing=await portalDoc(player.portalId).get();
-   if(existing.exists){
-    const remote=existing.data()||{};
-    // Never let a locally saved portal ID silently attach this player to a
-    // different player's existing cloud document or to another portal type.
-    if(remote.playerName&&remote.playerName!==player.name)throw new Error('portal-player-identity-mismatch');
-    if(remote.portalType&&remote.portalType!=='player')throw new Error('portal-player-type-mismatch');
-   }
-   const localPracticeId=db.activePortalPractice?.id||'',remoteActive=existing.exists?(existing.data()||{}).activePractice:null;
-   // Portal setup is identity/PIN setup, not a practice-lifecycle command. Never
-   // erase or replace a live cloud practice just because the coach UI is between
-   // local recovery states. Practice activation/clock/end own activePractice.
+  }
+  const existingSnapshots=await timed(Promise.all(players.map(player=>portalDoc(player.portalId).get())),'player-portal-read');
+  const batch=cloudStore.batch();
+  players.forEach((player,index)=>{
+   const existing=existingSnapshots[index],remote=existing.exists?(existing.data()||{}):{};
+   if(remote.playerName&&remote.playerName!==player.name)throw new Error('portal-player-identity-mismatch');
+   if(remote.portalType&&remote.portalType!=='player')throw new Error('portal-player-type-mismatch');
+   const localPracticeId=db.activePortalPractice?.id||'',remoteActive=remote.activePractice||null;
    const localActive=localPracticeId&&localPracticeId===practicePlan?.portalDraftId&&db.activePortalPractice?.players?.includes(player.name)
     ?playerPracticePortalPayload(player.name,db.activePortalPractice?.activatedAt||null,practiceClockPortalPayload()):null;
    if(remoteActive&&localActive&&remoteActive.id!==localActive.id)throw new Error('portal-active-practice-conflict');
    const portalUpdate={portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),pinHash:player.portalPinHash,evaluationData:playerEvaluationPortalPayload(player.name),...(!existing.exists?{ownerUid:null,focus:null,activePractice:localActive}:{}),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
    batch.set(portalDoc(player.portalId),portalUpdate,{merge:true});
-  }
-  await batch.commit();
-  const playerVerification=await Promise.all(players.map(async player=>{
-   const snapshot=await portalDoc(player.portalId).get(),remote=snapshot.exists?snapshot.data():null;
+  });
+  await timed(batch.commit(),'player-portal-write',10000);
+  const verificationSnapshots=await timed(Promise.all(players.map(player=>portalDoc(player.portalId).get())),'player-portal-verify');
+  const playerVerification=players.map((player,index)=>{
+   const snapshot=verificationSnapshots[index],remote=snapshot.exists?snapshot.data():null;
    const shouldBeActive=!!(db.activePortalPractice?.id&&db.activePortalPractice.id===practicePlan?.portalDraftId&&db.activePortalPractice.players?.includes(player.name));
    return !!remote&&remote.portalType==='player'&&remote.playerName===player.name&&remote.pinHash===player.portalPinHash&&!!remote.evaluationData&&Array.isArray(remote.evaluationData.roster)&&remote.evaluationData.roster.some(item=>item.name===player.name)&&(!shouldBeActive||remote.activePractice?.id===practicePlan.portalDraftId);
-  }));
+  });
   if(playerVerification.some(ok=>!ok))throw new Error('player-portal-refresh-verification-failed');
-  // Persist portal IDs/PINs immediately before any backup/sync work can run.
-  db.route=route;
-  localStorage.setItem(DBKEY,JSON.stringify(db));
+  db.route=route;localStorage.setItem(DBKEY,JSON.stringify(db));
   if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
-  portalMessage='Player records refreshed, including My Evaluation. Existing links and PINs were kept.';
+  portalMessage='Player records refreshed, including My Evaluation. Existing permanent links were kept.';
   scheduleCloudBackup();
- }catch(error){originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});portalMessage='Player portals could not be created. Confirm Anonymous Authentication and the Player Portal security rules are active.'}
+ }catch(error){
+  originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});
+  const code=String(error?.message||error||'refresh-failed');
+  console.error('Player portal refresh failed',error);
+  portalMessage=`Player record refresh stopped [${code}]. Existing links and saved data were not changed.`;
+ }
  cloudBusy=false;render();
 }
 async function setupCoachPortal(){
