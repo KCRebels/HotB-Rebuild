@@ -1509,14 +1509,26 @@ async function syncPlayerEvaluationPortals(){
  const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId),coachPortalId=db.coachPortal?.portalId||'';
  if(!players.length&&!coachPortalId)return true;
  try{
-  // Evaluation refreshes are background updates only. They must never recreate a
-  // deleted/reset portal as an incomplete document. Verify identity, then update.
-  const targets=await Promise.all([
-   ...players.map(async player=>{const ref=portalDoc(player.portalId),snapshot=await ref.get(),remote=snapshot.exists?snapshot.data():null;if(!remote||remote.portalType!=='player'||remote.playerName!==player.name)return null;return {ref,data:{evaluationData:playerEvaluationPortalPayload(player.name),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}}),
-   ...(coachPortalId?[async()=>{const ref=portalDoc(coachPortalId),snapshot=await ref.get(),remote=snapshot.exists?snapshot.data():null;if(!remote||remote.portalType!=='coach')return null;return {ref,data:{evaluationData:coachEvaluationPortalPayload(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}}] : [])
-  ]);
-  const valid=targets.filter(Boolean);if(!valid.length)return true;
-  const batch=cloudStore.batch();valid.forEach(target=>batch.update(target.ref,target.data));await batch.commit();
+  // Use the same small-batch write path as the proven manual Player Portal
+  // refresh. Scrimmage/stat changes must publish the freshly recalculated
+  // evaluation payload, not depend on a pre-read of every portal document.
+  for(let i=0;i<players.length;i+=3){
+   const group=players.slice(i,i+3),batch=cloudStore.batch(),version=Date.now();
+   group.forEach(player=>batch.update(portalDoc(player.portalId),{
+    portalType:'player',
+    playerName:player.name,
+    firstName:practiceFirstName(player.name),
+    evaluationData:playerEvaluationPortalPayload(player.name),
+    evaluationVersion:`${version}-${player.name}`,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+   }));
+   await batch.commit();
+  }
+  if(coachPortalId){
+   const batch=cloudStore.batch();
+   batch.update(portalDoc(coachPortalId),{evaluationData:coachEvaluationPortalPayload(),evaluationVersion:`${Date.now()}-coach`,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   await batch.commit();
+  }
   return true;
  }catch(error){console.warn('Evaluation portal sync failed',error);return false}
 }
