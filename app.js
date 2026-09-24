@@ -1592,23 +1592,13 @@ async function setupPlayerPortals(fromButton=false){
    batch.set(portalDoc(player.portalId),portalUpdate,{merge:true});
   });
   await timed(batch.commit(),'player-portal-write',10000);
-  const verificationSnapshots=[];
-  // Verify in small groups on mobile. Thirteen simultaneous post-write reads can
-  // exceed Safari/Firestore's response window even after the batch saved correctly.
-  for(let i=0;i<players.length;i+=4){
-   const group=players.slice(i,i+4);
-   const snapshots=await timed(Promise.all(group.map(player=>portalDoc(player.portalId).get())),'player-portal-verify',12000);
-   verificationSnapshots.push(...snapshots);
-  }
-  const playerVerification=players.map((player,index)=>{
-   const snapshot=verificationSnapshots[index],remote=snapshot.exists?snapshot.data():null;
-   const shouldBeActive=!!(db.activePortalPractice?.id&&db.activePortalPractice.id===practicePlan?.portalDraftId&&db.activePortalPractice.players?.includes(player.name));
-   const expected=playerEvaluationPortalPayload(player.name),actual=remote?.evaluationData;return !!remote&&remote.portalType==='player'&&remote.playerName===player.name&&remote.pinHash===player.portalPinHash&&!!actual&&actual.evaluationFilterLabel===expected.evaluationFilterLabel&&actual.savedGames?.length===expected.savedGames?.length&&actual.savedGames?.reduce((n,g)=>n+(g.plateAppearances?.length||0),0)===expected.savedGames?.reduce((n,g)=>n+(g.plateAppearances?.length||0),0)&&Array.isArray(actual.roster)&&actual.roster.some(item=>item.name===player.name)&&(!shouldBeActive||remote.activePractice?.id===practicePlan.portalDraftId);
-  });
-  if(playerVerification.some(ok=>!ok))throw new Error('player-portal-refresh-verification-failed');
+  // The batch commit is the authoritative success point. A second round of
+  // Firestore reads is not required to publish these records and was causing
+  // false failures on iPhone Safari even after the write had completed.
+  // Existing identity/type safety was already checked before the batch write.
   db.route=route;localStorage.setItem(DBKEY,JSON.stringify(db));
   if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
-  portalMessage=`Player records refreshed and verified, including My Evaluation (${activeDateFilterLabel()}). Existing permanent links were kept.`;
+  portalMessage=`Player records refreshed, including My Evaluation (${activeDateFilterLabel()}). Existing permanent links were kept.`;
   scheduleCloudBackup();
  }catch(error){
   originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});
