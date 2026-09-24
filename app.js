@@ -982,7 +982,7 @@ let practiceSection='hub',practiceFocusPlayer='',practiceFocusRange='weekend',pr
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practiceEquipmentSetupOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
 let focusDrillReplaceIndex=-1,focusDrillQuery='';
 let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null},practiceClockTimer=null,practiceEndSpeech=Promise.resolve(),portalClockTimer=null;
-let cloudAuth=null,cloudStore=null,cloudUser=null,cloudAuthReady=false,cloudBusy=false,cloudMessage='',cloudBackupTimer=null,playerEvalSyncTimer=null;
+let cloudAuth=null,cloudStore=null,cloudUser=null,cloudAuthReady=false,cloudBusy=false,cloudMessage='',cloudBackupTimer=null,playerEvalSyncTimer=null,playerPortalRefreshPending=false;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLoadGeneration=0,portalLibraryReturnView='library';
 let observationTargetPaId='',observationTargetPlayer='',observationMode='game',observationScope='current',observationPromptInning=0,observationFromInningPrompt=false,observationRecognition=null;
@@ -1104,6 +1104,7 @@ async function initCloud(){
     if(route==='home'||route==='portal')render();
     try{await loadCloudStatus()}catch(_){cloudMessage='Signed in. Cloud status will retry automatically.'}
     if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();
+    if(playerPortalRefreshPending)setTimeout(()=>setupPlayerPortals(false),0);
    }
    if(cloudUser&&recoveredPracticeExpired&&practicePlan&&practiceClock.running){
     // Do not merely mark an expired restored clock finished locally. Wait for the
@@ -1581,8 +1582,9 @@ async function setupJenkinsPortals(){
  }
 }
 async function setupPlayerPortals(fromButton=false){
- if(!cloudUser||!cloudStore){portalMessage='Player refresh cannot start because the coach cloud connection is not ready. Reopen HotB and try again.';render();return}
- if(cloudBusy){portalMessage='Player refresh is waiting because another cloud operation is still running. Try again after the cloud status finishes.';render();return}
+ if(!cloudUser||!cloudStore){if(!fromButton)playerPortalRefreshPending=true;else{portalMessage='Player refresh cannot start because the coach cloud connection is not ready. Reopen HotB and try again.';render()}return}
+ if(cloudBusy){if(!fromButton){playerPortalRefreshPending=true;setTimeout(()=>{if(playerPortalRefreshPending&&!cloudBusy)setupPlayerPortals(false)},1000)}else{portalMessage='Player refresh is waiting because another cloud operation is still running. Try again after the cloud status finishes.';render()}return}
+ playerPortalRefreshPending=false;
  cloudBusy=true;portalMessage='Refreshing player records…';render();
  const players=db.roster.filter(item=>!item.isGuest&&!item.isTeamJenkins),originals=players.map(player=>({player,portalId:player.portalId,portalPin:player.portalPin,portalPinHash:player.portalPinHash}));
  const timed=(promise,label,ms=8000)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+'-timeout')),ms))]);
@@ -6691,7 +6693,7 @@ function bindNew(){
 function bindReportsPage(){
  $('#openGamesSelector')?.addEventListener('click',()=>{modal='gamesSelection';render()});
  bindDateFilters('saved');
- document.querySelectorAll('[data-scrimmage-game]').forEach(scrimmageToggle=>{scrimmageToggle.onchange=()=>{const game=db.savedGames.find(item=>item.id===scrimmageToggle.dataset.scrimmageGame);if(!game)return;game.scrimmage=!!scrimmageToggle.checked;reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();render();setTimeout(()=>setupPlayerPortals(true),0)}});
+ document.querySelectorAll('[data-scrimmage-game]').forEach(scrimmageToggle=>{scrimmageToggle.onchange=()=>{const game=db.savedGames.find(item=>item.id===scrimmageToggle.dataset.scrimmageGame);if(!game)return;game.scrimmage=!!scrimmageToggle.checked;reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();playerPortalRefreshPending=true;render();setTimeout(()=>setupPlayerPortals(false),0)}});
  $$('[data-view-game]').forEach(button=>button.onclick=()=>{reportGameId=button.dataset.viewGame;reportMode='game';reportFilterHitter='All Hitters';reportOpponent='All Opponents';modal='reports';render()});
  $$('[data-delete-game]').forEach(button=>button.onclick=()=>{const game=db.savedGames.find(item=>item.id===button.dataset.deleteGame);if(!game)return;if(!confirm(`Delete the saved game against ${game.opponent||'Opponent'} from ${new Date(game.date).toLocaleDateString()}? This cannot be undone.`))return;db.savedGames=db.savedGames.filter(item=>item.id!==game.id);(db.gameGroups||[]).forEach(group=>{group.gameIds=(group.gameIds||[]).filter(id=>id!==game.id)});reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();render()});
  $('#exportFullBackup')?.addEventListener('click',exportFullBackup);
