@@ -2311,7 +2311,7 @@ function guestCoachPracticeView(){
 }
 function playerEvaluationPortalPayload(playerName){
  const player=competitionRoster().find(item=>item.name===playerName);if(!player)return {roster:[],savedGames:[],currentGame:null,evaluationSeason:selectedSeason||currentSeasonLabel(),evaluationFilterLabel:activeDateFilterLabel()};
- const rosterFields=['name','side','grad','photo','jersey','positions','gpa','interest','school','pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct'];
+ const rosterFields=['name','side','grad','photo','jersey','positions','gpa','interest','school','pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct']; const profileSource=(db.roster||[]).find(item=>item.name===playerName)||player;
  const paFields=['hitter','pa','outcome','hitType','contactType','rbi','rbiCount','rba','sac','bunt','hhb','weak','pitchCount','finalCount'];
  const pitchFields=['id','hitter','pa','strikesBefore','zone','pitchType','plan','result','contactType','hitterStyle','intentionalBall','pitchout','decisionOverride','hhb','ts'];
  const pick=(source,fields)=>Object.fromEntries(fields.filter(key=>source?.[key]!==undefined).map(key=>[key,source[key]]));
@@ -2321,7 +2321,7 @@ function playerEvaluationPortalPayload(playerName){
  const playerPas=games.flatMap(game=>game.plateAppearances||[]),playerMetrics=HotBEvaluationStats.hotBMetrics(playerPas,teamPas),fullSnapshot=HotBEvaluationStats.evaluationSnapshot({roster:db.roster,savedGames:sourceGames,currentGame:null},playerName),s=fullSnapshot.stats;
  const playerMeasurements=(db.measurements||[]).filter(item=>item.player===playerName).map(({id,player,type,value,date})=>({id,player,type,value,date}));
  const published={PA:s.PA,hotB:playerMetrics.hotB,rp:s.PA?s.rp:null,AVG:s.AVG,OBP:s.OBP,SLG:s.SLG,kPct:s.kPct,contactPct:s.contactPct,resultLabel:HotBEvaluationStats.isSlapHitter(player)||['Maia Waddell','Hailey Marsh'].includes(playerName)?'IPA%':'HHB%',resultValue:(HotBEvaluationStats.isSlapHitter(player)||['Maia Waddell','Hailey Marsh'].includes(playerName))?s.ipaPct:s.hhbPct,execution:fullSnapshot.execution?.rate??null,heatByResult:fullSnapshot.heatByResult,countPerformanceByBucket:fullSnapshot.countPerformanceByBucket,pitchPerformanceByType:Object.fromEntries(Object.entries(fullSnapshot.pitchPerformanceByType||{}).map(([key,row])=>[key,{n:row.n,contactRate:row.contactRate}]))};
- return JSON.parse(JSON.stringify({roster:[pick(player,rosterFields)],savedGames:games,currentGame:null,evaluationSeason:season,evaluationFilterLabel,playerMetrics:{hotB:playerMetrics.hotB},published,measurements:playerMeasurements}));
+ return JSON.parse(JSON.stringify({roster:[pick(profileSource,rosterFields)],savedGames:games,currentGame:null,evaluationSeason:season,evaluationFilterLabel,playerMetrics:{hotB:playerMetrics.hotB},published,measurements:playerMeasurements}));
 }
 function coachEvaluationPortalPayload(){
  const fields=['name','jersey','grad','positions','side','throws','gpa','school','interest','email','twitter','sportsRecruits','highlightVideo','ncaaId','recruitingStatement','accomplishments','photo','pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct','hittingPracticeAttendanceEligible'];
