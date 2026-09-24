@@ -1281,3 +1281,14 @@ html,body,button,a,[role="button"]{touch-action:manipulation}
 .game-scrimmage-option input:checked + .game-scrimmage-switch{background:#111}
 .game-scrimmage-option input:checked + .game-scrimmage-switch::after{transform:translateX(20px)}
 .game-scrimmage-option input:focus-visible + .game-scrimmage-switch{outline:3px solid rgba(0,0,0,.25);outline-offset:2px}
+
+/* Reports: compact Scrimmage toggle stays inline with View/Delete */
+.saved-game-actions{flex-wrap:nowrap}
+.report-scrimmage-toggle{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;cursor:pointer;touch-action:manipulation;font-size:12px;font-weight:800;text-transform:uppercase}
+.report-scrimmage-toggle input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+.report-scrimmage-toggle i{position:relative;display:inline-block;width:40px;height:24px;flex:0 0 40px;border-radius:999px;background:#c7c7cc;transition:background .18s ease}
+.report-scrimmage-toggle i::after{content:'';position:absolute;width:20px;height:20px;left:2px;top:2px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.28);transition:transform .18s ease}
+.report-scrimmage-toggle input:checked + i{background:#111}
+.report-scrimmage-toggle input:checked + i::after{transform:translateX(16px)}
+.report-scrimmage-toggle input:focus-visible + i{outline:3px solid rgba(0,0,0,.2);outline-offset:2px}
+@media(max-width:600px){.saved-game-actions{gap:6px}.report-scrimmage-toggle{gap:5px;font-size:10px}.report-scrimmage-toggle i{width:36px;height:22px;flex-basis:36px}.report-scrimmage-toggle i::after{width:18px;height:18px}.report-scrimmage-toggle input:checked + i::after{transform:translateX(14px)}.saved-game-actions .btn{padding-left:10px;padding-right:10px}}
