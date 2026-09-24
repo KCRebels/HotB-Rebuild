@@ -5733,8 +5733,16 @@ async function finishPracticeClock(automatic=false){
  // plan/session in memory for the background portal cleanup, but move the coach
  // back to the Practice hub now instead of leaving a tappable DONE button that
  // can enter the old retry/Closing path.
- if(!automatic){practiceSection='hub';render();window.scrollTo(0,0)}
- else render();
+ if(!automatic){
+  // DONE should feel finished to the coach immediately. Leave the live-practice
+  // workspace now; the exact plan and activePortalPractice remain in memory while
+  // the verified portal cleanup transaction completes in the background.
+  practiceSection='hub';practiceCoachOpen=false;practiceCardsOpen=false;modal=null;
+  render();window.scrollTo(0,0);
+  // Do not block the click handler on Firestore cleanup. The transaction below
+  // still owns cleanup, but the coach is already back at the Practice hub.
+  await new Promise(resolve=>setTimeout(resolve,0));
+ }else render();
  // Publish the finished clock before removing activePractice. This gives every
  // already-open portal an authoritative Practice Complete state immediately,
  // even if the subsequent cleanup/read-back takes a moment or must be retried.
@@ -6581,7 +6589,7 @@ function bindPractice(){
   beginPracticeClock();
  });
  $('#skipPracticeBlock')?.addEventListener('click',skipPracticeBlock);
- $('#endPracticeClock')?.addEventListener('click',endPracticeFromScreen);
+ $('#endPracticeClock')?.addEventListener('click',()=>{endPracticeFromScreen().catch(error=>console.error('HotB DONE cleanup failed',error))});
  $('#activatePlayerPlans')?.addEventListener('click',activatePlayerPlans);
  $('#deactivatePlayerPlans')?.addEventListener('click',deactivatePlayerPlans);
  $$('[data-share-practice-guest]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal([...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.sharePracticeGuest))));
