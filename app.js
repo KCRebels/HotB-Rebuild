@@ -1841,13 +1841,13 @@ function heatStyles(values,color){
  });
  return map;
 }
-function createGame(opponent,pitcherName,pitcherNumber,order){
+function createGame(opponent,pitcherName,pitcherNumber,order,scrimmage=false){
  const allowed=new Set(competitionRoster().map(player=>player.name));
  order=[...new Set((order||[]).filter(name=>allowed.has(name)))];
  if(!order.length)return null;
  const openingPitcher={name:pitcherName,number:pitcherNumber,enteredAt:Date.now(),pitchIndex:0};
  const g={
-  id:crypto.randomUUID(),date:new Date().toISOString(),opponent,pitcherName,pitcherNumber,
+  id:crypto.randomUUID(),date:new Date().toISOString(),opponent,pitcherName,pitcherNumber,scrimmage:!!scrimmage,
   pitchersUsed:[openingPitcher],battingOrder:order,hittersUsed:[...order],hitterSubstitutions:[],currentIdx:0,inning:1,outs:0,runners:[],plan:planFor(order[0]),pitchType:'FB',
   balls:0,strikes:0,paNumber:1,pitches:[],plateAppearances:[],observations:[],ended:false,
   pendingZone:null,zoneScope:'HITTER',zoneFilter:'K',previewNext:false,showAi:false,historyTab:'LIVE',allView:'DOTS',firstPitchView:false
@@ -2135,16 +2135,9 @@ function undo(){
  lastRenderedUndoState=gameUndoState(db.currentGame);
  save();render();
 }
-function allPAs(includeCurrent=true){
- let arr=[...db.savedGames.flatMap(g=>g.plateAppearances||[])];
- if(includeCurrent&&db.currentGame)arr.push(...db.currentGame.plateAppearances);
- return arr;
-}
-function allPitches(includeCurrent=true){
- let arr=[...db.savedGames.flatMap(g=>g.pitches||[])];
- if(includeCurrent&&db.currentGame)arr.push(...db.currentGame.pitches);
- return arr;
-}
+function statGames(includeCurrent=true){return [...db.savedGames.filter(game=>!game.scrimmage),...(includeCurrent&&db.currentGame&&!db.currentGame.scrimmage?[db.currentGame]:[])]}
+function allPAs(includeCurrent=true){return statGames(includeCurrent).flatMap(g=>g.plateAppearances||[])}
+function allPitches(includeCurrent=true){return statGames(includeCurrent).flatMap(g=>g.pitches||[])}
 function seasonMeta(value){
  const date=new Date(value);
  if(Number.isNaN(date.getTime()))return {season:'',segment:''};
@@ -2179,7 +2172,8 @@ function gameMatchesDateFilter(game){
  if(dateFilterMode==='full')return meta.segment!=='Dead Period';
  return meta.segment===({fall:'Fall',summer:'Summer',offseason:'Off Season'}[dateFilterMode]);
 }
-function filteredGames(includeCurrent=true){return [...db.savedGames,...(includeCurrent&&db.currentGame?[db.currentGame]:[])].filter(gameMatchesDateFilter)}
+function filteredGames(includeCurrent=true){return statGames(includeCurrent).filter(gameMatchesDateFilter)}
+function filteredSavedGamesForManagement(){return [...db.savedGames].filter(gameMatchesDateFilter)}
 function filteredPAs(includeCurrent=true){return filteredGames(includeCurrent).flatMap(game=>game.plateAppearances||[])}
 function filteredPitches(includeCurrent=true){return filteredGames(includeCurrent).flatMap(game=>game.pitches||[])}
 function activeDateFilterLabel(){
@@ -2600,8 +2594,8 @@ function practiceLibrary(){
  return `${practiceHeader('Drill Library',true)}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>HITTING LIBRARY</span><h2>${drills.length} Hitting Drills</h2><p>Search by drill name, hitting problem, purpose, equipment or coaching cue. This library does not change the practice scheduler yet.</p></section><div class="practice-library-search"><input class="input" id="practiceDrillSearch" type="search" placeholder="Search drills" value="${esc(practiceDrillQuery)}" aria-label="Search drills"></div><div class="practice-filter-preview">${filters.map(filter=>`<button class="${filter===practiceDrillCategory?'active':''}" data-drill-category="${esc(filter)}">${esc(filter)}</button>`).join('')}</div><p class="practice-library-count">${shown.length} ${shown.length===1?'drill':'drills'}</p><section class="practice-drill-list">${shown.map(drill=>`<button class="practice-drill-card" data-drill-name="${esc(drill.name)}"><span>${esc(drill.category)}</span><h3>${esc(drill.name)}</h3><p>${esc(drill.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(drill.hittingMethod)}</span>${drill.equipment?`<span>${esc(drill.equipment)}</span>`:''}</div>${practiceUsageBoxes(drill.name)}</button>`).join('')||`<div class="practice-library-empty"><b>No Drills Found</b><p>Try another search or category.</p></div>`}</section></main>`;
 }
 function playerFocusGames(range=practiceFocusRange){
- // Player Focus is an audit of completed, saved games. An unfinished live game is excluded.
- const games=[...(db.savedGames||[])];
+ // Player Focus uses official completed games only; scrimmages remain saved for review but do not affect focus/stat analysis.
+ const games=[...(db.savedGames||[])].filter(game=>!game.scrimmage);
  return window.HotBCoachObservations?.gamesInRange(games,range)||games;
 }
 function playerFocusPortalPayload(playerName=practiceFocusPlayer,range=practiceFocusRange){
@@ -3238,6 +3232,7 @@ function newGameView(){
  return `<div class="page-match-head page-head-centered"><button class="page-head-nav" data-go="home">Home</button><h1>New Game</h1><span class="page-head-spacer" aria-hidden="true"></span></div>
  <div class="panel"><div class="section-title">MATCHUP</div>
   <label class="label">Opponent Name</label><div class="matchup-picker"><input id="opponent" class="input matchup-input" placeholder="Team Name" autocomplete="off"><button type="button" class="matchup-picker-arrow" data-matchup-open="opponent" aria-label="Show saved opponents">⌄</button><div class="matchup-picker-menu" id="opponentMenu" hidden>${teams.map(team=>`<div class="matchup-picker-option"><button type="button" class="matchup-picker-choice" data-opponent-choice="${esc(team)}">${esc(team)}</button><button type="button" class="matchup-picker-delete" data-delete-opponent="${esc(team)}" aria-label="Delete saved opponent ${esc(team)}">Delete</button></div>`).join('')}</div></div>
+  <label class="game-scrimmage-option"><input id="scrimmageGame" type="checkbox"><span><b>Scrimmage</b><small>Save the game, but exclude it from statistics</small></span></label>
   <div class="grid2"><div><label class="label">Pitcher</label><div class="matchup-picker"><input id="pitcherName" class="input matchup-input" placeholder="Pitcher Name" autocomplete="off"><button type="button" class="matchup-picker-arrow" data-matchup-open="pitcher" aria-label="Show saved pitchers">⌄</button><div class="matchup-picker-menu" id="pitcherMenu" hidden>${pitchers.map(p=>`<div class="matchup-picker-option"><button type="button" class="matchup-picker-choice" data-pitcher-choice="${esc(p.name)}" data-pitcher-number="${esc(p.number||'')}"><b>${esc(p.name)}</b>${p.number?`<span>#${esc(p.number)}</span>`:''}</button><button type="button" class="matchup-picker-delete" data-delete-pitcher-name="${esc(p.name)}" data-delete-pitcher-number="${esc(p.number||'')}" aria-label="Delete saved pitcher ${esc(p.name)}">Delete</button></div>`).join('')}</div></div></div>
   <div><label class="label">Number</label><input id="pitcherNumber" class="input" placeholder="Auto"></div></div>
  </div>
@@ -3587,8 +3582,8 @@ function gameGroupCard(group){
  return `<article class="game-group-card"><div><b>${esc(group.name)}</b><span>${existing.length} game${existing.length===1?'':'s'}</span></div><div class="saved-game-actions"><button class="btn black" data-open-group="${group.id}">Report</button><button class="btn" data-edit-group="${group.id}">Edit</button><button class="btn" data-rename-group="${group.id}">Rename</button><button class="btn red" data-delete-group="${group.id}">Delete Group</button></div></article>`;
 }
 function reportsPage(){
- const games=filteredGames(false);
- return `<div class="page-match-head page-head-centered"><button class="page-head-nav" data-go="home">Home</button><h1>Reports</h1><span class="page-head-spacer"></span></div><div class="panel reports-builder"><h2>Build a Report</h2><button class="games-selector" id="openGamesSelector"><span>GAMES</span><b>Choose games or a saved group</b><i aria-hidden="true">›</i></button><div class="roster-data-tools backup-tools"><button class="btn black" id="exportFullBackup">Export Full Backup</button><button class="btn" id="restoreFullBackup">Restore Backup</button><input id="fullBackupFile" type="file" accept=".json,application/json" hidden><p>A full backup preserves games, pitches, game groups, roster information, measurements, pitchers and app preferences.</p></div>${dateFilterControls('saved')}<div class="saved-game-list">${games.length?games.map(g=>{const meta=seasonMeta(g.date);return `<div class="saved-game-card"><div><b>${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}</b><span>${esc(meta.season)} · ${esc(meta.segment)} · ${(g.plateAppearances||[]).length} PA</span></div><div class="saved-game-actions"><button class="btn black" data-view-game="${g.id}">View</button><button class="btn red" data-delete-game="${g.id}">Delete</button></div></div>`}).join(''):'No saved games match this date range.'}</div></div>`;
+ const games=filteredSavedGamesForManagement();
+ return `<div class="page-match-head page-head-centered"><button class="page-head-nav" data-go="home">Home</button><h1>Reports</h1><span class="page-head-spacer"></span></div><div class="panel reports-builder"><h2>Build a Report</h2><button class="games-selector" id="openGamesSelector"><span>GAMES</span><b>Choose games or a saved group</b><i aria-hidden="true">›</i></button><div class="roster-data-tools backup-tools"><button class="btn black" id="exportFullBackup">Export Full Backup</button><button class="btn" id="restoreFullBackup">Restore Backup</button><input id="fullBackupFile" type="file" accept=".json,application/json" hidden><p>A full backup preserves games, pitches, game groups, roster information, measurements, pitchers and app preferences.</p></div>${dateFilterControls('saved')}<div class="saved-game-list">${games.length?games.map(g=>{const meta=seasonMeta(g.date);return `<div class="saved-game-card"><div><b>${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}</b><span>${esc(meta.season)} · ${esc(meta.segment)} · ${(g.plateAppearances||[]).length} PA${g.scrimmage?' · SCRIMMAGE':''}</span></div><div class="saved-game-actions"><button class="btn ${g.scrimmage?'gold':''}" data-scrimmage-game="${g.id}">${g.scrimmage?'Scrimmage ✓':'Scrimmage'}</button><button class="btn black" data-view-game="${g.id}">View</button><button class="btn red" data-delete-game="${g.id}">Delete</button></div></div>`}).join(''):'No saved games match this date range.'}</div></div>`;
 }
 function gamesSelectionModal(){
  return `<div class="modal-backdrop"><div class="modal games-selection-modal"><div class="modal-header"><div><div class="small info-kicker">REPORT FILTER</div><h2>Games</h2></div><button class="btn" data-close>Close</button></div><button class="games-all-option" id="selectAllGames"><b>ALL GAMES</b><span>Use every saved game</span></button><h3>INDIVIDUAL GAMES</h3><div class="game-select-list" id="reportGameChoices">${gameChoiceList(reportSelectedGameIds)||'<p>No saved games yet.</p>'}</div><h3>SAVED GROUPS</h3><div class="game-group-list">${db.gameGroups.length?db.gameGroups.map(gameGroupCard).join(''):'<p class="report-empty">No saved groups yet.</p>'}</div><div class="game-selection-footer"><button class="btn" id="newGameGroup">Create Group</button><button class="btn gold" id="saveSelectionGroup" hidden>Save as Group</button><button class="btn black" id="openSelectedReports" disabled>View Report</button></div></div></div>`;
@@ -6673,7 +6668,7 @@ function bindNew(){
  $('#startGame').onclick=()=>{
   const order=sels.map(s=>s.value).filter(Boolean);
   try{
-   if(createGame(opponent.value.trim(),pitcherName.value.trim(),pitcherNumber.value.trim(),order))go('live');
+   if(createGame(opponent.value.trim(),pitcherName.value.trim(),pitcherNumber.value.trim(),order,$('#scrimmageGame')?.checked))go('live');
   }catch(error){
    console.error('HotB Start Game failed',error);
    alert('HotB could not open In Game. Diagnostic: '+String(error?.message||error||'unknown error'));
@@ -6683,7 +6678,8 @@ function bindNew(){
 function bindReportsPage(){
  $('#openGamesSelector')?.addEventListener('click',()=>{modal='gamesSelection';render()});
  bindDateFilters('saved');
- $$('[data-view-game]').forEach(button=>button.onclick=()=>{reportGameId=button.dataset.viewGame;reportMode='game';reportFilterHitter='All Hitters';reportOpponent='All Opponents';modal='reports';render()});
+ $('[data-scrimmage-game]').forEach(button=>button.onclick=()=>{const game=db.savedGames.find(item=>item.id===button.dataset.scrimmageGame);if(!game)return;game.scrimmage=!game.scrimmage;reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();render()});
+ $('[data-view-game]').forEach(button=>button.onclick=()=>{reportGameId=button.dataset.viewGame;reportMode='game';reportFilterHitter='All Hitters';reportOpponent='All Opponents';modal='reports';render()});
  $$('[data-delete-game]').forEach(button=>button.onclick=()=>{const game=db.savedGames.find(item=>item.id===button.dataset.deleteGame);if(!game)return;if(!confirm(`Delete the saved game against ${game.opponent||'Opponent'} from ${new Date(game.date).toLocaleDateString()}? This cannot be undone.`))return;db.savedGames=db.savedGames.filter(item=>item.id!==game.id);(db.gameGroups||[]).forEach(group=>{group.gameIds=(group.gameIds||[]).filter(id=>id!==game.id)});reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();render()});
  $('#exportFullBackup')?.addEventListener('click',exportFullBackup);
  $('#restoreFullBackup')?.addEventListener('click',()=>$('#fullBackupFile').click());
