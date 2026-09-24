@@ -1595,14 +1595,14 @@ async function setupPlayerPortals(){
   const playerVerification=await Promise.all(players.map(async player=>{
    const snapshot=await portalDoc(player.portalId).get(),remote=snapshot.exists?snapshot.data():null;
    const shouldBeActive=!!(db.activePortalPractice?.id&&db.activePortalPractice.id===practicePlan?.portalDraftId&&db.activePortalPractice.players?.includes(player.name));
-   return !!remote&&remote.portalType==='player'&&remote.playerName===player.name&&remote.pinHash===player.portalPinHash&&(!shouldBeActive||remote.activePractice?.id===practicePlan.portalDraftId);
+   return !!remote&&remote.portalType==='player'&&remote.playerName===player.name&&remote.pinHash===player.portalPinHash&&!!remote.evaluationData&&Array.isArray(remote.evaluationData.roster)&&remote.evaluationData.roster.some(item=>item.name===player.name)&&(!shouldBeActive||remote.activePractice?.id===practicePlan.portalDraftId);
   }));
   if(playerVerification.some(ok=>!ok))throw new Error('player-portal-refresh-verification-failed');
   // Persist portal IDs/PINs immediately before any backup/sync work can run.
   db.route=route;
   localStorage.setItem(DBKEY,JSON.stringify(db));
   if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
-  portalMessage='Player records refreshed. Existing links and PINs were kept.';
+  portalMessage='Player records refreshed, including My Evaluation. Existing links and PINs were kept.';
   scheduleCloudBackup();
  }catch(error){originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});portalMessage='Player portals could not be created. Confirm Anonymous Authentication and the Player Portal security rules are active.'}
  cloudBusy=false;render();
