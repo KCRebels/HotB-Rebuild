@@ -5586,21 +5586,34 @@ async function skipPracticeBlock(){
  const elapsed=Math.max(0,Date.now()-Number(practiceClock.startAt)),elapsedInBlock=elapsed%layout.blockMs,advance=Math.max(0,layout.workMs-elapsedInBlock);
  if(advance<=0){if(button){button.disabled=false;button.textContent='Skip'}return}
  const previousStart=practiceClock.startAt,previousTransition=practiceClock.lastTransitionBlock;
- // Move the shared authoritative start timestamp backward by exactly the unused
- // work time. Every existing portal already derives its clock from startedAt,
- // so open player/coach portals enter ROTATE as soon as Firebase receives it.
  practiceClock.startAt=previousStart-advance;
  practiceClock.lastTransitionBlock=state.block;
- persistPracticeSession();render();updatePracticeClock();
+ persistPracticeSession();
+ updatePracticeClock();
+ const activeId=practicePlan.portalDraftId,clock=practiceClockPortalPayload(),ids=[...new Set([
+  ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),
+  db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
+  db.activePortalPractice?.jenkinsCoachPortalId||db.jenkinsCoachPortal?.portalId,
+  ...(db.activePortalPractice?.guestPlayerPortalIds||[]),
+  ...(db.activePortalPractice?.guestCoachPortalIds||[])
+ ].filter(Boolean))];
  try{
-  const synced=await syncPlayerPracticeClock();
-  if(synced!==true)throw new Error('skip-clock-sync-failed');
+  if(!cloudStore||db.activePortalPractice?.id!==activeId||!ids.length)throw new Error('skip-clock-no-targets');
+  // Activate/Start already established this exact publication on every target.
+  // Skip is a single atomic clock mutation; do not make the coach wait through
+  // the expensive full preflight/read-back cycle used by Start.
+  const batch=cloudStore.batch();
+  ids.forEach(id=>batch.update(portalDoc(id),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
+  await batch.commit();
+  persistPracticeSession();
+  updatePracticeClock();
+  if(practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
   speakPracticeClock('Ladies, Time to Rotate. One minute until the next block');
  }catch(error){
   practiceClock.startAt=previousStart;practiceClock.lastTransitionBlock=previousTransition;
-  persistPracticeSession();render();updatePracticeClock();
-  await syncPlayerPracticeClock().catch(()=>false);
-  alert('HotB could not synchronize Skip to every player and coach clock. The current block was restored. Check the connection and try again.');
+  persistPracticeSession();updatePracticeClock();
+  if(button){button.disabled=false;button.textContent='Skip'}
+  alert('HotB could not send Skip to the player and coach portals. The current block was restored. Check the connection and try again.');
  }
 }
 async function beginPracticeClock(){
