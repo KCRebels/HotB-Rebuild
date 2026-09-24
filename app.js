@@ -5595,7 +5595,10 @@ async function skipPracticeBlock(){
  const previousStart=practiceClock.startAt,previousTransition=practiceClock.lastTransitionBlock;
  practiceClock.startAt=previousStart-advance;
  practiceClock.lastTransitionBlock=state.block;
- persistPracticeSession();
+ // Do not persist the shifted clock until the atomic portal write succeeds.
+ // save() can trigger cloud/auth lifecycle work; persisting here created a race
+ // where resume verification saw the new coach timestamp before Firestore had
+ // received that same Skip timestamp and incorrectly paused the live clock.
  updatePracticeClock();
  const activeId=practicePlan.portalDraftId,clock=practiceClockPortalPayload(),ids=[...new Set([
   ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),
@@ -5612,6 +5615,8 @@ async function skipPracticeBlock(){
   const batch=cloudStore.batch();
   ids.forEach(id=>batch.update(portalDoc(id),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
   await batch.commit();
+  // The shared timestamp is now authoritative everywhere; only now make the
+  // shifted coach clock durable for refresh/recovery.
   persistPracticeSession();
   updatePracticeClock();
   if(practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
