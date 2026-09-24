@@ -5581,6 +5581,8 @@ function updatePracticeClock(){
  if(transitionBlock){practiceClock.lastTransitionBlock=transitionBlock;speakPracticeClock('Ladies, Time to Rotate. One minute until the next block');persistPracticeSession()}
  if(currentBlock)currentBlock.textContent=transition?'ROTATE':`${block} of 10`;
  if(timeLeft)timeLeft.textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
+ const skipButton=$('#skipPracticeBlock');
+ if(skipButton){skipButton.disabled=!!transition;skipButton.textContent=transition?'Skipping…':'Skip'}
 }
 async function skipPracticeBlock(){
  if(!practicePlan||!practiceClock.running||practiceClock.finished)return;
