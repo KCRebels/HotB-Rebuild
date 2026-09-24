@@ -5615,8 +5615,16 @@ async function beginPracticeClock(){
  practiceEndSpeech=Promise.resolve();
  practiceClock={running:true,finished:false,endAnnounced:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
  persistPracticeSession();
+ // Start the coach display immediately from the immutable local start timestamp.
+ // Portal synchronization can take several seconds on iPhone/Firebase, but the
+ // coach clock must not look dead while that verified cloud write is in flight.
+ // If synchronization fails, the existing rollback path stops this interval and
+ // restores Not Started safely.
+ render();updatePracticeClock();
+ if(practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
  const clockSynced=await syncPlayerPracticeClock();
  if(clockSynced!==true){
+  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
   // The first fan-out can partially succeed. Repair only portals carrying this
   // exact attempted start timestamp; never use the normal sync routine after
   // changing local state because its mismatch guard can strand running players.
@@ -5666,7 +5674,11 @@ if(!startVerifyIds.length){
    :'Practice did not start, and HotB could not safely reset every portal after the start verification failed. Do not start practice until the connection is restored and Start succeeds.');
   return;
  }
- speakPracticeClock('Begin Block 1');render();updatePracticeClock();practiceClockTimer=setInterval(updatePracticeClock,250);
+ speakPracticeClock('Begin Block 1');
+ // The coach timer is already running while portal verification completes.
+ // Render once more for any post-sync controls without creating a second interval.
+ render();updatePracticeClock();
+ if(practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
 }
 document.addEventListener('visibilitychange',()=>{
  if(document.visibilityState==='hidden'&&practicePlan)persistPracticeSession();
