@@ -1582,8 +1582,8 @@ async function setupJenkinsPortals(){
  }
 }
 async function setupPlayerPortals(fromButton=false){
- if(!cloudUser||!cloudStore){if(!fromButton)playerPortalRefreshPending=true;else{portalMessage='Player refresh cannot start because the coach cloud connection is not ready. Reopen HotB and try again.';render()}return}
- if(cloudBusy){if(!fromButton){playerPortalRefreshPending=true;setTimeout(()=>{if(playerPortalRefreshPending&&!cloudBusy)setupPlayerPortals(false)},1000)}else{portalMessage='Player refresh is waiting because another cloud operation is still running. Try again after the cloud status finishes.';render()}return}
+ if(!cloudUser||!cloudStore){if(!fromButton){playerPortalRefreshPending=true;setTimeout(()=>{if(playerPortalRefreshPending)setupPlayerPortals(false)},1000)}else{portalMessage='Player refresh cannot start because the coach cloud connection is not ready. Reopen HotB and try again.';render()}return}
+ if(cloudBusy){if(!fromButton){playerPortalRefreshPending=true;setTimeout(()=>{if(playerPortalRefreshPending)setupPlayerPortals(false)},1000)}else{portalMessage='Player refresh is waiting because another cloud operation is still running. Try again after the cloud status finishes.';render()}return}
  playerPortalRefreshPending=false;
  cloudBusy=true;portalMessage='Refreshing player records…';render();
  const players=db.roster.filter(item=>!item.isGuest&&!item.isTeamJenkins),originals=players.map(player=>({player,portalId:player.portalId,portalPin:player.portalPin,portalPinHash:player.portalPinHash}));
