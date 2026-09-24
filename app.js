@@ -5731,19 +5731,25 @@ async function finishPracticeClock(automatic=false){
  if(automatic&&Array.isArray(practicePlan?.recoveredCoachSchedule)&&practicePlan.recoveredCoachSchedule.length&&!shouldClearPortals){
   return;
  }
+ let cleanupComplete=!shouldClearPortals;
  if(shouldClearPortals){
-  try{await clearActivePlayerPlans();clearPracticeSession();render()}
+  try{await clearActivePlayerPlans();cleanupComplete=true}
   catch(error){
    // Keep the completed practice session intact. DONE is a resumable transaction:
    // the next tap/reopen must still know exactly which published practice to clear.
    persistPracticeSession();render();
    alert(cloudUser&&cloudStore?'Practice was saved, but the player plans could not be removed. Check your connection, then tap DONE! again.':'Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in through Cloud Backup, then tap DONE! again.')
   }
- }else clearPracticeSession();
- if(!automatic){
+ }
+ if(!automatic&&cleanupComplete){
+  // Close exactly once. Previously this path cleared activePracticeSession first
+  // and then closePracticeWorkspace() refused to close because its second clear
+  // saw null as failure. That resurrected the completed plan UI even though the
+  // player portals had already been correctly cleared.
   await endingSpeech;
-  if(db.activePortalPractice?.id===practicePlan?.portalDraftId)return;
-  closePracticeWorkspace()
+  closePracticeWorkspace();
+ }else if(automatic&&cleanupComplete){
+  clearPracticeSession();
  }
  }finally{practiceCompletionBusy=false}
 }
