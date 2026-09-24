@@ -5487,6 +5487,30 @@ async function resumeRecoveredPracticeClock(){
  // an unverified local session.
  const clockVerified=await verifyPublishedPracticeClock();
  if(clockVerified!==true){
+  // Skip deliberately changes startedAt for the same already-running practice.
+  // If a lifecycle/resume callback races that atomic Skip write, the player
+  // portals are the authority. Recover their unanimous running timestamp instead
+  // of freezing the coach clock on its older value.
+  const activeId=practicePlan.portalDraftId,ids=[...new Set([
+   ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),
+   db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
+   db.activePortalPractice?.jenkinsCoachPortalId||db.jenkinsCoachPortal?.portalId,
+   ...(db.activePortalPractice?.guestPlayerPortalIds||[]),
+   ...(db.activePortalPractice?.guestCoachPortalIds||[])
+  ].filter(Boolean))];
+  if(ids.length){
+   const remoteClocks=await Promise.all(ids.map(async id=>{try{const snap=await portalDoc(id).get(),remote=snap.exists?snap.data()?.activePractice:null;if(remote?.id!==activeId||remote?.clock?.status!=='running'||!remote.clock.startedAt)return null;return remote.clock.startedAt}catch(_){return null}}));
+   const unanimous=remoteClocks[0]&&remoteClocks.every(value=>value===remoteClocks[0]);
+   if(unanimous){
+    const remoteStart=new Date(remoteClocks[0]).getTime();
+    if(Number.isFinite(remoteStart)){
+     practiceClock.startAt=remoteStart;practiceClock.running=true;practiceClock.finished=false;
+     persistPracticeSession();updatePracticeClock();
+     if(!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
+     return;
+    }
+   }
+  }
   if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
   // A Start attempt can be interrupted after the local running clock is saved but
   // before the atomic portal clock write completes (especially on iPhone/PWA
