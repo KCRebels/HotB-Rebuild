@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-v3.png?v=20260901-portal106" />
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon-v3.png?v=20260901-portal106" />
   <link rel="icon" type="image/png" sizes="192x192" href="hotb-icon-v3-192.png" /><link rel="icon" type="image/png" sizes="512x512" href="hotb-icon-v3-512.png" />
-  <link rel="stylesheet" href="styles.css?v=20260924-playereval601" /><link rel="stylesheet" href="evaluation-cleanup.css?v=20260914-mobileeval259" /><link rel="stylesheet" href="evaluation-single-metrics.css?v=20260915-eval300" />
+  <link rel="stylesheet" href="styles.css?v=20260924-playereval602" /><link rel="stylesheet" href="evaluation-cleanup.css?v=20260914-mobileeval259" /><link rel="stylesheet" href="evaluation-single-metrics.css?v=20260915-eval300" />
 </head><body><div id="hotbBuildMarker" style="display:none">HotB Build 257 · Resolution 524</div><div id="app" data-hotb-booting="true"></div>
 <script>
 (()=>{try{
@@ -93,7 +93,7 @@
    await loadPortalScript('practice-session.js?v=20260921-resolution325','P30-TIMING');
    await loadPortalScript('drill-library.js?v=20260904-restored133','P31-DRILLS');
    await loadPortalScript('sms-links.js?v=20260919-smslinks180','P32-SMS');
-   await loadPortalScript('app.js?v=20260924-playereval600','P29-DOWNLOAD');
+   await loadPortalScript('app.js?v=20260924-playereval602','P29-DOWNLOAD');
    window.__HOTB_APP_SCRIPT_LOADED__=true;
    // app.js owns the live portal connection status from this point forward.
    // No shell watchdog may overwrite its Firebase/auth/read progress UI.
@@ -128,7 +128,7 @@ if(!new URLSearchParams(location.search).has('portal')){
  // Coach app must start only after every synchronous HotB dependency above has
  // evaluated. Loading app.js earlier created an iOS race where app.js could run
  // while its practice/game modules were still being parser-inserted.
- const startApp=async()=>{try{await window.__HOTB_COACH_DEPENDENCIES_READY__;if(!window.HotBEvaluationStats)await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='evaluation-stats.js?v=20260923-ipa28';s.async=false;s.onload=resolve;s.onerror=()=>reject(new Error('dependency:evaluation-stats'));document.head.appendChild(s)})}catch(error){const app=document.getElementById('app');if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">A required HotB module could not load.</p><p style="margin:8px 0 0">Error code: H200-DEPENDENCY</p></section></main></div>';return} const s=document.createElement('script');s.src='app.js?v=20260924-playereval600';s.async=false;
+ const startApp=async()=>{try{await window.__HOTB_COACH_DEPENDENCIES_READY__;if(!window.HotBEvaluationStats)await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='evaluation-stats.js?v=20260923-ipa28';s.async=false;s.onload=resolve;s.onerror=()=>reject(new Error('dependency:evaluation-stats'));document.head.appendChild(s)})}catch(error){const app=document.getElementById('app');if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">A required HotB module could not load.</p><p style="margin:8px 0 0">Error code: H200-DEPENDENCY</p></section></main></div>';return} const s=document.createElement('script');s.src='app.js?v=20260924-playereval602';s.async=false;
  const fail=(code,message)=>{const app=document.getElementById('app');if(app&&app.dataset.hotbBooting==='true')app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">'+message+'</p><p style="margin:8px 0 0">Error code: '+code+'</p></section></main></div>'};
  const watchdog=setTimeout(()=>fail('H200-EXECUTE','The app program loaded but did not finish starting.'),12000);
  s.onload=()=>{window.__HOTB_APP_SCRIPT_LOADED__=true;setTimeout(()=>{const app=document.getElementById('app');if(app&&app.innerHTML.trim()){delete app.dataset.hotbBooting;clearTimeout(watchdog)}},0)};
