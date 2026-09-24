@@ -5643,56 +5643,26 @@ async function beginPracticeClock(){
  // restores Not Started safely.
  render();updatePracticeClock();
  if(practiceClock.running&&!practiceClockTimer)practiceClockTimer=setInterval(updatePracticeClock,250);
- const clockSynced=await syncPlayerPracticeClock();
- if(clockSynced!==true){
-  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
-  // The first fan-out can partially succeed. Repair only portals carrying this
-  // exact attempted start timestamp; never use the normal sync routine after
-  // changing local state because its mismatch guard can strand running players.
-  const failedStartedAt=new Date(practiceClock.startAt).toISOString(),activeId=practicePlan.portalDraftId,resetClock={status:'not-started',startedAt:null,endedAt:null},ids=[...new Set([
-   ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
-   db.activePortalPractice?.jenkinsCoachPortalId||db.jenkinsCoachPortal?.portalId,
-   ...(db.activePortalPractice?.guestPlayerPortalIds||[]),...(db.activePortalPractice?.guestCoachPortalIds||[])
-  ].filter(Boolean))];
-  practiceClock={running:false,finished:false,endAnnounced:false,startAt:null,lastBlock:0,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
-  const repair=await Promise.allSettled(ids.map(async id=>{const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null;if(remote?.id!==activeId)throw new Error('start-repair-practice-mismatch');const rc=remote.clock||{};if(rc.status==='not-started'&&!rc.startedAt)return true;if(rc.status!=='running'||rc.startedAt!==failedStartedAt)throw new Error('start-repair-clock-conflict');await portalDoc(id).update({'activePractice.clock':resetClock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});return true}));
-  const rollbackVerified=repair.every(result=>result.status==='fulfilled')&&await verifyPublishedPracticeClock();
-  persistPracticeSession();render();
-  alert(rollbackVerified
-   ?'Practice did not start because the live portal clock could not be confirmed. Every portal was safely reset to Not Started; check the connection and tap Start again.'
-   :'Practice did not start, and HotB could not safely reset every portal. Do not start practice until the connection is restored and Start succeeds.');
-  return;
- }
- // syncPlayerPracticeClock already committed the Start atomically and performed
- // the authoritative read-back. Do not immediately read every portal a second time.
- const expectedStartedAt=new Date(practiceClock.startAt).toISOString(),startVerifyIds=[...new Set([
+ const activeId=practicePlan.portalDraftId,clock=practiceClockPortalPayload(),ids=[...new Set([
   ...(db.activePortalPractice?.playerPortals||[]).map(entry=>entry.portalId),
   db.activePortalPractice?.coachPortalId||db.coachPortal?.portalId,
   db.activePortalPractice?.jenkinsCoachPortalId||db.jenkinsCoachPortal?.portalId,
   ...(db.activePortalPractice?.guestPlayerPortalIds||[]),
   ...(db.activePortalPractice?.guestCoachPortalIds||[])
  ].filter(Boolean))];
-if(!startVerifyIds.length){
-  // Preserve the failed start timestamp long enough to repair only portals that
-  // actually accepted this exact start. Never issue a blanket rollback through
-  // syncPlayerPracticeClock(): that routine refuses mismatched targets and can
-  // leave the coach locally Not Started while some players keep counting down.
-  const failedStartedAt=expectedStartedAt,activeId=practicePlan.portalDraftId,resetClock={status:'not-started',startedAt:null,endedAt:null};
-  practiceClock={running:false,finished:false,endAnnounced:false,startAt:null,lastBlock:0,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
-  const rollbackResults=await Promise.allSettled(startVerifyIds.map(async id=>{
-   const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null;
-   if(remote?.id!==activeId)throw new Error('start-rollback-practice-mismatch');
-   const remoteClock=remote.clock||{};
-   if(remoteClock.status==='not-started'&&!remoteClock.startedAt)return true;
-   if(remoteClock.status!=='running'||remoteClock.startedAt!==failedStartedAt)throw new Error('start-rollback-clock-conflict');
-   await portalDoc(id).update({'activePractice.clock':resetClock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-   return true;
-  }));
-  const rollbackVerified=rollbackResults.every(result=>result.status==='fulfilled')&&await verifyPublishedPracticeClock();
+ try{
+  if(!cloudStore||db.activePortalPractice?.id!==activeId||!ids.length)throw new Error('start-clock-no-targets');
+  // Activation already verified the exact portal set. Start is only one shared
+  // clock mutation, so publish it atomically just like Skip. This prevents the
+  // coach clock from running locally while players remain on Not Started.
+  const batch=cloudStore.batch();
+  ids.forEach(id=>batch.update(portalDoc(id),{'activePractice.clock':clock,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));
+  await batch.commit();
+ }catch(error){
+  if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
+  practiceClock={running:false,finished:false,endAnnounced:false,startAt:null,lastBlock:0,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null,elapsedOffsetMs:0};
   persistPracticeSession();render();
-  alert(rollbackVerified
-   ?'Practice did not start because HotB could not verify the same live start time on every portal. Every portal was safely reset to Not Started; check the connection and tap Start again.'
-   :'Practice did not start, and HotB could not safely reset every portal after the start verification failed. Do not start practice until the connection is restored and Start succeeds.');
+  alert('Practice did not start because HotB could not send the live clock to every player and coach portal. Check the connection and tap Start again.');
   return;
  }
  speakPracticeClock('Begin Block 1');
