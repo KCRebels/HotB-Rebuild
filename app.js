@@ -5778,6 +5778,16 @@ async function finishPracticeClock(automatic=false){
   // starts immediately, while portal cleanup runs; once cleanup succeeds, close
   // the workspace automatically without requiring a second DONE tap.
   closePracticeWorkspace();
+ }else if(!automatic&&!cleanupComplete){
+  // The coach has already ended this practice. Do not leave a finished session
+  // behind that later offers Resume/second-DONE. Preserve only the portal
+  // publication record so authenticated startup/recovery can retry cleanup.
+  clearPracticeSession();
+  stopPracticeClock();
+  practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];
+  practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
+  practiceCoachOpen=false;practiceCardsOpen=false;practiceSection='hub';modal=null;
+  render();window.scrollTo(0,0);
  }else if(automatic&&cleanupComplete){
   clearPracticeSession();
  }
@@ -5809,7 +5819,13 @@ async function endPracticeFromScreen(){
     if(finishedSynced!==true)throw new Error('finished-clock-retry-verification-failed');
     await clearActivePlayerPlans();
    }
-   catch(error){alert(cloudUser&&cloudStore?'The practice is finished, but HotB could not verify and remove every player plan. Check your connection, then tap DONE! again.':'The practice is finished, but the player plans are still active. Sign in through Cloud Backup, then tap DONE! again.');return}
+   catch(error){
+    // A finished practice is never resumable. Leave its portal publication record
+    // for recovery cleanup, clear the finished local session, and return to hub.
+    clearPracticeSession();stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceSection='hub';modal=null;render();window.scrollTo(0,0);
+    alert(cloudUser&&cloudStore?'Practice is finished. HotB will retry removing the ended player plans when the cloud connection is available.':'Practice is finished. HotB will remove the ended player plans after Cloud Backup reconnects.');
+    return
+   }
   }
   closePracticeWorkspace();return
  }
