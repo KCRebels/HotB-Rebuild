@@ -1578,7 +1578,14 @@ async function setupPlayerPortals(fromButton=false){
    if(!player.portalPin)player.portalPin=newPortalPin();
    player.portalPinHash=await portalHash(player.portalId,player.portalPin);
   }
-  const existingSnapshots=await timed(Promise.all(players.map(player=>portalDoc(player.portalId).get())),'player-portal-read');
+  const existingSnapshots=[];
+  // Read portal identities in small groups. iPhone Safari/Firestore can time out
+  // when all 13 portal documents are requested simultaneously.
+  for(let i=0;i<players.length;i+=4){
+   const group=players.slice(i,i+4);
+   const snapshots=await timed(Promise.all(group.map(player=>portalDoc(player.portalId).get())),'player-portal-read',15000);
+   existingSnapshots.push(...snapshots);
+  }
   const batch=cloudStore.batch();
   players.forEach((player,index)=>{
    const existing=existingSnapshots[index],remote=existing.exists?(existing.data()||{}):{};
