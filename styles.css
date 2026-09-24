@@ -1214,3 +1214,32 @@ html,body,button,a,[role="button"]{touch-action:manipulation}
   .portal-player-evaluation .measure .note{font-size:9px;margin-top:8px}
   .portal-player-evaluation .portal-eval-private{margin:8px 10px 14px;font-size:10px}
 }
+
+
+/* Player My Evaluation phone pass: preserve coach-page scale inside portal shell. */
+@media(max-width:560px){
+  .portal-player-evaluation{padding:6px 0 12px;gap:0}
+  .portal-player-evaluation .portal-eval-profile{margin:0 8px 6px!important}
+  .portal-player-evaluation .eval-tiles{margin:6px 8px;gap:5px}
+  .portal-player-evaluation .eval-tile{min-height:96px;padding:8px 7px;border-radius:10px}
+  .portal-player-evaluation .eval-tile-head{margin-bottom:5px}
+  .portal-player-evaluation .metric-title{min-height:29px;padding:3px 6px;font-size:12px}
+  .portal-player-evaluation .eval-tile>.value{font-size:27px;line-height:1}
+  .portal-player-evaluation .eval-tile>.note{font-size:9px;line-height:1.05}
+  .portal-player-evaluation .performance,
+  .portal-player-evaluation .athletic,
+  .portal-player-evaluation .pitcher-performance{margin:6px 8px;padding:10px}
+  .portal-player-evaluation .performance h2,
+  .portal-player-evaluation .athletic-head h2,
+  .portal-player-evaluation .pitcher-performance h2{font-size:20px}
+  .portal-player-evaluation .performance-head{margin-bottom:7px}
+  .portal-player-evaluation .performance-sample span{font-size:11px}
+  .portal-player-evaluation .performance-sample b{font-size:14px}
+  .portal-player-evaluation .perf{min-height:56px;padding:7px 2px 6px}
+  .portal-player-evaluation .perf>b{font-size:20px}
+  .portal-player-evaluation .perf-metric{min-height:24px;padding:2px 4px;font-size:10px}
+  .portal-player-evaluation .measure{min-height:88px;padding:8px}
+  .portal-player-evaluation .measure h3{font-size:13px}
+  .portal-player-evaluation .measure .best{font-size:18px;margin-top:7px}
+  .portal-player-evaluation .measure .note{margin-top:6px}
+}
