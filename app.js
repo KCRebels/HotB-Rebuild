@@ -1405,6 +1405,7 @@ async function loadPlayerPortal(){
   }
  }
 }
+window.HotBPlayerPortalEvaluationBack=()=>{if(route!=='portal')return;portalView='home';portalSelectedDrill='';portalDrillQuery='';portalDrillResults=[];render();window.scrollTo(0,0)};
 window.HotBOpenPlayerPortal=()=>{
  const input=document.getElementById('portalPin');
  const pin=input?.value||'';
