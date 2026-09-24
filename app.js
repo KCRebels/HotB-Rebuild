@@ -1592,7 +1592,14 @@ async function setupPlayerPortals(fromButton=false){
    batch.set(portalDoc(player.portalId),portalUpdate,{merge:true});
   });
   await timed(batch.commit(),'player-portal-write',10000);
-  const verificationSnapshots=await timed(Promise.all(players.map(player=>portalDoc(player.portalId).get())),'player-portal-verify');
+  const verificationSnapshots=[];
+  // Verify in small groups on mobile. Thirteen simultaneous post-write reads can
+  // exceed Safari/Firestore's response window even after the batch saved correctly.
+  for(let i=0;i<players.length;i+=4){
+   const group=players.slice(i,i+4);
+   const snapshots=await timed(Promise.all(group.map(player=>portalDoc(player.portalId).get())),'player-portal-verify',12000);
+   verificationSnapshots.push(...snapshots);
+  }
   const playerVerification=players.map((player,index)=>{
    const snapshot=verificationSnapshots[index],remote=snapshot.exists?snapshot.data():null;
    const shouldBeActive=!!(db.activePortalPractice?.id&&db.activePortalPractice.id===practicePlan?.portalDraftId&&db.activePortalPractice.players?.includes(player.name));
