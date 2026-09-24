@@ -2516,7 +2516,7 @@ function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.
  if(!Number.isFinite(startMs))return {block:'Syncing',left:'—',transition:false,currentBlock:0,ended:false};
  const blockMs=(Number(practice.blockMinutes)||12)*60000,blockCount=Number(practice.blockCount)||Number(practice.schedule?.length)||10;
  const rotateMs=60000,workMs=Math.max(0,blockMs-rotateMs),totalMs=blockMs*blockCount-rotateMs;
- const elapsed=Math.max(0,Number(now)-startMs);
+ const elapsed=Math.max(0,Number(now)-startMs+Math.max(0,Number(clock.elapsedOffsetMs)||0));
  if(elapsed>=totalMs)return {block:'DONE!',left:'0:00',transition:false,currentBlock:blockCount,ended:true};
  const currentBlock=Math.min(blockCount,Math.floor(elapsed/blockMs)+1),within=elapsed%blockMs;
  const transition=currentBlock<blockCount&&within>=workMs;
@@ -2683,9 +2683,9 @@ function practiceDrillResourceWarnings(drills){
  return [`${constrained.map(drill=>drill.name).join(', ')} ${constrained.length===1?'uses':'use'} tunnel or delivery space. Confirm the station can run during blocks when live pitching, machine or front toss is active.`];
 }
 function practiceClockPortalPayload(){
- if(practiceClock.finished)return {status:'finished',startedAt:practiceClock.startAt?new Date(practiceClock.startAt).toISOString():null,endedAt:practiceClock.completedAt||new Date().toISOString()};
- if(practiceClock.running&&practiceClock.startAt)return {status:'running',startedAt:new Date(practiceClock.startAt).toISOString(),endedAt:null};
- return {status:'not-started',startedAt:null,endedAt:null};
+ if(practiceClock.finished)return {status:'finished',startedAt:practiceClock.startAt?new Date(practiceClock.startAt).toISOString():null,endedAt:practiceClock.completedAt||new Date().toISOString(),elapsedOffsetMs:Math.max(0,Number(practiceClock.elapsedOffsetMs)||0)};
+ if(practiceClock.running&&practiceClock.startAt)return {status:'running',startedAt:new Date(practiceClock.startAt).toISOString(),endedAt:null,elapsedOffsetMs:Math.max(0,Number(practiceClock.elapsedOffsetMs)||0)};
+ return {status:'not-started',startedAt:null,endedAt:null,elapsedOffsetMs:0};
 }
 function playerPracticePortalPayload(name,activatedAt=null,clockOverride=null){
  const schedule=practicePlan.schedule[name]||[];
@@ -2976,15 +2976,15 @@ async function recoverOrphanedActivePractice(){
   if(!['not-started','running'].includes(clock.status||'not-started'))throw new Error('practice-clock-invalid');
   if(clock.status==='running'&&!Number.isFinite(startedAt))throw new Error('practice-clock-invalid');
   if(clock.status==='not-started'&&clock.startedAt)throw new Error('practice-clock-invalid');
-  const recoveredClock={running:clock.status==='running'&&Number.isFinite(startedAt),finished:clock.status==='finished',endAnnounced:false,startAt:Number.isFinite(startedAt)?startedAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:clock.endedAt||null};
-  const recoveredLayout=window.HotBPracticeSession?.layout?.(recoveredPlan),scheduledEnd=Number.isFinite(startedAt)&&recoveredLayout?startedAt+recoveredLayout.totalMs:NaN,expiredByTime=Number.isFinite(scheduledEnd)&&Date.now()>=scheduledEnd;
+  const recoveredClock={running:clock.status==='running'&&Number.isFinite(startedAt),finished:clock.status==='finished',endAnnounced:false,startAt:Number.isFinite(startedAt)?startedAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:clock.endedAt||null,elapsedOffsetMs:Math.max(0,Number(clock.elapsedOffsetMs)||0)};
+  const recoveredLayout=window.HotBPracticeSession?.layout?.(recoveredPlan),scheduledEnd=Number.isFinite(startedAt)&&recoveredLayout?startedAt+recoveredLayout.totalMs-Math.max(0,Number(recoveredClock.elapsedOffsetMs)||0):NaN,expiredByTime=Number.isFinite(scheduledEnd)&&Date.now()>=scheduledEnd;
   if(expiredByTime&&!recoveredClock.finished){recoveredClock.running=false;recoveredClock.finished=true;recoveredClock.completedAt=clock.endedAt||new Date(scheduledEnd).toISOString()}
-  else if(recoveredClock.running){const recoveredTiming=window.HotBPracticeSession?.timing(recoveredPlan,recoveredClock,Date.now());if(!recoveredTiming){recoveredClock.running=false;recoveredClock.finished=true;recoveredClock.completedAt=clock.endedAt||new Date(recoveredClock.startAt+window.HotBPracticeSession.layout(recoveredPlan).totalMs).toISOString()}else{recoveredClock.lastBlock=recoveredTiming.block;recoveredClock.lastTwoMinuteBlock=window.HotBPracticeSession?.pendingTwoMinuteWarning(recoveredPlan,{...recoveredClock,lastTwoMinuteBlock:0},Date.now())===recoveredTiming.block?recoveredTiming.block:0;recoveredClock.lastTransitionBlock=recoveredTiming.transition?recoveredTiming.block:Math.max(0,recoveredTiming.block-1)}}
+  else if(recoveredClock.running){const recoveredTiming=window.HotBPracticeSession?.timing(recoveredPlan,recoveredClock,Date.now());if(!recoveredTiming){recoveredClock.running=false;recoveredClock.finished=true;recoveredClock.completedAt=clock.endedAt||new Date(recoveredClock.startAt+window.HotBPracticeSession.layout(recoveredPlan).totalMs-Math.max(0,Number(recoveredClock.elapsedOffsetMs)||0)).toISOString()}else{recoveredClock.lastBlock=recoveredTiming.block;recoveredClock.lastTwoMinuteBlock=window.HotBPracticeSession?.pendingTwoMinuteWarning(recoveredPlan,{...recoveredClock,lastTwoMinuteBlock:0},Date.now())===recoveredTiming.block?recoveredTiming.block:0;recoveredClock.lastTransitionBlock=recoveredTiming.transition?recoveredTiming.block:Math.max(0,recoveredTiming.block-1)}}
   // Before installing reconstructed state, prove the coach document did not
   // change while the larger schedule payload was being validated/rebuilt.
   const finalSnapshot=await portalDoc(coachId).get(),finalRemote=finalSnapshot.exists?finalSnapshot.data()?.activePractice:null;
   if(!finalRemote||finalRemote.id!==state.id||finalRemote.activatedAt!==remote.activatedAt)throw new Error('practice-recovery-changed-during-read');
-  const finalClock=finalRemote.clock||{},sameClock=finalClock.status===clock.status&&(finalClock.startedAt||null)===(clock.startedAt||null)&&(finalClock.endedAt||null)===(clock.endedAt||null);
+  const finalClock=finalRemote.clock||{},sameClock=finalClock.status===clock.status&&(finalClock.startedAt||null)===(clock.startedAt||null)&&(finalClock.endedAt||null)===(clock.endedAt||null)&&Math.max(0,Number(finalClock.elapsedOffsetMs)||0)===Math.max(0,Number(clock.elapsedOffsetMs)||0);
   if(!sameClock)throw new Error('practice-recovery-clock-changed');
   practicePlan=recoveredPlan;practiceChosenDrills=recoveredChosenDrills;practiceClock=recoveredClock;practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceSection='builder';
   persistPracticeSession();render();if(practiceClock.running)resumeRecoveredPracticeClock();
@@ -3063,7 +3063,7 @@ async function syncPlayerPracticeClock(){
  try{await batch.commit()}catch(error){console.warn('Player portal clock batch failed',error);return false}
  const verification=await Promise.all(ids.map(async id=>{try{
   const snapshot=await portalDoc(id).get(),remote=snapshot.exists?snapshot.data()?.activePractice:null,remoteClock=remote?.clock||{};
-  return remote?.id===activeId&&remoteClock.status===clock.status&&(clock.startedAt?remoteClock.startedAt===clock.startedAt:!remoteClock.startedAt)&&(clock.endedAt?remoteClock.endedAt===clock.endedAt:!remoteClock.endedAt);
+  return remote?.id===activeId&&remoteClock.status===clock.status&&(clock.startedAt?remoteClock.startedAt===clock.startedAt:!remoteClock.startedAt)&&(clock.endedAt?remoteClock.endedAt===clock.endedAt:!remoteClock.endedAt)&&Math.max(0,Number(remoteClock.elapsedOffsetMs)||0)===Math.max(0,Number(clock.elapsedOffsetMs)||0);
  }catch(error){return false}}));
  return verification.every(Boolean);
 }
@@ -3214,7 +3214,7 @@ function practicePage(){
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
  <div class="practice-results">
   <section class="practice-summary no-print"><div><b>${practicePlan.players.filter(player=>(player.availableFromBlock??0)<(player.availableUntilBlock??(practicePlan.times?.length||10))).length}</b><span>Player</span></div><div><b>${practicePlan.times?.length||10}</b><span>${Math.max(1,practicePlan.blockMinutes-1)}M + 1M</span></div><div><b>${practicePlan.drillStations}</b><span>Drills</span></div></section>
-  <section class="practice-live-control no-print"><div class="practice-clock-actions">${practiceClock.finished?'':practiceClock.running?`<button class="btn red" type="button" disabled aria-disabled="true">Running</button>`:`<button class="btn red" id="startPracticeClock">Start</button>`}${practiceClock.running||practiceClock.finished?'':`<button class="btn" id="editPracticePlayers">Edit</button>`}<button class="btn black" id="endPracticeClock">DONE!</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':`1 of ${practicePlan.times?.length||10}`}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${Math.max(1,practicePlan.blockMinutes-1)}:00`}</b></div></div></section>
+  <section class="practice-live-control no-print"><div class="practice-clock-actions">${practiceClock.finished?'':practiceClock.running?`<button class="btn red" type="button" disabled aria-disabled="true">Running</button>`:`<button class="btn red" id="startPracticeClock">Start</button>`}${practiceClock.running||practiceClock.finished?'':`<button class="btn" id="editPracticePlayers">Edit</button>`}${practiceClock.running?`<button class="btn" id="skipPracticeBlock">Skip</button>`:''}<button class="btn black" id="endPracticeClock">DONE!</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':`1 of ${practicePlan.times?.length||10}`}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${Math.max(1,practicePlan.blockMinutes-1)}:00`}</b></div></div></section>
   <section class="practice-delivery-focus no-print"><div><span>BUILT-IN HITTING</span><h2>Machine + Front Toss Focus</h2><p>Choose Standard or a library drill. This changes the existing rotation—it does not add another block.</p></div><div class="practice-delivery-focus-fields">${practiceFocusSelector('Machine',practiceClock.running||practiceClock.finished||currentPortalsActive)}${practiceFocusSelector('Front Toss',practiceClock.running||practiceClock.finished||currentPortalsActive)}</div></section>
   <section class="practice-selected-drills no-print"><div><span>DRILL STATIONS</span><h2>${chosenComplete?'Practice Drills Selected':`Choose ${practicePlan.drillStations} Practice Drills`}</h2>${chosenComplete?`<ol>${practiceChosenDrills.map((drill,index)=>`<li><b>${index+1}</b><span>Drill Station ${index+1} — ${esc(drill.name)}</span></li>`).join('')}</ol>`:'<p>Select the actual drills before printing the coach schedule or player cards.</p>'}</div>${practiceClock.running||practiceClock.finished||currentPortalsActive?'':`<button class="btn ${chosenComplete?'':'red'}" id="choosePracticeDrills">${chosenComplete?'Change Drills':'Choose Drills'}</button>`}</section>
   <section class="practice-portal-publish no-print"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Previous Practice Still Active':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':portalsActive?'End or deactivate the previous practice before publishing this schedule.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${currentPortalsActive||chosenComplete&&!portalsActive?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Finish Active Practice First':'Activate Player Plans'}</button></section>
@@ -5493,7 +5493,7 @@ async function resumeRecoveredPracticeClock(){
   // missing, unreadable, or different-practice portal state.
   const portalsStillNotStarted=await verifyPublishedPracticeNotStarted();
   if(portalsStillNotStarted===true){
-   practiceClock={running:false,finished:false,endAnnounced:false,startAt:null,lastBlock:0,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
+   practiceClock={running:false,finished:false,endAnnounced:false,startAt:null,lastBlock:0,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null,elapsedOffsetMs:0};
    persistPracticeSession();render();
    return;
   }
@@ -5574,6 +5574,31 @@ function updatePracticeClock(){
  if(currentBlock)currentBlock.textContent=transition?'ROTATE':`${block} of 10`;
  if(timeLeft)timeLeft.textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
 }
+async function skipPracticeBlock(){
+ if(!practicePlan||!practiceClock.running||practiceClock.finished)return;
+ const state=window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now()),layout=window.HotBPracticeSession?.layout?.(practicePlan);
+ if(!state||!layout)return;
+ if(state.transition)return;
+ if(state.block>=layout.blockCount){alert('This is the final block. Use DONE! when practice is finished.');return}
+ const button=$('#skipPracticeBlock');if(button){button.disabled=true;button.textContent='Skipping…'}
+ const elapsed=Math.max(0,Date.now()-Number(practiceClock.startAt)+Math.max(0,Number(practiceClock.elapsedOffsetMs)||0));
+ const elapsedInBlock=elapsed%layout.blockMs,advance=Math.max(0,layout.workMs-elapsedInBlock);
+ if(advance<=0){if(button){button.disabled=false;button.textContent='Skip'}return}
+ const previousOffset=Math.max(0,Number(practiceClock.elapsedOffsetMs)||0);
+ practiceClock.elapsedOffsetMs=previousOffset+advance;
+ practiceClock.lastTransitionBlock=state.block;
+ try{
+  const synced=await syncPlayerPracticeClock();
+  if(synced!==true)throw new Error('skip-clock-sync-failed');
+  persistPracticeSession();render();updatePracticeClock();
+  speakPracticeClock('Ladies, Time to Rotate. One minute until the next block');
+ }catch(error){
+  practiceClock.elapsedOffsetMs=previousOffset;
+  practiceClock.lastTransitionBlock=Math.max(0,state.block-1);
+  persistPracticeSession();render();updatePracticeClock();
+  alert('HotB could not synchronize Skip to every player and coach clock. The current block was kept unchanged. Check the connection and try again.');
+ }
+}
 async function beginPracticeClock(){
  if(practiceClock.finished)return;
  if(!db.activePortalPractice?.id||db.activePortalPractice.id!==practicePlan?.portalDraftId){alert('Activate the player and coach portal plans before starting practice. This keeps every player’s live block and NEXT display synchronized with the coach clock.');return}
@@ -5587,7 +5612,7 @@ async function beginPracticeClock(){
  if(!practicePlan||practiceChosenDrills.length!==practicePlan.drillStations){alert('Choose all practice drills before starting the practice clock.');return}
  if(practiceClockTimer)clearInterval(practiceClockTimer);
  practiceEndSpeech=Promise.resolve();
- practiceClock={running:true,finished:false,endAnnounced:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null};
+ practiceClock={running:true,finished:false,endAnnounced:false,startAt:Date.now(),lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null,elapsedOffsetMs:0};
  persistPracticeSession();
  // Start the coach display immediately from the immutable local start timestamp.
  // Portal synchronization can take several seconds on iPhone/Firebase, but the
@@ -6507,6 +6532,7 @@ function bindPractice(){
   }
   beginPracticeClock();
  });
+ $('#skipPracticeBlock')?.addEventListener('click',skipPracticeBlock);
  $('#endPracticeClock')?.addEventListener('click',endPracticeFromScreen);
  $('#activatePlayerPlans')?.addEventListener('click',activatePlayerPlans);
  $('#deactivatePlayerPlans')?.addEventListener('click',deactivatePlayerPlans);
