@@ -2311,7 +2311,7 @@ function guestCoachPracticeView(){
 }
 function playerEvaluationPortalPayload(playerName){
  const player=competitionRoster().find(item=>item.name===playerName);if(!player)return {roster:[],savedGames:[],currentGame:null,evaluationSeason:selectedSeason||currentSeasonLabel(),evaluationFilterLabel:activeDateFilterLabel()};
- const rosterFields=['name','side','grad','photo','jersey','positions','gpa','interest','school','pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct']; const profileSource=(db.roster||[]).find(item=>item.name===playerName)||player;
+ const rosterFields=['name','side','grad','photo','jersey','positions','gpa','interest','school','pitcherIP','pitcherERA','pitcherWHIP','pitcherKBB','pitcherOBA','pitcherStrikePct']; const savedProfile=(db.roster||[]).find(item=>item.name===playerName)||{},profileSource={...player,...Object.fromEntries(Object.entries(savedProfile).filter(([,value])=>value!==undefined&&value!==null&&String(value).trim()!==''))};
  const paFields=['hitter','pa','outcome','hitType','contactType','rbi','rbiCount','rba','sac','bunt','hhb','weak','pitchCount','finalCount'];
  const pitchFields=['id','hitter','pa','strikesBefore','zone','pitchType','plan','result','contactType','hitterStyle','intentionalBall','pitchout','decisionOverride','hhb','ts'];
  const pick=(source,fields)=>Object.fromEntries(fields.filter(key=>source?.[key]!==undefined).map(key=>[key,source[key]]));
