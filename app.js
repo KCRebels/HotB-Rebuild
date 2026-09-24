@@ -6678,7 +6678,7 @@ function bindNew(){
 function bindReportsPage(){
  $('#openGamesSelector')?.addEventListener('click',()=>{modal='gamesSelection';render()});
  bindDateFilters('saved');
- $('[data-scrimmage-game]').forEach(button=>button.onclick=()=>{const game=db.savedGames.find(item=>item.id===button.dataset.scrimmageGame);if(!game)return;game.scrimmage=!game.scrimmage;reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();render()});
+ $('[data-scrimmage-game]').forEach(button=>button.onchange=()=>{const game=db.savedGames.find(item=>item.id===button.dataset.scrimmageGame);if(!game)return;game.scrimmage=!!button.checked;reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();render()});
  $('[data-view-game]').forEach(button=>button.onclick=()=>{reportGameId=button.dataset.viewGame;reportMode='game';reportFilterHitter='All Hitters';reportOpponent='All Opponents';modal='reports';render()});
  $$('[data-delete-game]').forEach(button=>button.onclick=()=>{const game=db.savedGames.find(item=>item.id===button.dataset.deleteGame);if(!game)return;if(!confirm(`Delete the saved game against ${game.opponent||'Opponent'} from ${new Date(game.date).toLocaleDateString()}? This cannot be undone.`))return;db.savedGames=db.savedGames.filter(item=>item.id!==game.id);(db.gameGroups||[]).forEach(group=>{group.gameIds=(group.gameIds||[]).filter(id=>id!==game.id)});reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();render()});
  $('#exportFullBackup')?.addEventListener('click',exportFullBackup);
