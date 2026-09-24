@@ -3674,7 +3674,7 @@ function evalView(){
  const resultMetric=player?snapshot.resultMetric:HotBEvaluationStats.evaluationResultRate(null,s),resultRate=[resultMetric.label,s.PA?pct1(resultMetric.value):'—',resultMetric.key];
  const performanceTile=([label,value,key])=>{
   const statKey=key==='contact'?'contactPct':key==='K'?'kPct':key,guide=['AVG','OBP','SLG','CONTACT','K%'].includes(label);
-  const rating=s.PA>=25&&!['hhbPct','qabPct'].includes(statKey)?grade(s[statKey],key):'';
+  const rating=s.PA>=25&&!['hhbPct','qabPct','ipaPct'].includes(statKey)?grade(s[statKey],key):'';
   return `<div class="perf ${rating}"><b>${value}</b><div class="perf-label-row">${guide?`<button class="perf-metric" data-guide="${label}">${label}</button>`:`<span class="perf-metric">${label}</span>`}<button class="perf-all" data-hitting-ranking="${statKey}">ALL</button></div></div>`;
  };
  return `<div class="eval-head"><button class="btn eval-nav" ${evaluationReadOnly?'id="portalBack"':`data-go="${currentGame()?'live':'home'}"`}>${evaluationReadOnly?'Portal':currentGame()?'Return':'Home'}</button><div class="eval-title"><h1>Evaluation</h1></div><div class="eval-contact-actions">${player&&!evaluationReadOnly?`<button class="btn black" id="openRebelsScout" type="button">SCOUT</button>`:''}</div></div>
@@ -3729,10 +3729,10 @@ function measurementCard(player,type){
 }
 function evalGuide(title){
  if(title==='Reach%')return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>Reach Percentage</h2></div><button class="btn" data-close>Close</button></div><hr style="border-color:#555"><p style="font-size:22px;line-height:1.45;font-weight:400">Reach% is the percentage of plate appearances in which the hitter reaches base by a hit, walk, hit-by-pitch, error, or fielder’s choice. It gives slap hitters credit for using speed and pressure to reach safely, including outcomes that official OBP does not count.</p><p class="small" style="color:#ddd">Reach% is not color-graded.</p></div></div>`;
- if(title==='HHB%'||title==='QAB%'){
-  const isHHB=title==='HHB%';
-  const description=isHHB?'Hard-Hit Ball Percentage is balls marked HHB divided by all tracked balls put in play.':'Quality At-Bat Percentage is quality at-bats divided by total plate appearances. A plate appearance counts once when it includes a hit, walk, hit-by-pitch, successful sacrifice, RBI, RBA, HHB, or eight or more pitches.';
-  return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>${isHHB?'Hard-Hit Ball Percentage':'Quality At-Bat Percentage'}</h2></div><button class="btn" data-close>Close</button></div><hr style="border-color:#555"><p style="font-size:22px;line-height:1.45;font-weight:400">${description}</p><p class="small" style="color:#ddd">No color-grading ranges have been assigned to this metric.</p></div></div>`;
+ if(title==='HHB%'||title==='QAB%'||title==='IPA%'){
+  const isHHB=title==='HHB%',isIPA=title==='IPA%';
+  const description=isHHB?'Hard-Hit Ball Percentage is balls marked HHB divided by all tracked balls put in play.':isIPA?'Impact Plate Appearance Percentage is impactful plate appearances divided by total plate appearances. A plate appearance counts once when the hitter reaches base by hit, walk, hit-by-pitch, error, or fielder’s choice; produces or advances a run with RBI/RBA; records a successful sacrifice; or sees eight or more pitches. HHB alone does not make a plate appearance impactful.':'Quality At-Bat Percentage is quality at-bats divided by total plate appearances. A plate appearance counts once when it includes a hit, walk, hit-by-pitch, successful sacrifice, RBI, RBA, HHB, or eight or more pitches.';
+  return `<div class="modal-backdrop"><div class="modal dark"><div class="modal-header"><div><div class="small" style="color:#ddd;letter-spacing:2px">PLAYER EVALUATION GUIDE</div><h2>${isHHB?'Hard-Hit Ball Percentage':isIPA?'Impact Plate Appearance Percentage':'Quality At-Bat Percentage'}</h2></div><button class="btn" data-close>Close</button></div><hr style="border-color:#555"><p style="font-size:22px;line-height:1.45;font-weight:400">${description}</p><p class="small" style="color:#ddd">No color-grading ranges have been assigned to this metric.</p></div></div>`;
  }
  const content={
  'HotB+':`HotB+ compares the hitter’s Runs Produced rate with the current team rate. Runs Produced assigns 1.00 for a single, 1.65 for a double, 2.30 for a triple, 2.95 for a home run, 0.70 for a walk or hit-by-pitch, 0.75 for each RBI, plus 0.25 for hard-hit contact and minus 0.25 for weak contact. The app divides the hitter’s Runs Produced by her plate appearances, divides that rate by the team’s Runs Produced-per-plate-appearance rate, then multiplies by 100. A score of 100 is team average; 120 is 20% above the team rate; 80 is 20% below.`,
@@ -3779,7 +3779,7 @@ function hittingRankingModal(metric){
  const definitions={
   AVG:{label:'AVG',key:'AVG',format:round3},OBP:{label:'OBP',key:'OBP',format:round3},SLG:{label:'SLG',key:'SLG',format:round3},
   contactPct:{label:'CONTACT',key:'contactPct',format:pct0},kPct:{label:'K%',key:'kPct',format:pct1,lowerIsBetter:true},
-  hhbPct:{label:'HHB%',key:'hhbPct',format:pct1},qabPct:{label:'QAB%',key:'qabPct',format:pct1}
+  hhbPct:{label:'HHB%',key:'hhbPct',format:pct1},qabPct:{label:'QAB%',key:'qabPct',format:pct1},ipaPct:{label:'IPA%',key:'ipaPct',format:pct1}
  };
  const competitionNames=new Set(competitionRoster().map(item=>item.name)),definition=definitions[metric]||definitions.AVG,teamPas=filteredPAs().filter(pa=>competitionNames.has(pa.hitter));
  const rows=competitionRoster().map(player=>{const stats=HotBEvaluationStats.statsForPAs(teamPas.filter(pa=>pa.hitter===player.name));return {player,stats,value:stats.PA?stats[definition.key]:null}}).sort((a,b)=>{
