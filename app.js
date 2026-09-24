@@ -5749,11 +5749,9 @@ async function finishPracticeClock(automatic=false){
   }
  }
  if(!automatic&&cleanupComplete){
-  // Close exactly once. Previously this path cleared activePracticeSession first
-  // and then closePracticeWorkspace() refused to close because its second clear
-  // saw null as failure. That resurrected the completed plan UI even though the
-  // player portals had already been correctly cleared.
-  await endingSpeech;
+  // One DONE tap owns the complete finish transaction. The spoken finish message
+  // starts immediately, while portal cleanup runs; once cleanup succeeds, close
+  // the workspace automatically without requiring a second DONE tap.
   closePracticeWorkspace();
  }else if(automatic&&cleanupComplete){
   clearPracticeSession();
