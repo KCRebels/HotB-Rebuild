@@ -1578,16 +1578,18 @@ async function setupPlayerPortals(fromButton=false){
    if(!player.portalPin)player.portalPin=newPortalPin();
    player.portalPinHash=await portalHash(player.portalId,player.portalPin);
   }
-  const batch=cloudStore.batch();
-  players.forEach(player=>{
-   // Existing permanent roster portals are keyed by each player's saved portalId.
-   // Refresh only the evaluation payload and stable identity fields; do not read,
-   // recreate, reset, or alter ownership/practice state. This avoids Safari's
-   // unreliable multi-document preflight reads while preserving permanent links.
-   const evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
-   batch.update(portalDoc(player.portalId),{portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-  });
-  await timed(batch.commit(),'player-portal-write',10000);
+  // Write existing permanent portals in small independent batches. The full
+  // 13-player evaluation payload can be large enough that one mobile Firestore
+  // batch does not acknowledge within Safari's timeout window.
+  for(let i=0;i<players.length;i+=3){
+   const group=players.slice(i,i+3),batch=cloudStore.batch();
+   group.forEach(player=>{
+    const evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
+    batch.update(portalDoc(player.portalId),{portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   });
+   portalMessage=`Refreshing player records… ${Math.min(i+group.length,players.length)} of ${players.length}`;render();
+   await timed(batch.commit(),'player-portal-write',20000);
+  }
   // The batch commit is the authoritative success point. A second round of
   // Firestore reads is not required to publish these records and was causing
   // false failures on iPhone Safari even after the write had completed.
