@@ -4,9 +4,9 @@
 .eval-app .pitcher-performance{display:block!important}
 
 /* Section headings */
-.eval-app .performance h2,
+.eval-app .performance h2{font-size:24px!important;line-height:1.05!important;font-weight:950!important}
 .eval-app .pitcher-performance h2,
-.eval-app .athletic-head h2{font-size:24px!important;line-height:1.05!important;font-weight:950!important}
+.eval-app .athletic-head h2{font-size:20px!important;line-height:1.15!important;font-weight:700!important;margin:0!important}
 .eval-app .player-card.player-profile .player-info .name{font-weight:950!important}
 
 /* Unified card geometry */
@@ -76,7 +76,8 @@
 #hybridRecruitingBackdrop #rwHybridBody{min-height:500px!important;height:500px!important;font-size:17px!important;line-height:1.35!important;padding:14px!important;resize:vertical!important}
 
 @media(max-width:560px){
- .eval-app .performance h2,.eval-app .pitcher-performance h2,.eval-app .athletic-head h2{font-size:22px!important}
+ .eval-app .performance h2{font-size:22px!important}
+ .eval-app .pitcher-performance h2,.eval-app .athletic-head h2{font-size:20px!important;font-weight:700!important;line-height:1.15!important}
  .eval-app .eval-tile,.eval-app .perf,.eval-app .pitcher-stat,.eval-app .measure{min-height:102px!important}
  .eval-app .metric-title,.eval-app .perf-metric,.eval-app .pitcher-stat span,.eval-app .measure h3{font-size:16px!important}
  .eval-app .eval-tile>.value,.eval-app .perf>b,.eval-app .pitcher-stat>b,.eval-app .measure .best{font-size:30px!important}
