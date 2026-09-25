@@ -1323,3 +1323,12 @@ body:has(.eval-head) .athletic-head h2{
  body:has(.eval-head) .pitcher-performance-head h2,
  body:has(.eval-head) .athletic-head h2{font-size:21px}
 }
+
+
+/* Coach Evaluation heading correction: match the lighter Practice Focus title. */
+body:has(.eval-head) .pitcher-performance-head h2,
+body:has(.eval-head) .athletic-head h2{
+ font-size:21px;
+ font-weight:700;
+ line-height:1.15;
+}
