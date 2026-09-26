@@ -1371,3 +1371,24 @@ body:has(.eval-head) .athletic-head h2{
  font-weight:700;
  line-height:1.15;
 }
+
+
+/* FINAL HOME REFERENCE MATCH — intentionally last so legacy mobile rules cannot override it. */
+@media(max-width:560px){
+ .home-hero{min-height:0!important;height:auto!important;padding:24px 16px 16px!important;justify-content:flex-start!important}
+ .home-hero:after{top:-28px!important;right:-86px!important;width:145px!important;height:760px!important;transform:skewX(-17deg)!important}
+ .home-brand{width:100%!important}
+ .hotb-wordmark{width:min(238px,68vw)!important}
+ .hotb-rebels{font-size:27px!important;letter-spacing:-1px!important}
+ .hotb-name{font-size:57px!important;letter-spacing:-3.8px!important}
+ .hotb-bat{width:91%!important;height:6px!important;margin:7px 0 9px!important}
+ .hotb-bat:before{width:9px!important;height:10px!important;left:-4px!important;top:-2px!important}
+ .hotb-subtitle{font-size:17px!important}
+ .home-actions{width:100%!important;margin-top:28px!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:repeat(3,74px)!important;gap:10px!important;transform:none!important}
+ .home-card{grid-template-columns:40px minmax(0,1fr) 11px!important;gap:7px!important;min-height:74px!important;height:74px!important;padding:8px 10px!important;border-radius:10px!important}
+ .home-card-icon{width:37px!important;height:37px!important}.home-card-icon svg{width:35px!important;height:35px!important}
+ .home-card h3{font-size:clamp(13px,3.85vw,17px)!important;line-height:1.04!important;letter-spacing:-.4px!important}
+ .home-chevron{font-size:25px!important}
+ .home-footer{padding:13px 7px 14px!important;font-size:8px!important;letter-spacing:1px!important}
+ .app-version{font-size:8px!important;margin-top:5px!important}.home-footer-actions{margin-top:5px!important}.home-guide-button{font-size:7px!important}
+}
