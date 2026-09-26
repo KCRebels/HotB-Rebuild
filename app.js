@@ -2236,28 +2236,19 @@ function fitEvalMetricValues(){
  });
 }
 function homeView(){
- const cloudError=localStorage.getItem(CLOUD_ERROR_KEY);
- const icon=name=>({
-  game:'<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="22" cy="10" r="5" fill="currentColor"/><path d="M19 17l12 8 9-3 3 5-13 6-7-5-5 12L8 54l-6-4 10-14 4-16zM31 20L57 6l2 4-25 15z" fill="currentColor"/></svg>',
-  reports:'<svg viewBox="0 0 64 64" aria-hidden="true"><rect class="bar1" x="7" y="35" width="13" height="23" rx="2"/><rect class="bar2" x="26" y="21" width="13" height="37" rx="2"/><rect class="bar3" x="45" y="10" width="13" height="48" rx="2"/></svg>',
-  eval:'<svg viewBox="0 0 64 64" aria-hidden="true"><rect class="eval-paper" x="9" y="10" width="39" height="45" rx="3"/><path class="eval-line" d="M18 39h20M18 34l7-8 6 5 8-13"/><path class="eval-clip" d="M22 10V5h14v5"/><circle class="eval-person" cx="48" cy="45" r="6"/><path class="eval-person" d="M37 61c0-9 4-13 11-13s11 4 11 13z"/></svg>',
-  roster:'<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="20" r="9"/><circle cx="13" cy="24" r="7"/><circle cx="51" cy="24" r="7"/><path d="M18 58c0-14 6-22 14-22s14 8 14 22M1 57c0-12 4-20 13-20 4 0 8 2 11 5M63 57c0-12-4-20-13-20-4 0-8 2-11 5" fill="currentColor"/></svg>',
-  practice:'<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M12 58h31M20 58V30h14v28M17 30h20" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><circle cx="27" cy="20" r="8" fill="currentColor"/><circle cx="49" cy="14" r="6" fill="currentColor"/><circle cx="56" cy="5" r="4" fill="currentColor"/></svg>',
-  cloud:'<svg viewBox="0 0 64 64" aria-hidden="true"><path class="cloud-shape" d="M13 52h35c9 0 14-6 14-14 0-7-5-13-12-14C47 13 39 7 29 9 20 10 14 16 12 25 5 27 1 32 1 39c0 8 5 13 12 13z"/><path class="cloud-arrow" d="M32 57V32m-9 9 9-9 9 9"/></svg>'
- })[name]||'';
- const card=(go,label,name,cls='',id='')=>`<button class="home-card ${cls}" ${id?`id="${id}"`:`data-go="${go}"`}><span class="home-card-icon">${icon(name)}</span><h3>${label}</h3><span class="home-chevron">›</span></button>`;
- return `<div class="home-hero home-reference">
-  <div class="home-brand" aria-label="Rebels HotB Elite Hitting App">
-   <div class="hotb-wordmark"><span class="hotb-rebels">REBELS</span><span class="hotb-name">HotB</span><span class="hotb-bat"></span><span class="hotb-subtitle">Elite Hitting App</span></div>
-  </div>
-  <div class="home-actions">
-   ${card('new','New Game','game','primary')}
-   ${card('reports','Reports','reports')}
-   ${card('eval','Player Eval','eval')}
-   ${card('roster','Edit Roster','roster')}
-   ${card('practice',practicePlan||db.activePracticeSession?'Resume Hitting Practice':'Hitting Practice','practice')}
-   ${card('','Cloud Backup','cloud','cloud-card '+(cloudError?'attention':cloudLastBackup?'healthy':''),'openCloudBackup')}
-  </div>
+ const cloudPending=localStorage.getItem(CLOUD_PENDING_KEY)==='true',cloudError=localStorage.getItem(CLOUD_ERROR_KEY),cloudText=!cloudUser?'Sign in to protect this device\'s data':cloudPending&&!navigator.onLine?'Waiting for internet':cloudError?'Backup needs attention':cloudLastBackup?`Backed up ${cloudLastBackup.toLocaleString()}`:'Ready for first backup';
+ return `<div class="home-hero">
+   <div class="home-brand">
+    <img class="home-logo-img" src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="Kansas City Rebels Regional">
+   </div>
+   <div class="home-actions">
+    <button class="home-card primary" data-go="new"><h3>New Game</h3></button>
+    <button class="home-card" data-go="reports"><h3>Reports</h3></button>
+    <button class="home-card" data-go="eval"><h3>Player Eval</h3></button>
+    <button class="home-card" data-go="roster"><h3>Edit Roster</h3></button>
+    <button class="home-card" data-go="practice"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting Practice':'Hitting Practice'}</h3></button>
+    <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><h3>Cloud Backup</h3></button>
+   </div>
  </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD <small class="app-version">Version: ${esc(window.HOTB_BUILD_VERSION||'2026.09.14.1')}</small></span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
 }
 function portalHeader(title='Player Portal',showBack=false){
