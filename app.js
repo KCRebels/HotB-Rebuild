@@ -2244,7 +2244,7 @@ function homeView(){
    </div>
    <div class="home-actions">
     <button class="home-card primary home-card-featured home-card-new" data-go="new"><img class="home-new-game-icon" src="home-new-game.png" alt="" aria-hidden="true"><h3>New<br>Game</h3></button>
-    <button class="home-card home-card-featured home-card-reports" data-go="reports"><span class="home-card-icon home-icon-bars" aria-hidden="true"><i></i><i></i><i></i></span><h3>Reports</h3></button>
+    <button class="home-card home-card-featured home-card-reports" data-go="reports"><img class="home-reports-icon" src="home-reports.png" alt="" aria-hidden="true"><h3>Reports</h3></button>
     <button class="home-card home-card-eval" data-go="eval"><img class="home-eval-icon" src="https://www.clipartmax.com/png/middle/344-3447718_column-trend-chart-comments-indicators-icon.png" alt="" aria-hidden="true"><h3>Player<br>Evaluation</h3></button>
     <button class="home-card home-card-roster" data-go="roster"><img class="home-roster-icon" src="https://www.clipartmax.com/png/middle/435-4359822_staff-members-team-black-icon.png" alt="" aria-hidden="true"><h3>Edit<br>Roster</h3></button>
     <button class="home-card home-card-practice" data-go="practice"><img class="home-practice-icon" src="home-hitting-practice.png" alt="" aria-hidden="true"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting<br>Practice':'Hitting<br>Practice'}</h3></button>
