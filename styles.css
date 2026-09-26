@@ -1413,3 +1413,10 @@ body:has(.eval-head) .athletic-head h2{
  .home-actions .home-card-eval h3{margin:0!important;text-align:left!important}
  .home-eval-icon{display:block!important;width:36px!important;height:36px!important;object-fit:contain!important;mix-blend-mode:multiply}
 }
+
+/* Edit Roster — selected group graphic. */
+@media(max-width:560px){
+ .home-actions .home-card-roster{position:relative!important;display:grid!important;grid-template-columns:42px 1fr!important;align-items:center!important;justify-content:stretch!important;padding:10px 12px!important;text-align:left!important}
+ .home-actions .home-card-roster h3{margin:0!important;text-align:left!important}
+ .home-roster-icon{display:block!important;width:36px!important;height:36px!important;object-fit:contain!important;mix-blend-mode:multiply}
+}
