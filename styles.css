@@ -1339,3 +1339,6 @@ body:has(.eval-head) .athletic-head h2{
 .home-hero:before{content:"";position:absolute;z-index:0;top:-18%;right:-18%;width:46%;height:118%;background:#e9edef;transform:skewX(-18deg);pointer-events:none}
 .home-hero:after{content:"";position:absolute;z-index:0;right:-15%;bottom:-28%;width:34%;height:76%;background:#dfe4e7;transform:skewX(-18deg);pointer-events:none}
 .home-brand,.home-actions{position:relative;z-index:2}
+
+/* Step 1 correction: background means background only; remove legacy Rebels watermark. */
+.home-hero .home-logo-img{display:none!important}
