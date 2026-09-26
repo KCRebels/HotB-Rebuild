@@ -1968,8 +1968,13 @@ function syncRosterNames(){
  return true;
 }
 function competitionRoster(){
- const jenkinsNames=new Set(['Neveah Schlappi','Lilliana Schlappi','Taylor Woods','Perri Wagner','Pacie Dougherty','Amelia Steffen','Emmie Wible','Leslie Cundiff']);
- return (db.roster||[]).filter(player=>!player.isTeamJenkins&&player.teamName!=='Team Jenkins'&&!jenkinsNames.has(player.name));
+ const jenkinsNames=new Set(['neveah schlappi','lilliana schlappi','taylor woods','perri wagner','pacie dougherty','amelia steffen','emmie wible','leslie cundiff']);
+ const isJenkinsPlayer=player=>{
+  const name=String(player?.name||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const team=String(player?.teamName||'').trim().toLowerCase();
+  return player?.isTeamJenkins===true||team==='team jenkins'||jenkinsNames.has(name);
+ };
+ return (db.roster||[]).filter(player=>!isJenkinsPlayer(player));
 }
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
 const undoViewKeys=['historyTab','allView','zoneScope','zoneFilter','previewNext','firstPitchView','showAi','pendingZone','pitchType','plan'];
