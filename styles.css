@@ -1353,3 +1353,10 @@ body:has(.eval-head) .athletic-head h2{
 .home-hotb-mark{display:none!important}
 .home-hotb-logo-asset{position:absolute;z-index:4;top:18px;left:50%;width:min(78vw,430px);height:auto;transform:translateX(-50%);display:block;border:0!important;outline:0!important;box-shadow:none!important;border-radius:0!important;background:transparent!important;pointer-events:none}
 @media(max-width:560px){.home-hotb-logo-asset{top:18px;width:78vw}}
+
+
+/* Home redesign Step 3 — button geometry only. */
+@media(max-width:560px){
+ .home-actions{position:absolute!important;z-index:3!important;left:14px!important;right:14px!important;top:50.5svh!important;width:auto!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:repeat(3,clamp(76px,10.5svh,94px))!important;gap:clamp(12px,1.8svh,17px) 14px!important;transform:none!important}
+ .home-card{width:100%!important;height:100%!important;min-height:0!important;margin:0!important}
+}
