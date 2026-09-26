@@ -1584,3 +1584,22 @@ body:has(.eval-head) .athletic-head h2{
   display:block!important;opacity:1!important;visibility:visible!important;filter:none!important;
  }
 }
+
+
+/* Home cover spacing refinement: larger New Game/Hitting Practice icons and more title room. */
+@media(max-width:560px){
+ .home-actions .home-card-featured,
+ .home-actions .home-card-eval,
+ .home-actions .home-card-roster,
+ .home-actions .home-card-practice,
+ .home-actions .cloud-card{
+  grid-template-columns:54px 1fr!important;
+  column-gap:6px!important;
+  padding-left:8px!important;
+  padding-right:10px!important;
+ }
+ .home-actions .home-new-game-icon,
+ .home-actions .home-practice-icon{
+  width:41px!important;height:41px!important;min-width:41px!important;
+ }
+}
