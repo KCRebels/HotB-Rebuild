@@ -1,5 +1,5 @@
 (() => {
-  const BUILD_VERSION = '2026.09.24.291';
+  const BUILD_VERSION = '2026.09.25.293';
   window.HOTB_BUILD_VERSION = BUILD_VERSION;
   // Player portals must always use the current network app. They do not install,
   // update, or re-register the coach PWA service worker.
@@ -34,7 +34,7 @@
       }catch(_){}
       const url=new URL('./',window.location.href);
       url.searchParams.set('source','pwa');
-      url.searchParams.set('launch','288');
+      url.searchParams.set('launch','293');
       url.searchParams.set('hotb-update',version);
       url.searchParams.set('reload',Date.now().toString());
       window.location.replace(url.href);
