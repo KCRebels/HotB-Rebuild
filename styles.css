@@ -1337,3 +1337,14 @@ body:has(.eval-head) .athletic-head h2{
 /* Home redesign Step 1 — paint only; preserve original geometry. */
 .home-hero{background:linear-gradient(109deg,#fbfcfb 0 70%,#e9edef 70% 84%,#dfe4e7 84% 100%)!important}
 .home-hero .home-logo-img{visibility:hidden!important}
+
+
+/* Home redesign Step 2 — logo only. Preserve Step 1 and all home geometry. */
+.home-hotb-mark{position:absolute;z-index:4;top:18px;left:50%;width:min(78vw,430px);transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;font-family:Arial,Helvetica,sans-serif;line-height:1;color:#061a38;pointer-events:none}
+.home-hotb-rebels{color:#e3131c;font-size:clamp(34px,9.8vw,52px);line-height:.9;font-weight:900;letter-spacing:-1.8px}
+.home-hotb-name{margin-top:3px;color:#061a38;font-size:clamp(78px,22vw,116px);line-height:.76;font-weight:900;letter-spacing:-7px}
+.home-hotb-bat{position:relative;width:94%;height:7px;margin-top:19px;border-radius:999px;background:#061a38;transform:rotate(.5deg)}
+.home-hotb-bat:before{content:"";position:absolute;left:-6px;top:-4px;width:15px;height:15px;border-radius:50%;background:#061a38}
+.home-hotb-bat:after{content:"";position:absolute;right:-4px;top:-3px;width:12px;height:13px;border-radius:3px;background:#061a38}
+.home-hotb-tag{margin-top:13px;color:#061a38;font-size:clamp(19px,5.4vw,29px);line-height:1;font-weight:800;letter-spacing:-.6px}
+@media(max-width:560px){.home-hotb-mark{top:18px;width:78vw}}
