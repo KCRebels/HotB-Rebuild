@@ -1406,3 +1406,10 @@ body:has(.eval-head) .athletic-head h2{
  .home-card-new .home-icon-batter::before,.home-card-new .home-icon-batter::after{content:none!important;display:none!important;background:none!important}
  .home-card-new .home-icon-batter svg,.home-card-new .home-icon-batter img{display:none!important}
 }
+
+/* Player Eval — selected performance graphic. */
+@media(max-width:560px){
+ .home-actions .home-card-eval{position:relative!important;display:grid!important;grid-template-columns:42px 1fr!important;align-items:center!important;justify-content:stretch!important;padding:10px 12px!important;text-align:left!important}
+ .home-actions .home-card-eval h3{margin:0!important;text-align:left!important}
+ .home-eval-icon{display:block!important;width:36px!important;height:36px!important;object-fit:contain!important;mix-blend-mode:multiply}
+}
