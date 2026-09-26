@@ -2237,29 +2237,19 @@ function fitEvalMetricValues(){
 }
 function homeView(){
  const cloudPending=localStorage.getItem(CLOUD_PENDING_KEY)==='true',cloudError=localStorage.getItem(CLOUD_ERROR_KEY),cloudText=!cloudUser?'Sign in to protect this device\'s data':cloudPending&&!navigator.onLine?'Waiting for internet':cloudError?'Backup needs attention':cloudLastBackup?`Backed up ${cloudLastBackup.toLocaleString()}`:'Ready for first backup';
- const icon={
-  game:'<svg viewBox="0 0 64 64"><circle cx="22" cy="10" r="5"/><path d="M19 17l12 8 10-4 3 5-14 7-7-6-5 14L8 56l-6-5 11-16 4-16z"/><path d="M32 22L57 8l3 5-26 14z"/></svg>',
-  reports:'<svg viewBox="0 0 64 64"><rect x="6" y="36" width="14" height="23" rx="2"/><rect class="red" x="25" y="22" width="14" height="37" rx="2"/><rect class="gray" x="44" y="10" width="14" height="49" rx="2"/></svg>',
-  eval:'<svg viewBox="0 0 64 64"><rect class="outline" x="9" y="11" width="39" height="43" rx="3"/><path class="stroke" d="M20 11V6h16v5M18 40h21M18 35l8-9 6 5 8-14"/><circle class="red" cx="48" cy="45" r="6"/><path class="red" d="M37 61c0-9 4-13 11-13s11 4 11 13z"/></svg>',
-  roster:'<svg viewBox="0 0 64 64"><circle cx="32" cy="19" r="8"/><circle cx="13" cy="23" r="7"/><circle cx="51" cy="23" r="7"/><path d="M18 58c0-14 6-22 14-22s14 8 14 22M1 57c0-12 4-20 13-20 5 0 8 2 11 5M63 57c0-12-4-20-13-20-5 0-8 2-11 5"/></svg>',
-  practice:'<svg viewBox="0 0 64 64"><rect x="13" y="35" width="12" height="23"/><circle cx="19" cy="26" r="8"/><circle cx="37" cy="19" r="6"/><circle cx="48" cy="10" r="5"/></svg>',
-  cloud:'<svg viewBox="0 0 64 64"><path d="M13 52h35c9 0 14-6 14-14 0-7-5-13-12-14C47 13 39 7 29 9 20 10 14 16 12 25 5 27 1 32 1 39c0 8 5 13 12 13z"/><path class="arrow" d="M32 58V33m-9 9 9-9 9 9"/></svg>'
- };
- const card=(label,ico,attr,cls='')=>`<button class="built-home-card ${cls}" ${attr}><span class="built-home-icon">${icon[ico]}</span><span class="built-home-label">${label}</span><span class="built-home-chevron">›</span></button>`;
- return `<main class="built-home">
-   <div class="built-home-angle built-home-angle-a"></div><div class="built-home-angle built-home-angle-b"></div>
-   <header class="built-home-brand"><div class="built-rebels">REBELS</div><div class="built-hotb">HotB</div><div class="built-bat"></div><div class="built-tagline">Elite Hitting App</div></header>
-   <section class="built-home-grid">
-    ${card('NEW<br>GAME','game','data-go="new"','built-primary')}
-    ${card('REPORTS','reports','data-go="reports"')}
-    ${card('PLAYER<br>EVAL','eval','data-go="eval"')}
-    ${card('EDIT<br>ROSTER','roster','data-go="roster"')}
-    ${card((practicePlan||db.activePracticeSession?'RESUME<br>PRACTICE':'HITTING<br>PRACTICE'),'practice','data-go="practice"')}
-    ${card('CLOUD<br>BACKUP','cloud','id="openCloudBackup"','built-cloud')}
-   </section>
-   <footer class="built-home-footer"><b>HOTB (THE ELITE HITTING APP) · REBUILD</b><span>Version: ${esc(window.HOTB_BUILD_VERSION||'2026.09.14.1')}</span></footer>
-   <div class="built-hidden-actions"><button id="openRecoveryGuide">Recovery Guide</button><button data-go="portal">Player Portal</button></div>
-  </main>`;
+ return `<div class="home-hero">
+   <div class="home-brand">
+    <img class="home-logo-img" src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="Kansas City Rebels Regional">
+   </div>
+   <div class="home-actions">
+    <button class="home-card primary" data-go="new"><h3>New Game</h3></button>
+    <button class="home-card" data-go="reports"><h3>Reports</h3></button>
+    <button class="home-card" data-go="eval"><h3>Player Eval</h3></button>
+    <button class="home-card" data-go="roster"><h3>Edit Roster</h3></button>
+    <button class="home-card" data-go="practice"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting Practice':'Hitting Practice'}</h3></button>
+    <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><h3>Cloud Backup</h3></button>
+   </div>
+ </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD <small class="app-version">Version: ${esc(window.HOTB_BUILD_VERSION||'2026.09.14.1')}</small></span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
 }
 function portalHeader(title='Player Portal',showBack=false){
  const practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType);
