@@ -1438,3 +1438,16 @@ body:has(.eval-head) .athletic-head h2{
  .home-new-game-icon{filter:none!important;mix-blend-mode:multiply!important}
  .home-actions .home-card h3{white-space:normal!important;text-transform:none!important;line-height:1.08!important}
 }
+
+/* Final New Game cover match: same white tile treatment as standard home buttons. */
+@media(max-width:560px){
+ .home-actions .home-card.home-card-new,
+ .home-actions .home-card.primary.home-card-new{
+  border:1px solid #d7dde1!important;
+  background:linear-gradient(145deg,#fff,#fbfbfb)!important;
+  color:#061a38!important;
+  box-shadow:0 6px 11px rgba(6,26,54,.16)!important;
+ }
+ .home-actions .home-card.home-card-new h3,
+ .home-actions .home-card.primary.home-card-new h3{color:#061a38!important}
+}
