@@ -2248,7 +2248,7 @@ function homeView(){
     <button class="home-card home-card-eval" data-go="eval"><img class="home-eval-icon" src="https://www.clipartmax.com/png/middle/344-3447718_column-trend-chart-comments-indicators-icon.png" alt="" aria-hidden="true"><h3>Player<br>Evaluation</h3></button>
     <button class="home-card home-card-roster" data-go="roster"><img class="home-roster-icon" src="https://www.clipartmax.com/png/middle/435-4359822_staff-members-team-black-icon.png" alt="" aria-hidden="true"><h3>Edit<br>Roster</h3></button>
     <button class="home-card home-card-practice" data-go="practice"><img class="home-practice-icon" src="home-hitting-practice.png" alt="" aria-hidden="true"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting<br>Practice':'Hitting<br>Practice'}</h3></button>
-    <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><h3>Cloud<br>Backup</h3></button>
+    <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><img class="home-cloud-icon" src="home-cloud-backup.svg" alt="" aria-hidden="true"><h3>Cloud<br>Backup</h3></button>
    </div>
  </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD <small class="app-version">Version: ${esc(window.HOTB_BUILD_VERSION||'2026.09.14.1')}</small></span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
 }
