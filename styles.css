@@ -1490,3 +1490,8 @@ body:has(.eval-head) .athletic-head h2{
  .home-cloud-icon{display:flex!important;width:36px!important;height:36px!important;align-items:center!important;justify-content:center!important;color:#333!important}
  .home-cloud-icon svg{display:block!important;width:36px!important;height:36px!important;overflow:visible!important}
 }
+
+/* Cloud Backup uploaded PNG — ensure image renders (override old inline-SVG rule). */
+@media(max-width:560px){
+ img.home-cloud-icon{display:block!important;width:36px!important;height:36px!important;min-width:36px!important;object-fit:contain!important;opacity:1!important;visibility:visible!important;mix-blend-mode:multiply!important}
+}
