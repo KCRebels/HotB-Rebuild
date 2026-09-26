@@ -1399,3 +1399,10 @@ body:has(.eval-head) .athletic-head h2{
 @media(max-width:560px){
  .home-actions .home-card.primary{border-color:#A51E27!important;background:#A51E27!important}
 }
+
+/* New Game icon reset — render no icon until a proper asset is selected. */
+@media(max-width:560px){
+ .home-card-new .home-icon-batter{display:block!important;width:36px!important;height:36px!important;font-size:0!important;color:transparent!important;background:none!important;background-image:none!important;border:0!important;box-shadow:none!important;transform:none!important}
+ .home-card-new .home-icon-batter::before,.home-card-new .home-icon-batter::after{content:none!important;display:none!important;background:none!important}
+ .home-card-new .home-icon-batter svg,.home-card-new .home-icon-batter img{display:none!important}
+}
