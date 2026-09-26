@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Team roster">
+<g fill="#000">
+<circle cx="256" cy="132" r="72"/><circle cx="112" cy="180" r="54"/><circle cx="400" cy="180" r="54"/>
+<path d="M132 390c0-84 55-144 124-144s124 60 124 144v38H132v-38z"/>
+<path d="M18 406c0-67 41-116 94-116 25 0 47 11 64 30-25 31-40 71-40 116H18v-30z"/>
+<path d="M494 406c0-67-41-116-94-116-25 0-47 11-64 30 25 31 40 71 40 116h118v-30z"/>
+</g></svg>
