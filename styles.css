@@ -1332,3 +1332,19 @@ body:has(.eval-head) .athletic-head h2{
  font-weight:700;
  line-height:1.15;
 }
+
+
+/* Exact approved home artwork. Visual layer only; existing actions remain wired in app.js. */
+.home-art-cover{position:relative;width:100%;height:auto;min-height:0;padding:0;background:#fff;display:block;overflow:hidden}
+.home-art-image{display:block;width:100%;height:auto;margin:0;pointer-events:none;user-select:none;-webkit-user-select:none}
+.home-art-actions{position:absolute;inset:0;z-index:4;pointer-events:none}
+.home-art-hit{position:absolute;display:block;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;appearance:none;-webkit-appearance:none;opacity:0;pointer-events:auto;touch-action:manipulation}
+/* Hotspots measured directly from IMG_1673.jpg (1179 x 1234). */
+.home-art-hit.hit-new{left:9.4%;top:42.5%;width:40.3%;height:12.6%}
+.home-art-hit.hit-reports{left:52.6%;top:42.5%;width:41.3%;height:12.6%}
+.home-art-hit.hit-eval{left:9.4%;top:57.4%;width:40.3%;height:12.4%}
+.home-art-hit.hit-roster{left:52.6%;top:57.4%;width:41.3%;height:12.4%}
+.home-art-hit.hit-practice{left:9.4%;top:72.1%;width:40.3%;height:12.7%}
+.home-art-hit.hit-cloud{left:52.6%;top:72.1%;width:41.3%;height:12.7%}
+.home-art-hidden-footer{display:none!important}
+@media(max-width:560px){.home-art-cover{height:auto;min-height:0;padding:0}.home-art-image{width:100%;height:auto}.home-art-actions{transform:none}}
