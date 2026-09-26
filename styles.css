@@ -35,59 +35,20 @@ button{cursor:pointer;color:#111}
 .hero p{font-size:20px;margin:12px 0 0;opacity:.9}
 .hero .spacer{flex:1}
 .hero button{background:#fff;border:0;border-radius:12px;padding:12px 18px;font-size:18px;font-weight:900}
-.home-hero{position:relative;min-height:640px;padding:54px 38px 36px;display:flex;flex-direction:column;align-items:center;background:#fafafa;overflow:hidden}
-.home-hero:after{content:"";position:absolute;z-index:0;top:-70px;right:-92px;width:190px;height:820px;background:#e5e8ea;transform:skewX(-17deg);opacity:.72;pointer-events:none}
-.home-brand{position:relative;z-index:2;width:100%;display:flex;justify-content:center;pointer-events:none}
-.hotb-wordmark{width:390px;max-width:80vw;display:flex;flex-direction:column;align-items:center;color:#061a39;font-family:Arial,Helvetica,sans-serif}
-.hotb-rebels{color:#e51b23;font-size:43px;line-height:1;font-weight:800;letter-spacing:-1.5px}
-.hotb-name{margin-top:2px;font-size:92px;line-height:.84;font-weight:900;letter-spacing:-6px}
-.hotb-bat{position:relative;width:92%;height:9px;margin:12px 0 15px;border-radius:8px;background:#061a39}
-.hotb-bat:before{content:"";position:absolute;left:-6px;top:-3px;width:13px;height:15px;border-radius:50%;background:#061a39}
-.hotb-bat:after{content:"";position:absolute;right:8px;top:2px;width:59%;height:2px;background:#fafafa}
-.hotb-subtitle{font-size:26px;line-height:1;font-weight:500;color:#101820}
-.home-actions{position:relative;z-index:3;width:min(760px,100%);margin-top:50px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,108px);gap:17px 22px}
-.home-card{display:grid;grid-template-columns:74px minmax(0,1fr) 20px;align-items:center;gap:12px;border:1px solid #d9dcde;border-radius:14px;padding:14px 17px;background:#fdfdfd;color:#07162e;box-shadow:0 5px 10px rgba(10,25,45,.14);text-align:left}
-.home-card:active{transform:translateY(1px)}
-.home-card-icon{display:grid;place-items:center;width:60px;height:60px}
-.home-card-icon svg{width:55px;height:55px;stroke-linecap:round;stroke-linejoin:round}
-.home-card h3{margin:0;font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.08;font-weight:800;text-transform:uppercase;letter-spacing:-.6px}
-.home-chevron{justify-self:end;font-family:Arial,sans-serif;font-size:39px;line-height:1;font-weight:300;color:#101820}
-.home-card.primary{background:#e71922;color:#fff;border-color:#e71922;box-shadow:0 5px 10px rgba(120,15,20,.22)}
-.home-card.primary .home-chevron{color:#fff}
-.icon-game{fill:#fff;stroke:#fff;stroke-width:2}
-.icon-reports{stroke:none}.icon-reports .bar-navy{fill:#07162e}.icon-reports .bar-red{fill:#bd1e2d}.icon-reports .bar-gray{fill:#555a60}
-.icon-eval{fill:none;stroke:#07162e;stroke-width:3}.icon-eval .paper{fill:#fff;stroke:#07162e}.icon-eval .person-head,.icon-eval .person-body{fill:#d71924;stroke:#d71924}
-.icon-roster{fill:#07162e;stroke:#07162e;stroke-width:2}
-.icon-practice{fill:none;stroke:#07162e;stroke-width:3}.icon-practice .practice-ball{fill:#fff;stroke:#07162e}
-.icon-cloud{stroke:none}.icon-cloud .cloud-shape{fill:#07162e}.icon-cloud .cloud-arrow{fill:none;stroke:#e51b23;stroke-width:6;stroke-linecap:square}
-.cloud-card,.cloud-card.healthy{border:2px solid #35975b;box-shadow:0 5px 10px rgba(10,25,45,.14)}.cloud-card h3,.cloud-card.healthy h3{color:#07162e}
-.cloud-card.attention{border-color:#bd6b16;background:#fffaf2}.cloud-card.attention h3{color:#914c0c}
-.home-footer{position:relative;background:#fafafa;text-align:center;padding:17px 18px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:800;letter-spacing:2px;color:#343a40}
-.home-footer>span{display:block}.app-version{display:block;margin-top:9px;font-size:12px;font-weight:500;letter-spacing:.5px}
-.home-footer-actions{display:flex;justify-content:center;gap:18px;margin:10px auto 0}
-.home-guide-button{border:0;background:transparent;padding:3px;color:#999;font-size:9px;font-weight:700;text-decoration:none}
-.home-portal-button{color:#999}
-/* Home screen reference-match override: compact the composition on tall iPhones. */
-@media(max-width:560px){
- .home-hero{min-height:0;height:auto;padding:24px 16px 16px}
- .home-hero:after{top:-28px;right:-86px;width:145px;height:760px;transform:skewX(-17deg)}
- .hotb-wordmark{width:min(238px,68vw)}
- .hotb-rebels{font-size:27px;letter-spacing:-1px}
- .hotb-name{font-size:57px;letter-spacing:-3.8px}
- .hotb-bat{width:91%;height:6px;margin:7px 0 9px}
- .hotb-bat:before{width:9px;height:10px;left:-4px;top:-2px}
- .hotb-bat:after{right:5px;top:2px;height:1px}
- .hotb-subtitle{font-size:17px}
- .home-actions{width:100%;margin-top:28px;grid-template-rows:repeat(3,74px);gap:10px 10px}
- .home-card{grid-template-columns:40px minmax(0,1fr) 11px;gap:7px;min-height:74px;padding:8px 10px;border-radius:10px}
- .home-card-icon{width:37px;height:37px}.home-card-icon svg{width:35px;height:35px}
- .home-card h3{font-size:clamp(13px,3.85vw,17px);line-height:1.04;letter-spacing:-.4px}
- .home-chevron{font-size:25px}
- .home-footer{padding:13px 7px 14px;font-size:8px;letter-spacing:1px}
- .app-version{font-size:8px;margin-top:5px}.home-footer-actions{margin-top:5px}.home-guide-button{font-size:7px}
-}
-
-
+.home-hero{height:630px;padding:30px 40px 24px;display:flex;flex-direction:column;justify-content:flex-end;background:
+linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
+.home-brand{position:absolute;top:54px;left:50%;width:min(640px,calc(100% - 40px));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:14px}
+.home-logo-img{width:690px;height:507px;object-fit:contain;opacity:.34;filter:grayscale(.18) drop-shadow(0 7px 10px rgba(0,0,0,.35));transform:translate(21px,87px);pointer-events:none}
+.home-title{position:absolute;top:40px;z-index:3;color:#fff;font-size:30px;line-height:1;font-weight:900;letter-spacing:2px;white-space:nowrap;text-align:center;text-shadow:0 2px 5px #000}
+.home-actions{position:relative;z-index:3;width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,72px);gap:10px}
+.home-card{display:flex;align-items:center;justify-content:center;border-radius:15px;border:3px solid #111;padding:11px 20px;background:#fff;box-shadow:0 5px 0 #111;text-align:center}
+.home-card.primary{background:#101011;color:#fff;border-color:#101011;box-shadow:0 8px 0 #aeb8b3}
+.home-card h3{margin:0;font-size:24px}
+.home-card p{margin:3px 0 0;font-size:14px;font-weight:700;color:#525252}
+.home-card.primary p{color:#ffdadd}
+.future-card h3{color:#4a4f58}.future-card p{font-style:italic}.cloud-card{border-color:#315d9a;box-shadow:0 5px 0 #315d9a}.cloud-card h3{color:#204d87}
+.cloud-card.healthy{border-color:#37814b;box-shadow:0 5px 0 #37814b}.cloud-card.healthy h3{color:#27653a}.cloud-card.attention{border-color:#bd6b16;box-shadow:0 5px 0 #bd6b16;background:#fff5e8}.cloud-card.attention h3{color:#914c0c}
+.home-footer{text-align:center;padding:24px;font-weight:900;letter-spacing:2px;color:#555}.home-footer>span{display:block}.home-footer-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(360px,100%);margin:12px auto 0}.home-guide-button{display:block;width:100%;margin:0;padding:9px 14px;border:1px solid #aeb8b3;border-radius:10px;background:#fff;color:#234f87;font-size:13px;font-weight:900;letter-spacing:0}.home-portal-button{color:#8f1820}
 .panel{background:#fff;border:1px solid #d5dcda;border-radius:22px;margin:20px;padding:22px}
 .panel h2,.panel h3{margin-top:0}
 .label{display:block;font-size:14px;font-weight:900;color:#67738a;text-transform:uppercase;margin:15px 0 8px}
@@ -312,13 +273,13 @@ button{cursor:pointer;color:#111}
 @media(max-width:560px){
   .app{max-width:none}
   body{font-size:14px}
-  .home-hero{height:auto;min-height:calc(100svh - 76px);padding:32px 13px 12px;justify-content:flex-start}
-  .home-brand{width:100%}.hotb-wordmark{width:min(285px,78vw)}.hotb-rebels{font-size:31px}.hotb-name{font-size:67px;letter-spacing:-4.5px}.hotb-bat{height:7px;margin:8px 0 11px}.hotb-bat:before{width:10px;height:12px;top:-2px}.hotb-subtitle{font-size:20px}
-  .home-actions{margin-top:40px;grid-template-rows:repeat(3,88px);gap:13px 10px;transform:none}
-  .home-card{grid-template-columns:47px minmax(0,1fr) 13px;gap:7px;min-height:88px;padding:9px 9px;border-radius:11px;box-shadow:0 4px 8px rgba(10,25,45,.14)}
-  .home-card-icon{width:43px;height:43px}.home-card-icon svg{width:41px;height:41px}.home-card h3{font-size:clamp(15px,4.25vw,19px);letter-spacing:-.45px}.home-chevron{font-size:30px}
-  .cloud-card,.cloud-card.healthy{border-width:2px}
-  .home-footer{padding:10px 7px 16px;font-size:9px;letter-spacing:1.15px}.app-version{font-size:9px;margin-top:6px}.home-footer-actions{margin-top:5px}.home-guide-button{font-size:8px}
+  .home-brand{top:max(6px,env(safe-area-inset-top));width:calc(100% - 10px);height:360px;gap:0}
+  .home-logo-img{position:absolute;top:22px;width:675px;max-width:none;height:495px;opacity:.32;transform:translateX(21px)}
+  .home-title{top:38px;width:100%;font-size:clamp(18px,5.75vw,23px);letter-spacing:.2px}
+  .home-hero{height:calc(100svh - 48px);min-height:520px;padding:50svh 14px 14px;justify-content:flex-start}
+  .home-actions{grid-template-rows:repeat(3,64px);gap:9px 8px;transform:translateY(73px)}
+  .home-card{padding:8px 10px;border-width:2px;border-radius:12px;box-shadow:0 3px 0 #111}.home-card.primary{box-shadow:0 3px 0 #aeb8b3}.home-card h3{font-size:18px}
+  .home-footer{padding:14px 8px;font-size:11px;letter-spacing:1px}
   .hero{padding:15px 13px}.hero h1{font-size:28px;margin:4px 0}.hero p{font-size:14px;margin-top:6px}.hero .kicker{font-size:11px}.hero button{padding:8px 11px;font-size:14px;border-radius:9px}
   .panel{margin:10px 8px;padding:13px;border-radius:14px}.panel h2{font-size:20px}
   .label{font-size:11px;margin:10px 0 5px}.section-title{font-size:16px}.small{font-size:11px}
@@ -1370,46 +1331,4 @@ body:has(.eval-head) .athletic-head h2{
  font-size:21px;
  font-weight:700;
  line-height:1.15;
-}
-
-
-/* FINAL HOME REFERENCE MATCH — intentionally last so legacy mobile rules cannot override it. */
-@media(max-width:560px){
- .home-hero{min-height:0!important;height:auto!important;padding:24px 16px 16px!important;justify-content:flex-start!important}
- .home-hero:after{top:-28px!important;right:-86px!important;width:145px!important;height:760px!important;transform:skewX(-17deg)!important}
- .home-brand{width:100%!important}
- .hotb-wordmark{width:min(238px,68vw)!important}
- .hotb-rebels{font-size:27px!important;letter-spacing:-1px!important}
- .hotb-name{font-size:57px!important;letter-spacing:-3.8px!important}
- .hotb-bat{width:91%!important;height:6px!important;margin:7px 0 9px!important}
- .hotb-bat:before{width:9px!important;height:10px!important;left:-4px!important;top:-2px!important}
- .hotb-subtitle{font-size:17px!important}
- .home-actions{width:100%!important;margin-top:28px!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:repeat(3,74px)!important;gap:10px!important;transform:none!important}
- .home-card{grid-template-columns:40px minmax(0,1fr) 11px!important;gap:7px!important;min-height:74px!important;height:74px!important;padding:8px 10px!important;border-radius:10px!important}
- .home-card-icon{width:37px!important;height:37px!important}.home-card-icon svg{width:35px!important;height:35px!important}
- .home-card h3{font-size:clamp(13px,3.85vw,17px)!important;line-height:1.04!important;letter-spacing:-.4px!important}
- .home-chevron{font-size:25px!important}
- .home-footer{padding:13px 7px 14px!important;font-size:8px!important;letter-spacing:1px!important}
- .app-version{font-size:8px!important;margin-top:5px!important}.home-footer-actions{margin-top:5px!important}.home-guide-button{font-size:7px!important}
-}
-
-
-/* HOME TARGET MATCH v4 — measured against the supplied target screenshot. */
-@media(max-width:560px){
- .home-hero{min-height:0!important;height:auto!important;padding:20px 13px 10px!important}
- .home-hero:after{top:-42px!important;right:-66px!important;width:118px!important;height:700px!important;opacity:.62!important}
- .hotb-wordmark{width:min(260px,74vw)!important}
- .hotb-rebels{font-size:29px!important;line-height:.96!important}
- .hotb-name{font-size:65px!important;line-height:.82!important;letter-spacing:-4.5px!important}
- .hotb-bat{width:94%!important;height:6px!important;margin:8px 0 9px!important}
- .hotb-subtitle{font-size:18px!important}
- .home-actions{width:100%!important;margin-top:25px!important;grid-template-rows:repeat(3,68px)!important;gap:9px 11px!important}
- .home-card{grid-template-columns:42px minmax(0,1fr) 10px!important;gap:8px!important;min-height:68px!important;height:68px!important;padding:7px 11px!important;border-radius:9px!important;box-shadow:0 3px 7px rgba(10,25,45,.14)!important}
- .home-card-icon{width:39px!important;height:39px!important}.home-card-icon svg{width:38px!important;height:38px!important}
- .home-card h3{font-size:clamp(13px,3.65vw,16px)!important;line-height:1.03!important;font-weight:800!important}
- .home-chevron{font-size:23px!important}
- .cloud-card,.cloud-card.healthy{border-width:1.5px!important}
- .home-footer{padding:11px 5px 12px!important;font-size:7.5px!important;letter-spacing:1px!important}
- .app-version{font-size:7.5px!important;margin-top:5px!important}
- .home-footer-actions{display:none!important}
 }
