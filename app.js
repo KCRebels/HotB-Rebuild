@@ -2237,19 +2237,17 @@ function fitEvalMetricValues(){
 }
 function homeView(){
  const cloudPending=localStorage.getItem(CLOUD_PENDING_KEY)==='true',cloudError=localStorage.getItem(CLOUD_ERROR_KEY),cloudText=!cloudUser?'Sign in to protect this device\'s data':cloudPending&&!navigator.onLine?'Waiting for internet':cloudError?'Backup needs attention':cloudLastBackup?`Backed up ${cloudLastBackup.toLocaleString()}`:'Ready for first backup';
- return `<div class="home-hero">
-   <div class="home-brand">
-    <img class="home-logo-img" src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="Kansas City Rebels Regional">
+ return `<div class="home-hero home-art-cover">
+   <img class="home-art-image" src="IMG_1673.jpg" alt="HotB Elite Hitting App">
+   <div class="home-art-actions" aria-label="HotB main menu">
+    <button class="home-art-hit hit-new" data-go="new" aria-label="New Game"></button>
+    <button class="home-art-hit hit-reports" data-go="reports" aria-label="Reports"></button>
+    <button class="home-art-hit hit-eval" data-go="eval" aria-label="Player Eval"></button>
+    <button class="home-art-hit hit-roster" data-go="roster" aria-label="Edit Roster"></button>
+    <button class="home-art-hit hit-practice" data-go="practice" aria-label="${practicePlan||db.activePracticeSession?'Resume Hitting Practice':'Hitting Practice'}"></button>
+    <button class="home-art-hit hit-cloud" id="openCloudBackup" aria-label="Cloud Backup"></button>
    </div>
-   <div class="home-actions">
-    <button class="home-card primary" data-go="new"><h3>New Game</h3></button>
-    <button class="home-card" data-go="reports"><h3>Reports</h3></button>
-    <button class="home-card" data-go="eval"><h3>Player Eval</h3></button>
-    <button class="home-card" data-go="roster"><h3>Edit Roster</h3></button>
-    <button class="home-card" data-go="practice"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting Practice':'Hitting Practice'}</h3></button>
-    <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><h3>Cloud Backup</h3></button>
-   </div>
- </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD <small class="app-version">Version: ${esc(window.HOTB_BUILD_VERSION||'2026.09.14.1')}</small></span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
+ </div><div class="home-footer home-art-hidden-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD <small class="app-version">Version: ${esc(window.HOTB_BUILD_VERSION||'2026.09.14.1')}</small></span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
 }
 function portalHeader(title='Player Portal',showBack=false){
  const practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType);
