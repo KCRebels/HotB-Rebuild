@@ -39,18 +39,25 @@ button{cursor:pointer;color:#111}
 .home-hero:after{content:"";position:absolute;z-index:0;top:-90px;right:-105px;width:185px;height:790px;background:linear-gradient(165deg,rgba(231,234,236,.18),rgba(209,214,218,.72));transform:rotate(17deg);pointer-events:none}
 .home-brand{position:relative;z-index:2;width:100%;display:flex;justify-content:center;pointer-events:none}
 .hotb-wordmark{width:min(440px,88vw);display:flex;flex-direction:column;align-items:center;color:#071b3a;font-family:Arial,Helvetica,sans-serif;line-height:.88}
-.hotb-rebels{color:#e21b23;font-size:44px;font-weight:800;letter-spacing:-1px}
-.hotb-name{font-size:92px;font-weight:800;letter-spacing:-5px}
-.hotb-bat{position:relative;width:88%;height:9px;margin:7px 0 13px;border-radius:9px;background:#071b3a;transform:skewX(-13deg)}
+.hotb-rebels{color:#e21b23;font-size:43px;font-weight:800;letter-spacing:-1.5px;transform:scaleX(.96)}
+.hotb-name{font-size:96px;font-weight:900;letter-spacing:-6px;transform:scaleX(.98)}
+.hotb-bat{position:relative;width:91%;height:9px;margin:5px 0 12px;border-radius:9px;background:#071b3a;transform:skewX(-13deg)}
 .hotb-bat:before{content:"";position:absolute;left:-7px;top:-3px;width:12px;height:15px;border-radius:50%;background:#071b3a}
 .hotb-bat:after{content:"";position:absolute;right:6px;top:2px;width:62%;height:2px;background:#fbfbfa;opacity:.9}
-.hotb-subtitle{font-size:27px;font-weight:500;letter-spacing:.2px;line-height:1.1}
+.hotb-subtitle{font-size:27px;font-weight:500;letter-spacing:0;line-height:1.1}
 .home-actions{position:relative;z-index:3;width:min(760px,100%);margin-top:48px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,112px);gap:18px 20px}
 .home-card{display:grid;grid-template-columns:72px minmax(0,1fr) 24px;align-items:center;gap:14px;border:1px solid #d9dddf;border-radius:17px;padding:14px 18px;background:#fff;color:#07162e;box-shadow:0 7px 14px rgba(15,28,45,.13);text-align:left}
 .home-card:active{transform:translateY(1px);box-shadow:0 4px 9px rgba(15,28,45,.14)}
 .home-card-icon{display:grid;place-items:center;width:58px;height:58px;color:#07162e}
 .home-card-icon svg{width:52px;height:52px;fill:#07162e;stroke:#07162e;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .home-card-icon svg rect,.home-card-icon svg path{vector-effect:non-scaling-stroke}
+.home-card-icon .icon-reports{stroke:none}.home-card-icon .icon-reports .bar-navy{fill:#07162e}.home-card-icon .icon-reports .bar-red{fill:#c71d28}.home-card-icon .icon-reports .bar-gray{fill:#545b63}
+.home-card-icon .icon-eval{fill:none;stroke:#07162e}.home-card-icon .icon-eval .paper{fill:#fff;stroke:#07162e}.home-card-icon .icon-eval .person-head,.home-card-icon .icon-eval .person-body{fill:#d71924;stroke:#d71924}
+.home-card-icon .icon-roster{fill:#07162e;stroke:#07162e}
+.home-card-icon .icon-practice{fill:none;stroke:#07162e}.home-card-icon .icon-practice .practice-ball{fill:#fff;stroke:#07162e}
+.home-card-icon .icon-cloud{stroke:none}.home-card-icon .icon-cloud .cloud-shape{fill:#07162e}.home-card-icon .icon-cloud .cloud-arrow{fill:none;stroke:#e51620;stroke-width:6}
+.home-card.primary .home-card-icon .icon-game{fill:#fff;stroke:#fff}
+
 .home-card h3{margin:0;font-size:25px;line-height:1.05;font-weight:850;text-transform:uppercase;letter-spacing:-.5px}
 .home-chevron{justify-self:end;font-size:42px;line-height:1;font-weight:300;color:#0c1b31}
 .home-card.primary{background:#e51620;color:#fff;border-color:#e51620;box-shadow:0 7px 14px rgba(152,13,20,.24)}
