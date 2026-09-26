@@ -1615,7 +1615,7 @@ body:has(.eval-head) .athletic-head h2{
 .reports-test-bottom-nav{position:fixed;z-index:900;left:0;right:0;bottom:0;height:68px;padding:5px 4px calc(5px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #d7d7d7;display:grid;grid-template-columns:repeat(6,1fr);box-shadow:0 -3px 14px rgba(0,0,0,.10)}
 .reports-test-bottom-nav button{appearance:none;border:0;background:transparent;color:#555;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:0;font:inherit}
 .reports-test-bottom-nav button>span{font-size:22px;line-height:20px;font-weight:800}
-.reports-test-bottom-nav button>b{font-size:10px;line-height:12px;white-space:nowrap}
+.reports-test-bottom-nav button>b{font-size:12px;line-height:14px;white-space:nowrap}
 .reports-test-bottom-nav button.active{color:#c71920}
 .reports-test-menu-shade{position:fixed;z-index:910;inset:0;background:rgba(0,0,0,.42)}
 .reports-test-menu-drawer{position:fixed;z-index:920;right:0;top:0;bottom:0;width:min(86vw,360px);background:#fff;box-shadow:-8px 0 30px rgba(0,0,0,.22);padding:calc(16px + env(safe-area-inset-top)) 0 calc(20px + env(safe-area-inset-bottom));overflow:auto}
