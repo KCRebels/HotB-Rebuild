@@ -1388,3 +1388,9 @@ body:has(.eval-head) .athletic-head h2{
  .home-icon-bars i:nth-child(3){height:21px;background:#48515c}
  .home-card-reports .home-card-chevron{color:#061a38}
 }
+
+/* Step 5A correction — actual batter silhouette, not a text symbol. */
+@media(max-width:560px){
+ .home-icon-batter{transform:none!important;font-size:0!important}
+ .home-icon-batter svg{display:block;width:38px;height:38px;fill:#fff}
+}
