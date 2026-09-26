@@ -3464,17 +3464,41 @@ function aiSuggestions(g,hitter){
    scores[key]+=base*situationWeight*outsWeight;
   }else locations.forEach(location=>scores[`${pitch.pitchType}${location}`]+=base*(locationUse[location]/locationTotal));
  });
- if(currentPaPitches.length>=2){
-  const currentPair=currentPaPitches.slice(-2).map(pitch=>`${aiPitchKey(pitch,player)}:${aiResultGroup(pitch.result)}`);
-  const byPa=new Map();records.filter(({pitch})=>pitch.hitter===hitter||aiStyle(pitch)===targetStyle).forEach(record=>{
-   const id=`${record.game.id}:${record.pitch.hitter}:${record.pitch.pa}`;if(!byPa.has(id))byPa.set(id,[]);byPa.get(id).push(record);
+ // Sequence layer: learn what this opposing pitcher tends to throw after
+ // the pitch(s) just seen. Keep it inside AI scoring so the UI and game flow
+ // remain untouched. Two-pitch patterns get the strongest weight; a one-pitch
+ // transition is used only when there is enough history to be meaningful.
+ if(currentPaPitches.length>=1){
+  const sequenceRecords=records.filter(({pitch})=>pitch.hitter===hitter||aiStyle(pitch)===targetStyle);
+  const byPa=new Map();
+  sequenceRecords.forEach(record=>{
+   const id=`${record.game.id}:${record.pitch.hitter}:${record.pitch.pa}`;
+   if(!byPa.has(id))byPa.set(id,[]);
+   byPa.get(id).push(record);
   });
-  const nextMatches=[];
-  byPa.forEach(group=>{group.sort((a,b)=>a.pitch.ts-b.pitch.ts);for(let i=2;i<group.length;i++){
-   const previous=group.slice(i-2,i).map(({pitch})=>`${aiPitchKey(pitch,hitterObj(pitch.hitter))}:${aiResultGroup(pitch.result)}`);
-   if(previous[0]===currentPair[0]&&previous[1]===currentPair[1])nextMatches.push(group[i]);
-  }});
-  if(nextMatches.length>=3)nextMatches.forEach(({pitch,gameWeight})=>{const key=aiPitchKey(pitch,hitterObj(pitch.hitter));if(key)scores[key]+=2.5*gameWeight});
+  const signature=pitch=>`${aiPitchKey(pitch,hitterObj(pitch.hitter))}:${aiResultGroup(pitch.result)}`;
+  const currentLast=signature(currentPaPitches[currentPaPitches.length-1]);
+  const onePitchMatches=[],twoPitchMatches=[];
+  const currentPair=currentPaPitches.length>=2?currentPaPitches.slice(-2).map(signature):null;
+  byPa.forEach(group=>{
+   group.sort((a,b)=>(a.pitch.ts||0)-(b.pitch.ts||0));
+   for(let i=1;i<group.length;i++){
+    if(signature(group[i-1].pitch)===currentLast)onePitchMatches.push(group[i]);
+    if(currentPair&&i>=2){
+     const previous=[signature(group[i-2].pitch),signature(group[i-1].pitch)];
+     if(previous[0]===currentPair[0]&&previous[1]===currentPair[1])twoPitchMatches.push(group[i]);
+    }
+   }
+  });
+  const addSequenceMatches=(matches,multiplier)=>{
+   matches.forEach(({pitch,gameWeight})=>{
+    const key=aiPitchKey(pitch,hitterObj(pitch.hitter));if(!key)return;
+    const exact=pitch.hitter===hitter;
+    scores[key]+=multiplier*gameWeight*(exact?1.25:1);
+   });
+  };
+  if(onePitchMatches.length>=4)addSequenceMatches(onePitchMatches,1.35);
+  if(twoPitchMatches.length>=3)addSequenceMatches(twoPitchMatches,3.25);
  }
  const forceSituation=['FORCE_THIRD','LOADED'].includes(currentSituation);
  Object.keys(scores).forEach(key=>{
