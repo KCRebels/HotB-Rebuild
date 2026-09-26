@@ -1348,3 +1348,8 @@ body:has(.eval-head) .athletic-head h2{
 .home-hotb-bat:after{content:"";position:absolute;right:-4px;top:-3px;width:12px;height:13px;border-radius:3px;background:#061a38}
 .home-hotb-tag{margin-top:13px;color:#061a38;font-size:clamp(19px,5.4vw,29px);line-height:1;font-weight:800;letter-spacing:-.6px}
 @media(max-width:560px){.home-hotb-mark{top:18px;width:78vw}}
+
+/* Step 2 correction — use uploaded logo artwork itself, with no frame treatment. */
+.home-hotb-mark{display:none!important}
+.home-hotb-logo-asset{position:absolute;z-index:4;top:18px;left:50%;width:min(78vw,430px);height:auto;transform:translateX(-50%);display:block;border:0!important;outline:0!important;box-shadow:none!important;border-radius:0!important;background:transparent!important;pointer-events:none}
+@media(max-width:560px){.home-hotb-logo-asset{top:18px;width:78vw}}
