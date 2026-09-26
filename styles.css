@@ -1630,3 +1630,9 @@ body:has(.eval-head) .athletic-head h2{
 .reports-test-menu-item span{font-size:23px;text-align:center}
 .reports-test-menu-item b{font-size:16px;padding-left:8px}
 @media(min-width:700px){.reports-test-bottom-nav{left:50%;transform:translateX(-50%);max-width:700px;border-left:1px solid #ddd;border-right:1px solid #ddd}}
+
+/* Clean line icons for navigation prototype */
+.reports-test-bottom-nav .test-nav-icon{width:24px;height:24px;display:grid;place-items:center;line-height:1}
+.reports-test-bottom-nav .test-nav-icon svg{width:24px;height:24px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.reports-test-menu-item .test-nav-icon{width:26px;height:26px;display:grid;place-items:center}
+.reports-test-menu-item .test-nav-icon svg{width:24px;height:24px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
