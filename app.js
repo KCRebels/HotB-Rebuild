@@ -978,6 +978,7 @@ let timerInt=null,timerStart=0,timerElapsed=0;
 let lastRenderedUndoState=null;
 let practicePlan=null,practiceResolution=null;
 let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false},practiceCoachOpen=false,practiceCardsOpen=false;
+let reportsNavDrawerOpen=false;
 let practiceSection='hub',practiceFocusPlayer='',practiceFocusRange='weekend',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practiceEquipmentSetupOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
 let focusDrillReplaceIndex=-1,focusDrillQuery='';
@@ -3626,9 +3627,20 @@ function gameGroupCard(group){
  const existing=(group.gameIds||[]).filter(id=>db.savedGames.some(game=>game.id===id));
  return `<article class="game-group-card"><div><b>${esc(group.name)}</b><span>${existing.length} game${existing.length===1?'':'s'}</span></div><div class="saved-game-actions"><button class="btn black" data-open-group="${group.id}">Report</button><button class="btn" data-edit-group="${group.id}">Edit</button><button class="btn" data-rename-group="${group.id}">Rename</button><button class="btn red" data-delete-group="${group.id}">Delete Group</button></div></article>`;
 }
+function reportsTestNav(){
+ const item=(label,action,icon)=>`<button class="reports-test-menu-item" data-test-nav="${action}"><span aria-hidden="true">${icon}</span><b>${label}</b></button>`;
+ return `<nav class="reports-test-bottom-nav" aria-label="HotB test navigation">
+  <button data-test-nav="home"><span>⌂</span><b>Home</b></button>
+  <button data-test-nav="new"><span>◇</span><b>Game</b></button>
+  <button data-test-nav="eval"><span>▥</span><b>Evals</b></button>
+  <button data-test-nav="practice"><span>◆</span><b>Practice</b></button>
+  <button data-test-nav="focus"><span>◎</span><b>Focus</b></button>
+  <button class="${reportsNavDrawerOpen?'active':''}" data-test-nav="menu"><span>☰</span><b>Menu</b></button>
+ </nav>${reportsNavDrawerOpen?`<div class="reports-test-menu-shade" data-test-menu-close></div><aside class="reports-test-menu-drawer" aria-label="HotB menu"><header><div><small>HOTB</small><strong>Menu</strong></div><button type="button" data-test-menu-close aria-label="Close menu">×</button></header><div class="reports-test-menu-list">${item('Home','home','⌂')}${item('New Game','new','◇')}${item('Evaluations','eval','▥')}${item('Practice','practice','◆')}${item('Player Focus','focus','◎')}${item('Reports','reports','▤')}${item('Scout','scout','⌕')}${item('Roster','roster','♟')}${item('Backup','backup','⇧')}</div></aside>`:''}`;
+}
 function reportsPage(){
  const games=filteredSavedGamesForManagement();
- return `<div class="page-match-head page-head-centered"><button class="page-head-nav" data-go="home">Home</button><h1>Reports</h1><span class="page-head-spacer"></span></div><div class="panel reports-builder"><h2>Build a Report</h2><button class="games-selector" id="openGamesSelector"><span>GAMES</span><b>Choose games or a saved group</b><i aria-hidden="true">›</i></button><div class="roster-data-tools backup-tools"><button class="btn black" id="exportFullBackup">Export Full Backup</button><button class="btn" id="restoreFullBackup">Restore Backup</button><input id="fullBackupFile" type="file" accept=".json,application/json" hidden><p>A full backup preserves games, pitches, game groups, roster information, measurements, pitchers and app preferences.</p></div>${dateFilterControls('saved')}<div class="saved-game-list">${games.length?games.map(g=>{const meta=seasonMeta(g.date);return `<div class="saved-game-card"><div><b>${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}</b><span>${esc(meta.season)} · ${esc(meta.segment)} · ${(g.plateAppearances||[]).length} PA${g.scrimmage?' · SCRIMMAGE':''}</span></div><div class="saved-game-actions"><label class="report-scrimmage-toggle" title="Scrimmage"><span>Scrimmage</span><input type="checkbox" data-scrimmage-game="${g.id}" ${g.scrimmage?'checked':''}><i aria-hidden="true"></i></label><button class="btn black" data-view-game="${g.id}">View</button><button class="btn red" data-delete-game="${g.id}">Delete</button></div></div>`}).join(''):'No saved games match this date range.'}</div></div>`;
+ return `<div class="page-match-head page-head-centered"><button class="page-head-nav" data-go="home">Home</button><h1>Reports</h1><span class="page-head-spacer"></span></div><div class="panel reports-builder"><h2>Build a Report</h2><button class="games-selector" id="openGamesSelector"><span>GAMES</span><b>Choose games or a saved group</b><i aria-hidden="true">›</i></button><div class="roster-data-tools backup-tools"><button class="btn black" id="exportFullBackup">Export Full Backup</button><button class="btn" id="restoreFullBackup">Restore Backup</button><input id="fullBackupFile" type="file" accept=".json,application/json" hidden><p>A full backup preserves games, pitches, game groups, roster information, measurements, pitchers and app preferences.</p></div>${dateFilterControls('saved')}<div class="saved-game-list">${games.length?games.map(g=>{const meta=seasonMeta(g.date);return `<div class="saved-game-card"><div><b>${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}</b><span>${esc(meta.season)} · ${esc(meta.segment)} · ${(g.plateAppearances||[]).length} PA${g.scrimmage?' · SCRIMMAGE':''}</span></div><div class="saved-game-actions"><label class="report-scrimmage-toggle" title="Scrimmage"><span>Scrimmage</span><input type="checkbox" data-scrimmage-game="${g.id}" ${g.scrimmage?'checked':''}><i aria-hidden="true"></i></label><button class="btn black" data-view-game="${g.id}">View</button><button class="btn red" data-delete-game="${g.id}">Delete</button></div></div>`}).join(''):'No saved games match this date range.'}</div></div>${reportsTestNav()}`;
 }
 function gamesSelectionModal(){
  return `<div class="modal-backdrop"><div class="modal games-selection-modal"><div class="modal-header"><div><div class="small info-kicker">REPORT FILTER</div><h2>Games</h2></div><button class="btn" data-close>Close</button></div><button class="games-all-option" id="selectAllGames"><b>ALL GAMES</b><span>Use every saved game</span></button><h3>INDIVIDUAL GAMES</h3><div class="game-select-list" id="reportGameChoices">${gameChoiceList(reportSelectedGameIds)||'<p>No saved games yet.</p>'}</div><h3>SAVED GROUPS</h3><div class="game-group-list">${db.gameGroups.length?db.gameGroups.map(gameGroupCard).join(''):'<p class="report-empty">No saved groups yet.</p>'}</div><div class="game-selection-footer"><button class="btn" id="newGameGroup">Create Group</button><button class="btn gold" id="saveSelectionGroup" hidden>Save as Group</button><button class="btn black" id="openSelectedReports" disabled>View Report</button></div></div></div>`;
@@ -6721,6 +6733,17 @@ function bindNew(){
  };
 }
 function bindReportsPage(){
+ const testNavigate=action=>{
+  if(action==='menu'){reportsNavDrawerOpen=!reportsNavDrawerOpen;render();return}
+  reportsNavDrawerOpen=false;
+  if(action==='focus'){practiceSection='player';practiceFocusPlayer='';go('practice');return}
+  if(action==='backup'){modal='cloudBackup';render();return}
+  if(action==='scout'){window.location.href='scout.html';return}
+  if(action==='reports'){render();return}
+  go(action);
+ };
+ $('[data-test-nav]').forEach(button=>button.addEventListener('click',()=>testNavigate(button.dataset.testNav)));
+ $('[data-test-menu-close]').forEach(button=>button.addEventListener('click',()=>{reportsNavDrawerOpen=false;render()}));
  $('#openGamesSelector')?.addEventListener('click',()=>{modal='gamesSelection';render()});
  bindDateFilters('saved');
  document.querySelectorAll('[data-scrimmage-game]').forEach(scrimmageToggle=>{scrimmageToggle.onchange=()=>{const game=db.savedGames.find(item=>item.id===scrimmageToggle.dataset.scrimmageGame);if(!game)return;game.scrimmage=!!scrimmageToggle.checked;reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();playerPortalRefreshPending=true;render();setTimeout(()=>setupPlayerPortals(false),0)}});
