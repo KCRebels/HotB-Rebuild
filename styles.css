@@ -1360,3 +1360,14 @@ body:has(.eval-head) .athletic-head h2{
  .home-actions{position:absolute!important;z-index:3!important;left:14px!important;right:14px!important;top:50.5svh!important;width:auto!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:repeat(3,clamp(76px,10.5svh,94px))!important;gap:clamp(12px,1.8svh,17px) 14px!important;transform:none!important}
  .home-card{width:100%!important;height:100%!important;min-height:0!important;margin:0!important}
 }
+
+
+/* Home redesign Step 4 — button appearance only. */
+@media(max-width:560px){
+ .home-actions .home-card{border:1px solid #d7dde1!important;border-radius:14px!important;background:linear-gradient(145deg,#fff,#fbfbfb)!important;color:#061a38!important;box-shadow:0 6px 11px rgba(6,26,54,.16)!important}
+ .home-actions .home-card h3{color:#061a38!important}
+ .home-actions .home-card.primary{border:1px solid #df0b16!important;background:linear-gradient(145deg,#f20b18,#db0712)!important;color:#fff!important;box-shadow:0 6px 11px rgba(105,0,8,.18)!important}
+ .home-actions .home-card.primary h3{color:#fff!important}
+ .home-actions .home-card.cloud-card,.home-actions .home-card.cloud-card.healthy,.home-actions .home-card.cloud-card.attention{border:3px solid #169a4f!important;background:#fff!important;color:#061a38!important;box-shadow:0 6px 11px rgba(6,26,54,.16)!important}
+ .home-actions .home-card.cloud-card h3,.home-actions .home-card.cloud-card.healthy h3,.home-actions .home-card.cloud-card.attention h3{color:#061a38!important}
+}
