@@ -1968,13 +1968,10 @@ function syncRosterNames(){
  return true;
 }
 function competitionRoster(){
- const jenkinsNames=new Set(['neveah schlappi','lilliana schlappi','taylor woods','perri wagner','pacie dougherty','amelia steffen','emmie wible','leslie cundiff']);
- const isJenkinsPlayer=player=>{
-  const name=String(player?.name||'').trim().toLowerCase().replace(/\s+/g,' ');
-  const team=String(player?.teamName||'').trim().toLowerCase();
-  return player?.isTeamJenkins===true||team==='team jenkins'||jenkinsNames.has(name);
- };
- return (db.roster||[]).filter(player=>!isJenkinsPlayer(player));
+ // Evaluation/ranking comparisons are KC Rebels only. Practice-only players
+ // (including Team Jenkins) must never enter this roster.
+ const rebelsNames=new Set(defaultRoster.map(player=>String(player.name||'').trim().toLowerCase()));
+ return (db.roster||[]).filter(player=>rebelsNames.has(String(player?.name||'').trim().toLowerCase()));
 }
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
 const undoViewKeys=['historyTab','allView','zoneScope','zoneFilter','previewNext','firstPitchView','showAi','pendingZone','pitchType','plan'];
