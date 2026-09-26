@@ -1420,3 +1420,12 @@ body:has(.eval-head) .athletic-head h2{
  .home-actions .home-card-roster h3{margin:0!important;text-align:left!important}
  .home-roster-icon{display:block!important;width:36px!important;height:36px!important;object-fit:contain!important;mix-blend-mode:multiply}
 }
+
+/* Home selected graphics — user-provided New Game and Hitting Practice art. */
+@media(max-width:560px){
+ .home-new-game-icon,.home-practice-icon{display:block!important;width:36px!important;height:36px!important;object-fit:contain!important}
+ .home-new-game-icon{filter:brightness(0) invert(1);mix-blend-mode:normal}
+ .home-practice-icon{mix-blend-mode:multiply}
+ .home-actions .home-card-practice{position:relative!important;display:grid!important;grid-template-columns:42px 1fr!important;align-items:center!important;justify-content:stretch!important;padding:10px 12px!important;text-align:left!important}
+ .home-actions .home-card-practice h3{margin:0!important;text-align:left!important}
+}
