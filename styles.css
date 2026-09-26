@@ -1332,32 +1332,3 @@ body:has(.eval-head) .athletic-head h2{
  font-weight:700;
  line-height:1.15;
 }
-
-
-/* Approved HotB home cover — presentation only. */
-.approved-home{position:relative;box-sizing:border-box;height:auto;min-height:0;padding:38px 34px 30px;display:flex;flex-direction:column;justify-content:flex-start;overflow:hidden;background:#fff;color:#071a36}
-.approved-home:before{content:"";position:absolute;z-index:0;top:-150px;right:-160px;width:350px;height:1050px;background:#e9edef;transform:rotate(19deg)}
-.approved-home:after{content:"";position:absolute;z-index:0;right:-120px;bottom:-260px;width:250px;height:650px;background:#dfe4e7;transform:rotate(19deg)}
-.approved-home .home-brand{position:relative;z-index:2;top:auto;left:auto;width:100%;height:auto;transform:none;display:flex;justify-content:center;pointer-events:none}
-.approved-wordmark{width:min(440px,74vw);display:flex;flex-direction:column;align-items:center;font-family:Arial,Helvetica,sans-serif;color:#061a36;line-height:1}
-.approved-rebels{color:#df1018;font-size:49px;line-height:.92;letter-spacing:-2px;font-weight:900}
-.approved-hotb{font-size:111px;line-height:.79;letter-spacing:-8px;font-weight:950}
-.approved-bat{position:relative;display:block;width:94%;height:8px;margin:14px 0 13px;border-radius:999px;background:#061a36;transform:rotate(.6deg)}
-.approved-bat:before{content:"";position:absolute;left:-4px;top:-4px;width:16px;height:16px;border-radius:50%;background:#061a36}.approved-bat:after{content:"";position:absolute;right:-4px;top:-3px;width:12px;height:14px;border-radius:3px;background:#061a36}
-.approved-wordmark span{font-size:27px;font-weight:800;letter-spacing:-.7px}
-.approved-home .home-actions{position:relative;z-index:2;width:100%;margin-top:45px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,106px);gap:20px 24px;transform:none}
-.approved-home .home-card{box-sizing:border-box;display:grid;grid-template-columns:72px minmax(0,1fr) 20px;align-items:center;gap:15px;height:106px;min-height:106px;padding:13px 18px;border:1px solid #d8dde1;border-radius:14px;background:linear-gradient(#fff,#fafafa);color:#071a36;box-shadow:0 7px 12px rgba(6,26,54,.18);text-align:left}
-.approved-home .home-card.primary{background:linear-gradient(135deg,#f00b19,#d90813);border-color:#db0a15;color:#fff;box-shadow:0 7px 12px rgba(110,0,8,.20)}
-.approved-home .home-card h3{margin:0;color:inherit;font-size:27px;line-height:1.02;font-weight:950;text-transform:uppercase;letter-spacing:-.8px}
-.approved-home .home-card-icon{width:64px;height:64px;display:grid;place-items:center;color:#071a36}.approved-home .home-card-icon svg{width:60px;height:60px;overflow:visible}.approved-home .primary .home-card-icon{color:#fff}.approved-home .home-card-icon svg>circle,.approved-home .home-card-icon svg>path{fill:currentColor}.approved-home .home-card-icon .navy{fill:#071a36}.approved-home .home-card-icon .red{fill:#dc1420}.approved-home .home-card-icon .gray{fill:#3c4045}.approved-home .home-card-icon .paper{fill:none;stroke:#071a36;stroke-width:4}.approved-home .home-card-icon .line{fill:none;stroke:#071a36;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.approved-home .home-card-icon .person{fill:#dc1420}.approved-home .home-card-icon .ball{fill:#071a36}.approved-home .home-card-icon .cloud{fill:#071a36}.approved-home .home-card-icon .arrow{fill:none;stroke:#e51b27;stroke-width:6;stroke-linecap:round;stroke-linejoin:round}.approved-home .home-chevron{font-size:39px;line-height:1;font-weight:400;color:#071a36}.approved-home .primary .home-chevron{color:#fff}
-.approved-home .cloud-card,.approved-home .cloud-card.healthy,.approved-home .cloud-card.attention{background:linear-gradient(#fff,#fafafa);border:2px solid #15984d;box-shadow:0 7px 12px rgba(6,26,54,.18);color:#071a36}.approved-home .cloud-card h3,.approved-home .cloud-card.healthy h3,.approved-home .cloud-card.attention h3{color:#071a36}
-.approved-footer{padding:22px 8px 20px;background:#fff;color:#071a36;font-size:12px;font-weight:950;letter-spacing:2.2px}.approved-footer .app-version{margin-top:8px;color:#26364c;font-size:11px;letter-spacing:.8px}.approved-footer .home-footer-actions{display:none}
-@media(max-width:560px){
- .approved-home{height:auto;min-height:0;padding:max(26px,env(safe-area-inset-top)) 13px 14px}
- .approved-home:before{top:-90px;right:-104px;width:220px;height:780px}.approved-home:after{right:-120px;bottom:-310px;width:220px;height:620px}
- .approved-wordmark{width:min(285px,74vw)}.approved-rebels{font-size:32px;letter-spacing:-1px}.approved-hotb{font-size:75px;letter-spacing:-5.5px}.approved-bat{height:6px;margin:10px 0 9px}.approved-bat:before{width:13px;height:13px;top:-3px}.approved-bat:after{width:10px;height:11px;top:-2px}.approved-wordmark span{font-size:19px}
- .approved-home .home-actions{margin-top:34px;grid-template-rows:repeat(3,82px);gap:12px 13px}
- .approved-home .home-card{grid-template-columns:48px minmax(0,1fr) 12px;gap:8px;height:82px;min-height:82px;padding:9px 10px;border-radius:11px;box-shadow:0 5px 9px rgba(6,26,54,.17)}
- .approved-home .home-card h3{font-size:clamp(15px,4.15vw,19px);line-height:1.02;letter-spacing:-.5px}.approved-home .home-card-icon{width:46px;height:46px}.approved-home .home-card-icon svg{width:44px;height:44px}.approved-home .home-chevron{font-size:28px}
- .approved-footer{padding:14px 6px 15px;font-size:8px;letter-spacing:1.35px}.approved-footer .app-version{font-size:8px;margin-top:6px}
-}
