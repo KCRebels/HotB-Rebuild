@@ -1967,7 +1967,10 @@ function syncRosterNames(){
  });
  return true;
 }
-function competitionRoster(){return db.roster.filter(player=>!player.isTeamJenkins)}
+function competitionRoster(){
+ const jenkinsNames=new Set(['Neveah Schlappi','Lilliana Schlappi','Taylor Woods','Perri Wagner','Pacie Dougherty','Amelia Steffen','Emmie Wible','Leslie Cundiff']);
+ return (db.roster||[]).filter(player=>!player.isTeamJenkins&&player.teamName!=='Team Jenkins'&&!jenkinsNames.has(player.name));
+}
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
 const undoViewKeys=['historyTab','allView','zoneScope','zoneFilter','previewNext','firstPitchView','showAi','pendingZone','pitchType','plan'];
 function gameWithoutUndoViews(game){
