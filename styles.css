@@ -1348,3 +1348,16 @@ body:has(.eval-head) .athletic-head h2{
 .home-art-hit.hit-cloud{left:52.6%;top:72.1%;width:41.3%;height:12.7%}
 .home-art-hidden-footer{display:none!important}
 @media(max-width:560px){.home-art-cover{height:auto;min-height:0;padding:0}.home-art-image{width:100%;height:auto}.home-art-actions{transform:none}}
+
+
+/* Crop screenshot chrome from approved artwork; keep only the design inside the phone. */
+.home-art-cover{position:relative;width:100%;height:auto;aspect-ratio:1105/1140;overflow:hidden;background:#fff}
+.home-art-image{position:absolute;left:0;top:0;width:106.70%;max-width:none;height:auto;transform:translate(-4.07%,-4.74%);transform-origin:top left}
+.home-art-actions{position:absolute;inset:0;z-index:4}
+.home-art-hit.hit-new{left:5.97%;top:41.32%;width:42.99%;height:13.60%}
+.home-art-hit.hit-reports{left:52.04%;top:41.32%;width:44.07%;height:13.60%}
+.home-art-hit.hit-eval{left:5.97%;top:57.37%;width:42.99%;height:13.42%}
+.home-art-hit.hit-roster{left:52.04%;top:57.37%;width:44.07%;height:13.42%}
+.home-art-hit.hit-practice{left:5.97%;top:73.33%;width:42.99%;height:13.77%}
+.home-art-hit.hit-cloud{left:52.04%;top:73.33%;width:44.07%;height:13.77%}
+@media(max-width:560px){.home-art-cover{height:auto;aspect-ratio:1105/1140}.home-art-image{width:106.70%;max-width:none;transform:translate(-4.07%,-4.74%)}}
