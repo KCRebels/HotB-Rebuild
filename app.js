@@ -2236,29 +2236,18 @@ function fitEvalMetricValues(){
  });
 }
 function homeView(){
- const cloudError=localStorage.getItem(CLOUD_ERROR_KEY);
- const icon=(name)=>{
-  const icons={
-   game:'<svg class="icon-game" viewBox="0 0 64 64" aria-hidden="true"><circle cx="24" cy="10" r="5"/><path d="M22 16l10 8 10-3 2 5-13 6-7-5-5 12-13 13-5-5 11-13 4-15z"/><path d="M33 19l23-13 2 4-23 14z"/></svg>',
-   reports:'<svg class="icon-reports" viewBox="0 0 64 64" aria-hidden="true"><rect class="bar-navy" x="7" y="34" width="13" height="24" rx="2"/><rect class="bar-red" x="26" y="20" width="13" height="38" rx="2"/><rect class="bar-gray" x="45" y="10" width="13" height="48" rx="2"/></svg>',
-   eval:'<svg class="icon-eval" viewBox="0 0 64 64" aria-hidden="true"><rect class="paper" x="10" y="9" width="38" height="46" rx="3"/><path d="M22 9V4h14v5M17 40h20M17 34l7-8 6 5 9-13"/><circle class="person-head" cx="47" cy="44" r="6"/><path class="person-body" d="M36 61c0-9 4-13 11-13s11 4 11 13z"/></svg>',
-   roster:'<svg class="icon-roster" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="20" r="9"/><circle cx="13" cy="24" r="7"/><circle cx="51" cy="24" r="7"/><path d="M18 58c0-14 6-22 14-22s14 8 14 22M1 57c0-12 4-20 13-20 4 0 8 2 11 5M63 57c0-12-4-20-13-20-4 0-8 2-11 5"/></svg>',
-   practice:'<svg class="icon-practice" viewBox="0 0 64 64" aria-hidden="true"><path d="M12 58h31M20 58V29h14v29M17 29h20"/><circle cx="27" cy="20" r="8"/><path d="M27 15v10M22 20h10"/><circle class="practice-ball" cx="49" cy="14" r="6"/><circle class="practice-ball" cx="56" cy="5" r="4"/></svg>',
-   cloud:'<svg class="icon-cloud" viewBox="0 0 64 64" aria-hidden="true"><path class="cloud-shape" d="M13 52h35c9 0 14-6 14-14 0-7-5-13-12-14C47 13 39 7 29 9 20 10 14 16 12 25 5 27 1 32 1 39c0 8 5 13 12 13z"/><path class="cloud-arrow" d="M32 55V31m-9 9 9-9 9 9"/></svg>'
-  }; return icons[name]||'';
- };
- const card=(go,label,iconName,classes='',id='')=>`<button class="home-card ${classes}" ${id?`id="${id}"`:`data-go="${go}"`}><span class="home-card-icon">${icon(iconName)}</span><h3>${label}</h3><span class="home-chevron">›</span></button>`;
+ const cloudPending=localStorage.getItem(CLOUD_PENDING_KEY)==='true',cloudError=localStorage.getItem(CLOUD_ERROR_KEY),cloudText=!cloudUser?'Sign in to protect this device\'s data':cloudPending&&!navigator.onLine?'Waiting for internet':cloudError?'Backup needs attention':cloudLastBackup?`Backed up ${cloudLastBackup.toLocaleString()}`:'Ready for first backup';
  return `<div class="home-hero">
-   <div class="home-brand" aria-label="Rebels HotB Elite Hitting App">
-    <div class="hotb-wordmark"><span class="hotb-rebels">REBELS</span><span class="hotb-name">HotB</span><span class="hotb-bat"></span><span class="hotb-subtitle">Elite Hitting App</span></div>
+   <div class="home-brand">
+    <img class="home-logo-img" src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="Kansas City Rebels Regional">
    </div>
    <div class="home-actions">
-    ${card('new','New Game','game','primary')}
-    ${card('reports','Reports','reports')}
-    ${card('eval','Player Eval','eval')}
-    ${card('roster','Edit Roster','roster')}
-    ${card('practice',practicePlan||db.activePracticeSession?'Resume Hitting Practice':'Hitting Practice','practice')}
-    ${card('','Cloud Backup','cloud','cloud-card '+(cloudError?'attention':cloudLastBackup?'healthy':''),'openCloudBackup')}
+    <button class="home-card primary" data-go="new"><h3>New Game</h3></button>
+    <button class="home-card" data-go="reports"><h3>Reports</h3></button>
+    <button class="home-card" data-go="eval"><h3>Player Eval</h3></button>
+    <button class="home-card" data-go="roster"><h3>Edit Roster</h3></button>
+    <button class="home-card" data-go="practice"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting Practice':'Hitting Practice'}</h3></button>
+    <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><h3>Cloud Backup</h3></button>
    </div>
  </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD <small class="app-version">Version: ${esc(window.HOTB_BUILD_VERSION||'2026.09.14.1')}</small></span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
 }
