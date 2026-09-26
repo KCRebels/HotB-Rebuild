@@ -2236,6 +2236,7 @@ function fitEvalMetricValues(){
  });
 }
 function homeView(){
+ const cloudError=localStorage.getItem(CLOUD_ERROR_KEY);
  const icon=(name)=>{
   const icons={
    game:'<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="18" cy="10" r="5"/><path d="M18 15l7 7 8-3 2 4-11 5-5-5-4 9-10 8-3-4 9-8 3-10z"/><path d="M26 17l12-8 2 3-12 9z"/></svg>',
