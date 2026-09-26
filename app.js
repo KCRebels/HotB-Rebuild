@@ -2240,6 +2240,12 @@ function homeView(){
  return `<div class="home-hero">
    <div class="home-brand">
     <img class="home-logo-img" src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="Kansas City Rebels Regional">
+    <div class="home-hotb-mark" aria-label="Rebels HotB Elite Hitting App">
+      <div class="home-hotb-rebels">REBELS</div>
+      <div class="home-hotb-name">HotB</div>
+      <div class="home-hotb-bat"></div>
+      <div class="home-hotb-tag">Elite Hitting App</div>
+    </div>
    </div>
    <div class="home-actions">
     <button class="home-card primary" data-go="new"><h3>New Game</h3></button>
