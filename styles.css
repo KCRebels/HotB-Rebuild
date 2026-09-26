@@ -1371,3 +1371,20 @@ body:has(.eval-head) .athletic-head h2{
  .home-actions .home-card.cloud-card,.home-actions .home-card.cloud-card.healthy,.home-actions .home-card.cloud-card.attention{border:3px solid #169a4f!important;background:#fff!important;color:#061a38!important;box-shadow:0 6px 11px rgba(6,26,54,.16)!important}
  .home-actions .home-card.cloud-card h3,.home-actions .home-card.cloud-card.healthy h3,.home-actions .home-card.cloud-card.attention h3{color:#061a38!important}
 }
+
+
+/* Home redesign Step 5A — New Game + Reports content only. */
+@media(max-width:560px){
+ .home-actions .home-card-featured{position:relative!important;display:grid!important;grid-template-columns:42px 1fr 18px!important;align-items:center!important;justify-content:stretch!important;padding:10px 12px!important;text-align:left!important}
+ .home-actions .home-card-featured h3{margin:0!important;font-size:clamp(15px,4.25vw,18px)!important;font-weight:900!important;letter-spacing:.35px!important;line-height:1!important;text-align:left!important;white-space:nowrap!important}
+ .home-card-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center}
+ .home-card-chevron{font-size:31px;font-weight:400;line-height:1;text-align:right}
+ .home-card-new .home-card-chevron{color:#fff}
+ .home-icon-batter{color:#fff;font-size:36px;font-weight:900;line-height:1;transform:rotate(-18deg)}
+ .home-icon-bars{align-items:flex-end;justify-content:center;gap:3px}
+ .home-icon-bars i{display:block;width:7px;border-radius:2px 2px 0 0;background:#061a38}
+ .home-icon-bars i:nth-child(1){height:16px}
+ .home-icon-bars i:nth-child(2){height:27px;background:#df0b16}
+ .home-icon-bars i:nth-child(3){height:21px;background:#48515c}
+ .home-card-reports .home-card-chevron{color:#061a38}
+}
