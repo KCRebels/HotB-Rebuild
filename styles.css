@@ -67,6 +67,26 @@ button{cursor:pointer;color:#111}
 .home-footer-actions{display:flex;justify-content:center;gap:18px;margin:10px auto 0}
 .home-guide-button{border:0;background:transparent;padding:3px;color:#999;font-size:9px;font-weight:700;text-decoration:none}
 .home-portal-button{color:#999}
+/* Home screen reference-match override: compact the composition on tall iPhones. */
+@media(max-width:560px){
+ .home-hero{min-height:0;height:auto;padding:24px 16px 16px}
+ .home-hero:after{top:-28px;right:-86px;width:145px;height:760px;transform:skewX(-17deg)}
+ .hotb-wordmark{width:min(238px,68vw)}
+ .hotb-rebels{font-size:27px;letter-spacing:-1px}
+ .hotb-name{font-size:57px;letter-spacing:-3.8px}
+ .hotb-bat{width:91%;height:6px;margin:7px 0 9px}
+ .hotb-bat:before{width:9px;height:10px;left:-4px;top:-2px}
+ .hotb-bat:after{right:5px;top:2px;height:1px}
+ .hotb-subtitle{font-size:17px}
+ .home-actions{width:100%;margin-top:28px;grid-template-rows:repeat(3,74px);gap:10px 10px}
+ .home-card{grid-template-columns:40px minmax(0,1fr) 11px;gap:7px;min-height:74px;padding:8px 10px;border-radius:10px}
+ .home-card-icon{width:37px;height:37px}.home-card-icon svg{width:35px;height:35px}
+ .home-card h3{font-size:clamp(13px,3.85vw,17px);line-height:1.04;letter-spacing:-.4px}
+ .home-chevron{font-size:25px}
+ .home-footer{padding:13px 7px 14px;font-size:8px;letter-spacing:1px}
+ .app-version{font-size:8px;margin-top:5px}.home-footer-actions{margin-top:5px}.home-guide-button{font-size:7px}
+}
+
 
 .panel{background:#fff;border:1px solid #d5dcda;border-radius:22px;margin:20px;padding:22px}
 .panel h2,.panel h3{margin-top:0}
