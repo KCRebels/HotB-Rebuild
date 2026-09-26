@@ -1484,3 +1484,9 @@ body:has(.eval-head) .athletic-head h2{
   box-shadow:0 6px 11px rgba(6,26,54,.16)!important;
  }
 }
+
+/* Stable inline Cloud Backup icon. */
+@media(max-width:560px){
+ .home-cloud-icon{display:flex!important;width:36px!important;height:36px!important;align-items:center!important;justify-content:center!important;color:#333!important}
+ .home-cloud-icon svg{display:block!important;width:36px!important;height:36px!important;overflow:visible!important}
+}
