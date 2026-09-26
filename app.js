@@ -2243,8 +2243,8 @@ function homeView(){
     <img class="home-hotb-logo-asset" src="hotb-logo1.png" alt="Rebels HotB Elite Hitting App">
    </div>
    <div class="home-actions">
-    <button class="home-card primary" data-go="new"><h3>New Game</h3></button>
-    <button class="home-card" data-go="reports"><h3>Reports</h3></button>
+    <button class="home-card primary home-card-featured home-card-new" data-go="new"><span class="home-card-icon home-icon-batter" aria-hidden="true">◒</span><h3>NEW GAME</h3><span class="home-card-chevron" aria-hidden="true">›</span></button>
+    <button class="home-card home-card-featured home-card-reports" data-go="reports"><span class="home-card-icon home-icon-bars" aria-hidden="true"><i></i><i></i><i></i></span><h3>REPORTS</h3><span class="home-card-chevron" aria-hidden="true">›</span></button>
     <button class="home-card" data-go="eval"><h3>Player Eval</h3></button>
     <button class="home-card" data-go="roster"><h3>Edit Roster</h3></button>
     <button class="home-card" data-go="practice"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting Practice':'Hitting Practice'}</h3></button>
