@@ -1392,3 +1392,24 @@ body:has(.eval-head) .athletic-head h2{
  .home-footer{padding:13px 7px 14px!important;font-size:8px!important;letter-spacing:1px!important}
  .app-version{font-size:8px!important;margin-top:5px!important}.home-footer-actions{margin-top:5px!important}.home-guide-button{font-size:7px!important}
 }
+
+
+/* HOME TARGET MATCH v4 — measured against the supplied target screenshot. */
+@media(max-width:560px){
+ .home-hero{min-height:0!important;height:auto!important;padding:20px 13px 10px!important}
+ .home-hero:after{top:-42px!important;right:-66px!important;width:118px!important;height:700px!important;opacity:.62!important}
+ .hotb-wordmark{width:min(260px,74vw)!important}
+ .hotb-rebels{font-size:29px!important;line-height:.96!important}
+ .hotb-name{font-size:65px!important;line-height:.82!important;letter-spacing:-4.5px!important}
+ .hotb-bat{width:94%!important;height:6px!important;margin:8px 0 9px!important}
+ .hotb-subtitle{font-size:18px!important}
+ .home-actions{width:100%!important;margin-top:25px!important;grid-template-rows:repeat(3,68px)!important;gap:9px 11px!important}
+ .home-card{grid-template-columns:42px minmax(0,1fr) 10px!important;gap:8px!important;min-height:68px!important;height:68px!important;padding:7px 11px!important;border-radius:9px!important;box-shadow:0 3px 7px rgba(10,25,45,.14)!important}
+ .home-card-icon{width:39px!important;height:39px!important}.home-card-icon svg{width:38px!important;height:38px!important}
+ .home-card h3{font-size:clamp(13px,3.65vw,16px)!important;line-height:1.03!important;font-weight:800!important}
+ .home-chevron{font-size:23px!important}
+ .cloud-card,.cloud-card.healthy{border-width:1.5px!important}
+ .home-footer{padding:11px 5px 12px!important;font-size:7.5px!important;letter-spacing:1px!important}
+ .app-version{font-size:7.5px!important;margin-top:5px!important}
+ .home-footer-actions{display:none!important}
+}
