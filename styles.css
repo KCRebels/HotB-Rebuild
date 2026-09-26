@@ -1451,3 +1451,9 @@ body:has(.eval-head) .athletic-head h2{
  .home-actions .home-card.home-card-new h3,
  .home-actions .home-card.primary.home-card-new h3{color:#061a38!important}
 }
+
+@media(max-width:560px){
+ .home-cloud-icon{display:block!important;width:36px!important;height:36px!important;object-fit:contain!important}
+ .home-actions .cloud-card{display:grid!important;grid-template-columns:42px 1fr!important;align-items:center!important;padding:10px 12px!important;text-align:left!important}
+ .home-actions .cloud-card h3{margin:0!important;text-align:left!important}
+}
