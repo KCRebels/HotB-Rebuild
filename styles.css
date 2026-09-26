@@ -1361,18 +1361,3 @@ body:has(.eval-head) .athletic-head h2{
 .home-art-hit.hit-practice{left:5.97%;top:73.33%;width:42.99%;height:13.77%}
 .home-art-hit.hit-cloud{left:52.04%;top:73.33%;width:44.07%;height:13.77%}
 @media(max-width:560px){.home-art-cover{height:auto;aspect-ratio:1105/1140}.home-art-image{width:106.70%;max-width:none;transform:translate(-4.07%,-4.74%)}}
-
-
-/* Full-screen approved cover: expand the approved artwork to the real device viewport. */
-.home-art-cover{position:relative!important;width:100%!important;height:100svh!important;min-height:100svh!important;max-height:none!important;padding:0!important;margin:0!important;overflow:hidden!important;background:#f8faf9!important}
-.home-art-image{position:absolute!important;left:50%!important;top:0!important;width:auto!important;max-width:none!important;height:100%!important;min-height:100%!important;object-fit:cover!important;object-position:center top!important;transform:translateX(-50%)!important;transform-origin:center top!important}
-.home-art-actions{position:absolute!important;inset:0!important;z-index:4!important}
-/* Hotspots track the six cards after the artwork is expanded to full viewport height. */
-.home-art-hit.hit-new{left:5.9%!important;top:42.4%!important;width:43.0%!important;height:12.6%!important}
-.home-art-hit.hit-reports{left:52.0%!important;top:42.4%!important;width:44.1%!important;height:12.6%!important}
-.home-art-hit.hit-eval{left:5.9%!important;top:57.3%!important;width:43.0%!important;height:12.5%!important}
-.home-art-hit.hit-roster{left:52.0%!important;top:57.3%!important;width:44.1%!important;height:12.5%!important}
-.home-art-hit.hit-practice{left:5.9%!important;top:72.1%!important;width:43.0%!important;height:12.7%!important}
-.home-art-hit.hit-cloud{left:52.0%!important;top:72.1%!important;width:44.1%!important;height:12.7%!important}
-.home-art-hidden-footer{display:none!important}
-@media(max-width:560px){.home-art-cover{height:100svh!important;min-height:100svh!important}.home-art-image{height:100%!important;width:auto!important;max-width:none!important;transform:translateX(-50%)!important}}
