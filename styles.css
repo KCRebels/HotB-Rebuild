@@ -1523,3 +1523,16 @@ body:has(.eval-head) .athletic-head h2{
 @media(max-width:560px){
  .home-actions .home-card-reports .home-reports-icon{display:block!important;width:36px!important;height:36px!important;min-width:36px!important;object-fit:contain!important;object-position:center!important;align-self:center!important}
 }
+
+
+/* Match New Game and Reports title typography to the other four home buttons. */
+@media(max-width:560px){
+ .home-actions .home-card-new h3,
+ .home-actions .home-card-reports h3{
+  font-size:18px!important;
+  font-weight:700!important;
+  letter-spacing:normal!important;
+  line-height:1.08!important;
+  white-space:normal!important;
+ }
+}
