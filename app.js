@@ -2236,18 +2236,28 @@ function fitEvalMetricValues(){
  });
 }
 function homeView(){
- const cloudPending=localStorage.getItem(CLOUD_PENDING_KEY)==='true',cloudError=localStorage.getItem(CLOUD_ERROR_KEY),cloudText=!cloudUser?'Sign in to protect this device\'s data':cloudPending&&!navigator.onLine?'Waiting for internet':cloudError?'Backup needs attention':cloudLastBackup?`Backed up ${cloudLastBackup.toLocaleString()}`:'Ready for first backup';
+ const icon=(name)=>{
+  const icons={
+   game:'<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="18" cy="10" r="5"/><path d="M18 15l7 7 8-3 2 4-11 5-5-5-4 9-10 8-3-4 9-8 3-10z"/><path d="M26 17l12-8 2 3-12 9z"/></svg>',
+   reports:'<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="25" width="8" height="17" rx="2"/><rect x="20" y="15" width="8" height="27" rx="2"/><rect x="34" y="7" width="8" height="35" rx="2"/></svg>',
+   eval:'<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="9" y="8" width="29" height="34" rx="3"/><path d="M17 8V4h13v4M15 31l6-7 5 4 7-10M15 35h18"/></svg>',
+   roster:'<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="15" r="7"/><circle cx="10" cy="19" r="5"/><circle cx="38" cy="19" r="5"/><path d="M13 40c0-10 5-15 11-15s11 5 11 15M2 39c0-8 3-13 9-13 3 0 5 1 7 4M46 39c0-8-3-13-9-13-3 0-5 1-7 4"/></svg>',
+   practice:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M15 41h18M19 41V17h10v24M17 17h14"/><circle cx="24" cy="11" r="6"/><path d="M24 7v8M20 11h8M34 10l8-5M37 14l7-1"/></svg>',
+   cloud:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 38h25a9 9 0 0 0 1-18 14 14 0 0 0-27-2A10 10 0 0 0 12 38z"/><path class="cloud-arrow" d="M24 38V24m-6 6 6-6 6 6"/></svg>'
+  }; return icons[name]||'';
+ };
+ const card=(go,label,iconName,classes='',id='')=>`<button class="home-card ${classes}" ${id?`id="${id}"`:`data-go="${go}"`}><span class="home-card-icon">${icon(iconName)}</span><h3>${label}</h3><span class="home-chevron">›</span></button>`;
  return `<div class="home-hero">
-   <div class="home-brand">
-    <img class="home-logo-img" src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="Kansas City Rebels Regional">
+   <div class="home-brand" aria-label="Rebels HotB Elite Hitting App">
+    <div class="hotb-wordmark"><span class="hotb-rebels">REBELS</span><span class="hotb-name">HotB</span><span class="hotb-bat"></span><span class="hotb-subtitle">Elite Hitting App</span></div>
    </div>
    <div class="home-actions">
-    <button class="home-card primary" data-go="new"><h3>New Game</h3></button>
-    <button class="home-card" data-go="reports"><h3>Reports</h3></button>
-    <button class="home-card" data-go="eval"><h3>Player Eval</h3></button>
-    <button class="home-card" data-go="roster"><h3>Edit Roster</h3></button>
-    <button class="home-card" data-go="practice"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting Practice':'Hitting Practice'}</h3></button>
-    <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><h3>Cloud Backup</h3></button>
+    ${card('new','New Game','game','primary')}
+    ${card('reports','Reports','reports')}
+    ${card('eval','Player Eval','eval')}
+    ${card('roster','Edit Roster','roster')}
+    ${card('practice',practicePlan||db.activePracticeSession?'Resume Hitting Practice':'Hitting Practice','practice')}
+    ${card('','Cloud Backup','cloud','cloud-card '+(cloudError?'attention':cloudLastBackup?'healthy':''),'openCloudBackup')}
    </div>
  </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD <small class="app-version">Version: ${esc(window.HOTB_BUILD_VERSION||'2026.09.14.1')}</small></span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
 }
