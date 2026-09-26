@@ -1457,3 +1457,30 @@ body:has(.eval-head) .athletic-head h2{
  .home-actions .cloud-card{display:grid!important;grid-template-columns:42px 1fr!important;align-items:center!important;padding:10px 12px!important;text-align:left!important}
  .home-actions .cloud-card h3{margin:0!important;text-align:left!important}
 }
+
+/* Cover alignment: consistent icon/text breathing room; neutral Cloud Backup tile. */
+@media(max-width:560px){
+ .home-actions .home-card-featured,
+ .home-actions .home-card-eval,
+ .home-actions .home-card-roster,
+ .home-actions .home-card-practice,
+ .home-actions .cloud-card{
+  grid-template-columns:42px 1fr!important;
+  column-gap:8px!important;
+  align-items:center!important;
+ }
+ .home-actions .home-card-featured h3,
+ .home-actions .home-card-eval h3,
+ .home-actions .home-card-roster h3,
+ .home-actions .home-card-practice h3,
+ .home-actions .cloud-card h3{margin-left:0!important}
+ .home-actions .home-card-reports .home-card-icon{align-self:center!important;margin-top:0!important;margin-bottom:0!important}
+ .home-actions .home-card.cloud-card,
+ .home-actions .home-card.cloud-card.healthy,
+ .home-actions .home-card.cloud-card.attention{
+  border:1px solid #d7dde1!important;
+  background:linear-gradient(145deg,#fff,#fbfbfb)!important;
+  color:#061a38!important;
+  box-shadow:0 6px 11px rgba(6,26,54,.16)!important;
+ }
+}
