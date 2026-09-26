@@ -3630,12 +3630,12 @@ function gameGroupCard(group){
 function reportsTestNav(){
  const item=(label,action,icon)=>`<button class="reports-test-menu-item" data-test-nav="${action}"><span aria-hidden="true">${icon}</span><b>${label}</b></button>`;
  return `<nav class="reports-test-bottom-nav" aria-label="HotB test navigation">
-  <button data-test-nav="home"><span>⌂</span><b style="font-size:15px!important;line-height:17px!important">Home</b></button>
-  <button data-test-nav="new"><span>◇</span><b style="font-size:15px!important;line-height:17px!important">Game</b></button>
-  <button data-test-nav="eval"><span>▥</span><b style="font-size:15px!important;line-height:17px!important">Evals</b></button>
-  <button data-test-nav="practice"><span>◆</span><b style="font-size:15px!important;line-height:17px!important">Practice</b></button>
-  <button data-test-nav="focus"><span>◎</span><b style="font-size:15px!important;line-height:17px!important">Focus</b></button>
-  <button class="${reportsNavDrawerOpen?'active':''}" data-test-nav="menu"><span>☰</span><b style="font-size:15px!important;line-height:17px!important">Menu</b></button>
+  <button data-test-nav="home"><span>⌂</span><b style="font-size:14px!important;line-height:16px!important">Home</b></button>
+  <button data-test-nav="new"><span>◇</span><b style="font-size:14px!important;line-height:16px!important">Game</b></button>
+  <button data-test-nav="eval"><span>▥</span><b style="font-size:14px!important;line-height:16px!important">Evals</b></button>
+  <button data-test-nav="practice"><span>◆</span><b style="font-size:14px!important;line-height:16px!important">Practice</b></button>
+  <button data-test-nav="focus"><span>◎</span><b style="font-size:14px!important;line-height:16px!important">Focus</b></button>
+  <button class="${reportsNavDrawerOpen?'active':''}" data-test-nav="menu"><span>☰</span><b style="font-size:14px!important;line-height:16px!important">Menu</b></button>
  </nav>${reportsNavDrawerOpen?`<div class="reports-test-menu-shade" data-test-menu-close></div><aside class="reports-test-menu-drawer" aria-label="HotB menu"><header><div><small>HOTB</small><strong>Menu</strong></div><button type="button" data-test-menu-close aria-label="Close menu">×</button></header><div class="reports-test-menu-list">${item('Home','home','⌂')}${item('New Game','new','◇')}${item('Evaluations','eval','▥')}${item('Practice','practice','◆')}${item('Player Focus','focus','◎')}${item('Reports','reports','▤')}${item('Scout','scout','⌕')}${item('Roster','roster','♟')}${item('Backup','backup','⇧')}</div></aside>`:''}`;
 }
 function reportsPage(){
