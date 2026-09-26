@@ -2239,12 +2239,12 @@ function homeView(){
  const cloudError=localStorage.getItem(CLOUD_ERROR_KEY);
  const icon=(name)=>{
   const icons={
-   game:'<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="18" cy="10" r="5"/><path d="M18 15l7 7 8-3 2 4-11 5-5-5-4 9-10 8-3-4 9-8 3-10z"/><path d="M26 17l12-8 2 3-12 9z"/></svg>',
-   reports:'<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="25" width="8" height="17" rx="2"/><rect x="20" y="15" width="8" height="27" rx="2"/><rect x="34" y="7" width="8" height="35" rx="2"/></svg>',
-   eval:'<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="9" y="8" width="29" height="34" rx="3"/><path d="M17 8V4h13v4M15 31l6-7 5 4 7-10M15 35h18"/></svg>',
-   roster:'<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="15" r="7"/><circle cx="10" cy="19" r="5"/><circle cx="38" cy="19" r="5"/><path d="M13 40c0-10 5-15 11-15s11 5 11 15M2 39c0-8 3-13 9-13 3 0 5 1 7 4M46 39c0-8-3-13-9-13-3 0-5 1-7 4"/></svg>',
-   practice:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M15 41h18M19 41V17h10v24M17 17h14"/><circle cx="24" cy="11" r="6"/><path d="M24 7v8M20 11h8M34 10l8-5M37 14l7-1"/></svg>',
-   cloud:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 38h25a9 9 0 0 0 1-18 14 14 0 0 0-27-2A10 10 0 0 0 12 38z"/><path class="cloud-arrow" d="M24 38V24m-6 6 6-6 6 6"/></svg>'
+   game:'<svg class="icon-game" viewBox="0 0 64 64" aria-hidden="true"><circle cx="24" cy="10" r="5"/><path d="M22 16l10 8 10-3 2 5-13 6-7-5-5 12-13 13-5-5 11-13 4-15z"/><path d="M33 19l23-13 2 4-23 14z"/></svg>',
+   reports:'<svg class="icon-reports" viewBox="0 0 64 64" aria-hidden="true"><rect class="bar-navy" x="7" y="34" width="13" height="24" rx="2"/><rect class="bar-red" x="26" y="20" width="13" height="38" rx="2"/><rect class="bar-gray" x="45" y="10" width="13" height="48" rx="2"/></svg>',
+   eval:'<svg class="icon-eval" viewBox="0 0 64 64" aria-hidden="true"><rect class="paper" x="10" y="9" width="38" height="46" rx="3"/><path d="M22 9V4h14v5M17 40h20M17 34l7-8 6 5 9-13"/><circle class="person-head" cx="47" cy="44" r="6"/><path class="person-body" d="M36 61c0-9 4-13 11-13s11 4 11 13z"/></svg>',
+   roster:'<svg class="icon-roster" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="20" r="9"/><circle cx="13" cy="24" r="7"/><circle cx="51" cy="24" r="7"/><path d="M18 58c0-14 6-22 14-22s14 8 14 22M1 57c0-12 4-20 13-20 4 0 8 2 11 5M63 57c0-12-4-20-13-20-4 0-8 2-11 5"/></svg>',
+   practice:'<svg class="icon-practice" viewBox="0 0 64 64" aria-hidden="true"><path d="M12 58h31M20 58V29h14v29M17 29h20"/><circle cx="27" cy="20" r="8"/><path d="M27 15v10M22 20h10"/><circle class="practice-ball" cx="49" cy="14" r="6"/><circle class="practice-ball" cx="56" cy="5" r="4"/></svg>',
+   cloud:'<svg class="icon-cloud" viewBox="0 0 64 64" aria-hidden="true"><path class="cloud-shape" d="M13 52h35c9 0 14-6 14-14 0-7-5-13-12-14C47 13 39 7 29 9 20 10 14 16 12 25 5 27 1 32 1 39c0 8 5 13 12 13z"/><path class="cloud-arrow" d="M32 55V31m-9 9 9-9 9 9"/></svg>'
   }; return icons[name]||'';
  };
  const card=(go,label,iconName,classes='',id='')=>`<button class="home-card ${classes}" ${id?`id="${id}"`:`data-go="${go}"`}><span class="home-card-icon">${icon(iconName)}</span><h3>${label}</h3><span class="home-chevron">›</span></button>`;
