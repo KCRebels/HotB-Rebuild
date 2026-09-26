@@ -6979,7 +6979,8 @@ function exportCsv(){
 function bindEval(){
  $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};
  $('#openRebelsScout')?.addEventListener('click',()=>{
-  const url=evalPlayer==='Brooklyn Gering'?'https://rebelsscout.com/brooklyn-gering/':'https://rebelsscout.com/lickel/';
+  const scoutSlug=String(evalPlayer||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const url=`https://rebelsscout.com/${scoutSlug}/`;
   window.open(url,'_blank','noopener');
  });
  bindDateFilters('eval');
