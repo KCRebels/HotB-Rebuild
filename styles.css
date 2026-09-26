@@ -1394,3 +1394,8 @@ body:has(.eval-head) .athletic-head h2{
  .home-icon-batter{transform:none!important;font-size:0!important}
  .home-icon-batter svg{display:block;width:38px;height:38px;fill:#fff}
 }
+
+/* Keep New Game on the established HotB/Rebels red. */
+@media(max-width:560px){
+ .home-actions .home-card.primary{border-color:#A51E27!important;background:#A51E27!important}
+}
