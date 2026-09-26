@@ -2243,7 +2243,7 @@ function homeView(){
     <img class="home-hotb-logo-asset" src="hotb-logo1.png" alt="Rebels HotB Elite Hitting App">
    </div>
    <div class="home-actions">
-    <button class="home-card primary home-card-featured home-card-new" data-go="new"><span class="home-card-icon home-icon-batter" aria-hidden="true">◒</span><h3>NEW GAME</h3><span class="home-card-chevron" aria-hidden="true">›</span></button>
+    <button class="home-card primary home-card-featured home-card-new" data-go="new"><span class="home-card-icon home-icon-batter" aria-hidden="true"><svg viewBox="0 0 64 64" focusable="false"><circle cx="39" cy="12" r="6"/><path d="M31 20c5-3 12-2 16 2l5 6-5 4-5-5-4 10 8 8-4 5-11-10-8 8-5-4 10-12-5-7 8-5z"/><path d="M45 22 57 6l4 3-12 17z"/><path d="M31 39 24 58h-7l8-23z"/></svg></span><h3>NEW GAME</h3><span class="home-card-chevron" aria-hidden="true">›</span></button>
     <button class="home-card home-card-featured home-card-reports" data-go="reports"><span class="home-card-icon home-icon-bars" aria-hidden="true"><i></i><i></i><i></i></span><h3>REPORTS</h3><span class="home-card-chevron" aria-hidden="true">›</span></button>
     <button class="home-card" data-go="eval"><h3>Player Eval</h3></button>
     <button class="home-card" data-go="roster"><h3>Edit Roster</h3></button>
