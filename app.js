@@ -6742,8 +6742,8 @@ function bindReportsPage(){
   if(action==='reports'){render();return}
   go(action);
  };
- $('[data-test-nav]').forEach(button=>button.addEventListener('click',()=>testNavigate(button.dataset.testNav)));
- $('[data-test-menu-close]').forEach(button=>button.addEventListener('click',()=>{reportsNavDrawerOpen=false;render()}));
+ document.querySelectorAll('[data-test-nav]').forEach(button=>button.addEventListener('click',()=>testNavigate(button.dataset.testNav)));
+ document.querySelectorAll('[data-test-menu-close]').forEach(button=>button.addEventListener('click',()=>{reportsNavDrawerOpen=false;render()}));
  $('#openGamesSelector')?.addEventListener('click',()=>{modal='gamesSelection';render()});
  bindDateFilters('saved');
  document.querySelectorAll('[data-scrimmage-game]').forEach(scrimmageToggle=>{scrimmageToggle.onchange=()=>{const game=db.savedGames.find(item=>item.id===scrimmageToggle.dataset.scrimmageGame);if(!game)return;game.scrimmage=!!scrimmageToggle.checked;reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();playerPortalRefreshPending=true;render();setTimeout(()=>setupPlayerPortals(false),0)}});
