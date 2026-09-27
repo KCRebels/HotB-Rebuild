@@ -1,3 +1,4 @@
+/* HotB syntax verification trigger: production bundle checked after cleanup recovery. */
 
 (() => {
 const $ = (sel, root=document) => root.querySelector(sel);
