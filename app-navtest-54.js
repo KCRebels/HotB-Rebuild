@@ -959,7 +959,7 @@ if(portalToken){
  db=structuredClone(seed);
 }
 const directScreen=new URLSearchParams(location.search).get('screen');
-let route = portalToken?'portal':(directScreen==='new'?'new':(directScreen==='library'||directScreen==='focus')?'practice':db.route || 'home');
+let route = portalToken?'portal':(directScreen==='new'?'new':(directScreen==='library'||directScreen==='focus'||directScreen==='practice')?'practice':db.route || 'home');
 // Never let a saved secondary page make the entire coach app unlaunchable when
 // one optional feature module failed to load. Start safely at Home, preserve the
 // requested route, and allow the user to enter that feature after startup.
@@ -980,7 +980,7 @@ let lastRenderedUndoState=null;
 let practicePlan=null,practiceResolution=null;
 let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false},practiceCoachOpen=false,practiceCardsOpen=false;
 let reportsNavDrawerOpen=false;
-let practiceSection=(!portalToken&&directScreen==='library')?'library':(!portalToken&&directScreen==='focus')?'player':'hub',practiceFocusPlayer='',practiceFocusRange='weekend',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
+let practiceSection=(!portalToken&&directScreen==='library')?'library':(!portalToken&&directScreen==='focus')?'player':(!portalToken&&directScreen==='practice')?'setup':'hub',practiceFocusPlayer='',practiceFocusRange='weekend',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
 let practiceSetupOpenSnapshot=null;
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practiceEquipmentSetupOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
 let focusDrillReplaceIndex=-1,focusDrillQuery='';
