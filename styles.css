@@ -1636,3 +1636,17 @@ body:has(.eval-head) .athletic-head h2{
 .reports-test-bottom-nav .test-nav-icon svg{width:24px;height:24px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .reports-test-menu-item .test-nav-icon{width:26px;height:26px;display:grid;place-items:center}
 .reports-test-menu-item .test-nav-icon svg{width:24px;height:24px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+
+/* Home icon sizing guard — desktop and mobile. Prevent raw asset dimensions from escaping cards. */
+.home-actions img.home-new-game-icon,
+.home-actions img.home-reports-icon,
+.home-actions img.home-eval-icon,
+.home-actions img.home-roster-icon,
+.home-actions img.home-practice-icon{
+ display:block!important;width:50px!important;height:50px!important;max-width:50px!important;max-height:50px!important;min-width:0!important;object-fit:contain!important;position:static!important;transform:none!important;margin:0!important;justify-self:center!important;align-self:center!important;
+}
+@media(max-width:560px){
+ .home-actions img.home-new-game-icon,.home-actions img.home-eval-icon,.home-actions img.home-roster-icon,.home-actions img.home-practice-icon{width:41px!important;height:41px!important;max-width:41px!important;max-height:41px!important}
+ .home-actions img.home-reports-icon{width:58px!important;height:58px!important;max-width:58px!important;max-height:58px!important}
+}
