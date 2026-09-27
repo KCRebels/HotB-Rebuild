@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0c0d" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="HotB" />
+  <title>HotB</title>
+  <script>if(!new URLSearchParams(window.location.search).has('portal')){const manifest=document.createElement('link');manifest.rel='manifest';manifest.href='manifest.webmanifest?v=20260925-hotbicon2';document.head.appendChild(manifest)}</script>
+  <link rel="apple-touch-icon" sizes="180x180" href="hotb-app-icon-180.png?v=20260925-hotbicon2" />
+  <link rel="apple-touch-icon-precomposed" sizes="180x180" href="hotb-app-icon-180.png?v=20260925-hotbicon2" />
+  <link rel="icon" type="image/png" sizes="192x192" href="hotb-app-icon-192.png?v=20260925-hotbicon2" /><link rel="icon" type="image/png" sizes="512x512" href="hotb-app-icon-512.png?v=20260925-hotbicon2" />
+  <link rel="stylesheet" href="styles.css?v=20260926-navicons21" />
+  <link rel="preload" as="image" href="home-new-game.png" />
+  <link rel="preload" as="image" href="home-reports.png" />
+  <link rel="preload" as="image" href="home-player-evaluation.svg" />
+  <link rel="preload" as="image" href="home-edit-roster.svg" />
+  <link rel="preload" as="image" href="home-hitting-practice.png" /><link rel="stylesheet" href="evaluation-cleanup.css?v=20260925-evalhead2" /><link rel="stylesheet" href="evaluation-single-metrics.css?v=20260915-eval300" />
+</head><body><div id="hotbBuildMarker" style="display:none">HotB Build 289</div><div id="app" data-hotb-booting="true"></div>
+<script>
+(()=>{try{
+  if(!new URLSearchParams(location.search).has('portal'))return;
+  const app=document.getElementById('app');
+  if(!app)return;
+  app.innerHTML='<div class="app portal-app"><main class="portal-page"><section class="portal-welcome"><span>PRIVATE ACCESS</span><h2>Opening Your Portal</h2><p>HotB is checking this private link.</p></section></main></div>';
+}catch(_){}})();
+</script>
+<script>
+(()=>{try{
+ if(new URLSearchParams(location.search).has('portal'))return;
+ window.__HOTB_BOOT_STARTED_AT__=Date.now();
+ // The watchdog is armed only after the final coach app script is requested.
+ // Earlier builds started this timer while dozens of parser-inserted dependencies
+ // were still loading, so slow iPhone launches could report a false H136 failure.
+}catch(_){}})();
+</script>
+<script>
+(()=>{try{
+  if(!new URLSearchParams(location.search).has('portal'))return;
+  // Do not unregister the coach app's service worker from a player portal tab.
+  // The worker already bypasses all ?portal navigations. Unregistering it here
+  // can unexpectedly remove offline/update protection from the coach's PWA.
+  // Clear only old HotB response caches; portal navigation itself remains network-only.
+  if('caches' in window)caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('hotb-app-')).map(key=>caches.delete(key)))).catch(()=>{});
+}catch(_){}})();
+</script>
+<script src="pwa-update-test-disabled.js?v=20260926-jenkinsrank3"></script><script>
+(()=>{try{
+ if(!new URLSearchParams(location.search).has('portal'))return;
+ // Arm the startup watchdog only after app.js has actually been requested.
+ // The old page-level timer started while Firebase and portal dependencies were
+ // still downloading, so a healthy slow iPhone launch could be falsely replaced
+ // by P23-SCRIPT moments before app.js rendered the real portal.
+ window.__HOTB_PORTAL_SHELL_STARTED_AT__=Date.now();
+}catch(_){}})();
+</script>
+<script>if(!new URLSearchParams(location.search).has("portal")){const s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.async=true;document.head.appendChild(s)}</script><script>
+(function(){
+ const sources=[
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js'
+ ];
+ // Start Firebase loading, but never let a blocked CDN script hold up the HTML parser.
+ // app.js has its own bounded/self-healing Firebase loader for portal connections.
+ window.HotBFirebaseReady=(async()=>{
+  for(const src of sources){
+   await Promise.race([
+    new Promise((resolve,reject)=>{
+     const s=document.createElement('script');
+     s.src=src;s.async=true;s.dataset.hotbFirebase=src;
+     s.onload=resolve;s.onerror=()=>reject(new Error('firebase-load-failed:'+src));
+     document.head.appendChild(s);
+    }),
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error('firebase-shell-timeout')),4000))
+   ]);
+  }
+  if(!window.firebase)throw new Error('firebase-global-missing');
+  return window.firebase;
+ })();
+})();</script>
+<script>
+(()=>{try{
+ const isPortal=new URLSearchParams(location.search).has('portal');
+ if(!isPortal)return;
+ const loadPortalScript=(src,errorCode)=>new Promise((resolve,reject)=>{
+  const script=document.createElement('script');script.src=src;script.async=false;
+  script.onload=resolve;script.onerror=()=>reject(new Error(errorCode));document.head.appendChild(script);
+ });
+ (async()=>{
+  try{
+   // The player clock must have the exact same timing engine available before
+   // app.js evaluates. Load it without document.write so iOS cannot replace the
+   // already-parsed portal document during a delayed script fetch.
+   await loadPortalScript('practice-session.js?v=20260921-resolution325','P30-TIMING');
+   await loadPortalScript('drill-library.js?v=20260904-restored133','P31-DRILLS');
+   await loadPortalScript('sms-links.js?v=20260919-smslinks180','P32-SMS');
+   await loadPortalScript('evaluation-stats.js?v=20260923-ipa28','P33-EVALSTATS');
+   await loadPortalScript('decision-quality.js?v=20260920-decision230','P34-DECISION');
+   await loadPortalScript('at-bat-approach.js?v=20260918-calc8','P35-ABA');
+   await loadPortalScript('app-navtest-52.js?v=52','P29-DOWNLOAD');
+   await loadPortalScript('player-portal-evaluation-v634.js?v=20260924-evalback654','P36-EVALUI');
+   await loadPortalScript('player-eval-surgical-match.js?v=20260924-playereval618','P37-EVALPOPUPS');
+   window.__HOTB_APP_SCRIPT_LOADED__=true;
+   // app.js owns the live portal connection status from this point forward.
+   // No shell watchdog may overwrite its Firebase/auth/read progress UI.
+  }catch(error){
+   const app=document.getElementById('app'),code=String(error?.message||'P29-DOWNLOAD');
+   if(app)app.innerHTML='<div class="app portal-app"><main class="portal-page"><section class="portal-welcome"><span>PRIVATE ACCESS</span><h2>Portal Script Error</h2><p>HotB could not download the portal program. Error code: '+code+'</p></section></main></div>';
+  }
+ })();
+}catch(_){}})();
+</script><script>if(!new URLSearchParams(location.search).has("portal")){const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;s.defer=true;document.head.appendChild(s)}</script>
+<script>
+if(!new URLSearchParams(location.search).has('portal')){
+ document.write('<script src="practice-scheduler.js?v=20260922-resolution503"><\/script><script src="practice-history.js?v=20260919-attendance2"><\/script><script src="practice-session.js?v=20260921-blockcount1"><\/script>');
+}
+</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="practice-equipment.js?v=20260910-equipmentsetup170"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="coach-practice.js?v=20260904-focus133"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="hitting-analysis.js?v=20260902-approach118"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="evaluation-stats.js?v=20260923-ipa28"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="drill-library.js?v=20260904-restored133"><\\/script><script src="sms-links.js?v=20260919-smslinks180"><\\/script>')</script><script src="coach-observations.js?v=20260920-observation232"></script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="game-data-cleanup.js?v=20260907-gameaudit141"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="gamechanger-pitching-import.js?v=20260914-pitchupload208"><\\/script>')</script><script>
+(()=>{try{
+ if(new URLSearchParams(location.search).has('portal'))return;
+ const dependencies=["decision-quality.js?v=20260920-decision230","at-bat-approach.js?v=20260918-calc8","hhb-contact-popup.js?v=20260918-sharedcontact1","reports-heat-no-jump.js?v=20260915-reports299","spray-location.js?v=20260914-spray265","evaluation-hitting-visuals.js?v=20260923-restorevisual2","brooklyn-pitch-performance.js?v=20260918-nodemo1","brooklyn-player-trends.js?v=20260923-ipa3","evaluation-practice-focus.js?v=20260923-focus3","practice-focus-assignment.js?v=20260917-picker2","count-performance-k-consistency.js?v=20260917-verified1","heat-map-standard.js?v=20260914-heat272","evaluation-interactions.js?v=20260914-display253","evaluation-direct-hitting-rankings.js?v=20260926-jenkinsrank4","evaluation-guide-removal.js?v=20260914-guide276","pitching-stat-display-format.js?v=20260918-consolefix1"];
+ window.__HOTB_COACH_DEPENDENCIES_READY__=(async()=>{
+  for(const src of dependencies){
+   await new Promise((resolve,reject)=>{
+    const s=document.createElement('script');s.src=src;s.async=false;
+    s.onload=resolve;s.onerror=()=>reject(new Error('dependency:'+src));
+    document.head.appendChild(s);
+   });
+  }
+ })();
+}catch(error){window.__HOTB_COACH_DEPENDENCIES_READY__=Promise.reject(error)}})();
+</script><script>
+(()=>{try{
+ if(new URLSearchParams(location.search).has('portal'))return;
+ // Coach app must start only after every synchronous HotB dependency above has
+ // evaluated. Loading app.js earlier created an iOS race where app.js could run
+ // while its practice/game modules were still being parser-inserted.
+ const startApp=async()=>{try{await window.__HOTB_COACH_DEPENDENCIES_READY__;if(!window.HotBEvaluationStats)await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='evaluation-stats.js?v=20260923-ipa28';s.async=false;s.onload=resolve;s.onerror=()=>reject(new Error('dependency:evaluation-stats'));document.head.appendChild(s)})}catch(error){const app=document.getElementById('app');if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">A required HotB module could not load.</p><p style="margin:8px 0 0">Error code: H200-DEPENDENCY</p></section></main></div>';return} const s=document.createElement('script');s.src='app-navtest-52.js?v=52';s.async=false;
+ const fail=(code,message)=>{const app=document.getElementById('app');if(app&&app.dataset.hotbBooting==='true')app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">'+message+'</p><p style="margin:8px 0 0">Error code: '+code+'</p></section></main></div>'};
+ const watchdog=setTimeout(()=>fail('H200-EXECUTE','The app program loaded but did not finish starting.'),12000);
+ s.onload=()=>{window.__HOTB_APP_SCRIPT_LOADED__=true;setTimeout(()=>{const app=document.getElementById('app');if(app&&app.innerHTML.trim()){delete app.dataset.hotbBooting;clearTimeout(watchdog)}},0)};
+ s.onerror=()=>{clearTimeout(watchdog);fail('H200-DOWNLOAD','The app program could not load. Close HotB and reopen it once.')};
+ document.body.appendChild(s);};startApp();
+}catch(_){}})();
+</script>
+</body></html>
