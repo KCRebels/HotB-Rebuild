@@ -21,7 +21,7 @@ assert.ok(app.includes("portalData.portalType==='jenkinsPlayer')return !portalDa
 assert.ok(app.includes("portalData?.portalType!=='jenkinsPlayer'&&drillAssignments.length"),'Jenkins portal does not expose assigned-drill library section');
 assert.ok(app.includes("jenkins=portalData?.portalType==='jenkinsPlayer'"),'Jenkins drill links are disabled');
 assert.ok(app.includes("No practice is active right now. Use this same link the next time you practice with us."),'reusable no-practice state exists');
-assert.ok(app.includes("Team Jenkins · current Hitting Practice only"),'share UI states the access boundary');
+assert.ok(app.includes('HITTING PRACTICE ONLY')&&app.includes('These permanent links can show only the current Hitting Practice.'),'share UI states the access boundary');
 console.log('team-jenkins-practice-only tests passed');
 
 assert.ok(app.includes("async function setupJenkinsPortals()"),'portal manager has Team Jenkins setup action');
