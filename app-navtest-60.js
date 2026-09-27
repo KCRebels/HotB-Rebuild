@@ -959,7 +959,9 @@ if(portalToken){
  db=structuredClone(seed);
 }
 const directScreen=new URLSearchParams(location.search).get('screen');
-let route = portalToken?'portal':(directScreen==='new'?'new':(directScreen==='library'||directScreen==='focus'||directScreen==='practice')?'practice':db.route || 'home');
+let route = portalToken?'portal':(directScreen==='new'?(db.currentGame?'live':'new'):(directScreen==='library'||directScreen==='focus'||directScreen==='practice')?'practice':db.route || 'home');
+// An unfinished game stays active while the coach uses other HotB pages. The saved
+// route remains the page being viewed; Game navigation is what resumes the live game.
 // Never let a saved secondary page make the entire coach app unlaunchable when
 // one optional feature module failed to load. Start safely at Home, preserve the
 // requested route, and allow the user to enter that feature after startup.
@@ -2260,7 +2262,7 @@ function homeView(){
     <img class="home-hotb-logo-asset" src="hotb-logo1.png" alt="Rebels HotB Elite Hitting App">
    </div>
    <div class="home-actions">
-    <button class="home-card primary home-card-featured home-card-new" data-go="new"><img class="home-new-game-icon" src="home-new-game.png" alt="" aria-hidden="true"><h3>New<br>Game</h3></button>
+    <button class="home-card primary home-card-featured home-card-new" data-go="${db.currentGame?'live':'new'}"><img class="home-new-game-icon" src="home-new-game.png" alt="" aria-hidden="true"><h3>${db.currentGame?'Resume<br>Game':'New<br>Game'}</h3></button>
     <button class="home-card home-card-featured home-card-reports" data-go="reports"><img class="home-reports-icon" src="home-reports.png" alt="" aria-hidden="true"><h3>Reports</h3></button>
     <button class="home-card home-card-eval" data-go="eval"><img class="home-eval-icon" src="home-player-evaluation.svg" alt="" aria-hidden="true"><h3>Player<br>Evaluation</h3></button>
     <button class="home-card home-card-roster" data-go="roster"><img class="home-roster-icon" src="home-edit-roster.svg" alt="" aria-hidden="true"><h3>Edit<br>Roster</h3></button>
@@ -3662,6 +3664,7 @@ function reportsTestNav(){
  };
  const item=(label,action,iconName)=>`<button class="reports-test-menu-item ${currentNav===action?'active':''}" data-test-nav="${action}" style="${activeStyle(action)}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle(action)}" aria-hidden="true">${icon(iconName)}</span><b>${label}</b></button>`;
  const practiceMenuLabel=practicePlan?`Practice <small style="font-size:12px;font-weight:900;margin-left:7px;color:${practiceClock.running?'#c71920':'#667085'}">${practiceClock.running?'Live':'Built'}</small>`:'Practice';
+ const gameMenuLabel=db.currentGame?'Game <small style="font-size:12px;font-weight:900;margin-left:7px;color:#c71920">Live</small>':'New Game';
  return `<nav class="reports-test-bottom-nav" aria-label="HotB test navigation">
   <button class="${currentNav==='home'?'active':''}" data-test-nav="home" style="${activeStyle('home')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('home')}">${icon('home')}</span><b style="font-size:14px!important;line-height:16px!important">Home</b></button>
   <button class="${currentNav==='new'?'active':''}" data-test-nav="new" style="${activeStyle('new')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('new')}">${icon('game')}</span><b style="font-size:14px!important;line-height:16px!important">Game</b></button>
@@ -3669,7 +3672,7 @@ function reportsTestNav(){
   <button class="${currentNav==='practice'?'active':''}" data-test-nav="practice" style="${activeStyle('practice')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('practice')}">${icon('practice')}</span><b style="font-size:14px!important;line-height:16px!important">Practice</b></button>
   <button class="${currentNav==='focus'?'active':''}" data-test-nav="focus" style="${activeStyle('focus')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('focus')}">${icon('focus')}</span><b style="font-size:14px!important;line-height:16px!important">Focus</b></button>
   <button class="${reportsNavDrawerOpen?'active':''}" data-test-nav="menu" style="${reportsNavDrawerOpen?'color:#c71920!important;':''}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${reportsNavDrawerOpen?'color:#c71920!important;':'color:#555'}">${icon('menu')}</span><b style="font-size:14px!important;line-height:16px!important">Menu</b></button>
- </nav>${reportsNavDrawerOpen?`<div class="reports-test-menu-shade" data-test-menu-close></div><aside class="reports-test-menu-drawer" aria-label="HotB menu"><header><div><small>HOTB</small><strong>Menu</strong></div><button type="button" data-test-menu-close aria-label="Close menu">×</button></header><div class="reports-test-menu-list">${item('Home','home','home')}${item('New Game','new','game')}${item('Evaluations','eval','eval')}${item(practiceMenuLabel,'practice','practice')}${item('Player Focus','focus','focus')}${item('Drill Library','library','library')}${item('Reports','reports','reports')}${`<button class="reports-test-menu-item" data-test-nav="scout"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;color:#555" aria-hidden="true">${icon('scout')}</span><b style="color:#111!important;font-weight:900!important;text-transform:uppercase!important;letter-spacing:.8px!important">SCOUT</b></button>`}${item('Roster','roster','roster')}${item('Backup','backup','backup')}</div></aside>`:''}`;
+ </nav>${reportsNavDrawerOpen?`<div class="reports-test-menu-shade" data-test-menu-close></div><aside class="reports-test-menu-drawer" aria-label="HotB menu"><header><div><small>HOTB</small><strong>Menu</strong></div><button type="button" data-test-menu-close aria-label="Close menu">×</button></header><div class="reports-test-menu-list">${item('Home','home','home')}${item(gameMenuLabel,'new','game')}${item('Evaluations','eval','eval')}${item(practiceMenuLabel,'practice','practice')}${item('Player Focus','focus','focus')}${item('Drill Library','library','library')}${item('Reports','reports','reports')}${`<button class="reports-test-menu-item" data-test-nav="scout"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;color:#555" aria-hidden="true">${icon('scout')}</span><b style="color:#111!important;font-weight:900!important;text-transform:uppercase!important;letter-spacing:.8px!important">SCOUT</b></button>`}${item('Roster','roster','roster')}${item('Backup','backup','backup')}</div></aside>`:''}`;
 }
 function reportsPage(){
  const games=filteredSavedGamesForManagement();
@@ -6787,6 +6790,7 @@ function bindTestNavigation(){
  const testNavigate=action=>{
   if(action==='menu'){reportsNavDrawerOpen=!reportsNavDrawerOpen;render();return}
   reportsNavDrawerOpen=false;
+  if(action==='new'&&db.currentGame){go('live');return}
   if(action==='focus'){go('practice');practiceSection='player';practiceFocusPlayer='';render();window.scrollTo(0,0);return}
   if(action==='practice'){if(practicePlan){go('practice');practiceSection='builder';render();window.scrollTo(0,0);if(practiceClock.running)resumeRecoveredPracticeClock();return}go('practice');practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0);return}
   if(action==='backup'){modal='cloudBackup';render();return}
