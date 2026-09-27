@@ -5010,7 +5010,7 @@ function bind(){
    // unverified choices.
    if(!practiceResolutionApplyToken&&!practiceResolutionApplyDraftId&&!practiceResolutionApplyOwnedDraftId)endResolutionApply();
    if(result.reason==='stale'||result.reason==='unverified')rejectUnverifiedResolution();
-   else if(result.reason==='busy')
+   else if(result.reason==='busy'){}
    else if(result.reason!=='handled')alert('HotB could not safely start that verified resolution. Your Practice Resolution was kept unchanged so you can try again.');
    return false;
   };
