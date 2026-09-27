@@ -3780,7 +3780,7 @@ function evalView(){
  const reach=s.PA?s.reachPct:null;
  const ms=measurementTypes(player);
  const metricHead=(metric,label=metric)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${metric}">${label}</button><button class="metric-all" data-ranking="${metric}">ALL</button></div>`;
- const resultMetric=player?(slapHitter?{label:'IPA%',key:'ipaPct',value:s.ipaPct}:snapshot.resultMetric):HotBEvaluationStats.evaluationResultRate(null,s),resultRate=[resultMetric.label,s.PA?pct1(resultMetric.value):'—',resultMetric.key];
+ const resultMetric=player?(slapHitter?{label:'IPA%',key:'ipaPct',value:s.ipaPct}:snapshot.resultMetric):HotBEvaluationStats.evaluationResultRate(null,s),resultRate=[resultMetric.label,s.PA?pct0(resultMetric.value):'—',resultMetric.key];
  const performanceTile=([label,value,key])=>{
   const statKey=key==='contact'?'contactPct':key==='K'?'kPct':key,guide=['AVG','OBP','SLG','CONTACT','K%'].includes(label);
   const rating=s.PA>=25&&!['hhbPct','qabPct','ipaPct'].includes(statKey)?grade(s[statKey],key):'';
@@ -3797,7 +3797,7 @@ function evalView(){
   <div class="eval-tile">${slapHitter?metricHead('Reach%'):metricHead('Execution','HP%')}<div class="value">${slapHitter?(reach===null?'—%':pct0(reach)):(execution===null?'—%':pct0(execution))}</div><div class="note">${slapHitter?'Reached Base':'Hitting Plan'}</div></div>
  </div>
  <div class="performance"><div class="performance-head"><h2>Hitting Results</h2><div class="performance-sample"><span>${esc(activeDateFilterLabel())}</span><b>${s.PA} PA</b></div></div><div class="perf-grid">
- ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct1(s.kPct),'K'],resultRate].map(performanceTile).join('')}
+ ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct0(s.kPct),'K'],resultRate].map(performanceTile).join('')}
  </div></div>
  ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><div class="pitcher-performance-head"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2>${evaluationReadOnly?'':`<button class="btn black" id="uploadPitchingStats">UPLOAD</button><input id="pitchingStatsFile" type="file" accept=".xlsx,.xls,.csv" hidden>`}</div><div class="pitcher-stat-grid">
   ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<button class="pitcher-stat" data-pitch-ranking="${key}"><b>${esc(player[key]||'—')}</b><span>${label}</span></button>`).join('')}
@@ -3887,8 +3887,8 @@ function evalRankingModal(metric){
 function hittingRankingModal(metric){
  const definitions={
   AVG:{label:'AVG',key:'AVG',format:round3},OBP:{label:'OBP',key:'OBP',format:round3},SLG:{label:'SLG',key:'SLG',format:round3},
-  contactPct:{label:'CONTACT',key:'contactPct',format:pct0},kPct:{label:'K%',key:'kPct',format:pct1,lowerIsBetter:true},
-  hhbPct:{label:'HHB%',key:'hhbPct',format:pct1},qabPct:{label:'QAB%',key:'qabPct',format:pct1},ipaPct:{label:'IPA%',key:'ipaPct',format:pct1}
+  contactPct:{label:'CONTACT',key:'contactPct',format:pct0},kPct:{label:'K%',key:'kPct',format:pct0,lowerIsBetter:true},
+  hhbPct:{label:'HHB%',key:'hhbPct',format:pct0},qabPct:{label:'QAB%',key:'qabPct',format:pct1},ipaPct:{label:'IPA%',key:'ipaPct',format:pct0}
  };
  const competitionNames=new Set(competitionRoster().map(item=>item.name)),definition=definitions[metric]||definitions.AVG,teamPas=filteredPAs().filter(pa=>competitionNames.has(pa.hitter));
  const rows=competitionRoster().map(player=>{const stats=HotBEvaluationStats.statsForPAs(teamPas.filter(pa=>pa.hitter===player.name));return {player,stats,value:stats.PA?stats[definition.key]:null}}).sort((a,b)=>{
