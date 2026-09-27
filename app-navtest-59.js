@@ -2231,16 +2231,7 @@ function render(){
  // opened a drill before the final block could remain on that stale detail after
  // the locally-derived end time if the coach cleanup snapshot is delayed.
  if(route==='portal'&&portalData?.activePractice){updatePortalPracticeClock();portalClockTimer=setInterval(updatePortalPracticeClock,500)}
- if(route==='eval'){
-  requestAnimationFrame(()=>{
-   fitEvalMetricValues();
-   if(!evaluationReadOnly){
-    const root=document.querySelector('.eval-app');
-    if(root&&!root.querySelector('.reports-test-bottom-nav'))root.insertAdjacentHTML('beforeend',reportsTestNav());
-   }
-  });
- }
- if(route==='eval')setTimeout(ensureEvalTestNav,50);
+ if(route==='eval')requestAnimationFrame(()=>fitEvalMetricValues());
 }
 function ensureEvalTestNav(){
  if(route!=='eval'||evaluationReadOnly)return;
@@ -7072,6 +7063,7 @@ function exportCsv(){
  const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`HotB_${reportMode}_report.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function bindEval(){
+ if(!evaluationReadOnly)bindTestNavigation();
  $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};
  $('#openRebelsScout')?.addEventListener('click',()=>{
   const scoutSlug=String(evalPlayer||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
