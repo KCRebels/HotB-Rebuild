@@ -958,12 +958,14 @@ if(portalToken){
  // record from stopping app.js before the portal can render.
  db=structuredClone(seed);
 }
-let route = portalToken?'portal':(new URLSearchParams(location.search).get('screen')==='new'?'new':db.route || 'home');
+const directScreen=new URLSearchParams(location.search).get('screen');
+let route = portalToken?'portal':(directScreen==='new'?'new':directScreen==='library'?'practice':db.route || 'home');
 // Never let a saved secondary page make the entire coach app unlaunchable when
 // one optional feature module failed to load. Start safely at Home, preserve the
 // requested route, and allow the user to enter that feature after startup.
 const startupRequestedRoute=route;
 if(!portalToken&&route==='eval'&&!window.HotBEvaluationStats)route='home';
+if(!portalToken&&directScreen==='library'){practiceSection='library';practiceSelectedDrill='';}
 let modal = null;
 let reportMode='current', reportSub='spray', reportFilterHitter='All Hitters';
 let reportGameId=null,reportSelectedGameIds=[],reportGroupId=null,reportOpponent='All Opponents',reportHeatResult='ALL',reportHeatDisplay='COUNT';
