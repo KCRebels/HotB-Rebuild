@@ -2164,8 +2164,8 @@ function undo(){
  save();render();
 }
 function statGames(includeCurrent=true){return [...db.savedGames.filter(game=>!game.scrimmage),...(includeCurrent&&db.currentGame&&!db.currentGame.scrimmage?[db.currentGame]:[])]}
-function allPAs(includeCurrent=true){return statGames(includeCurrent).flatMap(g=>g.plateAppearances||[])}
-function allPitches(includeCurrent=true){return statGames(includeCurrent).flatMap(g=>g.pitches||[])}
+
+
 function seasonMeta(value){
  const date=new Date(value);
  if(Number.isNaN(date.getTime()))return {season:'',segment:''};
@@ -2203,7 +2203,7 @@ function gameMatchesDateFilter(game){
 function filteredGames(includeCurrent=true){return statGames(includeCurrent).filter(gameMatchesDateFilter)}
 function filteredSavedGamesForManagement(){return [...db.savedGames].sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime())}
 function filteredPAs(includeCurrent=true){return filteredGames(includeCurrent).flatMap(game=>game.plateAppearances||[])}
-function filteredPitches(includeCurrent=true){return filteredGames(includeCurrent).flatMap(game=>game.pitches||[])}
+
 function activeDateFilterLabel(){
  if(dateFilterMode==='custom')return customDateStart||customDateEnd?`${customDateStart||'Beginning'} to ${customDateEnd||'Today'}`:'Custom Dates';
  return `${selectedSeason} · ${{full:'Full Season',fall:'Fall',summer:'Summer',offseason:'Off Season'}[dateFilterMode]}`;
@@ -2238,15 +2238,7 @@ function render(){
  if(route==='portal'&&portalData?.activePractice){updatePortalPracticeClock();portalClockTimer=setInterval(updatePortalPracticeClock,500)}
  if(route==='eval')requestAnimationFrame(()=>fitEvalMetricValues());
 }
-function ensureEvalTestNav(){
- if(route!=='eval'||evaluationReadOnly)return;
- const root=document.querySelector('.eval-app');
- if(!root)return;
- let host=document.getElementById('evalTestNavHost');
- if(!host){host=document.createElement('div');host.id='evalTestNavHost';root.appendChild(host)}
- host.innerHTML=reportsTestNav();
- bindTestNavigation();
-}
+
 function fitEvalMetricValues(){
  document.querySelectorAll('.eval-tiles .eval-tile>.value').forEach(value=>{
   value.style.fontSize='';
@@ -2597,9 +2589,7 @@ function practiceActivityLabel(activity,plan=null){
  if(String(activity||'').startsWith('Front Toss')&&frontTossFocus!=='Standard')return `${activity} — ${frontTossFocus}`;
  return activity;
 }
-function practiceHeader(title='Hitting Practice',backToHub=false,endDraft=false){
- return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" ${backToHub?'id="practiceHubBack"':'data-go="home"'}>${backToHub?'Back':'Home'}</button><h1>${esc(title)}</h1>${endDraft?'<button class="page-head-nav practice-draft-end" id="endPracticeDraft">End</button>':'<span class="page-head-spacer"></span>'}</div>`;
-}
+
 function practiceSectionHeader(title){
  return `<div class="page-match-head page-head-centered no-print"><span class="page-head-spacer" aria-hidden="true"></span><h1>${esc(title)}</h1><span class="page-head-spacer" aria-hidden="true"></span></div>`;
 }
@@ -3036,37 +3026,7 @@ async function recoverOrphanedActivePractice(){
  }
  finally{if(button){button.disabled=false;button.textContent='Recover Practice'}}
 }
-async function clearOrphanedActivePractice(){
- if(!cloudUser||!cloudStore||!db.activePortalPractice?.id||practicePlan)return;
- if(!confirm('HotB found active portal plans without a recoverable local practice. Remove those stale portal plans so a new practice can be built?'))return;
- const state=db.activePortalPractice,batch=cloudStore.batch(),activeNames=new Set(state.players||[]),persistedPlayerPortals=state.playerPortals||[];
- const persistedIds=new Set(persistedPlayerPortals.map(entry=>entry.portalId));
- const orphanGuestIds=new Set([...(state.guestPlayerPortalIds||[]),...(state.guestCoachPortalIds||[])].filter(Boolean));
- const orphanTargets=[
-  ...persistedPlayerPortals.map(entry=>({id:entry.portalId,data:entry.isTeamJenkins?jenkinsPortalCleanupPayload(db.roster.find(item=>item.name===entry.name),entry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
-  ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).map(player=>({id:player.portalId,data:player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
-  ...(state.coachPortalId?[{id:state.coachPortalId,data:{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}]:[]),
-  ...[...orphanGuestIds].map(id=>({id,data:{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}))
- ];
- try{
-  // Orphan cleanup is also update-only. A missing old portal must not be
-  // recreated as a partial document while cleaning a stale practice reference.
-  const existingOrphans=await Promise.all(orphanTargets.map(async target=>{const snapshot=await portalDoc(target.id).get();if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==state.id)throw new Error('orphan-cleanup-newer-practice-conflict');if(!remotePracticeId)return {target,alreadyCleared:true};return {target,alreadyCleared:false}}));
-  existingOrphans.filter(item=>item&&!item.alreadyCleared).forEach(item=>batch.update(portalDoc(item.target.id),item.target.data));
-  if(existingOrphans.some(item=>item&&!item.alreadyCleared))await batch.commit();
-  const verifyIds=[...new Set([...persistedPlayerPortals.map(entry=>entry.portalId),...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)).map(player=>player.portalId),state.coachPortalId,...(state.guestPlayerPortalIds||[]),...(state.guestCoachPortalIds||[])].filter(Boolean))];
-  if(!verifyIds.length)throw new Error('orphan-cleanup-no-targets');
-  const verification=await Promise.all(verifyIds.map(async id=>{const snapshot=await portalDoc(id).get();if(!snapshot.exists)return true;const remote=snapshot.data()||{};if(remote.activePractice)return false;if(orphanGuestIds.has(id))return remote.expired===true;const entry=persistedPlayerPortals.find(item=>item.portalId===id),rosterPlayer=db.roster.find(player=>player.portalId===id&&activeNames.has(player.name));if(entry?.isTeamJenkins||rosterPlayer?.isTeamJenkins)return remote.portalType==='jenkinsPlayer'&&remote.accessStatus==='waiting'&&remote.expired===false;return true}));
-  if(verification.some(cleared=>!cleared))throw new Error('orphan-cleanup-verification-failed');
-  // Clear only the exact stale reference that was verified. A newer local
-  // practice/session created while Firestore cleanup was in flight must survive.
-  if(db.activePortalPractice?.id!==state.id)throw new Error('orphan-cleanup-local-practice-changed');
-  db.activePortalPractice=null;
-  if(!db.activePracticeSession||db.activePracticeSession?.plan?.portalDraftId===state.id)db.activePracticeSession=null;
-  save();render();alert('The stale portal practice was removed. You can build a new practice now.');
- }
- catch(error){alert('The stale portal practice could not be removed or verified. HotB kept the local recovery reference so nothing can be silently lost. Check your connection and try again.')}
-}
+
 async function syncPlayerPracticeClock(){
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)return false;
  const clock=practiceClockPortalPayload(),activeId=practicePlan.portalDraftId,ids=[...new Set([
