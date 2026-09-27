@@ -1009,7 +1009,7 @@ if(restoredGeneratedPractice&&!recoveredPracticeSession){
  // Never silently throw away a saved practice just because the local portal pointer
  // belongs to a different publication. Preserve both records and surface recovery;
  // Firebase verification decides which practice is actually live.
- console.warn('Saved practice and portal publication differ; preserving recovery state.');
+ 
 }
 if(restoredPracticeCandidate?.stage==='setup'&&!restoredPracticeCandidate.plan&&!db.activePortalPractice?.id){
  practiceSetupState={...practiceSetupState,...restoredPracticeCandidate.setupState};
@@ -1035,7 +1035,7 @@ if(restoredPracticeCandidate?.stage==='setup'&&!restoredPracticeCandidate.plan&&
   }
  }
  // Resolution snapshots restore from the failed 120-minute source attempt. Block 11 is apply-transaction-only.
- if(Number(practiceSetupState.durationMinutes)!==120){console.warn('HotB normalized restored setup duration before Practice Resolution validation.');practiceSetupState.durationMinutes=120}
+ if(Number(practiceSetupState.durationMinutes)!==120){practiceSetupState.durationMinutes=120}
  practiceSection='setup';
  // Full Resolution validation depends on roster/model helpers declared later in this
  // script, so startup only restores the snapshot here. The first normal render/bind
@@ -1826,7 +1826,7 @@ function go(r){
  // A Resolution apply is an atomic practice transaction. Generic navigation must
  // not render another surface, save transient role/Block 11 state, or invalidate
  // controls while its queued verifier still owns the rollback snapshot.
- if(route==='practice'&&r!=='practice'&&(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId)){console.warn('HotB deferred navigation during Practice Resolution verification.');return}
+ if(route==='practice'&&r!=='practice'&&(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId)){return}
  if(route==='practice'&&practicePlan)persistPracticeSession();
  if(r==='practice'&&route!=='practice')practiceSection='hub';
  // A private portal URL is a dedicated surface. Do not let generic app
@@ -4533,7 +4533,7 @@ function bind(){
    // A Resolution rebuild may render this notice while its final rules/restart
    // verification is still queued. Do not let the notice become an escape hatch
    // from the transaction; commit/rollback must finish before the coach continues.
-   if(practiceResolutionApplyToken){console.warn('HotB deferred Practice Build Notice until Practice Resolution verification finished.');return}
+   if(practiceResolutionApplyToken){return}
    modal=null;render();window.scrollTo(0,0);
   });
  }
@@ -5050,7 +5050,7 @@ function bind(){
    // unverified choices.
    if(!practiceResolutionApplyToken&&!practiceResolutionApplyDraftId&&!practiceResolutionApplyOwnedDraftId)endResolutionApply();
    if(result.reason==='stale'||result.reason==='unverified')rejectUnverifiedResolution();
-   else if(result.reason==='busy')console.warn('HotB ignored a duplicate Practice Resolution apply while another apply is running.');
+   else if(result.reason==='busy')
    else if(result.reason!=='handled')alert('HotB could not safely start that verified resolution. Your Practice Resolution was kept unchanged so you can try again.');
    return false;
   };
@@ -5289,7 +5289,7 @@ function bind(){
    // reconstruct that setup once, prove its signature, persist one clean draft,
    // and render. The former path maintained a second rollback transaction around
    // this simple exit and duplicated large chunks of apply/rollback machinery.
-   if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){console.warn('HotB ignored Return to Practice Setup while Practice Resolution apply is verifying.');return}
+   if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){return}
    const verifiedResolution=practiceResolutionSnapshotIsCurrentAndValid()?practiceResolution:null;
    let nextSetup;
    try{nextSetup=structuredClone(practiceSetupState)}
@@ -5438,7 +5438,7 @@ function persistPracticeDraft(){
  // An apply transaction owns persistence until it either commits the verified plan
  // or restores the original failed draft. Never serialize its temporary 132-minute
  // duration/role mutation as an ordinary setup draft from an unrelated render path.
- if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){console.warn('HotB deferred setup-draft persistence during Practice Resolution apply.');return false}
+ if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){return false}
  const checkboxes=$$('[data-practice-player]');
  if(checkboxes.length){const roster=practiceAttendanceRoster();practiceSetupState.selectedNames=checkboxes.filter(input=>input.checked).map(input=>roster[Number(input.dataset.practicePlayer)]?.name).filter(Boolean)}
  const start=$('#practiceStartTime')?.value;if(start)practiceSetupState.startTime=start;
@@ -5447,7 +5447,7 @@ function persistPracticeDraft(){
  // then normalize duration against the surviving transaction. The order matters:
  // a stale 132-minute snapshot must not leave an emergency Block 11 duration behind.
  if(practiceResolution&&!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
-  console.warn('HotB discarded stale Practice Resolution before saving the setup draft.');
+  
   practiceResolution=null;
   if(modal==='practiceResolution')modal=null;
  }
@@ -5533,7 +5533,7 @@ function clearPracticeSession(){
  return true;
 }
 async function endPracticeDraft(){
- if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){console.warn('HotB ignored End Draft while Practice Resolution apply is verifying.');return}
+ if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){return}
  if(db.activePortalPractice?.id){alert(db.activePortalPractice.id===practicePlan?.portalDraftId?'This practice is active on the player and coach portals. Deactivate the portal plans before ending the draft.':'Another practice is still active on the player and coach portals. Finish that active practice before discarding this draft.');return}
  if(!confirm('End this unfinished practice? All attendance, adjustments and guest information will be cleared, and every guest link will expire.'))return;
  const guests=[...practiceGuestPlayers(),...practiceGuestCoaches()].filter(guest=>guest.portalId);
@@ -6045,7 +6045,7 @@ function bindPractice(){
  $('#backToPracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice();practiceEquipmentSetupOpen=false;practiceDrillPickerOpen=true;render();window.scrollTo(0,0)});
  $('#completePracticeSetup')?.addEventListener('click',()=>{practiceEquipmentSetupOpen=false;practiceDraftDrills=[];render();window.scrollTo(0,0);setTimeout(()=>persistPracticeSession(),0)});
  $('#practiceHubBack')?.addEventListener('click',()=>{
-  if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){console.warn('HotB ignored Practice Hub Back while Practice Resolution apply is verifying.');return}
+  if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){return}
   if(practiceSection==='setup'&&persistPracticeDraft()===false){console.error('HotB refused Practice Hub Back because the Practice Resolution draft could not be persisted.');return}
   practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)
  });
@@ -6081,7 +6081,7 @@ function bindPractice(){
      if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
      practiceSection='setup';
      if(practiceResolution&&!practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
-      console.warn('Saved Practice Resolution failed resume validation; returning to setup.');
+      
       practiceResolution=null;
       // A rejected emergency Resolution cannot leave its 132-minute duration
       // behind when the coach resumes the draft.
@@ -6623,9 +6623,9 @@ function bindPractice(){
   if(practiceResolutionApplyToken&&(!resolutionBuildDraftId||!practiceResolutionApplyOwnedDraftId||resolutionBuildDraftId!==practiceResolutionApplyOwnedDraftId)){
    // Contract marker: an owned rebuild that loses its exact draft authorization
    // must remain under the outer rollback transaction; it can never publish.
-   console.error('HotB ignored a stale Practice Resolution rebuild callback');
-   console.error('HotB Practice Resolution rebuild lost its draft authorization');
-   console.error('HotB refused mismatched Practice Resolution transaction identities');
+   
+   
+   
    // Keep transaction ownership intact. The outer verifier owns the immutable
    // rollback snapshot and must be allowed to restore it atomically. Stop this
    
