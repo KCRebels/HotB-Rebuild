@@ -1820,6 +1820,9 @@ function compactReconstructableLocalCaches(){
 
 window.addEventListener('online',()=>{if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup()});
 function go(r){
+ // An unfinished game is the active Game workspace. Any app navigation that
+ // targets Game/New Game must resume it rather than opening roster/opponent setup.
+ if(r==='new'&&db.currentGame)r='live';
  // A Resolution apply is an atomic practice transaction. Generic navigation must
  // not render another surface, save transient role/Block 11 state, or invalidate
  // controls while its queued verifier still owns the rollback snapshot.
@@ -3664,7 +3667,7 @@ function reportsTestNav(){
  };
  const item=(label,action,iconName)=>`<button class="reports-test-menu-item ${currentNav===action?'active':''}" data-test-nav="${action}" style="${activeStyle(action)}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle(action)}" aria-hidden="true">${icon(iconName)}</span><b>${label}</b></button>`;
  const practiceMenuLabel=practicePlan?`Practice <small style="font-size:12px;font-weight:900;margin-left:7px;color:${practiceClock.running?'#c71920':'#667085'}">${practiceClock.running?'Live':'Built'}</small>`:'Practice';
- const gameMenuLabel=db.currentGame?'Game <small style="font-size:12px;font-weight:900;margin-left:7px;color:#c71920">Live</small>':'New Game';
+ const gameMenuLabel=db.currentGame?'Game <small style="font-size:12px;font-weight:900;margin-left:7px;color:#c71920">Active</small>':'New Game';
  return `<nav class="reports-test-bottom-nav" aria-label="HotB test navigation">
   <button class="${currentNav==='home'?'active':''}" data-test-nav="home" style="${activeStyle('home')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('home')}">${icon('home')}</span><b style="font-size:14px!important;line-height:16px!important">Home</b></button>
   <button class="${currentNav==='new'?'active':''}" data-test-nav="new" style="${activeStyle('new')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('new')}">${icon('game')}</span><b style="font-size:14px!important;line-height:16px!important">Game</b></button>
