@@ -965,7 +965,6 @@ let route = portalToken?'portal':(directScreen==='new'?'new':directScreen==='lib
 // requested route, and allow the user to enter that feature after startup.
 const startupRequestedRoute=route;
 if(!portalToken&&route==='eval'&&!window.HotBEvaluationStats)route='home';
-if(!portalToken&&directScreen==='library'){practiceSection='library';practiceSelectedDrill='';}
 let modal = null;
 let reportMode='current', reportSub='spray', reportFilterHitter='All Hitters';
 let reportGameId=null,reportSelectedGameIds=[],reportGroupId=null,reportOpponent='All Opponents',reportHeatResult='ALL',reportHeatDisplay='COUNT';
@@ -981,7 +980,7 @@ let lastRenderedUndoState=null;
 let practicePlan=null,practiceResolution=null;
 let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false},practiceCoachOpen=false,practiceCardsOpen=false;
 let reportsNavDrawerOpen=false;
-let practiceSection='hub',practiceFocusPlayer='',practiceFocusRange='weekend',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
+let practiceSection=(!portalToken&&directScreen==='library')?'library':'hub',practiceFocusPlayer='',practiceFocusRange='weekend',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practiceEquipmentSetupOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
 let focusDrillReplaceIndex=-1,focusDrillQuery='';
 let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null},practiceClockTimer=null,practiceEndSpeech=Promise.resolve(),portalClockTimer=null;
