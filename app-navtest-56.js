@@ -3255,7 +3255,7 @@ function practicePage(){
  if(practiceDrillPickerOpen)return practiceDrillPicker();
  if(practiceEquipmentSetupOpen)return practiceEquipmentSetup();
  const chosenComplete=practiceChosenDrills.length===practicePlan.drillStations,resourceWarnings=practiceDrillResourceWarnings(practiceChosenDrills),portalsActive=!!db.activePortalPractice?.active,currentPortalsActive=portalsActive&&db.activePortalPractice.id===practicePlan.portalDraftId;
- return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" data-go="home">Home</button><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
+ return `<div class="page-match-head page-head-centered no-print"><span class="page-head-spacer" aria-hidden="true"></span><h1>Hitting Practice</h1><span class="page-head-spacer"></span></div>
  <div class="practice-results">
   <section class="practice-summary no-print"><div><b>${practicePlan.players.filter(player=>(player.availableFromBlock??0)<(player.availableUntilBlock??(practicePlan.times?.length||10))).length}</b><span>Player</span></div><div><b>${practicePlan.times?.length||10}</b><span>${Math.max(1,practicePlan.blockMinutes-1)}M + 1M</span></div><div><b>${practicePlan.drillStations}</b><span>Drills</span></div></section>
   <section class="practice-live-control no-print"><div class="practice-clock-actions">${practiceClock.running||practiceClock.finished?'':`<button class="btn red" id="startPracticeClock">Start</button>`}${practiceClock.finished?'':practiceClock.running?`<button class="btn" type="button" disabled aria-disabled="true">Edit</button>`:`<button class="btn" id="editPracticePlayers">Edit</button>`}${practiceClock.running?`<button class="btn" id="skipPracticeBlock">Skip</button>`:''}<button class="btn black" id="endPracticeClock">DONE!</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':`1 of ${practicePlan.times?.length||10}`}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${Math.max(1,practicePlan.blockMinutes-1)}:00`}</b></div></div></section>
@@ -3267,7 +3267,7 @@ function practicePage(){
   <div class="practice-actions practice-actions-three no-print"><button class="btn ${practiceCoachOpen?'active':''}" id="togglePracticeCoach" aria-pressed="${practiceCoachOpen}">Coach</button><button class="btn ${practiceCardsOpen?'active':''}" id="togglePracticeCards" aria-pressed="${practiceCardsOpen}">Player</button><button class="btn black" id="printPracticeCards" ${chosenComplete?'':'disabled'}>Print</button></div>
   ${practicePlan.warnings.length?`<div class="practice-warnings no-print"><b>Schedule Check</b>${practicePlan.warnings.map(warning=>`<p>${esc(warning)}</p>`).join('')}</div>`:''}
   ${practiceCoachOpen?practiceCoachView(practicePlan):''}${practicePlayerCards(practicePlan,!practiceCardsOpen)}
- </div>`;
+ </div>${reportsTestNav()}`;
 }
 function newGameView(){
  const opts=competitionRoster().map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('');
@@ -6795,7 +6795,7 @@ function bindTestNavigation(){
   if(action==='menu'){reportsNavDrawerOpen=!reportsNavDrawerOpen;render();return}
   reportsNavDrawerOpen=false;
   if(action==='focus'){go('practice');practiceSection='player';practiceFocusPlayer='';render();window.scrollTo(0,0);return}
-  if(action==='practice'){go('practice');practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0);return}
+  if(action==='practice'){if(practicePlan){go('practice');practiceSection='builder';render();window.scrollTo(0,0);if(practiceClock.running)resumeRecoveredPracticeClock();return}go('practice');practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0);return}
   if(action==='backup'){modal='cloudBackup';render();return}
   if(action==='library'){go('practice');practiceSection='library';render();window.scrollTo(0,0);return}
   if(action==='scout'){window.location.href='scout.html';return}
