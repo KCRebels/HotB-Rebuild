@@ -403,7 +403,6 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .hit-modal .field-wrap{padding:0 3px}
 .hit-modal .field{width:min(calc(100% + 4px),390px);max-width:none;margin:0 auto}
 .hit-modal .pos{width:34px;height:34px;font-size:17px;border:2px solid #fff;background:linear-gradient(145deg,#263448,#0b111b);box-shadow:0 3px 8px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.22)}
-.hit-modal .p8{left:50%;top:14%}
 .hit-modal .p7{left:23%;top:29%}
 .hit-modal .p9{left:79%;top:31%}
 .hit-modal .p6{left:40%;top:48%}
@@ -479,7 +478,6 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .hit-contact .contact-left>.compact-three,.hit-contact .contact-left>.compact-four,.hit-contact .contact-left .choice{height:76px;max-height:76px}
 @media(max-width:560px){
   .hit-contact .contact-left{grid-template-rows:repeat(3,minmax(0,1fr));height:221px}
-  .hit-contact .contact-left>.compact-three,.hit-contact .contact-left>.compact-four,.hit-contact .contact-left .choice{height:100%;max-height:none}
 }
 
 
@@ -491,7 +489,6 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 
 /* Consistent full-head evaluation portraits */
 .player-photo img{width:100%;height:100%;object-fit:cover;object-position:center 14%;transform:scale(1.08);transform-origin:center 18%}
-.team-photo img{position:absolute;width:160%;height:auto;max-width:none;left:calc(50% + 4px);top:calc(50% + 3px);object-fit:contain;transform:translate(-50%,-50%);padding:0}
 
 /* Center Eval navigation and support live-game return */
 .eval-head>.eval-nav{display:grid;place-items:center;text-align:center;line-height:1;padding-left:8px;padding-right:8px;min-width:0}
@@ -888,7 +885,6 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
   .eval-head{min-height:64px;padding:9px 7px;grid-template-columns:84px 1fr 98px}
   .eval-head>.eval-nav{min-height:46px;border-radius:9px;padding:8px 9px;font-size:16px}
   .eval-contact-actions{gap:6px}.eval-contact-actions>.eval-contact{width:46px;height:46px;min-width:46px;border-radius:9px;font-size:19px}
-  .grad-year{font-size:15px}
   .roster-edit-row{grid-template-columns:minmax(0,1fr) 39px 39px 39px 50px 39px;gap:4px}.roster-edit-row .input{padding:12px 8px;font-size:16px}.sidebtn,.infobtn{font-size:13px}.roster-data-tools{margin:12px 12px 0}.roster-editor{padding:12px}.info-grid{grid-template-columns:1fr}.player-info-modal{padding:16px}.import-player{grid-template-columns:38px minmax(0,1fr)}.import-player>small{grid-column:2}
 }
 
@@ -919,8 +915,6 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .out-contact .qual-grid [data-rbi-open]{grid-column:1;grid-row:1}
 .out-contact .qual-grid [data-qual="SAC"]{grid-column:2;grid-row:1}
 .out-contact .qual-grid [data-qual="RBA"]{grid-column:1/3;grid-row:2}
-.out-contact .qual-grid [data-strength="HHB"]{grid-column:1;grid-row:3}
-.out-contact .qual-grid [data-strength="WEAK"]{grid-column:2;grid-row:3}
 .rbi-picker{position:absolute;z-index:30;right:0;top:50%;transform:translateY(-50%);width:230px;padding:12px;border:3px solid #111;border-radius:14px;background:#fff;box-shadow:0 12px 30px rgba(0,0,0,.3)}
 .rbi-picker[hidden]{display:none}
 .rbi-picker-title{text-align:center;font-size:21px;font-weight:950;margin-bottom:9px}
@@ -930,7 +924,6 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .rbi-picker-cancel{width:100%;min-height:40px;margin-top:8px;font-size:16px}
 @media(max-width:560px){
   .contact-board{grid-template-columns:minmax(0,1.65fr) minmax(118px,.95fr);gap:12px}
-  .contact-left .choice{font-size:21px}
   .hit-contact .contact-left,.out-contact .contact-left,.hit-contact .qual-grid,.out-contact .qual-grid{height:221px}
   .rbi-picker{width:220px;padding:10px}
 }
@@ -1102,10 +1095,10 @@ linear-gradient(155deg,#090909 0 42%,#a71920 42% 56%,#f8f8f7 56% 100%);}
 .portal-live-clock>div:first-child span{color:#d7dcda}
 .portal-live-clock>div:nth-child(2){background:#fff;color:inherit}
 .portal-live-clock>div:nth-child(2) span{color:#667085}
-@media(max-width:560px){.practice-live-clock b{font-size:30px}.portal-live-clock b{font-size:22px}.portal-live-clock>div{min-height:82px}}
+@media(max-width:560px){.portal-live-clock b{font-size:22px}.portal-live-clock>div{min-height:82px}}
 
 /* Final compact live-game header with read-only Lineup access. */
-@media(max-width:560px){.live-app>.chart-head{gap:3px}.live-app>.chart-head .brand{flex:1 1 auto;min-width:0;font-size:30px}.live-app>.chart-head button{min-width:0;min-height:44px;padding:7px 6px;font-size:13px}}
+@media(max-width:560px){.live-app>.chart-head .brand{flex:1 1 auto;min-width:0;font-size:30px}.live-app>.chart-head button{min-width:0;min-height:44px;padding:7px 6px;font-size:13px}}
 
 
 /* Recruiting workflow */
@@ -1157,7 +1150,6 @@ html,body,button,a,[role="button"]{touch-action:manipulation}
  color:#fff;
  border-color:#c71920;
 }
-.portal-live-clock.is-rotate>div:nth-child(2).rotate-flash span{color:#fff}
 
 /* Practice Resolution */
 .practice-resolution-modal{max-width:620px;max-height:88vh;overflow:auto}
