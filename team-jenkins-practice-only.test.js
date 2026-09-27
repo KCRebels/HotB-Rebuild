@@ -1,6 +1,6 @@
 const fs=require('fs');
 const assert=require('assert');
-const app=fs.readFileSync('app.js','utf8');
+const app=fs.readFileSync('app-navtest-live-v20.js','utf8');
 const css=fs.readFileSync('styles.css','utf8');
 const names=['Neveah Schlappi','Lilliana Schlappi','Taylor Woods','Perri Wagner','Pacie Dougherty','Amelia Steffen','Emmie Wible','Leslie Cundiff'];
 names.forEach(name=>assert.ok(app.includes(name),'missing Team Jenkins player: '+name));
@@ -9,7 +9,7 @@ assert.ok(app.includes("function practiceAttendanceRoster(){return [...db.roster
 assert.ok(app.includes("const positions=positionTokens(player);"),'scheduler derives pitcher/catcher roles from Jenkins positions');
 assert.ok(app.includes("canPitch:model.isPitcher&&accommodation.canPitch!==false"),'Jenkins pitchers participate in normal pitching availability');
 assert.ok(app.includes("canCatch:model.isCatcher&&accommodation.canCatch!==false"),'Jenkins catchers participate in normal catching availability');
-assert.ok(app.includes('function competitionRoster(){return db.roster.filter(player=>!player.isTeamJenkins)}'),'all competition/game surfaces exclude Team Jenkins');
+assert.ok(app.includes('function competitionRoster(){')&&app.includes("const rebelsNames=new Set(defaultRoster.map(player=>String(player.name||'').trim().toLowerCase()));")&&app.includes("return (db.roster||[]).filter(player=>rebelsNames.has(String(player?.name||'').trim().toLowerCase()));"),'all competition/game surfaces exclude Team Jenkins');
 assert.ok(app.includes("permanentPlayers=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins)"),'practice history attendance excludes Team Jenkins');
 assert.ok(app.includes('TEAM JENKINS'),'practice setup has Team Jenkins heading');
 assert.ok(app.includes('team-jenkins-practice-section'),'practice setup has isolated Jenkins section');
