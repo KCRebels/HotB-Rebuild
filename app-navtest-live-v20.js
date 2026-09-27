@@ -3803,7 +3803,7 @@ function evalView(){
   ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<button class="pitcher-stat" data-pitch-ranking="${key}"><b>${esc(player[key]||'—')}</b><span>${label}</span></button>`).join('')}
  </div></section>`:''}
  <div class="athletic"><div class="athletic-head"><h2>Athletic Bests</h2>${player&&!evaluationReadOnly?'<button class="btn black" id="recordMeasure2">+ Record</button>':''}</div>
- <div class="measure-grid">${ms.map(m=>measurementCard(player,m)).join('')}</div></div>${evaluationReadOnly?'':'<div class="eval-bottom-spacer" aria-hidden="true"></div>'+reportsTestNav()}`;
+ <div class="measure-grid">${ms.map(m=>measurementCard(player,m)).join('')}</div></div>${evaluationReadOnly?'':'<div class="eval-bottom-spacer" aria-hidden="true" style="display:block!important;width:100%!important;height:72px!important;min-height:72px!important;clear:both!important"></div>'+reportsTestNav()}`;
 }
 function measurementTypes(player){
  const base=['Home to First','Overhand Throw','Exit Velocity','Broad Jump'];
