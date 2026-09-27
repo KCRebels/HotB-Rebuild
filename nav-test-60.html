@@ -147,4 +147,5 @@ if(!new URLSearchParams(location.search).has('portal')){
  document.body.appendChild(s);};startApp();
 }catch(_){}})();
 </script>
+<script id="eval-scout-hard-remove">(function(){function kill(){document.querySelectorAll('#openRebelsScout').forEach(function(el){el.remove()});document.querySelectorAll('.eval-head button').forEach(function(el){if((el.textContent||'').trim().toUpperCase()==='SCOUT')el.remove()})}new MutationObserver(kill).observe(document.documentElement,{childList:true,subtree:true});document.addEventListener('DOMContentLoaded',kill);setInterval(kill,500)})();</script>
 </body></html>
