@@ -3248,9 +3248,9 @@ function practiceEquipmentSetup(){
  return `<div class="page-match-head page-head-centered no-print"><button class="page-head-nav" id="backToPracticeDrills">Back</button><h1>Practice Setup</h1><span class="page-head-spacer"></span></div><main class="practice-feature-page practice-equipment-setup no-print"><section class="practice-feature-lead"><span>COACH CHECKLIST</span><h2>Set Up Every Station</h2><p>Use the drill details below to prepare equipment and space before opening the completed practice plan.</p></section><section class="practice-equipment-list">${stations.map(station=>`<article class="practice-equipment-card"><header><span>${esc(station.label)}</span><h3>${esc(station.drill?.name||'Standard')}</h3></header><div><b>Required Equipment</b><ul>${station.equipment.map(item=>`<li>${esc(item)}</li>`).join('')||'<li>No equipment required</li>'}</ul></div><p><b>Hitting Method</b><span>${esc(station.hittingMethod)}</span></p><p><b>Space Setup</b><span>${esc(station.spaceSetup)}</span></p></article>`).join('')}</section><button class="btn black block practice-setup-complete" id="completePracticeSetup">Setup Complete</button></main>`;
 }
 function practicePage(){
+ if(practiceSection==='library')return practiceLibrary();
+ if(practiceSection==='player')return practicePlayerFocus();
  if(!practicePlan&&practiceSection==='hub')return practiceHub();
- if(!practicePlan&&practiceSection==='library')return practiceLibrary();
- if(!practicePlan&&practiceSection==='player')return practicePlayerFocus();
  if(!practicePlan)return practiceSetup();
  if(practiceDrillPickerOpen)return practiceDrillPicker();
  if(practiceEquipmentSetupOpen)return practiceEquipmentSetup();
