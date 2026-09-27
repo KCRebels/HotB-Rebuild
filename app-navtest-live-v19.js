@@ -2269,7 +2269,7 @@ function homeView(){
     <button class="home-card home-card-featured home-card-reports" data-go="reports"><img class="home-reports-icon" src="home-reports.png" alt="" aria-hidden="true"><h3>Reports</h3></button>
     <button class="home-card home-card-eval" data-go="eval"><img class="home-eval-icon" src="home-player-evaluation.svg" alt="" aria-hidden="true"><h3>Player<br>Evaluation</h3></button>
     <button class="home-card home-card-roster" data-go="roster"><img class="home-roster-icon" src="home-edit-roster.svg" alt="" aria-hidden="true"><h3>Edit<br>Roster</h3></button>
-    <button class="home-card home-card-practice" data-go="practice"><img class="home-practice-icon" src="home-hitting-practice.png" alt="" aria-hidden="true"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting<br>Practice':'Hitting<br>Practice'}</h3></button>
+    <button class="home-card home-card-practice" id="homeHittingPractice" data-go="practice"><img class="home-practice-icon" src="home-hitting-practice.png" alt="" aria-hidden="true"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting<br>Practice':'Hitting<br>Practice'}</h3></button>
     <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><span class="home-cloud-icon" aria-hidden="true"><svg viewBox="0 0 64 48" width="44" height="36" role="presentation" focusable="false"><path d="M18 40h30c8 0 14-6 14-14s-6-14-14-14c-1 0-3 0-4 .5C41 5 34 1 27 1 17 1 9 9 9 19v1C4 22 1 26 1 31c0 5 4 9 9 9h8Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M32 39V17M23 26l9-9 9 9" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h3>Cloud<br>Backup</h3></button>
    </div>
  </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD <small class="app-version">Version: ${esc(window.HOTB_BUILD_VERSION||'2026.09.14.1')}</small></span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
@@ -4498,7 +4498,11 @@ function modalView(){
  return '';
 }
 function bind(){
- $$('[data-go]').forEach(el=>el.onclick=()=>go(el.dataset.go));
+ $('[data-go]').forEach(el=>el.onclick=()=>go(el.dataset.go));
+ if(route==='home'&&$('#homeHittingPractice'))$('#homeHittingPractice').onclick=()=>{
+  if(practicePlan||db.activePracticeSession){go('practice');practiceSection='builder';render();window.scrollTo(0,0);if(practiceClock.running)resumeRecoveredPracticeClock();return}
+  go('practice');practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0);
+ };
  $$('[data-close]').forEach(el=>el.onclick=()=>{if(modal==='record'){if(timerInt)clearInterval(timerInt);timerInt=null;timerElapsed=0;recordType=''}modal=modal==='reportGamesList'?'reports':null;render()});
  if(route==='new')bindNew();
  if(route==='roster')bindRoster();
