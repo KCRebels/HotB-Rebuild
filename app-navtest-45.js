@@ -3277,7 +3277,7 @@ function newGameView(){
   <label class="game-scrimmage-option"><span class="game-scrimmage-label">Scrimmage</span><input id="scrimmageGame" type="checkbox"><span class="game-scrimmage-switch" aria-hidden="true"></span></label>
  </div>
  <div class="panel"><div style="display:flex"><div class="section-title">BATTING ORDER</div><div style="flex:1"></div><span class="small" id="hitterCount">0 hitters</span></div>${rows}</div>
- <div class="bottom-action"><button class="btn block black" id="startGame" disabled>START GAME</button></div>`;
+ <div class="new-game-start-action" style="margin:14px 14px 110px"><button class="btn block black" id="startGame" disabled>START GAME</button></div>${reportsTestNav()}`;
 }
 function rosterView(){
  return `<div class="roster-hero"><div class="roster-hero-row"><span class="page-head-spacer"></span><h1>Edit Roster</h1><span class="page-head-spacer"></span></div></div>
