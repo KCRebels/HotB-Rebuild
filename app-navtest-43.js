@@ -3280,7 +3280,7 @@ function newGameView(){
  <div class="bottom-action"><button class="btn block black" id="startGame" disabled>START GAME</button></div>`;
 }
 function rosterView(){
- return `<div class="roster-hero"><div class="roster-hero-row"><button class="roster-nav roster-cancel" data-go="home">Cancel</button><h1>Edit Roster</h1><button class="roster-nav roster-save" id="saveRoster">Save</button></div></div>
+ return `<div class="roster-hero"><div class="roster-hero-row"><span class="page-head-spacer"></span><h1>Edit Roster</h1><span class="page-head-spacer"></span></div></div>
  <div class="roster-data-tools"><button class="btn black" id="importRosterInfo">Import Info</button><button class="btn" id="exportRosterInfo">Export Info</button><input id="rosterInfoFile" type="file" accept=".xlsx,.csv" hidden><p>Import the Excel template for larger updates, or tap <b>Info</b> beside one player for a quick change. Blank imported cells leave saved information unchanged.</p></div>
  <div class="roster-editor">${db.roster.map((r,i)=>({r,i})).filter(({r})=>!r.isTeamJenkins).map(({r,i})=>`<div class="roster-edit-row">
  <input class="input roster-name" data-i="${i}" value="${esc(r.name)}">
@@ -3290,7 +3290,7 @@ function rosterView(){
  <button class="infobtn" data-info="${i}">Info</button>
  <button class="deletebtn" data-del="${i}">×</button>
  </div>`).join('')}
- <button class="btn black block" id="addPlayer">+ Add Player</button></div>`;
+ <div class="roster-bottom-actions" style="display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:10px;margin-top:14px"><button class="btn" data-go="home">Cancel</button><button class="btn black" id="addPlayer">+ Add Player</button><button class="btn red" id="saveRoster">Save</button></div></div>${reportsTestNav()}`;
 }
 function liveView(){
  const g=currentGame();if(!g)return `<div class="panel"><p>No current game.</p><button class="btn" data-go="new">New Game</button></div>`;
