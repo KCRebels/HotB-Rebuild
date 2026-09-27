@@ -4498,7 +4498,7 @@ function modalView(){
  return '';
 }
 function bind(){
- $('[data-go]').forEach(el=>el.onclick=()=>go(el.dataset.go));
+ $$('[data-go]').forEach(el=>el.onclick=()=>go(el.dataset.go));
  if(route==='home'&&document.querySelector('#homeHittingPractice'))document.querySelector('#homeHittingPractice').onclick=()=>{
   if(practicePlan||db.activePracticeSession){go('practice');practiceSection='builder';render();window.scrollTo(0,0);if(practiceClock.running)resumeRecoveredPracticeClock();return}
   go('practice');practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0);
