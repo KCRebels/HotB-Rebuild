@@ -3290,7 +3290,7 @@ function rosterView(){
  <button class="infobtn" data-info="${i}">Info</button>
  <button class="deletebtn" data-del="${i}">×</button>
  </div>`).join('')}
- <div class="roster-bottom-actions" style="display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:10px;margin-top:14px"><button class="btn" data-go="home">Cancel</button><button class="btn black" id="addPlayer">+ Add Player</button><button class="btn red" id="saveRoster">Save</button></div></div>${reportsTestNav()}`;
+ <div class="roster-bottom-actions" style="display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:10px;margin-top:14px;margin-bottom:110px"><button class="btn" data-go="home">Cancel</button><button class="btn black" id="addPlayer">+ Add Player</button><button class="btn red" id="saveRoster">Save</button></div></div>${reportsTestNav()}`;
 }
 function liveView(){
  const g=currentGame();if(!g)return `<div class="panel"><p>No current game.</p><button class="btn" data-go="new">New Game</button></div>`;
