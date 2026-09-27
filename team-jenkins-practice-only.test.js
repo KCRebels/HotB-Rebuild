@@ -1,5 +1,6 @@
 const fs=require('fs');
 const assert=require('assert');
+// Current production contract bundle: app-navtest-live-v20.js
 const app=fs.readFileSync('app-navtest-live-v20.js','utf8');
 const css=fs.readFileSync('styles.css','utf8');
 const names=['Neveah Schlappi','Lilliana Schlappi','Taylor Woods','Perri Wagner','Pacie Dougherty','Amelia Steffen','Emmie Wible','Leslie Cundiff'];
