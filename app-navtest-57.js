@@ -2225,9 +2225,6 @@ function render(){
  app.innerHTML=`<div class="app ${route==='live'?'live-app':route==='eval'?'eval-app':route==='practice'?'practice-app':route==='portal'?'portal-app':''}">${route==='home'?homeView():
  route==='new'?newGameView():route==='roster'?rosterView():
  route==='live'?liveView():route==='eval'?evalView():route==='reports'?reportsPage():route==='practice'?practicePage():route==='portal'?playerPortalPage():homeView()}</div>${modal?modalView():''}`;
- // Bind navigation before any page-specific setup. A failure in a page binder
- // must never leave a visible bottom/popup menu dead.
- bindTestNavigation();
  bind();
  // Keep the synchronized practice clock alive on every active portal view,
  // including a permanent player's assigned-drill detail. Otherwise a player who
@@ -3672,11 +3669,11 @@ function reportsTestNav(){
    backup:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18h12a4 4 0 0 0 .4-8A6.5 6.5 0 0 0 6 9.5 4.3 4.3 0 0 0 6 18Z"/><path d="M12 17V9M9 12l3-3 3 3"/></svg>'
   };return icons[name]||'';
  };
- const item=(label,action,iconName)=>action==='new'?`<a class="reports-test-menu-item ${currentNav===action?'active':''}" href="nav-test-57.html?screen=new&v=7" style="${activeStyle(action)}text-decoration:none"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle(action)}" aria-hidden="true">${icon(iconName)}</span><b>${label}</b></a>`:`<button class="reports-test-menu-item ${currentNav===action?'active':''}" data-test-nav="${action}" style="${activeStyle(action)}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle(action)}" aria-hidden="true">${icon(iconName)}</span><b>${label}</b></button>`;
+ const item=(label,action,iconName)=>`<button class="reports-test-menu-item ${currentNav===action?'active':''}" data-test-nav="${action}" style="${activeStyle(action)}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle(action)}" aria-hidden="true">${icon(iconName)}</span><b>${label}</b></button>`;
  const practiceMenuLabel=practicePlan?`Practice <small style="font-size:12px;font-weight:900;margin-left:7px;color:${practiceClock.running?'#c71920':'#667085'}">${practiceClock.running?'Live':'Built'}</small>`:'Practice';
  return `<nav class="reports-test-bottom-nav" aria-label="HotB test navigation">
   <button class="${currentNav==='home'?'active':''}" data-test-nav="home" style="${activeStyle('home')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('home')}">${icon('home')}</span><b style="font-size:14px!important;line-height:16px!important">Home</b></button>
-  <a class="${currentNav==='new'?'active':''}" href="nav-test-57.html?screen=new&v=7" style="${activeStyle('new')}text-decoration:none"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('new')}">${icon('game')}</span><b style="font-size:14px!important;line-height:16px!important">Game</b></a>
+  <button class="${currentNav==='new'?'active':''}" data-test-nav="new" style="${activeStyle('new')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('new')}">${icon('game')}</span><b style="font-size:14px!important;line-height:16px!important">Game</b></button>
   <button class="${currentNav==='eval'?'active':''}" data-test-nav="eval" style="${activeStyle('eval')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('eval')}">${icon('eval')}</span><b style="font-size:14px!important;line-height:16px!important">Evals</b></button>
   <button class="${currentNav==='practice'?'active':''}" data-test-nav="practice" style="${activeStyle('practice')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('practice')}">${icon('practice')}</span><b style="font-size:14px!important;line-height:16px!important">Practice</b></button>
   <button class="${currentNav==='focus'?'active':''}" data-test-nav="focus" style="${activeStyle('focus')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('focus')}">${icon('focus')}</span><b style="font-size:14px!important;line-height:16px!important">Focus</b></button>
@@ -6033,6 +6030,7 @@ function refreshPracticeAccommodationDefaults(){
  practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));
 }
 function bindPractice(){
+ bindTestNavigation();
  $('#practiceMachineFocus')?.addEventListener('change',event=>{practicePlan.machineFocus=event.target.value||'Standard';persistPracticeSession();render()});
  $('#practiceFrontTossFocus')?.addEventListener('change',event=>{practicePlan.frontTossFocus=event.target.value||'Standard';persistPracticeSession();render()});
  $('#choosePracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice(0,practicePlan.drillStations);practiceDrillPickerOpen=true;practicePickerQuery='';practicePickerCategory='All Drills';render();window.scrollTo(0,0)});
@@ -6731,7 +6729,8 @@ function bindCloudBackup(){
  $('#cloudEmailSignIn')?.addEventListener('click',()=>cloudPasswordAuth(false));$('#cloudCreateLogin')?.addEventListener('click',()=>cloudPasswordAuth(true));$('#cloudBackupNow')?.addEventListener('click',()=>backupToCloud(false));$('#cloudRestore')?.addEventListener('click',restoreFromCloud);$('#cloudDownloadBackup')?.addEventListener('click',exportFullBackup);$('#cloudSignOut')?.addEventListener('click',async()=>{await cloudAuth.signOut();cloudMessage='Signed out.';render()});
 }
 function bindNew(){
- const sels=$$('.batting-select');
+ bindTestNavigation();
+ const sels=$('.batting-select');
  const opponent=$('#opponent'),pitcherName=$('#pitcherName'),pitcherNumber=$('#pitcherNumber'),opponentMenu=$('#opponentMenu'),pitcherMenu=$('#pitcherMenu');
  const update=()=>{
   const selections=sels.map(s=>s.value);
@@ -6809,6 +6808,7 @@ function bindTestNavigation(){
  document.querySelectorAll('[data-test-menu-close]').forEach(button=>button.addEventListener('click',()=>{reportsNavDrawerOpen=false;render()}));
 }
 function bindReportsPage(){
+ bindTestNavigation();
  $('#openGamesSelector')?.addEventListener('click',()=>{modal='gamesSelection';render()});
  bindDateFilters('saved');
  document.querySelectorAll('[data-scrimmage-game]').forEach(scrimmageToggle=>{scrimmageToggle.onchange=()=>{const game=db.savedGames.find(item=>item.id===scrimmageToggle.dataset.scrimmageGame);if(!game)return;game.scrimmage=!!scrimmageToggle.checked;reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();playerPortalRefreshPending=true;render();setTimeout(()=>setupPlayerPortals(false),0)}});
