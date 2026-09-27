@@ -29,7 +29,6 @@
 .live-game-nav>button b{font-size:11px!important;line-height:13px!important;font-weight:700!important}
 .live-game-nav>button.end{color:#c71920!important}
 </style>
-<script id="hotb-force-current-shell-300">(function(){try{if(new URLSearchParams(location.search).has('portal'))return;localStorage.setItem('hotb-live-build','300');}catch(_){}})();</script>
 </head><body><div id="hotbBuildMarker" style="display:none">HotB Build 289</div><div id="app" data-hotb-booting="true"></div>
 <script>
 (()=>{try{
@@ -58,7 +57,7 @@
   if('caches' in window)caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('hotb-app-')).map(key=>caches.delete(key)))).catch(()=>{});
 }catch(_){}})();
 </script>
-<script src="pwa-update.js?v=20260926-menu300"></script><script>
+<script src="pwa-update-test-disabled.js?v=20260926-jenkinsrank3"></script><script>
 (()=>{try{
  if(!new URLSearchParams(location.search).has('portal'))return;
  // Arm the startup watchdog only after app.js has actually been requested.
@@ -112,7 +111,7 @@
    await loadPortalScript('evaluation-stats.js?v=20260923-ipa28','P33-EVALSTATS');
    await loadPortalScript('decision-quality.js?v=20260920-decision230','P34-DECISION');
    await loadPortalScript('at-bat-approach.js?v=20260918-calc8','P35-ABA');
-   await loadPortalScript('app-navtest-live-v19.js?v=20260926-live300','P29-DOWNLOAD');
+   await loadPortalScript('app-navtest-60.js?v=3','P29-DOWNLOAD');
    await loadPortalScript('player-portal-evaluation-v634.js?v=20260924-evalback654','P36-EVALUI');
    await loadPortalScript('player-eval-surgical-match.js?v=20260924-playereval618','P37-EVALPOPUPS');
    window.__HOTB_APP_SCRIPT_LOADED__=true;
@@ -149,7 +148,7 @@ if(!new URLSearchParams(location.search).has('portal')){
  // Coach app must start only after every synchronous HotB dependency above has
  // evaluated. Loading app.js earlier created an iOS race where app.js could run
  // while its practice/game modules were still being parser-inserted.
- const startApp=async()=>{try{await window.__HOTB_COACH_DEPENDENCIES_READY__;if(!window.HotBEvaluationStats)await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='evaluation-stats.js?v=20260923-ipa28';s.async=false;s.onload=resolve;s.onerror=()=>reject(new Error('dependency:evaluation-stats'));document.head.appendChild(s)})}catch(error){const app=document.getElementById('app');if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">A required HotB module could not load.</p><p style="margin:8px 0 0">Error code: H200-DEPENDENCY</p></section></main></div>';return} const s=document.createElement('script');s.src='app-navtest-live-v19.js?v=20260926-live300';s.async=false;
+ const startApp=async()=>{try{await window.__HOTB_COACH_DEPENDENCIES_READY__;if(!window.HotBEvaluationStats)await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='evaluation-stats.js?v=20260923-ipa28';s.async=false;s.onload=resolve;s.onerror=()=>reject(new Error('dependency:evaluation-stats'));document.head.appendChild(s)})}catch(error){const app=document.getElementById('app');if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">A required HotB module could not load.</p><p style="margin:8px 0 0">Error code: H200-DEPENDENCY</p></section></main></div>';return} const s=document.createElement('script');s.src='app-navtest-live-v19.js';s.async=false;
  const fail=(code,message)=>{const app=document.getElementById('app');if(app&&app.dataset.hotbBooting==='true')app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">'+message+'</p><p style="margin:8px 0 0">Error code: '+code+'</p></section></main></div>'};
  const watchdog=setTimeout(()=>fail('H200-EXECUTE','The app program loaded but did not finish starting.'),12000);
  s.onload=()=>{window.__HOTB_APP_SCRIPT_LOADED__=true;setTimeout(()=>{const app=document.getElementById('app');if(app&&app.innerHTML.trim()){delete app.dataset.hotbBooting;clearTimeout(watchdog)}},0)};
@@ -157,6 +156,7 @@ if(!new URLSearchParams(location.search).has('portal')){
  document.body.appendChild(s);};startApp();
 }catch(_){}})();
 </script>
+<script id="hotb-stale-script-guard-v14">(function(){if(!new URLSearchParams(location.search).has('portal')){try{if('serviceWorker' in navigator)navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})});if(window.caches)caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})})}catch(e){}}})();</script>
 <script id="eval-scout-hard-remove">(function(){function kill(){document.querySelectorAll('#openRebelsScout').forEach(function(el){el.remove()});document.querySelectorAll('.eval-head button').forEach(function(el){if((el.textContent||'').trim().toUpperCase()==='SCOUT')el.remove()})}new MutationObserver(kill).observe(document.documentElement,{childList:true,subtree:true});document.addEventListener('DOMContentLoaded',kill);setInterval(kill,500)})();</script>
 <script id="live-game-header-swap-v2">(function(){function swap(){var h=document.querySelector('.topbar.chart-head');if(!h||h.classList.contains('live-game-nav'))return;var ids=['liveGameMenu','openLineup','openProfile','openReports','endGame'],labels=['Menu','Lineup','Profile','Reports','End'],icons=['☰','☷','♙','▥','■'];h.classList.add('live-game-nav');h.innerHTML=labels.map(function(x,i){return '<button type="button" id="'+ids[i]+'"'+(i===4?' class="end"':'')+'><span class="live-game-nav-icon" aria-hidden="true">'+icons[i]+'</span><b>'+x+'</b></button>'}).join('');var m=document.getElementById('liveGameMenu');if(m)m.onclick=function(){var existing=document.querySelector('[data-test-nav="menu"]');if(existing){existing.click();return}window.__HOTB_OPEN_MENU__=true};}new MutationObserver(swap).observe(document.documentElement,{childList:true,subtree:true});document.addEventListener('DOMContentLoaded',swap);setInterval(swap,500)})();</script>
 </body></html>
