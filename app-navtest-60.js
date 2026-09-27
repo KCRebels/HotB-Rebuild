@@ -3339,7 +3339,7 @@ function liveView(){
  const suggestions=g.showAi?aiSuggestions(g,chartName):[];
  const nextInitials=nextName?nextName.split(' ').map(x=>x[0]).join(''):'';
  const liveHitterName=h.name==='Makenna Whitaker'?'Makenna':h.name;
- return `<div class="topbar chart-head"><div class="brand">Chart</div><button id="openLineup">Lineup</button><button id="openProfile">Profile</button><button id="openReports">Reports</button><button class="end" id="endGame">End</button></div>
+ return `<div class="topbar chart-head live-game-nav"><button id="liveGameMenu" type="button"><span class="live-game-nav-icon" aria-hidden="true">☰</span><b>Menu</b></button><button id="openLineup" type="button"><span class="live-game-nav-icon" aria-hidden="true">☷</span><b>Lineup</b></button><button id="openProfile" type="button"><span class="live-game-nav-icon" aria-hidden="true">♙</span><b>Profile</b></button><button id="openReports" type="button"><span class="live-game-nav-icon" aria-hidden="true">▥</span><b>Reports</b></button><button class="end" id="endGame" type="button"><span class="live-game-nav-icon" aria-hidden="true">■</span><b>End</b></button></div>
  <div class="live-top">
   <button class="statbox hitter-box live-stat-button" id="changeHitter" aria-label="Substitute for ${esc(h.name)}"><div class="cap">HITTER</div><div class="big">${esc(liveHitterName)}</div></button>
   <div class="statbox"><div class="cap">INN</div><div class="big">${g.inning}</div></div>
@@ -6961,6 +6961,7 @@ function bindLive(){
  $('#decreaseOuts').onclick=()=>{subtractManualOut(g);save();render()};
  $('#increaseOuts').onclick=()=>{addManualOut(g);save();render()};
  $('#forceEndInning').onclick=()=>{if(!confirm(`End inning ${g.inning} now? This will clear the bases and reset the count.`))return;const completedInning=g.inning;g.outs=0;g.inning+=1;g.runners=[];resetLiveCount(g);queueInningObservation(g,completedInning);save();render()};
+ $('#liveGameMenu').onclick=()=>{reportsNavDrawerOpen=true;render()};
  $('#openLineup').onclick=()=>{modal='lineup';render()};
  $('#openProfile').onclick=()=>{evalPlayer=currentHitter(g).name;go('eval')};
  $('#openReports').onclick=()=>{modal='reports';reportMode='current';render()};
