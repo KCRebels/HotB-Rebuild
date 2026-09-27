@@ -2226,6 +2226,10 @@ function render(){
  route==='new'?newGameView():route==='roster'?rosterView():
  route==='live'?liveView():route==='eval'?evalView():route==='reports'?reportsPage():route==='practice'?practicePage():route==='portal'?playerPortalPage():homeView()}</div>${modal?modalView():''}`;
  bind();
+ // Navigation is rendered on multiple app surfaces. Bind it once from the common
+ // render path so every visible bottom/popup menu is interactive, regardless of
+ // which page-specific binder ran.
+ bindTestNavigation();
  // Keep the synchronized practice clock alive on every active portal view,
  // including a permanent player's assigned-drill detail. Otherwise a player who
  // opened a drill before the final block could remain on that stale detail after
