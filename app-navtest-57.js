@@ -6033,7 +6033,6 @@ function refreshPracticeAccommodationDefaults(){
  practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));
 }
 function bindPractice(){
- bindTestNavigation();
  $('#practiceMachineFocus')?.addEventListener('change',event=>{practicePlan.machineFocus=event.target.value||'Standard';persistPracticeSession();render()});
  $('#practiceFrontTossFocus')?.addEventListener('change',event=>{practicePlan.frontTossFocus=event.target.value||'Standard';persistPracticeSession();render()});
  $('#choosePracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice(0,practicePlan.drillStations);practiceDrillPickerOpen=true;practicePickerQuery='';practicePickerCategory='All Drills';render();window.scrollTo(0,0)});
@@ -6810,7 +6809,6 @@ function bindTestNavigation(){
  document.querySelectorAll('[data-test-menu-close]').forEach(button=>button.addEventListener('click',()=>{reportsNavDrawerOpen=false;render()}));
 }
 function bindReportsPage(){
- bindTestNavigation();
  $('#openGamesSelector')?.addEventListener('click',()=>{modal='gamesSelection';render()});
  bindDateFilters('saved');
  document.querySelectorAll('[data-scrimmage-game]').forEach(scrimmageToggle=>{scrimmageToggle.onchange=()=>{const game=db.savedGames.find(item=>item.id===scrimmageToggle.dataset.scrimmageGame);if(!game)return;game.scrimmage=!!scrimmageToggle.checked;reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();playerPortalRefreshPending=true;render();setTimeout(()=>setupPlayerPortals(false),0)}});
