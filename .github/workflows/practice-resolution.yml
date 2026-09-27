@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'app.js'
+      - 'app-navtest-live-v20.js'
       - 'styles.css'
       - 'team-jenkins-practice-only.test.js'
       - 'practice-resolution.test.js'
