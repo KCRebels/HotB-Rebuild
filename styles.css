@@ -1650,9 +1650,3 @@ body:has(.eval-head) .athletic-head h2{
  .home-actions img.home-new-game-icon,.home-actions img.home-eval-icon,.home-actions img.home-roster-icon,.home-actions img.home-practice-icon{width:41px!important;height:41px!important;max-width:41px!important;max-height:41px!important}
  .home-actions img.home-reports-icon{width:58px!important;height:58px!important;max-width:58px!important;max-height:58px!important}
 }
-
-/* Practice drill picker recommendation treatment */
-.practice-filter-preview button.active{border-color:#111!important;background:#fff!important;color:#111!important}
-.practice-picker-card.recommended{border-color:#111!important;background:#fff!important}
-.practice-picker-card.complete{border-color:#d5dcda!important;background:#fff!important;color:#101828!important;opacity:.43!important}
-.practice-picker-card.complete .practice-picker-number{background:#eef1ef!important;color:#596579!important}
