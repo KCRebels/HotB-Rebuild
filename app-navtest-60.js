@@ -6937,7 +6937,7 @@ function bindLive(){
   if(button&&button.id!=='undo'&&button.id!=='coachObservation'&&!button.matches('[data-zone],[data-result],[data-dq-pending]')&&g.pendingZone){g.pendingZone=null;save()}
  },true);
  const percentMode=!g.firstPitchView&&(g.zoneScope==='TEAM'||g.previewNext||(g.historyTab==='ALL'&&(g.allView||'DOTS')==='PCT'));
- $('[data-plan]').forEach(b=>b.onclick=()=>{
+ $$('[data-plan]').forEach(b=>b.onclick=()=>{
    g.plan=b.dataset.plan;
    db.planPreferences=db.planPreferences||{};
    db.planPreferences[currentHitter(g).name]=b.dataset.plan;
