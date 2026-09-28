@@ -1611,9 +1611,11 @@ async function setupPlayerPortals(fromButton=false){
   // Read every existing portal concurrently. The old refresh waited for 13
   // Firestore reads one after another, so one slow mobile read could make the
   // button appear frozen for a very long time.
+  // MAIN-TEAM PORTAL LOCK: Refresh may publish new player data, but it may
+  // never create or rotate a permanent Rebels portal credential.
+  const missingCredential=players.find(player=>!player.portalId||!player.portalPin);
+  if(missingCredential)throw new Error('permanent-player-portal-locked-missing-credential:'+missingCredential.name);
   for(const player of players){
-   if(!player.portalId)player.portalId=newPortalId();
-   if(!player.portalPin)player.portalPin=newPortalPin();
    player.portalPinHash=await portalHash(player.portalId,player.portalPin);
   }
   // Write existing permanent portals in small independent batches. The full
@@ -2320,27 +2322,12 @@ let permanentPortalRecoveryStarted=false;
 async function recoverPermanentPlayerPortalsForManager(){
  if(permanentPortalRecoveryStarted||!cloudUser||!cloudStore)return;
  const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins);
+ // MAIN-TEAM PORTAL LOCK: permanent Rebels player credentials are immutable.
+ // Never generate, rotate, repair, or replace a portal ID/PIN from this manager.
+ // If local credentials are ever missing, stop and protect the known working links.
  if(!players.some(player=>!player.portalId||!player.portalPin)){permanentPortalRecoveryStarted=true;return}
- permanentPortalRecoveryStarted=true;portalMessage='Finding existing player portals…';render();
- try{
-  const snapshot=await cloudStore.collection('playerPortals').where('portalType','==','player').get(),byName=new Map();
-  snapshot.docs.forEach(doc=>{const data=doc.data()||{};if(data.playerName&&!byName.has(data.playerName))byName.set(data.playerName,doc.id)});
-  let recovered=0;
-  players.forEach(player=>{if(!player.portalId&&byName.has(player.name)){player.portalId=byName.get(player.name);recovered++}});
-  // Repair every permanent main-team portal that has an existing ID but no local
-  // PIN. Keep the portal ID and any already-authorized devices intact. Adding the
-  // matching pinHash lets Share/Text include a self-authenticating guest value for
-  // new devices without rotating or invalidating an existing working portal.
-  let repairedPins=0;
-  for(const player of players){
-   if(!player.portalId||player.portalPin)continue;
-   const pin=newPortalPin(),pinHash=await portalHash(player.portalId,pin);
-   await portalDoc(player.portalId).update({pinHash,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-   player.portalPin=pin;player.portalPinHash=pinHash;repairedPins++;
-  }
-  if(recovered||repairedPins){localStorage.setItem(DBKEY,JSON.stringify(db));if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true')}
-  portalMessage=repairedPins?('Repaired '+repairedPins+' permanent player portal link'+(repairedPins===1?'':'s')+'. Share and Text now include private automatic access.'):recovered?('Recovered '+recovered+' existing player portal link'+(recovered===1?'':'s')+'.'):'All permanent player portal links are ready.';
- }catch(error){permanentPortalRecoveryStarted=false;portalMessage='HotB could not retrieve the existing player portal links. Reopen this page and try again.'}
+ permanentPortalRecoveryStarted=true;
+ portalMessage='A permanent player portal credential is missing on this device. HotB has locked the existing player links and will not replace them automatically.';
  render();
 }
 function portalCoachView(){
