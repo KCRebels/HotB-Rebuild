@@ -1650,3 +1650,10 @@ body:has(.eval-head) .athletic-head h2{
  .home-actions img.home-new-game-icon,.home-actions img.home-eval-icon,.home-actions img.home-roster-icon,.home-actions img.home-practice-icon{width:41px!important;height:41px!important;max-width:41px!important;max-height:41px!important}
  .home-actions img.home-reports-icon{width:58px!important;height:58px!important;max-width:58px!important;max-height:58px!important}
 }
+
+/* Observation sheet must clear the fixed six-item bottom menu on phones. */
+@media(max-width:560px){
+ .observation-backdrop{top:0!important;bottom:calc(68px + env(safe-area-inset-bottom))!important;height:auto!important;padding:0!important;overflow:hidden!important}
+ .observation-modal{box-sizing:border-box!important;width:100%!important;height:100%!important;max-height:100%!important;overflow-y:auto!important;padding:10px 10px 28px!important;border-radius:0!important;-webkit-overflow-scrolling:touch}
+ .observation-save{display:block!important;position:relative!important;width:100%!important;margin:8px 0 20px!important;min-height:62px!important}
+}
