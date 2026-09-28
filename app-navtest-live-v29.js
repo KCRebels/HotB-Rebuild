@@ -6024,7 +6024,7 @@ function bindPlayerPortal(){
  $('#shareJenkinsCoachPortal')?.addEventListener('click',async()=>{const coach=db.jenkinsCoachPortal;if(!coach?.portalId||!coach?.portalSecret)return;const share={title:"Mark’s HotB Hitting Practice",text:jenkinsCoachPortalShareText()};try{if(navigator.share)await navigator.share(share);else{await navigator.clipboard.writeText(share.text);alert("Mark’s practice link copied.")}}catch(error){if(error?.name!=='AbortError')alert("Mark’s link could not be shared.")}});
  $('#textJenkinsCoachPortal')?.addEventListener('click',()=>{const coach=db.jenkinsCoachPortal;if(!coach?.portalId||!coach?.portalSecret)return;const url=smsComposeUrl(coach.phone,jenkinsCoachPortalShareText());if(url)openSmsComposer(url)});
  $('#setupJenkinsPortals')?.addEventListener('click',setupJenkinsPortals);
- $('[data-restore-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>restoreJenkinsPortalLink(button.dataset.restorePracticeJenkins)));
+ document.querySelectorAll('[data-restore-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>restoreJenkinsPortalLink(button.dataset.restorePracticeJenkins)));
  $('#setupCoachPortal')?.addEventListener('click',setupCoachPortal);
  $('#resetCoachPortal')?.addEventListener('click',resetCoachPortal);
  // Bind delivery in app.js as the authoritative path. The capture-phase helper
