@@ -2320,7 +2320,7 @@ let permanentPortalRecoveryStarted=false;
 async function recoverPermanentPlayerPortalsForManager(){
  if(permanentPortalRecoveryStarted||!cloudUser||!cloudStore)return;
  const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins);
- if(!players.some(player=>!player.portalId)&&!players.some(player=>player.name==='Megan Ryan'&&!player.portalPin)&&!players.some(player=>/^Aniesa(?:\\s|$)/i.test(player.name)&&!player.portalPin)){permanentPortalRecoveryStarted=true;return}
+ if(!players.some(player=>!player.portalId)&&!players.some(player=>player.name==='Megan Ryan'&&!player.portalPin)&&!players.some(player=>/^Aniesa(?:\s|$)/i.test(player.name)&&!player.portalPin)){permanentPortalRecoveryStarted=true;return}
  permanentPortalRecoveryStarted=true;portalMessage='Finding existing player portals…';render();
  try{
   const snapshot=await cloudStore.collection('playerPortals').where('portalType','==','player').get(),byName=new Map();
@@ -2336,7 +2336,7 @@ async function recoverPermanentPlayerPortalsForManager(){
    await portalDoc(megan.portalId).update({pinHash,ownerUid:null,authorizedUids:[],pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
    megan.portalPin=pin;megan.portalPinHash=pinHash;
   }
-  const aniesa=players.find(player=>/^Aniesa(?:\\s|$)/i.test(player.name));
+  const aniesa=players.find(player=>/^Aniesa(?:\s|$)/i.test(player.name));
   if(aniesa?.portalId&&!aniesa.portalPin){
    const pin=newPortalPin(),pinHash=await portalHash(aniesa.portalId,pin);
    await portalDoc(aniesa.portalId).update({pinHash,ownerUid:null,authorizedUids:[],pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
@@ -5996,7 +5996,7 @@ window.HotBPortalText=function(name){
 };
 function bindPlayerPortal(){
  $('#retryPracticePortal')?.addEventListener('click',()=>{portalMessage='';portalBusy=false;loadPlayerPortal()});
- if(route==='portal'&&!portalToken&&cloudAuthReady&&cloudUser&&db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&(!player.portalId||(player.name==='Megan Ryan'&&!player.portalPin)||(/^Aniesa(?:\\s|$)/i.test(player.name)&&!player.portalPin))))setTimeout(recoverPermanentPlayerPortalsForManager,0);
+ if(route==='portal'&&!portalToken&&cloudAuthReady&&cloudUser&&db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&(!player.portalId||(player.name==='Megan Ryan'&&!player.portalPin)||(/^Aniesa(?:\s|$)/i.test(player.name)&&!player.portalPin))))setTimeout(recoverPermanentPlayerPortalsForManager,0);
 
  // Evaluation bindings belong only to the coach portal's evaluation subview.
  // Player/PIN portal startup must not depend on the optional evaluation module.
