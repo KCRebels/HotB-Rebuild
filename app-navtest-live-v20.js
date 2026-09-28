@@ -4468,7 +4468,7 @@ function bind(){
   if(practicePlan||db.activePracticeSession){go('practice');practiceSection='builder';render();window.scrollTo(0,0);if(practiceClock.running)resumeRecoveredPracticeClock();return}
   go('practice');practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0);
  };
- $('[data-close]').forEach(el=>el.onclick=()=>{if(modal==='record'){if(timerInt)clearInterval(timerInt);timerInt=null;timerElapsed=0;recordType=''}modal=modal==='reportGamesList'?'reports':null;render()});
+ $$('[data-close]').forEach(el=>el.onclick=()=>{if(modal==='record'){if(timerInt)clearInterval(timerInt);timerInt=null;timerElapsed=0;recordType=''}modal=modal==='reportGamesList'?'reports':null;render()});
  const focusObservationButton=$('#addFocusObservation');if(focusObservationButton)focusObservationButton.onclick=event=>{event.preventDefault();event.stopPropagation();openFocusObservation()};
  if(route==='new')bindNew();
  if(route==='roster')bindRoster();
