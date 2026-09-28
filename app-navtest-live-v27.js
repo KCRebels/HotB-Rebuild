@@ -2320,24 +2320,30 @@ let permanentPortalRecoveryStarted=false;
 async function recoverPermanentPlayerPortalsForManager(){
  if(permanentPortalRecoveryStarted||!cloudUser||!cloudStore)return;
  const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins);
- if(!players.some(player=>!player.portalId)&&!players.some(player=>player.name==='Megan Ryan'&&!player.portalPin)){permanentPortalRecoveryStarted=true;return}
+ if(!players.some(player=>!player.portalId)&&!players.some(player=>player.name==='Megan Ryan'&&!player.portalPin)&&!players.some(player=>/^Aniesa(?:\\s|$)/i.test(player.name)&&!player.portalPin)){permanentPortalRecoveryStarted=true;return}
  permanentPortalRecoveryStarted=true;portalMessage='Finding existing player portals…';render();
  try{
   const snapshot=await cloudStore.collection('playerPortals').where('portalType','==','player').get(),byName=new Map();
   snapshot.docs.forEach(doc=>{const data=doc.data()||{};if(data.playerName&&!byName.has(data.playerName))byName.set(data.playerName,doc.id)});
   let recovered=0;
   players.forEach(player=>{if(!player.portalId&&byName.has(player.name)){player.portalId=byName.get(player.name);recovered++}});
-  // Megan's original permanent link was lost locally. Repair only her existing
-  // portal document with a fresh embedded six-digit access value; do not rotate
-  // or recreate any other player's working permanent link.
+  // Repair only specifically confirmed broken permanent links. Megan was repaired
+  // previously; Aniesa is the only additional player requested here. Keep the
+  // existing portal IDs and data, and do not rotate any other working link.
   const megan=players.find(player=>player.name==='Megan Ryan');
   if(megan?.portalId&&!megan.portalPin){
    const pin=newPortalPin(),pinHash=await portalHash(megan.portalId,pin);
    await portalDoc(megan.portalId).update({pinHash,ownerUid:null,authorizedUids:[],pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
    megan.portalPin=pin;megan.portalPinHash=pinHash;
   }
-  if(recovered||megan?.portalPin){localStorage.setItem(DBKEY,JSON.stringify(db));if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true')}
-  portalMessage=megan?.portalPin?'Megan’s existing portal link is ready to Share or Text.':recovered?('Recovered '+recovered+' existing player portal link'+(recovered===1?'':'s')+'.'):'HotB could not recover the existing player portal links.';
+  const aniesa=players.find(player=>/^Aniesa(?:\\s|$)/i.test(player.name));
+  if(aniesa?.portalId&&!aniesa.portalPin){
+   const pin=newPortalPin(),pinHash=await portalHash(aniesa.portalId,pin);
+   await portalDoc(aniesa.portalId).update({pinHash,ownerUid:null,authorizedUids:[],pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   aniesa.portalPin=pin;aniesa.portalPinHash=pinHash;
+  }
+  if(recovered||megan?.portalPin||aniesa?.portalPin){localStorage.setItem(DBKEY,JSON.stringify(db));if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true')}
+  portalMessage=aniesa?.portalPin?'Aniesa’s existing portal link is ready to Share or Text.':megan?.portalPin?'Megan’s existing portal link is ready to Share or Text.':recovered?('Recovered '+recovered+' existing player portal link'+(recovered===1?'':'s')+'.'):'HotB could not recover the existing player portal links.';
  }catch(error){permanentPortalRecoveryStarted=false;portalMessage='HotB could not retrieve the existing player portal links. Reopen this page and try again.'}
  render();
 }
@@ -5990,7 +5996,7 @@ window.HotBPortalText=function(name){
 };
 function bindPlayerPortal(){
  $('#retryPracticePortal')?.addEventListener('click',()=>{portalMessage='';portalBusy=false;loadPlayerPortal()});
- if(route==='portal'&&!portalToken&&cloudAuthReady&&cloudUser&&db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&(!player.portalId||(player.name==='Megan Ryan'&&!player.portalPin))))setTimeout(recoverPermanentPlayerPortalsForManager,0);
+ if(route==='portal'&&!portalToken&&cloudAuthReady&&cloudUser&&db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&(!player.portalId||(player.name==='Megan Ryan'&&!player.portalPin)||(/^Aniesa(?:\\s|$)/i.test(player.name)&&!player.portalPin))))setTimeout(recoverPermanentPlayerPortalsForManager,0);
 
  // Evaluation bindings belong only to the coach portal's evaluation subview.
  // Player/PIN portal startup must not depend on the optional evaluation module.
