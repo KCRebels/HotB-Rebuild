@@ -4584,8 +4584,8 @@ function bind(){
   go('practice');practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0);
  };
  $$('[data-close]').forEach(el=>el.onclick=()=>{if(modal==='record'){if(timerInt)clearInterval(timerInt);timerInt=null;timerElapsed=0;recordType=''}modal=modal==='reportGamesList'?'reports':null;render()});
- $('[data-focus-attention]').forEach(button=>button.onclick=()=>{if(button.disabled)return;modal=button.dataset.focusAttention==='overdue'?'focusAttentionOverdue':'focusAttentionNeeds';render()});
- $('[data-dashboard-focus-player]').forEach(button=>button.onclick=()=>{const name=button.dataset.dashboardFocusPlayer;if(!db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&player.name===name))return;modal=null;route='practice';practiceSection='player';practiceFocusPlayer=name;megFocusArchiveOpen=false;render();window.scrollTo(0,0)});
+ document.querySelectorAll('[data-focus-attention]').forEach(button=>button.onclick=()=>{if(button.disabled)return;modal=button.dataset.focusAttention==='overdue'?'focusAttentionOverdue':'focusAttentionNeeds';render()});
+ document.querySelectorAll('[data-dashboard-focus-player]').forEach(button=>button.onclick=()=>{const name=button.dataset.dashboardFocusPlayer;if(!db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&player.name===name))return;modal=null;route='practice';practiceSection='player';practiceFocusPlayer=name;megFocusArchiveOpen=false;render();window.scrollTo(0,0)});
  const focusObservationButton=$('#addFocusObservation');if(focusObservationButton)focusObservationButton.onclick=event=>{event.preventDefault();event.stopPropagation();openFocusObservation()};
  if(route==='new')bindNew();
  if(route==='roster')bindRoster();
