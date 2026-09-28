@@ -2644,8 +2644,13 @@ function playerFocusPortalPayload(playerName=practiceFocusPlayer,range=practiceF
  const query=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>`${item.label} ${item.focus||''}`)].join(' ');
  const drills=focusSuggestedDrills(query,playerName,range).map(drill=>drill.name);
  const latestNote=(observed.rows||[]).filter(item=>item.note).sort((a,b)=>Number(b.createdAt||b.updatedAt||0)-Number(a.createdAt||a.updatedAt||0))[0]?.note||'';
+ // Keep the preview stable after a portal-ID recovery/save. save() re-renders the
+ // screen, so preserve the visible Focus evidence until the publish finishes.
+ const existingFocus=modal==='focusPublishPreview'&&practiceFocusPlayer===playerName?window.__HOTB_FOCUS_PREVIEW_PAYLOAD__:null;
  const rangeText=range==='weekend'?'this past weekend':'the past two weeks',plateAppearances=analysis.plateAppearances||0;
- return{title:'Current Hitting Focus',summary:`Based on ${games.length} saved game${games.length===1?'':'s'} and ${plateAppearances} plate appearance${plateAppearances===1?'':'s'} from ${rangeText}.`,needsWork:focusItems.join(' · '),coachNote:latestNote,drills,range,publishedAt:new Date().toISOString()};
+ const payload={title:'Current Hitting Focus',summary:`Based on ${games.length} saved game${games.length===1?'':'s'} and ${plateAppearances} plate appearance${plateAppearances===1?'':'s'} from ${rangeText}.`,needsWork:focusItems.join(' · '),coachNote:latestNote,drills,range,publishedAt:new Date().toISOString()};
+ if(existingFocus&&!payload.needsWork&&!payload.coachNote)return{...payload,needsWork:existingFocus.needsWork||'',coachNote:existingFocus.coachNote||''};
+ return payload;
 }
 function practicePlayerFocus(){
  const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===practiceFocusPlayer);
@@ -4207,6 +4212,7 @@ function manageFocusDrillsModal(){
 }
 function focusPublishPreviewModal(){
  const focus=playerFocusPortalPayload(),first=practiceFirstName(practiceFocusPlayer);
+ if(focus)window.__HOTB_FOCUS_PREVIEW_PAYLOAD__=focus;
  if(!focus)return'';
  return `<div class="modal-backdrop"><div class="modal focus-publish-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER PORTAL PREVIEW</div><h2>${esc(first)}’s My Focus</h2></div><button class="btn" data-close>Close</button></div><p class="focus-publish-help">This is exactly what ${esc(first)} will see.</p><div class="focus-preview-shell"><div class="focus-preview-header"><span>Back</span><b>My Focus</b><i></i></div><div class="focus-portal-preview">${portalFocusBody(focus)}</div></div><div class="focus-publish-actions"><button class="btn" data-close>Cancel</button><button class="btn red" id="confirmPublishPlayerFocus">Publish to ${esc(first)}</button></div></div></div>`;
 }
