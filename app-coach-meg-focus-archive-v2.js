@@ -2277,13 +2277,20 @@ function dateFilterControls(prefix){
  return `<div class="date-filter-controls">${prefix==='eval'?`<label><span>Year</span>${yearSelect}</label><label><span>Season</span>${seasonSelect}</label>`:`${yearSelect}${seasonSelect}`}${dateFilterMode==='custom'?`<label>Start<input class="input" id="${prefix}DateStart" type="date" value="${customDateStart}"></label><label>End<input class="input" id="${prefix}DateEnd" type="date" value="${customDateEnd}"></label>`:''}</div>`;
 }
 function bindDateFilters(prefix){
- $(`#${prefix}SeasonFilter`)?.addEventListener('change',event=>{selectedSeason=event.target.value;render()});
- $(`#${prefix}DateRange`)?.addEventListener('change',event=>{dateFilterMode=event.target.value;render()});
- const startInput=$(`#${prefix}DateStart`),endInput=$(`#${prefix}DateEnd`);
- startInput?.addEventListener('change',event=>{customDateStart=event.target.value});
- endInput?.addEventListener('change',event=>{customDateEnd=event.target.value});
- startInput?.addEventListener('blur',()=>render());
- endInput?.addEventListener('blur',()=>render());
+ const seasonInput=document.getElementById(prefix+'SeasonFilter');
+ const rangeInput=document.getElementById(prefix+'DateRange');
+ const startInput=document.getElementById(prefix+'DateStart');
+ const endInput=document.getElementById(prefix+'DateEnd');
+ if(seasonInput)seasonInput.addEventListener('change',event=>{selectedSeason=event.target.value;render()});
+ if(rangeInput)rangeInput.addEventListener('change',event=>{dateFilterMode=event.target.value;render()});
+ if(startInput){
+  startInput.addEventListener('change',event=>{customDateStart=event.target.value});
+  startInput.addEventListener('blur',()=>render());
+ }
+ if(endInput){
+  endInput.addEventListener('change',event=>{customDateEnd=event.target.value});
+  endInput.addEventListener('blur',()=>render());
+ }
 }
 function render(){
  captureGameUndo();
