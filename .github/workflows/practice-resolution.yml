@@ -55,7 +55,7 @@ jobs:
         run: node pwa-update.test.js
       - name: Verify deployed bundle markers
         run: |
-          test "$(grep -o "app-navtest-live-v20.js?v=20260927-opponentpitcher2" index.html | wc -l)" -eq 1
+          test "$(grep -o "app-navtest-live-v20.js?v=20260927-opponentpitcher3" index.html | wc -l)" -eq 1
           grep -q "styles.css?v=20260926-navicons21" index.html
           test "$(grep -o "practice-scheduler.js?v=20260922-resolution503" index.html | wc -l)" -eq 1
           grep -q "pwa-update-test-disabled.js?v=20260926-jenkinsrank3" index.html
