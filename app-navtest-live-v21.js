@@ -991,6 +991,10 @@ let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,las
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudAuthReady=false,cloudBusy=false,cloudMessage='',cloudBackupTimer=null,playerEvalSyncTimer=null,playerPortalRefreshPending=false;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLoadGeneration=0,portalLibraryReturnView='library';
+function portalFocusPublishedKey(){const raw=portalData?.focus?.publishedAt;return raw?String(raw):''}
+function portalFocusViewedKey(){return portalToken?`hotb_focus_viewed_${portalToken}`:''}
+function portalFocusIsNew(){const published=portalFocusPublishedKey(),key=portalFocusViewedKey();return !!published&&!!key&&localStorage.getItem(key)!==published}
+function markPortalFocusViewed(){const published=portalFocusPublishedKey(),key=portalFocusViewedKey();if(published&&key)localStorage.setItem(key,published)}
 let observationTargetPaId='',observationTargetPlayer='',observationMode='game',observationScope='current',observationPromptInning=0,observationFromInningPrompt=false,observationRecognition=null;
 let observationEditId='',observationEditGameId='';
 if(!db.coachPortal||typeof db.coachPortal!=='object')db.coachPortal={name:'',phone:'',portalId:'',portalPin:'',portalPinHash:'',portalSecret:''};
@@ -2386,6 +2390,7 @@ function portalFocusBody(focus){
  return focus?`<section class="portal-welcome"><span>MY PLAYER FOCUS</span><h2>${esc(focus.title||'Current Hitting Focus')}</h2><p>${esc(focus.summary||'')}</p></section><section class="portal-focus-content">${focus.needsWork?`<div><span>NEEDS WORK</span><b>${esc(focus.needsWork)}</b></div>`:''}${focus.coachNote?`<div><span>COACH NOTE</span><b>${esc(focus.coachNote)}</b></div>`:''}${focus.drills?.length?`<div><span>DRILL PLAN</span><b>${esc(focus.drills.join(' · '))}</b></div>`:''}</section>`:`<section class="portal-empty"><span>MY FOCUS</span><h2>No Focus Plan Yet</h2><p>Your private two-week hitting analysis has not been published. No other player’s information is available from this portal.</p></section>`;
 }
 function portalFocusView(){
+ markPortalFocusViewed();
  return `${portalHeader('My Focus',true)}<main class="portal-page">${portalFocusBody(portalData?.focus)}</main>`;
 }
 function portalPlayerEvaluationView(){
@@ -2432,7 +2437,7 @@ function portalAskView(){
 }
 function portalDashboardView(){
  const first=portalData?.firstName||practiceFirstName(portalData?.playerName),active=!!portalData?.activePractice&&!portalPracticeClockValues(portalData.activePractice).ended;
- return `${portalHeader()}<main class="portal-page"><section class="portal-welcome ${active?'active':''}"><span>${active?'PRACTICE ACTIVE':'PLAYER PORTAL'}</span><h2>Hi, ${esc(first)}</h2><p>${active?'Your current practice plan is ready below.':'Your practice, personal focus and KC Rebels drill library are all in one place.'}</p></section><section class="portal-dashboard">${active?`<button class="active" data-portal-view="practice"><span>PRACTICE</span><h3>My Practice</h3><p>View your active rotation.</p></button>`:''}<button data-portal-view="focus"><span>PLAYER</span><h3>My Focus</h3><p>Your private hitting focus and assigned drills.</p></button><button data-portal-view="evaluation"><span>PLAYER</span><h3>My Evaluation</h3><p>See how you’re doing at the plate and where you’re improving.</p></button><button data-portal-view="library"><span>LIBRARY</span><h3>Drill Library</h3><p>Search every approved KC Rebels hitting drill.</p></button><button data-portal-view="ask"><span>DRILL FINDER</span><h3>Ask The Library</h3><p>Describe a problem and find drills that address it.</p></button></section><p class="portal-private-note">This portal is linked only to ${esc(first)}. It does not provide access to another player’s practice or Player Focus.</p></main>`;
+ return `${portalHeader()}<main class="portal-page"><section class="portal-welcome ${active?'active':''}"><span>${active?'PRACTICE ACTIVE':'PLAYER PORTAL'}</span><h2>Hi, ${esc(first)}</h2><p>${active?'Your current practice plan is ready below.':'Your practice, personal focus and KC Rebels drill library are all in one place.'}</p></section><section class="portal-dashboard">${active?`<button class="active" data-portal-view="practice"><span>PRACTICE</span><h3>My Practice</h3><p>View your active rotation.</p></button>`:''}<button data-portal-view="focus" class="portal-focus-tile"><span>PLAYER</span>${portalFocusIsNew()?'<b class="portal-new-badge">NEW</b>':''}<h3>My Focus</h3><p>Your private hitting focus and assigned drills.</p></button><button data-portal-view="evaluation"><span>PLAYER</span><h3>My Evaluation</h3><p>See how you’re doing at the plate and where you’re improving.</p></button><button data-portal-view="library"><span>LIBRARY</span><h3>Drill Library</h3><p>Search every approved KC Rebels hitting drill.</p></button><button data-portal-view="ask"><span>DRILL FINDER</span><h3>Ask The Library</h3><p>Describe a problem and find drills that address it.</p></button></section><p class="portal-private-note">This portal is linked only to ${esc(first)}. It does not provide access to another player’s practice or Player Focus.</p></main>`;
 }
 function playerPortalPage(){
  if(!portalToken)return portalCoachView();
