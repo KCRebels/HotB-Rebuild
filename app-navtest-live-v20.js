@@ -6736,7 +6736,7 @@ function bindNew(){
    save();refreshPitcherMenu();update();
   });
  };
- $('[data-opponent-choice]').forEach(button=>button.onclick=()=>{opponent.value=button.dataset.opponentChoice;opponentMenu.hidden=true;pitcherName.value='';pitcherNumber.value='';refreshPitcherMenu();update()});
+ document.querySelectorAll('[data-opponent-choice]').forEach(button=>button.onclick=()=>{opponent.value=button.dataset.opponentChoice;opponentMenu.hidden=true;pitcherName.value='';pitcherNumber.value='';refreshPitcherMenu();update()});
  $$('[data-pitcher-choice]').forEach(button=>button.onclick=()=>{pitcherName.value=button.dataset.pitcherChoice;pitcherNumber.value=button.dataset.pitcherNumber||'';pitcherMenu.hidden=true;update()});
  $$('[data-delete-opponent]').forEach(button=>button.onclick=event=>{
   event.stopPropagation();
