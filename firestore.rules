@@ -59,6 +59,16 @@ service cloud.firestore {
               && request.resource.data.diff(resource.data).affectedKeys()
                 .hasOnly(['authorizedUids', 'pinProof', 'claimedAt'])
             )
+            || (
+              // Permanent player portal owners may complete only their own Focus.
+              // This cannot alter identity, credentials, practice, evaluation, or access.
+              resource.data.portalType == 'player'
+              && resource.data.ownerUid == request.auth.uid
+              && request.resource.data.focus == null
+              && request.resource.data.focusArchive is list
+              && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['focus', 'focusArchive', 'updatedAt'])
+            )
           )
         );
     }
