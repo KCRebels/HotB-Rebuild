@@ -1,14 +1,7 @@
 /* HotB syntax verification trigger: production bundle checked after cleanup recovery. */
 
 (() => {
-const $ = (sel, root=document) => {
- const node=root.querySelector(sel);
- // Compatibility guard for older deployed HotB builds that incorrectly call
- // .forEach() on the single-element helper. A missing optional control becomes
- // a harmless empty iteration instead of crashing the entire app at startup.
- if(node)return node;
- return {forEach(){}};
-};
+const $ = (sel, root=document) => root.querySelector(sel);
 const $$ = (sel, root=document) => [...root.querySelectorAll(sel)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]));
 const round3 = n => Number.isFinite(n) ? n.toFixed(3).replace(/^0/,'') : '.000';
