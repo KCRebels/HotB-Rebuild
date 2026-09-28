@@ -4211,8 +4211,8 @@ function manageFocusDrillsModal(){
  return `<div class="modal-backdrop"><div class="modal focus-drill-manage-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER FOCUS</div><h2>Manage Suggested Drills</h2></div><button class="btn" data-close>Close</button></div><p class="focus-manage-help">Choose the drill you want to replace. The other suggestions will stay the same.</p><section class="focus-manage-drill-slots">${current.map((drill,index)=>`<article><strong>${index+1}</strong><div><b>${esc(drill.name)}</b><span>${esc(drill.bestUsedFor||drill.primaryPurpose)}</span></div><button type="button" data-focus-drill-slot="${index}">Replace</button></article>`).join('')}</section><button type="button" class="btn block" id="resetFocusDrills">Restore HotB Suggestions</button></div></div>`;
 }
 function focusPublishPreviewModal(){
- const focus=playerFocusPortalPayload(),first=practiceFirstName(practiceFocusPlayer);
- if(focus)window.__HOTB_FOCUS_PREVIEW_PAYLOAD__=focus;
+ const focus=window.__HOTB_FOCUS_PREVIEW_PAYLOAD__||playerFocusPortalPayload(),first=practiceFirstName(practiceFocusPlayer);
+ if(focus&&!window.__HOTB_FOCUS_PREVIEW_PAYLOAD__)window.__HOTB_FOCUS_PREVIEW_PAYLOAD__=focus;
  if(!focus)return'';
  return `<div class="modal-backdrop"><div class="modal focus-publish-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER PORTAL PREVIEW</div><h2>${esc(first)}’s My Focus</h2></div><button class="btn" data-close>Close</button></div><p class="focus-publish-help">This is exactly what ${esc(first)} will see.</p><div class="focus-preview-shell"><div class="focus-preview-header"><span>Back</span><b>My Focus</b><i></i></div><div class="focus-portal-preview">${portalFocusBody(focus)}</div></div><div class="focus-publish-actions"><button class="btn" data-close>Cancel</button><button class="btn red" id="confirmPublishPlayerFocus">Publish to ${esc(first)}</button></div></div></div>`;
 }
@@ -6119,7 +6119,7 @@ function bindPractice(){
   save();render();
  }));
  $('#addFocusObservation')?.addEventListener('click',openFocusObservation);
- $('#previewPlayerFocus')?.addEventListener('click',()=>{modal='focusPublishPreview';render()});
+ $('#previewPlayerFocus')?.addEventListener('click',()=>{window.__HOTB_FOCUS_PREVIEW_PAYLOAD__=playerFocusPortalPayload();modal='focusPublishPreview';render()});
  $('#changeFocusPlayer')?.addEventListener('click',()=>{practiceFocusPlayer='';render();window.scrollTo(0,0)});
  $('#practiceSelectAll')?.addEventListener('click',()=>{$$('[data-practice-player]').forEach(input=>input.checked=true);if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#practiceSelectNone')?.addEventListener('click',()=>{$$('[data-practice-player]').forEach(input=>input.checked=false);if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
@@ -6867,7 +6867,7 @@ async function recoverPermanentPlayerPortal(player){
 }
 function bindFocusPublishPreview(){
  $('#confirmPublishPlayerFocus')?.addEventListener('click',async()=>{
-  const player=db.roster.find(item=>!item.isTeamJenkins&&item.name===practiceFocusPlayer),focus=playerFocusPortalPayload();
+  const player=db.roster.find(item=>!item.isTeamJenkins&&item.name===practiceFocusPlayer),focus=window.__HOTB_FOCUS_PREVIEW_PAYLOAD__||playerFocusPortalPayload();
   if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before publishing Player Focus.');return}
   if(!focus||!player)return;
   const button=$('#confirmPublishPlayerFocus');if(button){button.disabled=true;button.textContent='Publishing…'}
