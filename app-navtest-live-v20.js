@@ -6777,7 +6777,7 @@ function bindTestNavigation(){
   if(action==='practice'){if(practicePlan){go('practice');practiceSection='builder';render();window.scrollTo(0,0);if(practiceClock.running)resumeRecoveredPracticeClock();return}go('practice');practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0);return}
   if(action==='backup'){modal='cloudBackup';render();return}
   if(action==='library'){go('practice');practiceSection='library';render();window.scrollTo(0,0);return}
-  if(action==='scout'){window.location.href='scout.html';return}
+  if(action==='scout'){window.location.href='https://rebelsscout.com/';return}
   if(action==='reports'){go('reports');return}
   go(action);
  };
