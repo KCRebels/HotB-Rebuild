@@ -1277,16 +1277,17 @@ async function loadPlayerPortal(){
     if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
     portalAuthUser=credential?.user||cloudAuth.currentUser||null;
    }else if(!portalAuthUser){
-    if(!cloudAuthReady){
-     const restoredAuthUser=await waitForPortalAuthState();
-     if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
-     portalAuthUser=restoredAuthUser||cloudAuth.currentUser||null;
-    }
+    // Permanent player portals do not need to block on the restored-auth callback.
+    // Try the restored user if it is already available; otherwise start anonymous
+    // portal auth immediately. This avoids the iPhone race that could consume the
+    // entire timeout waiting for auth state before sign-in was even attempted.
+    portalAuthUser=cloudAuth.currentUser||null;
     if(!portalAuthUser){
      const credential=await Promise.race([
       cloudAuth.signInAnonymously(),
-      new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),8000))
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-auth-timeout')),12000))
      ]);
+     if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
      portalAuthUser=credential?.user||cloudAuth.currentUser||null;
     }
    }
