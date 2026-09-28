@@ -2700,7 +2700,7 @@ function playerFocusPortalPayload(playerName=practiceFocusPlayer,range=practiceF
  const observed=window.HotBCoachObservations?.summarize(games,selected.name,standalone)||{patterns:[],rows:[]};
  const focusItems=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>item.label)].filter((item,index,list)=>item&&list.indexOf(item)===index).slice(0,3);
  const query=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>`${item.label} ${item.focus||''}`)].join(' ');
- const drills=focusSuggestedDrills(query,playerName,range).map(drill=>drill.name);
+ const drills=playerName==='Megan Ryan'&&!megHasNewFocusObservation(observed)?[]:focusSuggestedDrills(query,playerName,range).map(drill=>drill.name);
  const latestNote=(observed.rows||[]).filter(item=>item.note).sort((a,b)=>Number(b.createdAt||b.updatedAt||0)-Number(a.createdAt||a.updatedAt||0))[0]?.note||'';
  // Keep the preview stable after a portal-ID recovery/save. save() re-renders the
  // screen, so preserve the visible Focus evidence until the publish finishes.
@@ -2712,6 +2712,7 @@ function playerFocusPortalPayload(playerName=practiceFocusPlayer,range=practiceF
 }
 function megFocusArchive(){if(!Array.isArray(db.megFocusArchive))db.megFocusArchive=[];return db.megFocusArchive}
 function megFocusArchiveDate(focus){const raw=focus?.publishedAt||focus?.archivedAt;const date=raw?new Date(raw):null;return date&&!Number.isNaN(date.getTime())?date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'Saved Focus'}
+function megHasNewFocusObservation(observed){const last=megFocusArchive().reduce((latest,item)=>Math.max(latest,Date.parse(item?.publishedAt||item?.archivedAt||0)||0),0);if(!last)return true;return (observed?.rows||[]).some(item=>{const when=Date.parse(item?.observedAt||item?.createdAt||item?.updatedAt||0)||Number(item?.createdAt||item?.updatedAt||0)||0;return when>last})}
 function megFocusArchiveView(){
  const archive=megFocusArchive().slice().sort((a,b)=>String(b.publishedAt||'').localeCompare(String(a.publishedAt||'')));
  return `${practiceSectionHeader('Meg Focus Archive')}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>PLAYER FOCUS ARCHIVE</span><h2>Meg</h2><p>Every Focus you have published to Meg is saved here.</p></section><section class="focus-evidence-section">${archive.length?archive.map(focus=>`<article class="focus-note-row"><time>${esc(megFocusArchiveDate(focus))}</time><div><b>${esc(focus.needsWork||focus.title||'Player Focus')}</b>${focus.coachNote?`<p>${esc(focus.coachNote)}</p>`:''}${focus.drills?.length?`<small>Drills: ${esc(focus.drills.join(' · '))}</small>`:''}</div></article>`).join(''):'<p class="focus-empty-copy">No published Focus plans are archived yet.</p>'}</section><div class="focus-bottom-actions" style="margin-bottom:110px"><button class="btn black" id="backFromMegFocusArchive">Back To Meg</button></div></main>${reportsTestNav()}`;
