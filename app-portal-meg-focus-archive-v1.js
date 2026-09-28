@@ -2482,7 +2482,7 @@ function playerPortalPage(){
  if(!portalData.activePractice&&portalLibraryReturnView==='practice'){portalView='home';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library'}
  if(portalView==='practice')return portalPracticeView();
  if(portalView==='focus')return portalFocusView();
- if(portalView==='focusArchive'&&portalData?.playerName==='Megan Ryan')return portalMegFocusArchiveView();
+ if(portalView==='focusArchive'&&portalData?.portalType==='player')return portalMegFocusArchiveView();
  if(portalView==='evaluation'){const fallback=portalPlayerEvaluationView();if(typeof window.HotBPlayerEvaluationRender==='function'){queueMicrotask(()=>{if(route==='portal'&&portalView==='evaluation')window.HotBPlayerEvaluationRender()})}return fallback;}
  if(portalView==='library')return portalLibraryView();
  if(portalView==='ask')return portalAskView();
