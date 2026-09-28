@@ -2316,8 +2316,24 @@ function focusSuggestedDrills(query,playerName=practiceFocusPlayer,range=practic
  if(!Array.isArray(saved))return recommended;
  return saved.map(name=>library.find(drill=>drill.name===name)).filter(Boolean).slice(0,3);
 }
+let permanentPortalRecoveryStarted=false;
+async function recoverPermanentPlayerPortalsForManager(){
+ if(permanentPortalRecoveryStarted||!cloudUser||!cloudStore)return;
+ const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins);
+ if(!players.some(player=>!player.portalId)){permanentPortalRecoveryStarted=true;return}
+ permanentPortalRecoveryStarted=true;portalMessage='Finding existing player portals…';render();
+ try{
+  const snapshot=await cloudStore.collection('playerPortals').where('portalType','==','player').get(),byName=new Map();
+  snapshot.docs.forEach(doc=>{const data=doc.data()||{};if(data.playerName&&!byName.has(data.playerName))byName.set(data.playerName,doc.id)});
+  let recovered=0;
+  players.forEach(player=>{if(!player.portalId&&byName.has(player.name)){player.portalId=byName.get(player.name);recovered++}});
+  if(recovered){localStorage.setItem(DBKEY,JSON.stringify(db));if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true')}
+  portalMessage=recovered?('Recovered '+recovered+' existing player portal link'+(recovered===1?'':'s')+'.'):'HotB could not recover the existing player portal links.';
+ }catch(error){permanentPortalRecoveryStarted=false;portalMessage='HotB could not retrieve the existing player portal links. Reopen this page and try again.'}
+ render();
+}
 function portalCoachView(){
- const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins),jenkinsPlayers=db.roster.filter(player=>player.isTeamJenkins),ready=players.length&&players.every(player=>player.portalId&&player.portalPin),jenkinsReady=jenkinsPlayers.length&&jenkinsPlayers.every(player=>player.portalId&&player.portalSecret);
+ const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins),jenkinsPlayers=db.roster.filter(player=>player.isTeamJenkins),ready=players.length&&players.every(player=>player.portalId),jenkinsReady=jenkinsPlayers.length&&jenkinsPlayers.every(player=>player.portalId&&player.portalSecret);
  const coachReady=!!(db.coachPortal?.portalId&&(db.coachPortal?.portalSecret||db.coachPortal?.portalPin));
  if(!cloudAuthReady)return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>Connecting Player Portal Manager…</h2><p>Restoring the saved coach cloud session on this device.</p></section><p class="small">No player links are being changed.</p><button class="btn black block" data-go="home">Return Home</button></main>`;
  if(!cloudUser)return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>Reconnect Player Portal Manager</h2><p>Your saved player links have not been removed. The coach cloud session on this device needs to be reconnected.</p></section><p class="small">Reconnect through Cloud Backup on the Home Screen. Your player links remain saved.</p><button class="btn black block" data-go="home">Return Home</button></main>`;
@@ -5965,6 +5981,7 @@ window.HotBPortalText=function(name){
 };
 function bindPlayerPortal(){
  $('#retryPracticePortal')?.addEventListener('click',()=>{portalMessage='';portalBusy=false;loadPlayerPortal()});
+ if(route==='portal'&&!portalToken&&cloudAuthReady&&cloudUser&&db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&!player.portalId))setTimeout(recoverPermanentPlayerPortalsForManager,0);
 
  // Evaluation bindings belong only to the coach portal's evaluation subview.
  // Player/PIN portal startup must not depend on the optional evaluation module.
