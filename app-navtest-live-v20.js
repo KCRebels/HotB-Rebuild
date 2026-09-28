@@ -6713,18 +6713,30 @@ function bindNew(){
  const filterMenu=(input,menu)=>{const query=normalizeName(input.value);[...menu.children].forEach(button=>button.hidden=!!query&&!normalizeName(button.textContent).includes(query));menu.hidden=false};
  opponent.addEventListener('focus',()=>filterMenu(opponent,opponentMenu));pitcherName.addEventListener('focus',()=>filterMenu(pitcherName,pitcherMenu));
  opponent.addEventListener('click',()=>filterMenu(opponent,opponentMenu));pitcherName.addEventListener('click',()=>filterMenu(pitcherName,pitcherMenu));
- opponent.addEventListener('input',()=>filterMenu(opponent,opponentMenu));pitcherName.addEventListener('input',()=>filterMenu(pitcherName,pitcherMenu));
+ opponent.addEventListener('input',()=>{filterMenu(opponent,opponentMenu);pitcherName.value='';pitcherNumber.value='';refreshPitcherMenu();update()});pitcherName.addEventListener('input',()=>filterMenu(pitcherName,pitcherMenu));
  [opponent,pitcherName].forEach(input=>input.addEventListener('blur',()=>setTimeout(()=>{opponentMenu.hidden=true;pitcherMenu.hidden=true},120)));
  $$('[data-matchup-open]').forEach(button=>{
   button.onpointerdown=event=>event.preventDefault();
   button.onclick=()=>{
    const isOpponent=button.dataset.matchupOpen==='opponent',menu=isOpponent?opponentMenu:pitcherMenu,otherMenu=isOpponent?pitcherMenu:opponentMenu,shouldOpen=menu.hidden;
    otherMenu.hidden=true;
-   if(shouldOpen){[...menu.children].forEach(choice=>choice.hidden=false);menu.hidden=false}
+   if(shouldOpen){if(!isOpponent)refreshPitcherMenu();[...menu.children].forEach(choice=>choice.hidden=false);menu.hidden=false}
    else menu.hidden=true;
   };
  });
- $$('[data-opponent-choice]').forEach(button=>button.onclick=()=>{opponent.value=button.dataset.opponentChoice;opponentMenu.hidden=true;update()});
+ const refreshPitcherMenu=()=>{
+  const known=knownPitchersForOpponent(opponent.value.trim());
+  pitcherMenu.innerHTML=known.map(p=>`<div class="matchup-picker-option"><button type="button" class="matchup-picker-choice" data-pitcher-choice="${esc(p.name)}" data-pitcher-number="${esc(p.number||'')}"><b>${esc(p.name)}</b>${p.number?`<span>#${esc(p.number)}</span>`:''}</button><button type="button" class="matchup-picker-delete" data-delete-pitcher-name="${esc(p.name)}" data-delete-pitcher-number="${esc(p.number||'')}" aria-label="Delete saved pitcher ${esc(p.name)}">Delete</button></div>`).join('');
+  [...pitcherMenu.querySelectorAll('[data-pitcher-choice]')].forEach(button=>button.onclick=()=>{pitcherName.value=button.dataset.pitcherChoice;pitcherNumber.value=button.dataset.pitcherNumber||'';pitcherMenu.hidden=true;update()});
+  [...pitcherMenu.querySelectorAll('[data-delete-pitcher-name]')].forEach(button=>button.onclick=event=>{
+   event.stopPropagation();const name=button.dataset.deletePitcherName,number=button.dataset.deletePitcherNumber||'';
+   if(!confirm(`Remove ${name}${number?` #${number}`:''} from the saved pitcher list? Previous games and hitter data will not be changed.`))return;
+   db.pitchers=(db.pitchers||[]).filter(item=>!(item.name===name&&String(item.number||'')===number));
+   if(pitcherName.value===name&&String(pitcherNumber.value||'')===number){pitcherName.value='';pitcherNumber.value=''}
+   save();refreshPitcherMenu();update();
+  });
+ };
+ $('[data-opponent-choice]').forEach(button=>button.onclick=()=>{opponent.value=button.dataset.opponentChoice;opponentMenu.hidden=true;pitcherName.value='';pitcherNumber.value='';refreshPitcherMenu();update()});
  $$('[data-pitcher-choice]').forEach(button=>button.onclick=()=>{pitcherName.value=button.dataset.pitcherChoice;pitcherNumber.value=button.dataset.pitcherNumber||'';pitcherMenu.hidden=true;update()});
  $$('[data-delete-opponent]').forEach(button=>button.onclick=event=>{
   event.stopPropagation();
