@@ -6920,7 +6920,7 @@ function bindCoachObservation(){
  $('#saveCoachObservation')?.addEventListener('click',()=>{
   try{
    const payload={playerName:observationTargetPlayer,paId:observationTargetPaId,tags:$$('.observation-option.active').map(button=>button.dataset.observationOption),note:$('#observationNote')?.value||''};
-   if(focusMode){const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===payload.playerName);if(!selected)throw new Error('Player Focus is only available for competitive-roster players.');payload.observedAt=new Date(api.rangeBounds(practiceFocusRange).end).toISOString()}
+   if(focusMode){const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===payload.playerName);if(!selected)throw new Error('Player Focus is only available for competitive-roster players.');payload.observedAt=new Date().toISOString()}
    if(manageMode){const editGame=observationEditGameId?(db.savedGames||[]).find(game=>game.id===observationEditGameId):null,record=(editGame?.observations||db.coachObservations||[]).find(item=>item.id===observationEditId);api.updateRecord(record,payload)}
    else if(focusMode)api.saveStandalone(db.coachObservations,payload);else api.saveObservation(g,payload);
    modal=null;save();render();
