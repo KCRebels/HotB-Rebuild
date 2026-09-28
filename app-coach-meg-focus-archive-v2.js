@@ -847,6 +847,17 @@ if(!Array.isArray(db.gameGroups))db.gameGroups=[];
 if(!Array.isArray(db.practiceHistory))db.practiceHistory=[];
 if(!Array.isArray(db.coachObservations))db.coachObservations=[];
 if(!db.playerFocusDrillOverrides||typeof db.playerFocusDrillOverrides!=='object')db.playerFocusDrillOverrides={};
+// Protect the two completed Haskell games recovered from the Sept. 25 backup.
+// Merge by immutable game id only; never replace newer app state or duplicate a game.
+if(Array.isArray(window.HotBHaskellRecovery)){
+ const existingGameIds=new Set((db.savedGames||[]).map(game=>game?.id).filter(Boolean));
+ const missingHaskell=window.HotBHaskellRecovery.filter(game=>game?.id&&!existingGameIds.has(game.id));
+ if(missingHaskell.length){
+  db.savedGames=[...(db.savedGames||[]),...structuredClone(missingHaskell)].sort((a,b)=>new Date(a.date||0)-new Date(b.date||0));
+  localStorage.setItem(DBKEY,JSON.stringify(db));
+  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+ }
+}
 // Team Jenkins exists only as a Hitting Practice scheduling roster. These records
 // are deliberately minimal and every non-practice surface filters isTeamJenkins.
 const teamJenkinsProfiles=[
