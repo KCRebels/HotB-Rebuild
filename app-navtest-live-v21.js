@@ -6850,17 +6850,35 @@ function bindPlayerInfo(){
   save();modal=null;render();
  };
 }
+async function recoverPermanentPlayerPortal(player){
+ if(!player||player.portalId||!cloudUser||!cloudStore)return player?.portalId||'';
+ const snapshot=await cloudStore.collection('playerPortals').where('playerName','==',player.name).get();
+ const matches=snapshot.docs.filter(doc=>doc.data()?.portalType==='player');
+ if(matches.length!==1)return'';
+ player.portalId=matches[0].id;
+ save();
+ return player.portalId;
+}
 function bindFocusPublishPreview(){
  $('#confirmPublishPlayerFocus')?.addEventListener('click',async()=>{
   const player=db.roster.find(item=>!item.isTeamJenkins&&item.name===practiceFocusPlayer),focus=playerFocusPortalPayload();
   if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before publishing Player Focus.');return}
-  if(!player?.portalId){alert(`Create ${practiceFirstName(practiceFocusPlayer)}’s Player Portal before publishing.`);return}
-  if(!focus)return;
+  if(!focus||!player)return;
   const button=$('#confirmPublishPlayerFocus');if(button){button.disabled=true;button.textContent='Publishing…'}
   try{
+   if(!player.portalId){
+    if(button)button.textContent='Finding Portal…';
+    await recoverPermanentPlayerPortal(player);
+   }
+   if(!player.portalId)throw new Error('existing-player-portal-not-found');
+   if(button)button.textContent='Publishing…';
    await portalDoc(player.portalId).set({focus,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
    modal=null;render();alert(`${practiceFirstName(player.name)}’s Player Focus is now available in her portal.`);
-  }catch(error){if(button){button.disabled=false;button.textContent=`Publish to ${practiceFirstName(player.name)}`}alert('Player Focus could not be published. Check Cloud Backup and your internet connection.')}
+  }catch(error){
+   if(button){button.disabled=false;button.textContent=`Publish to ${practiceFirstName(player.name)}`}
+   if(String(error?.message||'')==='existing-player-portal-not-found')alert(`HotB could not match ${practiceFirstName(player.name)} to an existing permanent portal. Her existing portal was not changed.`);
+   else alert('Player Focus could not be published. Check Cloud Backup and your internet connection.');
+  }
  });
 }
 function bindCoachObservation(){
