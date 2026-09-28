@@ -1657,3 +1657,6 @@ body:has(.eval-head) .athletic-head h2{
  .observation-modal{box-sizing:border-box!important;width:100%!important;height:100%!important;max-height:100%!important;overflow-y:auto!important;padding:10px 10px 28px!important;border-radius:0!important;-webkit-overflow-scrolling:touch}
  .observation-save{display:block!important;position:relative!important;width:100%!important;margin:8px 0 20px!important;min-height:62px!important}
 }
+
+/* Fixed six-line Coach Observation note field; intentionally no auto-resize JS. */
+.observation-note textarea{height:9em;min-height:9em;max-height:9em;overflow-y:auto}
