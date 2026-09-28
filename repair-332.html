@@ -1,0 +1,11 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-store"><title>HotB Repair 332</title></head>
+<body><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>Updating HotB…</strong><p>Opening the current coach app. Your saved data is not being erased.</p></section></main>
+<script>
+(async()=>{try{
+ if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister().catch(()=>false)))}
+ if(window.caches){const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k).catch(()=>false)))}
+}catch(_){}
+const u=new URL('./',location.href);u.searchParams.set('repair','332');u.searchParams.set('bundle','v30');u.searchParams.set('reload',Date.now().toString());location.replace(u.href);
+})();
+</script></body></html>
