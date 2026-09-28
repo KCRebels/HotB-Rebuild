@@ -2320,30 +2320,26 @@ let permanentPortalRecoveryStarted=false;
 async function recoverPermanentPlayerPortalsForManager(){
  if(permanentPortalRecoveryStarted||!cloudUser||!cloudStore)return;
  const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins);
- if(!players.some(player=>!player.portalId)&&!players.some(player=>player.name==='Megan Ryan'&&!player.portalPin)&&!players.some(player=>/^Aniesa(?:\s|$)/i.test(player.name)&&!player.portalPin)){permanentPortalRecoveryStarted=true;return}
+ if(!players.some(player=>!player.portalId||!player.portalPin)){permanentPortalRecoveryStarted=true;return}
  permanentPortalRecoveryStarted=true;portalMessage='Finding existing player portals…';render();
  try{
   const snapshot=await cloudStore.collection('playerPortals').where('portalType','==','player').get(),byName=new Map();
   snapshot.docs.forEach(doc=>{const data=doc.data()||{};if(data.playerName&&!byName.has(data.playerName))byName.set(data.playerName,doc.id)});
   let recovered=0;
   players.forEach(player=>{if(!player.portalId&&byName.has(player.name)){player.portalId=byName.get(player.name);recovered++}});
-  // Repair only specifically confirmed broken permanent links. Megan was repaired
-  // previously; Aniesa is the only additional player requested here. Keep the
-  // existing portal IDs and data, and do not rotate any other working link.
-  const megan=players.find(player=>player.name==='Megan Ryan');
-  if(megan?.portalId&&!megan.portalPin){
-   const pin=newPortalPin(),pinHash=await portalHash(megan.portalId,pin);
-   await portalDoc(megan.portalId).update({pinHash,ownerUid:null,authorizedUids:[],pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-   megan.portalPin=pin;megan.portalPinHash=pinHash;
+  // Repair every permanent main-team portal that has an existing ID but no local
+  // PIN. Keep the portal ID and any already-authorized devices intact. Adding the
+  // matching pinHash lets Share/Text include a self-authenticating guest value for
+  // new devices without rotating or invalidating an existing working portal.
+  let repairedPins=0;
+  for(const player of players){
+   if(!player.portalId||player.portalPin)continue;
+   const pin=newPortalPin(),pinHash=await portalHash(player.portalId,pin);
+   await portalDoc(player.portalId).update({pinHash,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   player.portalPin=pin;player.portalPinHash=pinHash;repairedPins++;
   }
-  const aniesa=players.find(player=>/^Aniesa(?:\s|$)/i.test(player.name));
-  if(aniesa?.portalId&&!aniesa.portalPin){
-   const pin=newPortalPin(),pinHash=await portalHash(aniesa.portalId,pin);
-   await portalDoc(aniesa.portalId).update({pinHash,ownerUid:null,authorizedUids:[],pinProof:firebase.firestore.FieldValue.delete(),claimedAt:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-   aniesa.portalPin=pin;aniesa.portalPinHash=pinHash;
-  }
-  if(recovered||megan?.portalPin||aniesa?.portalPin){localStorage.setItem(DBKEY,JSON.stringify(db));if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true')}
-  portalMessage=aniesa?.portalPin?'Aniesa’s existing portal link is ready to Share or Text.':megan?.portalPin?'Megan’s existing portal link is ready to Share or Text.':recovered?('Recovered '+recovered+' existing player portal link'+(recovered===1?'':'s')+'.'):'HotB could not recover the existing player portal links.';
+  if(recovered||repairedPins){localStorage.setItem(DBKEY,JSON.stringify(db));if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true')}
+  portalMessage=repairedPins?('Repaired '+repairedPins+' permanent player portal link'+(repairedPins===1?'':'s')+'. Share and Text now include private automatic access.'):recovered?('Recovered '+recovered+' existing player portal link'+(recovered===1?'':'s')+'.'):'All permanent player portal links are ready.';
  }catch(error){permanentPortalRecoveryStarted=false;portalMessage='HotB could not retrieve the existing player portal links. Reopen this page and try again.'}
  render();
 }
