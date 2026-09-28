@@ -5960,7 +5960,7 @@ async function endPracticeFromScreen(){
 }
 window.HotBCoachPortalShare=async function(){
  if(!db.coachPortal?.portalId){portalMessage='The coach portal is missing its saved link. Tap Refresh Coach Portal once.';render();return}
- const share={title:`${db.coachPortal.name||'Coach'}’s HotB Coach Portal`,text:coachPortalShareText()};
+ const url=coachPortalUrl(),share={title:`${db.coachPortal.name||'Coach'}’s HotB Coach Portal`,text:coachPortalShareText(),url};
  try{if(typeof navigator.share==='function'){await navigator.share(share);return}if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(share.text);portalMessage='Coach portal link and PIN copied.';render();return}portalMessage='Sharing is unavailable on this screen.';render()}catch(error){if(error?.name!=='AbortError'){portalMessage='The coach portal link could not be shared from this device.';render()}}
 };
 window.HotBCoachPortalText=function(){
@@ -5973,7 +5973,7 @@ window.HotBCoachPortalText=function(){
 window.HotBPortalShare=async function(name){
  const player=db.roster.find(item=>item.name===name);
  if(!player?.portalId){portalMessage='This player portal is missing its saved link. Tap Refresh Player Records once.';render();return}
- const share={title:`${practiceFirstName(player.name)}’s HotB Player Portal`,text:standaloneLinkMessage(`${practiceFirstName(player.name)}’s private HotB Player Portal`,playerPortalUrl(player),'Use this same private link each time. No PIN is required.')};
+ const url=playerPortalUrl(player),share={title:`${practiceFirstName(player.name)}’s HotB Player Portal`,text:standaloneLinkMessage(`${practiceFirstName(player.name)}’s private HotB Player Portal`,url,'Use this same private link each time. No PIN is required.'),url};
  try{
   if(typeof navigator.share==='function'){await navigator.share(share);return}
   if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(share.text);portalMessage='Portal link and PIN copied.';render();return}
