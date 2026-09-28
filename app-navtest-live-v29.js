@@ -1585,31 +1585,29 @@ async function setupJenkinsCoachPortal(){
 }
 async function setupJenkinsPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return;
- const players=db.roster.filter(item=>item.isTeamJenkins),originals=players.map(player=>({player,portalId:player.portalId,portalSecret:player.portalSecret}));
- cloudBusy=true;portalMessage='Preparing Team Jenkins practice portals…';render();
- let watchdog=setTimeout(()=>{if(!cloudBusy)return;cloudBusy=false;portalMessage='Team Jenkins portal setup stopped before cloud verification. Nothing else was changed. Tap Create Team Jenkins Portals again.';render()},12000);
+ const protectedNames=new Set(['Neveah Schlappi','Lilliana Schlappi','Perri Wagner','Pacie Dougherty','Emmie Wible']);
+ const creatableNames=new Set(['Taylor Woods','Amelia Steffen','Leslie Cundiff']);
+ const players=db.roster.filter(item=>item.isTeamJenkins),protectedPlayers=players.filter(player=>protectedNames.has(player.name)),creatablePlayers=players.filter(player=>creatableNames.has(player.name));
+ const missingProtected=protectedPlayers.filter(player=>!player.portalId||!player.portalSecret);
+ if(missingProtected.length){portalMessage='Restore the known working Jenkins links first: '+missingProtected.map(player=>practiceFirstName(player.name)).join(', ')+'. HotB will not replace them.';render();return}
+ const missingCreatable=creatablePlayers.filter(player=>!player.portalId||!player.portalSecret),originals=missingCreatable.map(player=>({player,portalId:player.portalId,portalSecret:player.portalSecret}));
+ if(!missingCreatable.length){portalMessage='All Team Jenkins permanent links are ready. The five recovered links remain protected.';render();return}
+ cloudBusy=true;portalMessage='Creating permanent links only for '+missingCreatable.map(player=>practiceFirstName(player.name)).join(', ')+'…';render();
  try{
-  for(const player of players){player.portalId=player.portalId||newPortalId();player.portalSecret=player.portalSecret||newGuestSecret()}
+  for(const player of missingCreatable){player.portalId=newPortalId();player.portalSecret=newGuestSecret()}
   const batch=cloudStore.batch();
-  for(const player of players){
+  for(const player of missingCreatable){
    const pinHash=await portalHash(player.portalId,player.portalSecret);
-   batch.set(portalDoc(player.portalId),{portalType:'jenkinsPlayer',playerName:player.name,firstName:practiceFirstName(player.name),phone:player.phone,pinHash,ownerUid:null,expired:false,accessStatus:'waiting',activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+   batch.set(portalDoc(player.portalId),{portalType:'jenkinsPlayer',playerName:player.name,firstName:practiceFirstName(player.name),phone:player.phone,pinHash,ownerUid:null,expired:false,accessStatus:'waiting',activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:false});
   }
-  portalMessage='Saving Team Jenkins practice portals…';render();
   await Promise.race([batch.commit(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('jenkins-portal-write-timeout')),8000))]);
-  portalMessage='Verifying Team Jenkins practice portals…';render();
-  const verification=await Promise.race([Promise.all(players.map(async player=>{const snapshot=await portalDoc(player.portalId).get(),remote=snapshot.exists?snapshot.data():null;return !!remote&&remote.portalType==='jenkinsPlayer'&&remote.playerName===player.name&&remote.expired===false})),new Promise((_,reject)=>setTimeout(()=>reject(new Error('jenkins-portal-verify-timeout')),8000))]);
+  const verification=await Promise.race([Promise.all(missingCreatable.map(async player=>{const snapshot=await portalDoc(player.portalId).get(),remote=snapshot.exists?snapshot.data():null;return !!remote&&remote.portalType==='jenkinsPlayer'&&remote.playerName===player.name&&remote.expired===false})),new Promise((_,reject)=>setTimeout(()=>reject(new Error('jenkins-portal-verify-timeout')),8000))]);
   if(verification.some(ok=>!ok))throw new Error('jenkins-portal-verification-failed');
-  clearTimeout(watchdog);watchdog=null;
   db.route=route;localStorage.setItem(DBKEY,JSON.stringify(db));if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');scheduleCloudBackup();
-  cloudBusy=false;portalMessage='Team Jenkins practice portals are ready. These links stay the same from practice to practice.';render();
+  cloudBusy=false;portalMessage='Permanent Jenkins links created only for '+missingCreatable.map(player=>practiceFirstName(player.name)).join(', ')+'. Existing Jenkins and Rebels links were not changed.';render();
  }catch(error){
-  clearTimeout(watchdog);watchdog=null;
   originals.forEach(({player,portalId,portalSecret})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalSecret===undefined)delete player.portalSecret;else player.portalSecret=portalSecret});
-  console.error('Team Jenkins portal setup failed',error);cloudBusy=false;
-  const reason=String(error?.message||error||'unknown');
-  portalMessage=reason.includes('write-timeout')?'Team Jenkins portal setup stopped while saving to the cloud. Nothing else was changed.':reason.includes('verify-timeout')?'Team Jenkins portals saved, but HotB could not verify them in time. Nothing else was changed.':`Team Jenkins practice portals could not be created (${reason}). Nothing else was changed.`;
-  render();
+  console.error('Team Jenkins portal setup failed',error);cloudBusy=false;portalMessage='The three new Jenkins links could not be completed. Existing Jenkins and Rebels links were not changed.';render();
  }
 }
 async function setupPlayerPortals(fromButton=false){
