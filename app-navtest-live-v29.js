@@ -860,12 +860,14 @@ const teamJenkinsProfiles=[
  {name:'Leslie Cundiff',phone:'785-917-2893',positions:'UT'}
 ];
 const teamJenkinsNames=new Set(teamJenkinsProfiles.map(player=>player.name));
+let cachedJenkinsPortals={};
+try{cachedJenkinsPortals=JSON.parse(localStorage.getItem('hotbJenkinsPortalCredentialsV1')||'{}')||{}}catch(_){cachedJenkinsPortals={}}
 let teamJenkinsChanged=false;
 teamJenkinsProfiles.forEach(profile=>{
  const index=(db.roster||[]).findIndex(player=>player.name===profile.name);
- const existing=index>=0?db.roster[index]:null;
+ const existing=index>=0?db.roster[index]:null,cached=cachedJenkinsPortals[profile.name]||null;
  const next={...profile,side:existing?.side||'R',isGuest:true,isTeamJenkins:true,teamName:'Team Jenkins',isPracticeGuest:false};
- ['portalId','portalSecret'].forEach(key=>{if(existing?.[key])next[key]=existing[key]});
+ ['portalId','portalSecret'].forEach(key=>{if(existing?.[key])next[key]=existing[key];else if(cached?.[key])next[key]=cached[key]});
  if(index<0){db.roster.push(next);teamJenkinsChanged=true}
  else if(JSON.stringify(practiceOnlyJenkinsRecord(existing))!==JSON.stringify(next)){db.roster[index]=next;teamJenkinsChanged=true}
 });
@@ -1344,6 +1346,16 @@ async function loadPlayerPortal(){
    const playerType=['player','jenkinsPlayer','guestPlayer'].includes(loaded.portalType),coachType=['coach','guestCoach'].includes(loaded.portalType);
    if(!playerType&&!coachType||playerType&&!loaded.playerName||coachType&&!loaded.coachName)throw new Error('portal-identity-missing');
    portalData=loaded;portalMessage='';
+   // A successfully verified Team Jenkins link can safely restore its own exact
+   // coach-device credential. Keep this private value in same-origin Safari
+   // storage only; never publish it in app code or cloud backup.
+   if(loaded.portalType==='jenkinsPlayer'&&guestPortalSecret&&loaded.playerName){
+    try{
+     const cache=JSON.parse(localStorage.getItem('hotbJenkinsPortalCredentialsV1')||'{}')||{};
+     cache[loaded.playerName]={portalId:requestedPortalToken,portalSecret:guestPortalSecret};
+     localStorage.setItem('hotbJenkinsPortalCredentialsV1',JSON.stringify(cache));
+    }catch(_){}
+   }
    // The initial read must get the same lifecycle normalization as later live
    // snapshots. A reopened iPhone can otherwise keep a stale drill subview from
    // memory while the cloud document is already waiting/ended/no-practice.
