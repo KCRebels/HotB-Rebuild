@@ -896,6 +896,14 @@ if((db.coachObservationAnchorVersion||0)<1&&window.HotBCoachObservations){
  localStorage.setItem(DBKEY,JSON.stringify(db));
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
 }
+// One-time reset requested by the coach: discard only the unpublished Player Focus
+// observations for Megan and Hailey so both can be recreated cleanly under the fixed timestamp logic.
+if((db.playerFocusObservationResetVersion||0)<1){
+ db.coachObservations=(db.coachObservations||[]).filter(item=>!(item?.source==='player-focus'&&['Megan Ryan','Hailey Marsh'].includes(item.playerName)));
+ db.playerFocusObservationResetVersion=1;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+ if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+}
 // Apply the requested player plans once, then preserve any changes made in the app.
 if((db.planPreferencesVersion||0)<2){
  db.planPreferences={...(db.planPreferences||{}),...requestedPlanPreferences};
