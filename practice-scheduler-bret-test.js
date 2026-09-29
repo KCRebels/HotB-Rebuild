@@ -324,7 +324,18 @@
    // the player bitmask is both complete and tightly bounded.
    const players=playersToAssign.slice(),count=players.length;
    if(!count)return Array.from({length:slots.length},()=>[]);
-   if(count>30)return null;
+   // Three-team practices exceed the legacy 30-player bitmask capacity. Split the
+   // exact-once station assignment into two deterministic cohorts, each solved by
+   // the existing bounded exact-cover routine, while reserving already-used slots.
+   if(count>30){
+    const midpoint=Math.ceil(count/2),cohorts=[players.slice(0,midpoint),players.slice(midpoint)],combined=Array.from({length:slots.length},()=>[]);
+    for(const cohort of cohorts){
+     const solved=assignStationGroups(cohort,slots,(player,slot,index,peers)=>combined[index].length===0&&eligible(player,slot,index,peers),allowOneFrontTossFour,null);
+     if(!solved)return null;
+     solved.forEach((names,index)=>{if(names.length)combined[index]=names});
+    }
+    return !acceptSolution||acceptSolution(combined)?combined:null;
+   }
    const eligibleMasks=slots.map((slot,index)=>{
     let mask=0;
     players.forEach((player,playerIndex)=>{if(eligible(player,slot,index,[]))mask|=(1<<playerIndex)});
