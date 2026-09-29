@@ -387,7 +387,7 @@
      const ac=slots.reduce((n,slot,index)=>n+(eligible(a,slot,index,[])?1:0),0),bc=slots.reduce((n,slot,index)=>n+(eligible(b,slot,index,[])?1:0),0);
      return ac-bc||a.name.localeCompare(b.name);
     });
-    let largeNodes=0;const LARGE_LIMIT=250000;
+    let largeNodes=0;const LARGE_LIMIT=45000;
     const largeSearch=at=>{
      if(++largeNodes>LARGE_LIMIT)return false;
      if(at>=ordered.length){
