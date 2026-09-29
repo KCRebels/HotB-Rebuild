@@ -23,7 +23,7 @@
   const attendees=(players||[]).filter(player=>player&&player.name).map(player=>{
    const from=Math.max(0,Math.min(BLOCK_COUNT,Number(player.availableFromBlock)||0));
    const until=Math.max(from,Math.min(BLOCK_COUNT,Number.isFinite(Number(player.availableUntilBlock))?Number(player.availableUntilBlock):BLOCK_COUNT));
-   return {...player,isGuest:!!player.isGuest,isTeamBret:!!player.isTeamBret,skipMandatoryTee:!!player.skipMandatoryTee,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,prePracticeComplete:!!player.prePracticeComplete,canPitch:!!player.isPitcher&&player.canPitch!==false,requiresPitchWarmup:!!player.isPitcher&&player.canPitch!==false&&player.requiresPitchWarmup!==false,canCatch:!!player.isCatcher&&player.canCatch!==false,availableFromBlock:from,availableUntilBlock:until};
+   return {...player,isGuest:!!player.isGuest,isTeamJenkins:!!player.isTeamJenkins,isTeamBret:!!player.isTeamBret,skipMandatoryTee:!!player.skipMandatoryTee,isPitcher:!!player.isPitcher,isCatcher:!!player.isCatcher,prePracticeComplete:!!player.prePracticeComplete,canPitch:!!player.isPitcher&&player.canPitch!==false,requiresPitchWarmup:!!player.isPitcher&&player.canPitch!==false&&player.requiresPitchWarmup!==false,canCatch:!!player.isCatcher&&player.canCatch!==false,availableFromBlock:from,availableUntilBlock:until};
   });
   const activeAttendees=attendees.filter(player=>player.availableFromBlock<player.availableUntilBlock);
   const rawPlayers=Array.isArray(players)?players:[],unnamedCount=rawPlayers.filter(player=>player&&!String(player.name||'').trim()).length;
