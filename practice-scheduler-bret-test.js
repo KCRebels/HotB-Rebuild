@@ -101,7 +101,8 @@
      // Pitching warm-up is a separate bullpen activity, not a normal hitting
      // station. It may occur after the player's opening Warm-Up/Tee sequence even
      // though the regular schedule cell is not otherwise empty.
-     const openingEnd=teeBlocks[pitcher.name]??warmBlocks[pitcher.name]??-1;\n     const options=[liveBlock-1,liveBlock-2].filter(block=>block>=0&&block>=pitcher.availableFromBlock&&block<pitcher.availableUntilBlock&&block>openingEnd&&(loads.get(block)||0)<2);
+     const openingEnd=teeBlocks[pitcher.name]??warmBlocks[pitcher.name]??-1;
+     const options=[liveBlock-1,liveBlock-2].filter(block=>block>=0&&block>=pitcher.availableFromBlock&&block<pitcher.availableUntilBlock&&block>openingEnd&&(loads.get(block)||0)<2);
      for(const block of options){loads.set(block,(loads.get(block)||0)+1);if(warmSearch(index+1))return true;const next=(loads.get(block)||0)-1;if(next)loads.set(block,next);else loads.delete(block)}
      return false;
     };
