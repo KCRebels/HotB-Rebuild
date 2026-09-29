@@ -153,7 +153,13 @@
     choose(0,plannedSessionCount);
    }
   }
-  if(!plannedSessions&&pitcherGroups.length){feasibilityErrors.push('The available pitchers cannot be placed into the live blocks while honoring arrival times, departure times, and consecutive blocks for any pitcher who throws twice.');plannedSessions=[]}
+  if(!plannedSessions&&pitcherGroups.length){
+   const debugGroups=pitcherGroups.map(group=>group.map(p=>p?.name||'none').join('+')).join(', ');
+   const debugPitchers=orderedPitchers.map(p=>p.name+'['+(p.availableFromBlock+1)+'-'+p.availableUntilBlock+',open>'+(teeBlocks[p.name]??-1)+',warm='+(p.requiresPitchWarmup?'Y':'N')+']').join('; ');
+   feasibilityErrors.push('DEBUG LIVE: need '+plannedSessionCount+' session(s); groups='+debugGroups+'; pitchers='+debugPitchers);
+   feasibilityErrors.push('The available pitchers cannot be placed into the live blocks while honoring arrival times, departure times, and consecutive blocks for any pitcher who throws twice.');
+   plannedSessions=[];
+  }
   plannedSessions.sort((a,b)=>a.liveBlock-b.liveBlock);
   const repeatedPitchers=orderedPitchers.filter(pitcher=>plannedSessions.filter(session=>session.pitcher?.name===pitcher.name).length===2);
   repeatedPitchers.forEach(pitcher=>{
