@@ -328,21 +328,36 @@
    // exact-once station assignment into two deterministic cohorts, each solved by
    // the existing bounded exact-cover routine, while reserving already-used slots.
    if(count>30){
-    // Split only the player bitset, not the station capacity. Both cohorts may use
-    // the same Front Toss block/lane as long as the combined group stays within
-    // capacity. This preserves the real 2–4 player station model for 31+ attendees.
-    const midpoint=Math.ceil(count/2),cohorts=[players.slice(0,midpoint),players.slice(midpoint)],combined=Array.from({length:slots.length},()=>[]);
-    for(const cohort of cohorts){
-     const solved=assignStationGroups(cohort,slots,(player,slot,index,peers)=>{
-      const existing=combined[index]||[],capacity=allowOneFrontTossFour?4:3;
-      return existing.length+peers.length+1<=capacity&&eligible(player,slot,index,[...existing,...peers]);
-     },allowOneFrontTossFour,null);
-     if(!solved)return null;
-     solved.forEach((names,index)=>{if(names.length)combined[index].push(...names)});
-    }
-    // Never leave a one-player station after merging cohorts.
-    if(combined.some(names=>names.length===1||names.length>(allowOneFrontTossFour?4:3)))return null;
-    return !acceptSolution||acceptSolution(combined)?combined:null;
+    // Large three-team practice: assign each player exactly once with a bounded
+    // capacity-aware search that does not rely on a 32-bit player mask.
+    const capacities=slots.map(()=>allowOneFrontTossFour?4:3),groups=slots.map(()=>[]);
+    const ordered=players.slice().sort((a,b)=>{
+     const ac=slots.reduce((n,slot,index)=>n+(eligible(a,slot,index,[])?1:0),0),bc=slots.reduce((n,slot,index)=>n+(eligible(b,slot,index,[])?1:0),0);
+     return ac-bc||a.name.localeCompare(b.name);
+    });
+    const largeMemo=new Set();let largeNodes=0;const LARGE_LIMIT=60000;
+    const largeSearch=at=>{
+     if(++largeNodes>LARGE_LIMIT)return false;
+     if(at>=ordered.length){
+      if(groups.some(names=>names.length===1))return false;
+      return !acceptSolution||acceptSolution(groups.map(names=>names.slice()));
+     }
+     const player=ordered[at],options=[];
+     slots.forEach((slot,index)=>{
+      if(groups[index].length>=capacities[index])return;
+      if(eligible(player,slot,index,groups[index]))options.push(index);
+     });
+     options.sort((a,b)=>groups[b].length-groups[a].length||a-b);
+     const key=at+'|'+groups.map(names=>names.length).join(',');
+     if(largeMemo.has(key))return false;
+     for(const index of options){
+      groups[index].push(player.name);
+      if(largeSearch(at+1))return true;
+      groups[index].pop();
+     }
+     largeMemo.add(key);return false;
+    };
+    return largeSearch(0)?groups:null;
    }
    const eligibleMasks=slots.map((slot,index)=>{
     let mask=0;
