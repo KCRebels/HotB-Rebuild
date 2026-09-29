@@ -67,7 +67,7 @@
   const orderedCatchers=catchers.slice(catcherRotate).concat(catchers.slice(0,catcherRotate));
   const hitterSessionsNeeded=Math.ceil(activeAttendees.length/4); // Live can safely carry up to four hitters when the larger three-team practice requires it.
   const orderedPitchers=pitchers.slice().sort((a,b)=>a.availableUntilBlock-b.availableUntilBlock||a.availableFromBlock-b.availableFromBlock||a.name.localeCompare(b.name));
-  const plannedSessionCount=pitchers.length?Math.max(pitchers.length,hitterSessionsNeeded):0;
+  const plannedSessionCount=pitchers.length?hitterSessionsNeeded:0;
   const rotatedPitchers=orderedPitchers.length?orderedPitchers.slice((weekNumber%orderedPitchers.length+orderedPitchers.length)%orderedPitchers.length).concat(orderedPitchers.slice(0,(weekNumber%orderedPitchers.length+orderedPitchers.length)%orderedPitchers.length)):[];
   let pitcherGroups=[];
   if(pitchers.length===1&&plannedSessionCount>1){
@@ -249,7 +249,8 @@
     }
     memo.add(key);return false;
    };
-   const firstPassOk=firstPass(players.map((_,index)=>index));
+   const mustHit=players.map((player,index)=>({player,index})).filter(({player})=>!player.isTeamBret).map(item=>item.index);
+   const firstPassOk=firstPass(mustHit);
    let repeatsOk=firstPassOk;
    if(firstPassOk){
     // Fill the two-hitter minimum as a second exact search. A greedy repeat can
