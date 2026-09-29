@@ -227,26 +227,29 @@
    const players=activeAttendees.slice(),playerIndex=new Map(players.map((player,index)=>[player.name,index]));
    const sessionOptions=liveSessions.map(session=>players.map((player,index)=>({player,index})).filter(({player})=>session.pitcher!==player.name&&session.catcher!==player.name&&session.block>=player.availableFromBlock&&session.block<player.availableUntilBlock&&session.block>(teeBlocks[player.name]??-1)).map(item=>item.index));
    const playerOptions=players.map((player,index)=>liveSessions.map((session,sessionIndex)=>sessionOptions[sessionIndex].includes(index)?sessionIndex:-1).filter(sessionIndex=>sessionIndex>=0));
-   const assignments=Array.from({length:liveSessions.length},()=>[]),memo=new Set(),fullMask=((1<<players.length)-1)>>>0;
+   const assignments=Array.from({length:liveSessions.length},()=>[]),memo=new Set();
+   // Three-team practices can exceed 30 hitters. Do not use a JavaScript 32-bit
+   // bitmask here: it silently makes a valid 31+ player practice impossible.
    const firstPass=(remaining)=>{
-    if(!remaining)return true;
-    const loads=assignments.map(group=>group.length),key=remaining+'|'+loads.join(',');
+    if(!remaining.length)return true;
+    const loads=assignments.map(group=>group.length),key=remaining.join('.')+'|'+loads.join(',');
     if(memo.has(key))return false;
     let chosen=-1,options=null;
-    for(let index=0;index<players.length;index++)if(remaining&(1<<index)){
+    for(const index of remaining){
      const possible=playerOptions[index].filter(sessionIndex=>assignments[sessionIndex].length<4);
      if(!possible.length){memo.add(key);return false}
      if(options===null||possible.length<options.length){chosen=index;options=possible}
     }
     options.sort((a,b)=>assignments[a].length-assignments[b].length||a-b);
+    const nextRemaining=remaining.filter(index=>index!==chosen);
     for(const sessionIndex of options){
      assignments[sessionIndex].push(chosen);
-     if(firstPass((remaining&~(1<<chosen))>>>0))return true;
+     if(firstPass(nextRemaining))return true;
      assignments[sessionIndex].pop();
     }
     memo.add(key);return false;
    };
-   const firstPassOk=players.length<=30&&firstPass(fullMask);
+   const firstPassOk=firstPass(players.map((_,index)=>index));
    let repeatsOk=firstPassOk;
    if(firstPassOk){
     // Fill the two-hitter minimum as a second exact search. A greedy repeat can
