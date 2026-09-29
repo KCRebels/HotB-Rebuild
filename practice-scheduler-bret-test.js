@@ -84,7 +84,7 @@
    // Exact search across legal Live blocks. Warm-up feasibility is solved together
    // with placement so we do not reject a valid layout merely because a pitcher
    // would need one of the two simultaneous warm-up lanes in the same block.
-   const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-3)},(_,index)=>index+3);
+   const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-2)},(_,index)=>index+2);
    const groupStarts=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&(!pitcher||isOpen(pitcher,block+offset))));
    const indexed=groups.map((group,index)=>({group,index,starts:groupStarts(group)}));
    if(indexed.some(item=>!item.starts.length))return null;
@@ -97,7 +97,7 @@
     const warmSearch=index=>{
      if(index>=items.length)return true;
      const {pitcher,liveBlock}=items[index];
-     const options=[liveBlock-1,liveBlock-2].filter(block=>block>=2&&isOpen(pitcher,block)&&(loads.get(block)||0)<2);
+     const options=[liveBlock-1,liveBlock-2].filter(block=>block>=0&&isOpen(pitcher,block)&&(loads.get(block)||0)<2);
      for(const block of options){loads.set(block,(loads.get(block)||0)+1);if(warmSearch(index+1))return true;const next=(loads.get(block)||0)-1;if(next)loads.set(block,next);else loads.delete(block)}
      return false;
     };
@@ -176,7 +176,7 @@
   const warmOptionsFor=item=>{
    const options=[];
    for(const candidateBlock of [item.liveBlock-1,item.liveBlock-2]){
-    if(candidateBlock<2||!isOpen(item.pitcher,candidateBlock))continue;
+    if(candidateBlock<0||!isOpen(item.pitcher,candidateBlock))continue;
     const catcherChoices=[item.catcher,...orderedCatchers].filter((candidate,candidateIndex,list)=>candidate&&list.indexOf(candidate)===candidateIndex).sort((a,b)=>(a.isGuest===item.pitcher.isGuest?0:1)-(b.isGuest===item.pitcher.isGuest?0:1)||a.name.localeCompare(b.name));
     catcherChoices.forEach(candidate=>{if(candidate.name!==item.pitcher.name&&isOpen(candidate,candidateBlock))options.push({block:candidateBlock,catcher:candidate,partner:candidate.name})});
     options.push({block:candidateBlock,catcher:null,partner:'Coach'});
