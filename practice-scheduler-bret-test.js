@@ -126,7 +126,25 @@
    if(!search(0))return null;
    return placed.sort((a,b)=>a.liveBlock-b.liveBlock).map(({pitcher,liveBlock})=>({pitcher,liveBlock}));
   }
-  let plannedSessions=feasibilityErrors.length?[]:placePitcherGroups(pitcherGroups);
+  let plannedSessions=[];
+  if(!feasibilityErrors.length&&pitcherGroups.length){
+   plannedSessions=placePitcherGroups(pitcherGroups);
+   // If the rotated subset cannot fit the actual arrival/warm-up windows, search
+   // alternate pitcher subsets before declaring the practice impossible.
+   if(!plannedSessions&&plannedSessionCount<=pitchers.length){
+    const pool=orderedPitchers.slice(),combo=[];
+    const choose=(start,left)=>{
+     if(left===0){
+      const groups=combo.map(pitcher=>[pitcher]),placed=placePitcherGroups(groups);
+      if(placed){plannedSessions=placed;return true}
+      return false;
+     }
+     for(let i=start;i<=pool.length-left;i++){combo.push(pool[i]);if(choose(i+1,left-1))return true;combo.pop()}
+     return false;
+    };
+    choose(0,plannedSessionCount);
+   }
+  }
   if(!plannedSessions&&pitcherGroups.length){feasibilityErrors.push('The available pitchers cannot be placed into the live blocks while honoring arrival times, departure times, and consecutive blocks for any pitcher who throws twice.');plannedSessions=[]}
   plannedSessions.sort((a,b)=>a.liveBlock-b.liveBlock);
   const repeatedPitchers=orderedPitchers.filter(pitcher=>plannedSessions.filter(session=>session.pitcher?.name===pitcher.name).length===2);
