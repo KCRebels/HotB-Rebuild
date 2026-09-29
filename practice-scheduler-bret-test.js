@@ -88,7 +88,11 @@
    // Exact search. A pitcher who is assigned twice still throws consecutive Live
    // blocks. Warm-up is checked against the first Live block for that pitcher.
    const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-1)},(_,index)=>index+1);
-   const groupStarts=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&(!pitcher||isOpen(pitcher,block+offset))));
+   // Live eligibility is based on attendance and completed opening work. Do not
+   // require the temporary station cell to be empty here; those station entries
+   // are replaced when the final Live schedule is committed.
+   const liveEligible=(pitcher,block)=>!pitcher||(block>=pitcher.availableFromBlock&&block<pitcher.availableUntilBlock&&block>(teeBlocks[pitcher.name]??-1));
+   const groupStarts=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&liveEligible(pitcher,block+offset)));
    const indexed=groups.map((group,index)=>({group,index,starts:groupStarts(group)}));
    if(indexed.some(item=>!item.starts.length))return null;
    indexed.sort((a,b)=>a.starts.length-b.starts.length||b.group.length-a.group.length||a.index-b.index);
