@@ -225,7 +225,7 @@
    // player. Solve the required first live hit for every attendee exactly, then add
    // the minimum repeat hits needed to bring every session to two hitters.
    const players=activeAttendees.slice(),playerIndex=new Map(players.map((player,index)=>[player.name,index]));
-   const sessionOptions=liveSessions.map(session=>players.map((player,index)=>({player,index})).filter(({player})=>session.pitcher!==player.name&&session.catcher!==player.name&&isOpen(player,session.block)).map(item=>item.index));
+   const sessionOptions=liveSessions.map(session=>players.map((player,index)=>({player,index})).filter(({player})=>session.pitcher!==player.name&&session.catcher!==player.name&&session.block>=player.availableFromBlock&&session.block<player.availableUntilBlock&&session.block>(teeBlocks[player.name]??-1)).map(item=>item.index));
    const playerOptions=players.map((player,index)=>liveSessions.map((session,sessionIndex)=>sessionOptions[sessionIndex].includes(index)?sessionIndex:-1).filter(sessionIndex=>sessionIndex>=0));
    const assignments=Array.from({length:liveSessions.length},()=>[]),memo=new Set(),fullMask=((1<<players.length)-1)>>>0;
    const firstPass=(remaining)=>{
