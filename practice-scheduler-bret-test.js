@@ -527,8 +527,18 @@
   const frontTossBlocks=[...new Set(frontTossAssignments.map(item=>item.block))].sort((a,b)=>a-b);
   if(!feasibilityErrors.length){
    const machineSlots=Array.from({length:BLOCK_COUNT},(_,block)=>({block}));
-   const machineGroups=assignStationGroups(activeAttendees,machineSlots,(player,slot)=>isOpen(player,slot.block),false);
-   if(!machineGroups)feasibilityErrors.push('Machine cannot be scheduled exactly once per player in groups of 2–3 with the selected attendance and availability.');
+   let machineGroups=assignStationGroups(activeAttendees,machineSlots,(player,slot)=>isOpen(player,slot.block),false);
+   // With a 31+ player three-team practice, a valid Front Toss cover can leave an
+   // odd Machine remainder. The approved resolution is to allow one 4-player
+   // non-Front-Toss station when needed; use that capacity here before failing.
+   if(!machineGroups&&activeAttendees.length>30){
+    machineGroups=assignStationGroups(activeAttendees,machineSlots,(player,slot)=>isOpen(player,slot.block),true);
+    if(machineGroups){
+     const fourIndex=machineGroups.findIndex(names=>names.length===4);
+     if(fourIndex>=0)fallbackWarnings.push(`Block ${machineSlots[fourIndex].block+1} uses 4 players at Machine. HotB used the approved 4-player station capacity to balance this practice.`);
+    }
+   }
+   if(!machineGroups)feasibilityErrors.push('Machine cannot be scheduled exactly once per player in groups of 2–3 with the selected attendance and availability, even after checking the approved 4-player station capacity.');
    else machineGroups.forEach((names,index)=>names.forEach(name=>{schedule[name][machineSlots[index].block]={activity:'Machine'}}));
   }
   attendees.forEach(player=>{
