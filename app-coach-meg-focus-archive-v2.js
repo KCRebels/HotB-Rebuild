@@ -2332,9 +2332,9 @@ function homeView(){
   const recentContact=Math.round(Number(recentStats.contactPct||0)*100),previousContact=Math.round(Number(previousStats.contactPct||0)*100),contactDelta=recentContact-previousContact;
   const recentK=Math.round(Number(recentStats.kPct||0)*100),previousK=Math.round(Number(previousStats.kPct||0)*100),kDelta=recentK-previousK;
   const recentObp=Math.round(Number(recentStats.OBP||0)*1000),previousObp=Math.round(Number(previousStats.OBP||0)*1000),obpDelta=recentObp-previousObp;
-  if(contactDelta<=-5)teamWatch.push('Contact% ↓ '+Math.abs(contactDelta)+' pts vs previous '+previousGames.length+' game'+(previousGames.length===1?'':'s'));
-  if(kDelta>=5)teamWatch.push('K% ↑ '+kDelta+' pts vs previous '+previousGames.length+' game'+(previousGames.length===1?'':'s'));
-  if(obpDelta<=-50)teamWatch.push('OBP ↓ '+(Math.abs(obpDelta)/1000).toFixed(3).replace(/^0/,'')+' vs previous '+previousGames.length+' game'+(previousGames.length===1?'':'s'));
+  if(contactDelta<=-5)teamWatch.push('Contact% ↓ '+Math.abs(contactDelta)+' pts vs '+(previousGames.length===1?'last game':'last '+previousGames.length));
+  if(kDelta>=5)teamWatch.push('K% ↑ '+kDelta+' pts vs '+(previousGames.length===1?'last game':'last '+previousGames.length));
+  if(obpDelta<=-50)teamWatch.push('OBP ↓ '+(Math.abs(obpDelta)/1000).toFixed(3).replace(/^0/,'')+' vs '+(previousGames.length===1?'last game':'last '+previousGames.length));
  }
  if(!teamWatch.length)teamWatch.push(officialGames.length<2?'More game data needed for team trends':'No significant team trends');
  const icon=(kind)=>{const icons={
