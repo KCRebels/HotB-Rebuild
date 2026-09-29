@@ -43,11 +43,11 @@
    schedule[player.name][warmupBlock]={activity:fixedActivities[0]};
    if(player.skipMandatoryTee){
     teeBlocks[player.name]=warmupBlock;
-    if(player.availableFromBlock>0)warnings.push(`${player.name} arrives late and completes Warm-Up in the first available block; Team Bret may enter regular stations in the next block.`);
+    // Expected Team Bret arrival/opening sequence; do not clutter Schedule Check with an informational warning.
    }else{
     if(teeBlock<player.availableUntilBlock){schedule[player.name][teeBlock]={activity:fixedActivities[1]};teeBlocks[player.name]=teeBlock}
     else{teeBlocks[player.name]=warmupBlock;warnings.push(`${player.name} is not present long enough to complete both Warm-Up and Tee Work.`)}
-    if(player.availableFromBlock>0)warnings.push(`${player.name} arrives late and is assigned Warm-Up, then Tee Work, in the first two available blocks.`);
+    // Late arrival is already explicit in the Practice Builder; the schedule itself shows the required opening blocks.
    }
   });
   const isOpen=(player,block)=>block>=0&&block<BLOCK_COUNT&&schedule[player.name][block]===null&&block>(teeBlocks[player.name]??-1);
