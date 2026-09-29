@@ -68,18 +68,21 @@
   const liveRequiredHitters=activeAttendees.filter(player=>!player.isTeamBret);
   const hitterSessionsNeeded=Math.ceil(liveRequiredHitters.length/4); // Team Bret may rotate into Live when space exists, but does not create mandatory Live demand.
   const orderedPitchers=pitchers.slice().sort((a,b)=>a.availableUntilBlock-b.availableUntilBlock||a.availableFromBlock-b.availableFromBlock||a.name.localeCompare(b.name));
+  // Build exactly the number of pitcher sessions actually required. The older
+  // logic always scheduled every selected pitcher once, which over-created Live
+  // blocks whenever there were more available pitchers than required sessions.
   const plannedSessionCount=pitchers.length?hitterSessionsNeeded:0;
   const rotatedPitchers=orderedPitchers.length?orderedPitchers.slice((weekNumber%orderedPitchers.length+orderedPitchers.length)%orderedPitchers.length).concat(orderedPitchers.slice(0,(weekNumber%orderedPitchers.length+orderedPitchers.length)%orderedPitchers.length)):[];
   let pitcherGroups=[];
-  if(pitchers.length===1&&plannedSessionCount>1){
-   const pitcherSessionCount=Math.min(2,plannedSessionCount-1);
-   pitcherGroups=[Array(pitcherSessionCount).fill(orderedPitchers[0]),...Array.from({length:plannedSessionCount-pitcherSessionCount},()=>[null])];
-   if(plannedSessionCount>pitcherSessionCount)feasibilityErrors.push(`${activeAttendees.length} available players require ${plannedSessionCount} Live blocks, but ${orderedPitchers[0].name} can safely cover only ${pitcherSessionCount}. Add another pitcher, make an attending pitcher available, or adjust attendance.`);
-  }else if(pitchers.length){
-   const extraPitcherSessions=plannedSessionCount-pitchers.length;
-   if(extraPitcherSessions>pitchers.length)feasibilityErrors.push(`${activeAttendees.length} available players require at least ${hitterSessionsNeeded} live blocks. Even if each of the ${pitchers.length} available pitchers throws two consecutive blocks, HotB is short ${extraPitcherSessions-pitchers.length} live block${extraPitcherSessions-pitchers.length===1?'':'s'}. Add another pitcher, make an attending pitcher available, or adjust attendance.`);
-   const doubleNames=new Set(rotatedPitchers.slice(0,Math.min(extraPitcherSessions,pitchers.length)).map(player=>player.name));
-   pitcherGroups=orderedPitchers.map(pitcher=>doubleNames.has(pitcher.name)?[pitcher,pitcher]:[pitcher]);
+  if(pitchers.length&&plannedSessionCount){
+   if(plannedSessionCount>pitchers.length*2){
+    feasibilityErrors.push(`${activeAttendees.length} available players require at least ${hitterSessionsNeeded} live blocks. Even if each of the ${pitchers.length} available pitchers throws two consecutive blocks, HotB is short ${plannedSessionCount-pitchers.length*2} live block${plannedSessionCount-pitchers.length*2===1?'':'s'}. Add another pitcher, make an attending pitcher available, or adjust attendance.`);
+   }else if(plannedSessionCount<=rotatedPitchers.length){
+    pitcherGroups=rotatedPitchers.slice(0,plannedSessionCount).map(pitcher=>[pitcher]);
+   }else{
+    const doubles=plannedSessionCount-rotatedPitchers.length;
+    pitcherGroups=rotatedPitchers.map((pitcher,index)=>index<doubles?[pitcher,pitcher]:[pitcher]);
+   }
   }
   function placePitcherGroups(groups){
    // Exact search. A pitcher who is assigned twice still throws consecutive Live
