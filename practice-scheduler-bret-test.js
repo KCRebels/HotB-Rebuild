@@ -84,7 +84,7 @@
   function placePitcherGroups(groups){
    // Exact search. A pitcher who is assigned twice still throws consecutive Live
    // blocks. Warm-up is checked against the first Live block for that pitcher.
-   const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-2)},(_,index)=>index+2);
+   const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-1)},(_,index)=>index+1);
    const groupStarts=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&(!pitcher||isOpen(pitcher,block+offset))));
    const indexed=groups.map((group,index)=>({group,index,starts:groupStarts(group)}));
    if(indexed.some(item=>!item.starts.length))return null;
@@ -101,7 +101,7 @@
      // Pitching warm-up is a separate bullpen activity, not a normal hitting
      // station. It may occur after the player's opening Warm-Up/Tee sequence even
      // though the regular schedule cell is not otherwise empty.
-     const options=[liveBlock-1,liveBlock-2].filter(block=>block>=0&&block>=pitcher.availableFromBlock&&block<pitcher.availableUntilBlock&&block>(teeBlocks[pitcher.name]??-1)&&(loads.get(block)||0)<2);
+     const openingEnd=teeBlocks[pitcher.name]??warmBlocks[pitcher.name]??-1;\n     const options=[liveBlock-1,liveBlock-2].filter(block=>block>=0&&block>=pitcher.availableFromBlock&&block<pitcher.availableUntilBlock&&block>openingEnd&&(loads.get(block)||0)<2);
      for(const block of options){loads.set(block,(loads.get(block)||0)+1);if(warmSearch(index+1))return true;const next=(loads.get(block)||0)-1;if(next)loads.set(block,next);else loads.delete(block)}
      return false;
     };
