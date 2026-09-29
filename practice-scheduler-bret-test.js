@@ -65,7 +65,7 @@
   const heavyCatcherIndex=((weekNumber%2)+2)%2;
   const catcherRotate=catchers.length?heavyCatcherIndex%catchers.length:0;
   const orderedCatchers=catchers.slice(catcherRotate).concat(catchers.slice(0,catcherRotate));
-  const hitterSessionsNeeded=Math.ceil(activeAttendees.length/4); // Live can safely carry up to four hitters when the larger three-team practice requires it.
+  const liveRequiredHitters=activeAttendees.filter(player=>!player.isTeamBret);\n  const hitterSessionsNeeded=Math.ceil(liveRequiredHitters.length/4); // Team Bret may rotate into Live when space exists, but does not create mandatory Live demand.
   const orderedPitchers=pitchers.slice().sort((a,b)=>a.availableUntilBlock-b.availableUntilBlock||a.availableFromBlock-b.availableFromBlock||a.name.localeCompare(b.name));
   const plannedSessionCount=pitchers.length?hitterSessionsNeeded:0;
   const rotatedPitchers=orderedPitchers.length?orderedPitchers.slice((weekNumber%orderedPitchers.length+orderedPitchers.length)%orderedPitchers.length).concat(orderedPitchers.slice(0,(weekNumber%orderedPitchers.length+orderedPitchers.length)%orderedPitchers.length)):[];
@@ -273,6 +273,15 @@
      repeatMemo.add(state);return false;
     };
     repeatsOk=repeatSearch();
+    // Team Bret may use otherwise-open Live spots, but never forces another Live
+    // session and never displaces a required Rebels/Jenkins hitter.
+    if(repeatsOk){
+     const bretIndexes=players.map((player,index)=>({player,index})).filter(({player})=>player.isTeamBret).map(item=>item.index);
+     bretIndexes.forEach(index=>{
+      const options=playerOptions[index].filter(sessionIndex=>assignments[sessionIndex].length<4).sort((a,b)=>assignments[a].length-assignments[b].length||a-b);
+      if(options.length)assignments[options[0]].push(index);
+     });
+    }
    }
    if(!repeatsOk){
     feasibilityErrors.push('The selected pitchers, catchers, arrival times and departure times cannot provide 2–4 hitters in every live block. Adjust availability or mark a pitcher Hitting Only and build again.');
