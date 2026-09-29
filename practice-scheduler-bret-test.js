@@ -166,7 +166,7 @@
    if(!pitcher||!pitcher.requiresPitchWarmup||seenWarmupPitchers.has(pitcher.name))return;
    seenWarmupPitchers.add(pitcher.name);warmupPitchers.push({pitcher,liveBlock,catcher});
   });
-  const warmAssignments=[],warmupCatcherLoads=new Map(orderedCatchers.map(catcher=>[catcher.name,0])),coachWarmupBlocks=new Set(),warmMemo=new Set();
+  const warmAssignments=[],warmupCatcherLoads=new Map(orderedCatchers.map(catcher=>[catcher.name,0])),coachWarmupBlockLoads=new Map(),warmMemo=new Set();
   const warmOptionsFor=item=>{
    const options=[];
    for(const candidateBlock of [item.liveBlock-1,item.liveBlock-2]){
@@ -181,27 +181,27 @@
    if(!remaining.length)return true;
    let chosenIndex=-1,chosenOptions=null;
    for(let index=0;index<remaining.length;index++){
-    const item=remaining[index],possible=warmOptionsFor(item).filter(option=>option.catcher?(warmupCatcherLoads.get(option.catcher.name)||0)<1:!coachWarmupBlocks.has(option.block));
+    const item=remaining[index],possible=warmOptionsFor(item).filter(option=>option.catcher?(warmupCatcherLoads.get(option.catcher.name)||0)<1:(coachWarmupBlockLoads.get(option.block)||0)<2);
     if(!possible.length)return false;
     if(chosenOptions===null||possible.length<chosenOptions.length){chosenIndex=index;chosenOptions=possible}
    }
    const item=remaining[chosenIndex],next=remaining.slice(0,chosenIndex).concat(remaining.slice(chosenIndex+1));
    chosenOptions.sort((a,b)=>(a.catcher?0:1)-(b.catcher?0:1)||b.block-a.block||(a.partner||'').localeCompare(b.partner||''));
-   const stateKey=remaining.map(entry=>entry.pitcher.name).sort().join('|')+'#'+[...coachWarmupBlocks].sort().join(',')+'#'+[...warmupCatcherLoads.entries()].map(([name,count])=>name+':'+count).sort().join(',');
+   const stateKey=remaining.map(entry=>entry.pitcher.name).sort().join('|')+'#'+[...coachWarmupBlockLoads.entries()].sort((a,b)=>a[0]-b[0]).map(([block,count])=>block+':'+count).join(',')+'#'+[...warmupCatcherLoads.entries()].map(([name,count])=>name+':'+count).sort().join(',');
    if(warmMemo.has(stateKey))return false;
    for(const option of chosenOptions){
-    if(option.catcher)warmupCatcherLoads.set(option.catcher.name,(warmupCatcherLoads.get(option.catcher.name)||0)+1);else coachWarmupBlocks.add(option.block);
+    if(option.catcher)warmupCatcherLoads.set(option.catcher.name,(warmupCatcherLoads.get(option.catcher.name)||0)+1);else coachWarmupBlockLoads.set(option.block,(coachWarmupBlockLoads.get(option.block)||0)+1);
     warmAssignments.push({item,option});
     if(warmSearch(next))return true;
     warmAssignments.pop();
-    if(option.catcher)warmupCatcherLoads.set(option.catcher.name,(warmupCatcherLoads.get(option.catcher.name)||0)-1);else coachWarmupBlocks.delete(option.block);
+    if(option.catcher)warmupCatcherLoads.set(option.catcher.name,(warmupCatcherLoads.get(option.catcher.name)||0)-1);else{const next=(coachWarmupBlockLoads.get(option.block)||0)-1;if(next>0)coachWarmupBlockLoads.set(option.block,next);else coachWarmupBlockLoads.delete(option.block)}
    }
    warmMemo.add(stateKey);return false;
   };
   const warmupsOk=warmSearch(warmupPitchers);
   if(!warmupsOk&&warmupPitchers.length){
    const constrained=warmupPitchers.slice().sort((a,b)=>warmOptionsFor(a).length-warmOptionsFor(b).length)[0];
-   feasibilityErrors.push(`${constrained.pitcher.name} cannot be assigned a pitching warm-up within two blocks before live with the available catchers and one warm-up coach.`);
+   feasibilityErrors.push(`${constrained.pitcher.name} cannot be assigned a pitching warm-up within two blocks before live with the available catchers and two simultaneous warm-up lanes.`);
   }else{
    warmAssignments.forEach(({item,option})=>{
     schedule[item.pitcher.name][option.block]={activity:'Pitch Warm-Up',partner:option.partner};
