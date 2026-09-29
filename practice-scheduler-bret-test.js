@@ -204,11 +204,15 @@
   });
   const warmAssignments=[],warmupCatcherLoads=new Map(orderedCatchers.map(catcher=>[catcher.name,0])),coachWarmupBlockLoads=new Map(),warmMemo=new Set();
   const warmOptionsFor=item=>{
-   const options=[];
-   for(const candidateBlock of [item.liveBlock-1,item.liveBlock-2]){
-    if(candidateBlock<0||!isOpen(item.pitcher,candidateBlock))continue;
+   const options=[],openingEnd=teeBlocks[item.pitcher.name]??-1;
+   // Match the feasibility rule above: a pitching warm-up may use ANY eligible
+   // bullpen block after the player's opening sequence and before first Live.
+   // The bullpen is separate from hitting stations, so the pitcher's normal
+   // hitting-station cell does not need to be empty here.
+   for(let candidateBlock=openingEnd+1;candidateBlock<item.liveBlock;candidateBlock++){
+    if(candidateBlock<item.pitcher.availableFromBlock||candidateBlock>=item.pitcher.availableUntilBlock)continue;
     const catcherChoices=[item.catcher,...orderedCatchers].filter((candidate,candidateIndex,list)=>candidate&&list.indexOf(candidate)===candidateIndex).sort((a,b)=>(a.isGuest===item.pitcher.isGuest?0:1)-(b.isGuest===item.pitcher.isGuest?0:1)||a.name.localeCompare(b.name));
-    catcherChoices.forEach(candidate=>{if(candidate.name!==item.pitcher.name&&isOpen(candidate,candidateBlock))options.push({block:candidateBlock,catcher:candidate,partner:candidate.name})});
+    catcherChoices.forEach(candidate=>{if(candidate.name!==item.pitcher.name&&candidateBlock>=candidate.availableFromBlock&&candidateBlock<candidate.availableUntilBlock)options.push({block:candidateBlock,catcher:candidate,partner:candidate.name})});
     options.push({block:candidateBlock,catcher:null,partner:'Coach'});
    }
    return options;
@@ -237,7 +241,7 @@
   const warmupsOk=warmSearch(warmupPitchers);
   if(!warmupsOk&&warmupPitchers.length){
    const constrained=warmupPitchers.slice().sort((a,b)=>warmOptionsFor(a).length-warmOptionsFor(b).length)[0];
-   feasibilityErrors.push(`${constrained.pitcher.name} cannot be assigned a pitching warm-up within two blocks before live with the available catchers and two simultaneous warm-up lanes.`);
+   feasibilityErrors.push(`${constrained.pitcher.name} cannot be assigned a pitching warm-up before live with the available attendance and two simultaneous warm-up lanes.`);
   }else{
    warmAssignments.forEach(({item,option})=>{
     schedule[item.pitcher.name][option.block]={activity:'Pitch Warm-Up',partner:option.partner};
