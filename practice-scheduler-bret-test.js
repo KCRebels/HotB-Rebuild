@@ -81,31 +81,37 @@
    pitcherGroups=orderedPitchers.map(pitcher=>doubleNames.has(pitcher.name)?[pitcher,pitcher]:[pitcher]);
   }
   function placePitcherGroups(groups){
-   // Team Bret adds late-arriving hitters, which can increase the number of Live
-   // sessions without adding available pitchers. Pitcher placement therefore needs
-   // to solve the complete small matching problem instead of greedily committing
-   // the first legal block for each group.
+   // Exact search across legal Live blocks. Warm-up feasibility is solved together
+   // with placement so we do not reject a valid layout merely because a pitcher
+   // would need one of the two simultaneous warm-up lanes in the same block.
    const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-3)},(_,index)=>index+3);
-   const pitcherCanUseLiveBlock=(pitcher,block)=>{
-    if(!pitcher||!isOpen(pitcher,block))return !pitcher;
-    if(!pitcher.requiresPitchWarmup)return true;
-    return [block-1,block-2].some(warmBlock=>warmBlock>=2&&isOpen(pitcher,warmBlock));
-   };
-   const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&pitcherCanUseLiveBlock(pitcher,block+offset)));
-   const indexed=groups.map((group,index)=>({group,index,starts:startsFor(group)}));
+   const groupStarts=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&(!pitcher||isOpen(pitcher,block+offset))));
+   const indexed=groups.map((group,index)=>({group,index,starts:groupStarts(group)}));
    if(indexed.some(item=>!item.starts.length))return null;
    indexed.sort((a,b)=>a.starts.length-b.starts.length||b.group.length-a.group.length||a.index-b.index);
    const used=new Set(),placed=[];
+   const warmupLayoutWorks=()=>{
+    const firstLiveByPitcher=new Map();
+    placed.forEach(({pitcher,liveBlock})=>{if(pitcher&&pitcher.requiresPitchWarmup&&(!firstLiveByPitcher.has(pitcher.name)||liveBlock<firstLiveByPitcher.get(pitcher.name).liveBlock))firstLiveByPitcher.set(pitcher.name,{pitcher,liveBlock})});
+    const items=[...firstLiveByPitcher.values()].sort((a,b)=>a.liveBlock-b.liveBlock),loads=new Map();
+    const warmSearch=index=>{
+     if(index>=items.length)return true;
+     const {pitcher,liveBlock}=items[index];
+     const options=[liveBlock-1,liveBlock-2].filter(block=>block>=2&&isOpen(pitcher,block)&&(loads.get(block)||0)<2);
+     for(const block of options){loads.set(block,(loads.get(block)||0)+1);if(warmSearch(index+1))return true;const next=(loads.get(block)||0)-1;if(next)loads.set(block,next);else loads.delete(block)}
+     return false;
+    };
+    return warmSearch(0);
+   };
    const search=at=>{
-    if(at>=indexed.length)return true;
+    if(at>=indexed.length)return warmupLayoutWorks();
     const item=indexed[at],starts=item.starts.slice();
     if(item.group.some(pitcher=>pitcher&&pitcher.availableUntilBlock<BLOCK_COUNT))starts.sort((a,b)=>b-a);else starts.sort((a,b)=>a-b);
-    for(const start of starts){
-     if(item.group.some((_,offset)=>used.has(start+offset)))continue;
-     item.group.forEach((pitcher,offset)=>{used.add(start+offset);placed.push({pitcher,liveBlock:start+offset,groupIndex:item.index})});
+    for(const block of starts){
+     if(item.group.some((_,offset)=>used.has(block+offset)))continue;
+     item.group.forEach((pitcher,offset)=>{used.add(block+offset);placed.push({pitcher,liveBlock:block+offset,groupIndex:item.index})});
      if(search(at+1))return true;
-     item.group.forEach((_,offset)=>used.delete(start+offset));
-     placed.splice(placed.length-item.group.length,item.group.length);
+     item.group.forEach((_,offset)=>used.delete(block+offset));placed.splice(placed.length-item.group.length,item.group.length);
     }
     return false;
    };
