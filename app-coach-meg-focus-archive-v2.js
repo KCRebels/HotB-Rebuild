@@ -4607,6 +4607,8 @@ function bind(){
   $('#saveNextGame')?.addEventListener('click',()=>{const date=$('#nextGameDate')?.value||'',time=$('#nextGameTime')?.value||'',opponent=String($('#nextGameOpponent')?.value||'').trim();if(!date){alert('Choose the game date.');return}db.nextGame={date,time,opponent};save();modal=null;render()});
   $('#clearNextGame')?.addEventListener('click',()=>{delete db.nextGame;save();modal=null;render()});
  }
+ document.querySelectorAll('[data-team-analysis]').forEach(button=>button.onclick=()=>{go('practice');practiceSection=button.dataset.teamAnalysis==='good'?'good-trends':'team-focus';render();window.scrollTo(0,0)});
+ document.querySelectorAll('[data-team-focus-build]').forEach(button=>button.onclick=()=>{go('practice');practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0)});
  const focusObservationButton=$('#addFocusObservation');if(focusObservationButton)focusObservationButton.onclick=event=>{event.preventDefault();event.stopPropagation();openFocusObservation()};
  if(route==='new')bindNew();
  if(route==='roster')bindRoster();
@@ -6140,6 +6142,9 @@ function refreshPracticeAccommodationDefaults(){
 }
 function bindPractice(){
  bindTestNavigation();
+ $('#teamFocusBack')?.addEventListener('click',()=>go('home'));
+ $('#teamFocusBuildPractice')?.addEventListener('click',()=>{practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0)});
+ $$('[data-team-focus-player]').forEach(button=>button.addEventListener('click',()=>{practiceSection='player';practiceFocusPlayer=button.dataset.teamFocusPlayer;render();window.scrollTo(0,0)}));
  $('#practiceMachineFocus')?.addEventListener('change',event=>{practicePlan.machineFocus=event.target.value||'Standard';persistPracticeSession();render()});
  $('#practiceFrontTossFocus')?.addEventListener('change',event=>{practicePlan.frontTossFocus=event.target.value||'Standard';persistPracticeSession();render()});
  $('#choosePracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice(0,practicePlan.drillStations);practiceDrillPickerOpen=true;practicePickerQuery='';practicePickerCategory='All Drills';render();window.scrollTo(0,0)});
