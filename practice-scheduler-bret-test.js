@@ -65,7 +65,8 @@
   const heavyCatcherIndex=((weekNumber%2)+2)%2;
   const catcherRotate=catchers.length?heavyCatcherIndex%catchers.length:0;
   const orderedCatchers=catchers.slice(catcherRotate).concat(catchers.slice(0,catcherRotate));
-  const liveRequiredHitters=activeAttendees.filter(player=>!player.isTeamBret);\n  const hitterSessionsNeeded=Math.ceil(liveRequiredHitters.length/4); // Team Bret may rotate into Live when space exists, but does not create mandatory Live demand.
+  const liveRequiredHitters=activeAttendees.filter(player=>!player.isTeamBret);
+  const hitterSessionsNeeded=Math.ceil(liveRequiredHitters.length/4); // Team Bret may rotate into Live when space exists, but does not create mandatory Live demand.
   const orderedPitchers=pitchers.slice().sort((a,b)=>a.availableUntilBlock-b.availableUntilBlock||a.availableFromBlock-b.availableFromBlock||a.name.localeCompare(b.name));
   const plannedSessionCount=pitchers.length?hitterSessionsNeeded:0;
   const rotatedPitchers=orderedPitchers.length?orderedPitchers.slice((weekNumber%orderedPitchers.length+orderedPitchers.length)%orderedPitchers.length).concat(orderedPitchers.slice(0,(weekNumber%orderedPitchers.length+orderedPitchers.length)%orderedPitchers.length)):[];
