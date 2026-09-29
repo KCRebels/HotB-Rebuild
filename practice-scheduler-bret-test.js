@@ -512,13 +512,11 @@
   const orderedFrontBlocks=frontTossCandidates.slice().sort((a,b)=>(a>=8?0:1)-(b>=8?0:1)||a-b),frontSlots=orderedFrontBlocks.flatMap(block=>[{block,lane:1},{block,lane:2}]);
   if(!feasibilityErrors.length){
    const eligibleFront=(player,slot)=>isOpen(player,slot.block)&&(!reserveEarlyFront||(player.prePracticeComplete?slot.block<2:slot.block>=2));
-   const leavesMachineFeasible=frontGroups=>{
-    const occupied=Object.fromEntries(activeAttendees.map(player=>[player.name,new Set()]));
-    frontGroups.forEach((names,index)=>names.forEach(name=>occupied[name].add(frontSlots[index].block)));
-    const machineSlots=Array.from({length:BLOCK_COUNT},(_,block)=>({block}));
-    return !!assignStationGroups(activeAttendees,machineSlots,(player,slot)=>isOpen(player,slot.block)&&!occupied[player.name].has(slot.block),false);
-   };
-   let frontGroups=assignStationGroups(activeAttendees,frontSlots,eligibleFront,true,leavesMachineFeasible);
+   // First prove Front Toss itself. Machine is solved immediately afterward from
+   // the remaining openings. The old continuation made the 31-player Front Toss
+   // search solve two exact-cover problems at once and could exhaust its work
+   // ceiling before finding an otherwise valid Front Toss layout.
+   let frontGroups=assignStationGroups(activeAttendees,frontSlots,eligibleFront,true);
    if(!frontGroups)feasibilityErrors.push('Front toss cannot be scheduled exactly once per player while keeping at least 2 players at every station, even after allowing a 4-player Front Toss group when needed.');
    else{
     const fourIndex=frontGroups.findIndex(names=>names.length===4);
