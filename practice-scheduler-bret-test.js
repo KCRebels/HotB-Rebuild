@@ -328,12 +328,20 @@
    // exact-once station assignment into two deterministic cohorts, each solved by
    // the existing bounded exact-cover routine, while reserving already-used slots.
    if(count>30){
+    // Split only the player bitset, not the station capacity. Both cohorts may use
+    // the same Front Toss block/lane as long as the combined group stays within
+    // capacity. This preserves the real 2–4 player station model for 31+ attendees.
     const midpoint=Math.ceil(count/2),cohorts=[players.slice(0,midpoint),players.slice(midpoint)],combined=Array.from({length:slots.length},()=>[]);
     for(const cohort of cohorts){
-     const solved=assignStationGroups(cohort,slots,(player,slot,index,peers)=>combined[index].length===0&&eligible(player,slot,index,peers),allowOneFrontTossFour,null);
+     const solved=assignStationGroups(cohort,slots,(player,slot,index,peers)=>{
+      const existing=combined[index]||[],capacity=allowOneFrontTossFour?4:3;
+      return existing.length+peers.length+1<=capacity&&eligible(player,slot,index,[...existing,...peers]);
+     },allowOneFrontTossFour,null);
      if(!solved)return null;
-     solved.forEach((names,index)=>{if(names.length)combined[index]=names});
+     solved.forEach((names,index)=>{if(names.length)combined[index].push(...names)});
     }
+    // Never leave a one-player station after merging cohorts.
+    if(combined.some(names=>names.length===1||names.length>(allowOneFrontTossFour?4:3)))return null;
     return !acceptSolution||acceptSolution(combined)?combined:null;
    }
    const eligibleMasks=slots.map((slot,index)=>{
