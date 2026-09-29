@@ -65,7 +65,7 @@
   const heavyCatcherIndex=((weekNumber%2)+2)%2;
   const catcherRotate=catchers.length?heavyCatcherIndex%catchers.length:0;
   const orderedCatchers=catchers.slice(catcherRotate).concat(catchers.slice(0,catcherRotate));
-  const hitterSessionsNeeded=Math.ceil(activeAttendees.length/3);
+  const hitterSessionsNeeded=Math.ceil(activeAttendees.length/4); // Live can safely carry up to four hitters when the larger three-team practice requires it.
   const orderedPitchers=pitchers.slice().sort((a,b)=>a.availableUntilBlock-b.availableUntilBlock||a.availableFromBlock-b.availableFromBlock||a.name.localeCompare(b.name));
   const plannedSessionCount=pitchers.length?Math.max(pitchers.length,hitterSessionsNeeded):0;
   const rotatedPitchers=orderedPitchers.length?orderedPitchers.slice((weekNumber%orderedPitchers.length+orderedPitchers.length)%orderedPitchers.length).concat(orderedPitchers.slice(0,(weekNumber%orderedPitchers.length+orderedPitchers.length)%orderedPitchers.length)):[];
@@ -127,7 +127,7 @@
    fallbackWarnings.push(`${pitcher.name} will pitch two consecutive live sessions in Blocks ${pitcherBlocks[0]}–${pitcherBlocks[1]}.`);
   });
   const sessionCount=plannedSessions.length;
-  if(activeAttendees.length===1)feasibilityErrors.push('At least two available players are required because every hitting station must have 2–3 players.');
+  if(activeAttendees.length===1)feasibilityErrors.push('At least two available players are required for Live.');
   const repeatHittersNeeded=Math.max(0,sessionCount*2-activeAttendees.length);
   if(repeatHittersNeeded>activeAttendees.length)feasibilityErrors.push(`${sessionCount} live blocks require more second live-hitting assignments than the attendance can safely provide.`);
   const catcherTargets=[];
@@ -231,7 +231,7 @@
     if(memo.has(key))return false;
     let chosen=-1,options=null;
     for(let index=0;index<players.length;index++)if(remaining&(1<<index)){
-     const possible=playerOptions[index].filter(sessionIndex=>assignments[sessionIndex].length<3);
+     const possible=playerOptions[index].filter(sessionIndex=>assignments[sessionIndex].length<4);
      if(!possible.length){memo.add(key);return false}
      if(options===null||possible.length<options.length){chosen=index;options=possible}
     }
@@ -258,7 +258,7 @@
     }
    }
    if(!repeatsOk){
-    feasibilityErrors.push('The selected pitchers, catchers, arrival times and departure times cannot provide 2–3 hitters in every live block. Adjust availability or mark a pitcher Hitting Only and build again.');
+    feasibilityErrors.push('The selected pitchers, catchers, arrival times and departure times cannot provide 2–4 hitters in every live block. Adjust availability or mark a pitcher Hitting Only and build again.');
    }else{
     assignments.forEach((group,sessionIndex)=>group.forEach(index=>{
      const player=players[index],session=liveSessions[sessionIndex];
