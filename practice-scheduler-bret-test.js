@@ -387,7 +387,7 @@
      const ac=slots.reduce((n,slot,index)=>n+(eligible(a,slot,index,[])?1:0),0),bc=slots.reduce((n,slot,index)=>n+(eligible(b,slot,index,[])?1:0),0);
      return ac-bc||a.name.localeCompare(b.name);
     });
-    const largeMemo=new Set();let largeNodes=0;const LARGE_LIMIT=60000;
+    let largeNodes=0;const LARGE_LIMIT=250000;
     const largeSearch=at=>{
      if(++largeNodes>LARGE_LIMIT)return false;
      if(at>=ordered.length){
@@ -399,15 +399,19 @@
       if(groups[index].length>=capacities[index])return;
       if(eligible(player,slot,index,groups[index]))options.push(index);
      });
-     options.sort((a,b)=>groups[b].length-groups[a].length||a-b);
-     const key=at+'|'+groups.map(names=>names.length).join(',');
-     if(largeMemo.has(key))return false;
+     // Prefer joining an existing group so we do not manufacture one-player
+     // stations that later become impossible to repair.
+     options.sort((a,b)=>{
+      const ar=groups[a].length===1?0:groups[a].length===2?1:groups[a].length===3?2:3;
+      const br=groups[b].length===1?0:groups[b].length===2?1:groups[b].length===3?2:3;
+      return ar-br||a-b;
+     });
      for(const index of options){
       groups[index].push(player.name);
       if(largeSearch(at+1))return true;
       groups[index].pop();
      }
-     largeMemo.add(key);return false;
+     return false;
     };
     return largeSearch(0)?groups:null;
    }
