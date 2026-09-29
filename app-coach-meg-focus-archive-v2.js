@@ -2232,12 +2232,12 @@ function seasonMeta(value){
  const date=new Date(value);
  if(Number.isNaN(date.getTime()))return {season:'',segment:''};
  const year=date.getFullYear(),month=date.getMonth()+1,day=date.getDate();
- if((month===7&&day>=31)||month===8)return {season:'',segment:'Dead Period'};
+ if(month===8&&day>=2)return {season:'',segment:'Dead Period'};
  const startYear=month>=9?year:year-1;
  const season=`${startYear}–${String(startYear+1).slice(-2)}`;
  let segment='Off Season';
  if(month>=9&&month<=11)segment='Fall';
- else if((month===5&&day>=20)||month===6||(month===7&&day<=30))segment='Summer';
+ else if((month===5&&day>=20)||month===6||month===7||(month===8&&day===1))segment='Summer';
  return {season,segment};
 }
 window.HotBSeasonMeta=seasonMeta;
@@ -2245,7 +2245,7 @@ function currentSeasonLabel(now=new Date()){
  const year=now.getFullYear(),month=now.getMonth()+1,day=now.getDate();
  // HotB season: Sept 1 through Aug 1. Aug 2-31 is the dead season, and the
  // upcoming season label is used so Sept 1 starts cleanly without a manual reset.
- const startYear=month>=9||month===8||(month===7&&day>=31)?year:year-1;
+ const startYear=month>=9||(month===8&&day>=2)?year:year-1;
  return `${startYear}–${String(startYear+1).slice(-2)}`;
 }
 function isDeadSeason(now=new Date()){return now.getMonth()===7&&now.getDate()>=2}
