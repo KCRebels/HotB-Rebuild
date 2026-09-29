@@ -6933,7 +6933,8 @@ function bindTestNavigation(){
   if(action==='portal'){go('portal');return}
   if(action==='library'){go('practice');practiceSection='library';render();window.scrollTo(0,0);return}
   if(action==='scout'){window.location.href='https://rebelsscout.com/';return}
-  if(action==='reports'){go('reports');return}
+  if(action==='reports'){selectedSeason=currentSeasonLabel();dateFilterMode='full';go('reports');return}
+  if(action==='eval'){selectedSeason=currentSeasonLabel();dateFilterMode='full';go('eval');return}
   go(action);
  };
  document.querySelectorAll('[data-test-nav]').forEach(button=>button.addEventListener('click',()=>testNavigate(button.dataset.testNav)));
