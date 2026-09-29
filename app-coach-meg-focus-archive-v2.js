@@ -2243,8 +2243,15 @@ function seasonMeta(value){
 window.HotBSeasonMeta=seasonMeta;
 function currentSeasonLabel(now=new Date()){
  const year=now.getFullYear(),month=now.getMonth()+1,day=now.getDate();
- const startYear=(month>=9||month===8||(month===7&&day>=31))?year:year-1;
+ // HotB season: Sept 1 through Aug 1. Aug 2-31 is the dead season, and the
+ // upcoming season label is used so Sept 1 starts cleanly without a manual reset.
+ const startYear=month>=9||month===8||(month===7&&day>=31)?year:year-1;
  return `${startYear}–${String(startYear+1).slice(-2)}`;
+}
+function isDeadSeason(now=new Date()){return now.getMonth()===7&&now.getDate()>=2}
+function currentSeasonGames(now=new Date()){
+ const season=currentSeasonLabel(now);
+ return (db.savedGames||[]).filter(game=>!game.scrimmage&&seasonMeta(game.date).season===season);
 }
 function availableSeasons(){
  return [...new Set([selectedSeason,currentSeasonLabel(),...db.savedGames.map(game=>seasonMeta(game.date).season),...(db.currentGame?[seasonMeta(db.currentGame.date).season]:[])].filter(Boolean))].sort().reverse();
