@@ -81,36 +81,36 @@
    pitcherGroups=orderedPitchers.map(pitcher=>doubleNames.has(pitcher.name)?[pitcher,pitcher]:[pitcher]);
   }
   function placePitcherGroups(groups){
-   // Live may use every block after the required Warm-Up/Tee opening: Blocks
-   // 4-10 in the normal ten-block practice and Blocks 4-11 in the approved
-   // eleven-block extension. Generate the pool directly from BLOCK_COUNT so the
-   // production rule has one source of truth and cannot drift between comments,
-   // tests, and the mobile Resolution path. Placement below is a finite pass over
-   // this fixed pool; there is no retry or recursive search.
-   const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-3)},(_,index)=>index+3),used=new Set(),placed=[];
+   // Team Bret adds late-arriving hitters, which can increase the number of Live
+   // sessions without adding available pitchers. Pitcher placement therefore needs
+   // to solve the complete small matching problem instead of greedily committing
+   // the first legal block for each group.
+   const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-3)},(_,index)=>index+3);
    const pitcherCanUseLiveBlock=(pitcher,block)=>{
     if(!pitcher||!isOpen(pitcher,block))return !pitcher;
     if(!pitcher.requiresPitchWarmup)return true;
-    // A pitcher must have at least one open block one or two blocks before Live.
-    // This is only a feasibility look-ahead; the exact warm-up matcher below owns
-    // coach/catcher resource allocation across all pitchers.
     return [block-1,block-2].some(warmBlock=>warmBlock>=2&&isOpen(pitcher,warmBlock));
    };
    const startsFor=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&pitcherCanUseLiveBlock(pitcher,block+offset)));
-   const ordered=groups.slice().sort((x,y)=>startsFor(x).length-startsFor(y).length||y.length-x.length);
-   for(const group of ordered){
-    const candidateStarts=startsFor(group).filter(block=>group.every((_,offset)=>!used.has(block+offset)));
-    // Resolution 498: an early-departing pitcher must not automatically take the
-    // earliest Live block. Doing so can force her mandatory warm-up into Block 3,
-    // consuming her only possible Front Toss block. Prefer the latest legal Live
-    // start for departure-limited groups; full-practice groups retain the stable
-    // earliest-first behavior.
-    if(group.some(pitcher=>pitcher&&pitcher.availableUntilBlock<BLOCK_COUNT))candidateStarts.sort((a,b)=>b-a);
-    const start=candidateStarts[0];
-    if(start===undefined)return null;
-    group.forEach((pitcher,offset)=>{used.add(start+offset);placed.push({pitcher,liveBlock:start+offset})});
-   }
-   return placed;
+   const indexed=groups.map((group,index)=>({group,index,starts:startsFor(group)}));
+   if(indexed.some(item=>!item.starts.length))return null;
+   indexed.sort((a,b)=>a.starts.length-b.starts.length||b.group.length-a.group.length||a.index-b.index);
+   const used=new Set(),placed=[];
+   const search=at=>{
+    if(at>=indexed.length)return true;
+    const item=indexed[at],starts=item.starts.slice();
+    if(item.group.some(pitcher=>pitcher&&pitcher.availableUntilBlock<BLOCK_COUNT))starts.sort((a,b)=>b-a);else starts.sort((a,b)=>a-b);
+    for(const start of starts){
+     if(item.group.some((_,offset)=>used.has(start+offset)))continue;
+     item.group.forEach((pitcher,offset)=>{used.add(start+offset);placed.push({pitcher,liveBlock:start+offset,groupIndex:item.index})});
+     if(search(at+1))return true;
+     item.group.forEach((_,offset)=>used.delete(start+offset));
+     placed.splice(placed.length-item.group.length,item.group.length);
+    }
+    return false;
+   };
+   if(!search(0))return null;
+   return placed.sort((a,b)=>a.liveBlock-b.liveBlock).map(({pitcher,liveBlock})=>({pitcher,liveBlock}));
   }
   let plannedSessions=feasibilityErrors.length?[]:placePitcherGroups(pitcherGroups);
   if(!plannedSessions&&pitcherGroups.length){feasibilityErrors.push('The available pitchers cannot be placed into the live blocks while honoring arrival times, departure times, and consecutive blocks for any pitcher who throws twice.');plannedSessions=[]}
