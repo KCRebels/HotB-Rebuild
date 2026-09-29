@@ -2270,7 +2270,7 @@ function gameMatchesDateFilter(game){
  return meta.segment===({fall:'Fall',summer:'Summer',offseason:'Off Season'}[dateFilterMode]);
 }
 function filteredGames(includeCurrent=true){return statGames(includeCurrent).filter(gameMatchesDateFilter)}
-function filteredSavedGamesForManagement(){return [...db.savedGames].sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime())}
+function filteredSavedGamesForManagement(){return [...db.savedGames].filter(gameMatchesDateFilter).sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime())}
 function filteredPAs(includeCurrent=true){return filteredGames(includeCurrent).flatMap(game=>game.plateAppearances||[])}
 
 function activeDateFilterLabel(){
