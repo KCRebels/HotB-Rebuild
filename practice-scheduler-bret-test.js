@@ -81,9 +81,8 @@
    pitcherGroups=orderedPitchers.map(pitcher=>doubleNames.has(pitcher.name)?[pitcher,pitcher]:[pitcher]);
   }
   function placePitcherGroups(groups){
-   // Exact search across legal Live blocks. Warm-up feasibility is solved together
-   // with placement so we do not reject a valid layout merely because a pitcher
-   // would need one of the two simultaneous warm-up lanes in the same block.
+   // Exact search. A pitcher who is assigned twice still throws consecutive Live
+   // blocks. Warm-up is checked against the first Live block for that pitcher.
    const liveBlocks=Array.from({length:Math.max(0,BLOCK_COUNT-2)},(_,index)=>index+2);
    const groupStarts=group=>liveBlocks.filter(block=>group.every((pitcher,offset)=>liveBlocks.includes(block+offset)&&(!pitcher||isOpen(pitcher,block+offset))));
    const indexed=groups.map((group,index)=>({group,index,starts:groupStarts(group)}));
@@ -92,12 +91,16 @@
    const used=new Set(),placed=[];
    const warmupLayoutWorks=()=>{
     const firstLiveByPitcher=new Map();
-    placed.forEach(({pitcher,liveBlock})=>{if(pitcher&&pitcher.requiresPitchWarmup&&(!firstLiveByPitcher.has(pitcher.name)||liveBlock<firstLiveByPitcher.get(pitcher.name).liveBlock))firstLiveByPitcher.set(pitcher.name,{pitcher,liveBlock})});
-    const items=[...firstLiveByPitcher.values()].sort((a,b)=>a.liveBlock-b.liveBlock),loads=new Map();
+    placed.forEach(({pitcher,liveBlock})=>{if(pitcher&&pitcher.requiresPitchWarmup&&(!firstLiveByPitcher.has(pitcher.name)||liveBlock<firstLiveByPitcher.get(pitcher.name)))firstLiveByPitcher.set(pitcher.name,liveBlock)});
+    const items=[...firstLiveByPitcher.entries()].map(([name,liveBlock])=>({pitcher:attendees.find(p=>p.name===name),liveBlock})).sort((a,b)=>a.liveBlock-b.liveBlock);
+    const loads=new Map();
     const warmSearch=index=>{
      if(index>=items.length)return true;
      const {pitcher,liveBlock}=items[index];
-     const options=[liveBlock-1,liveBlock-2].filter(block=>block>=0&&isOpen(pitcher,block)&&(loads.get(block)||0)<2);
+     // Pitching warm-up is a separate bullpen activity, not a normal hitting
+     // station. It may occur after the player's opening Warm-Up/Tee sequence even
+     // though the regular schedule cell is not otherwise empty.
+     const options=[liveBlock-1,liveBlock-2].filter(block=>block>=0&&block>=pitcher.availableFromBlock&&block<pitcher.availableUntilBlock&&block>(teeBlocks[pitcher.name]??-1)&&(loads.get(block)||0)<2);
      for(const block of options){loads.set(block,(loads.get(block)||0)+1);if(warmSearch(index+1))return true;const next=(loads.get(block)||0)-1;if(next)loads.set(block,next);else loads.delete(block)}
      return false;
     };
