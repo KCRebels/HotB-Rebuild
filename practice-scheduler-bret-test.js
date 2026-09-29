@@ -65,7 +65,7 @@
   const heavyCatcherIndex=((weekNumber%2)+2)%2;
   const catcherRotate=catchers.length?heavyCatcherIndex%catchers.length:0;
   const orderedCatchers=catchers.slice(catcherRotate).concat(catchers.slice(0,catcherRotate));
-  const liveRequiredHitters=activeAttendees.filter(player=>!player.isTeamBret&&!player.isTeamJenkins);
+  const liveRequiredHitters=activeAttendees.filter(player=>!player.isTeamBret);
   const hitterSessionsNeeded=Math.ceil(liveRequiredHitters.length/4); // Team Bret may rotate into Live when space exists, but does not create mandatory Live demand.
   const orderedPitchers=pitchers.slice().sort((a,b)=>a.availableUntilBlock-b.availableUntilBlock||a.availableFromBlock-b.availableFromBlock||a.name.localeCompare(b.name));
   const plannedSessionCount=pitchers.length?hitterSessionsNeeded:0;
@@ -251,7 +251,7 @@
     }
     memo.add(key);return false;
    };
-   const mustHit=players.map((player,index)=>({player,index})).filter(({player})=>!player.isTeamBret&&!player.isTeamJenkins).map(item=>item.index);
+   const mustHit=players.map((player,index)=>({player,index})).filter(({player})=>!player.isTeamBret).map(item=>item.index);
    const firstPassOk=firstPass(mustHit);
    let repeatsOk=firstPassOk;
    if(firstPassOk){
@@ -278,9 +278,9 @@
     // Team Bret may use otherwise-open Live spots, but never forces another Live
     // session and never displaces a required Rebels/Jenkins hitter.
     if(repeatsOk){
-     // Guest teams may rotate into otherwise-open Live spots, but neither Team
-     // Jenkins nor Team Bret creates mandatory Live demand or displaces Rebels.
-     const guestIndexes=players.map((player,index)=>({player,index})).filter(({player})=>player.isTeamBret||player.isTeamJenkins).map(item=>item.index);
+     // Team Bret may rotate into otherwise-open Live spots, but does not create
+     // mandatory Live demand or displace the established Rebels/Jenkins rotation.
+     const guestIndexes=players.map((player,index)=>({player,index})).filter(({player})=>player.isTeamBret).map(item=>item.index);
      guestIndexes.forEach(index=>{
       const options=playerOptions[index].filter(sessionIndex=>assignments[sessionIndex].length<4).sort((a,b)=>assignments[a].length-assignments[b].length||a-b);
       if(options.length)assignments[options[0]].push(index);
