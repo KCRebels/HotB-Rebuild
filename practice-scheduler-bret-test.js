@@ -249,16 +249,26 @@
    const firstPassOk=players.length<=30&&firstPass(fullMask);
    let repeatsOk=firstPassOk;
    if(firstPassOk){
-    // Sessions with fewer than two hitters need repeats. Choose distinct legal
-    // attendees while preferring players who still have only their required first hit.
-    for(let sessionIndex=0;sessionIndex<liveSessions.length&&repeatsOk;sessionIndex++){
-     while(assignments[sessionIndex].length<2){
-      const counts=players.map((_,index)=>assignments.reduce((n,group)=>n+(group.includes(index)?1:0),0));
-      const candidate=sessionOptions[sessionIndex].filter(index=>!assignments[sessionIndex].includes(index)).sort((a,b)=>counts[a]-counts[b]||players[a].name.localeCompare(players[b].name))[0];
-      if(candidate===undefined){repeatsOk=false;break}
-      assignments[sessionIndex].push(candidate);
-     }
-    }
+    // Fill the two-hitter minimum as a second exact search. A greedy repeat can
+    // consume the only legal late/early hitter for a later Live session.
+    const repeatMemo=new Set();
+    const repeatSearch=()=>{
+     const needy=assignments.map((group,index)=>group.length<2?index:-1).filter(index=>index>=0);
+     if(!needy.length)return true;
+     let chosen=-1,choices=null;
+     needy.forEach(sessionIndex=>{
+      const possible=sessionOptions[sessionIndex].filter(index=>!assignments[sessionIndex].includes(index));
+      if(choices===null||possible.length<choices.length){chosen=sessionIndex;choices=possible}
+     });
+     if(!choices||!choices.length)return false;
+     const state=assignments.map(group=>group.slice().sort((a,b)=>a-b).join('.')).join('|');
+     if(repeatMemo.has(state))return false;
+     const counts=players.map((_,index)=>assignments.reduce((n,group)=>n+(group.includes(index)?1:0),0));
+     choices.sort((a,b)=>counts[a]-counts[b]||players[a].name.localeCompare(players[b].name));
+     for(const candidate of choices){assignments[chosen].push(candidate);if(repeatSearch())return true;assignments[chosen].pop()}
+     repeatMemo.add(state);return false;
+    };
+    repeatsOk=repeatSearch();
    }
    if(!repeatsOk){
     feasibilityErrors.push('The selected pitchers, catchers, arrival times and departure times cannot provide 2–4 hitters in every live block. Adjust availability or mark a pitcher Hitting Only and build again.');
