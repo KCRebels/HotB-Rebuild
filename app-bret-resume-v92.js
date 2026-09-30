@@ -815,7 +815,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-window.__HOTB_BRET_TEST_BUILD__='v95';
+window.__HOTB_BRET_TEST_BUILD__='v96';
 const PORTAL_BUILD_TOKEN='20260924-631';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
@@ -3167,25 +3167,31 @@ async function finishPreviousWithTimeout(promise,label,ms=30000){
 }
 async function clearFinishedOrphanedPractice(state){
  if(!cloudUser||!cloudStore||!state?.id)throw new Error('cloud-unavailable');
- const activeNames=new Set(state.players||[]),persisted=state.playerPortals||[],persistedIds=new Set(persisted.map(entry=>entry.portalId)),guestIds=new Set([...(state.guestPlayerPortalIds||[]),...(state.guestCoachPortalIds||[])].filter(Boolean)),coachId=state.coachPortalId||db.coachPortal?.portalId;
+ const activeNames=new Set(state.players||[]),persisted=state.playerPortals||[],persistedIds=new Set(persisted.map(entry=>entry.portalId)),guestIds=new Set([...(state.guestPlayerPortalIds||[]),...(state.guestCoachPortalIds||[])].filter(Boolean)),coachId=state.coachPortalId||db.coachPortal?.portalId,jenkinsCoachId=state.jenkinsCoachPortalId||db.jenkinsCoachPortal?.portalId,bretCoachId=state.bretCoachPortalId||db.bretCoachPortal?.portalId;
  const targets=[
   ...persisted.map(entry=>({id:entry.portalId,data:entry.isTeamJenkins?jenkinsPortalCleanupPayload(db.roster.find(item=>item.name===entry.name),entry):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
-  ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).map(player=>({id:player.portalId,isTeamJenkins:!!player.isTeamJenkins,data:player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
+  ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)&&!persistedIds.has(player.portalId)).map(player=>({id:player.portalId,data:player.isTeamJenkins?jenkinsPortalResetPayload(player):{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}})),
   ...(coachId?[{id:coachId,data:{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}]:[]),
+  ...(jenkinsCoachId?[{id:jenkinsCoachId,data:{activePractice:null,expired:false,accessStatus:'waiting',updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}]:[]),
+  ...(bretCoachId?[{id:bretCoachId,data:{activePractice:null,expired:false,accessStatus:'waiting',updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}]:[]),
   ...[...guestIds].map(id=>({id,data:{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}))
- ];
- const existing=await finishPreviousWithTimeout(Promise.all(targets.map(async target=>{const snapshot=await portalDoc(target.id).get({source:'server'}).catch(()=>portalDoc(target.id).get());if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==state.id)throw new Error('finished-orphan-newer-practice-conflict');
-  // Recovery cleanup is also idempotent. A portal that no longer contains this
-  // finished orphan is verification-only; never expire/reset it on a late retry.
-  if(!remotePracticeId)return {target,alreadyCleared:true};
-  return {target,alreadyCleared:false};
- })), 'preflight'),batch=cloudStore.batch();
- existing.filter(item=>item&&!item.alreadyCleared).forEach(item=>batch.update(portalDoc(item.target.id),item.target.data));if(existing.some(item=>item&&!item.alreadyCleared))await finishPreviousWithTimeout(batch.commit(),'commit');
- const verifyIds=[...new Set(targets.map(target=>target.id).filter(Boolean))],verification=await finishPreviousWithTimeout(Promise.all(verifyIds.map(async id=>{const snapshot=await portalDoc(id).get();if(!snapshot.exists)return true;const remote=snapshot.data()||{};if(remote.activePractice)return false;if(guestIds.has(id))return remote.expired===true&&remote.accessStatus==='ended';const entry=persisted.find(item=>item.portalId===id),rosterPlayer=db.roster.find(player=>player.portalId===id&&activeNames.has(player.name));if(entry?.isTeamJenkins||rosterPlayer?.isTeamJenkins)return remote.portalType==='jenkinsPlayer'&&remote.accessStatus==='waiting'&&remote.expired===false;return true})), 'verification');
- if(!verification.length||verification.some(ok=>!ok))throw new Error('finished-orphan-cleanup-verification-failed');
- // Only discard the local practice session when this exact orphan is still the
- // active portal practice. A late orphan-cleanup result must never erase a newer
- // practice that was created while Firestore verification was in flight.
+ ].filter(target=>target.id);
+ const unique=[...new Map(targets.map(target=>[target.id,target])).values()];
+ // This pointer is retained only after DONE/ended-practice cleanup failed. Do not
+ // read every portal before clearing it: those parallel reads are what repeatedly
+ // timed out on iPhone. Firestore batch update is atomic and cannot create docs.
+ const batch=cloudStore.batch();
+ unique.forEach(target=>batch.update(portalDoc(target.id),target.data));
+ if(unique.length)await finishPreviousWithTimeout(batch.commit(),'commit',30000);
+ // Verify sequentially so a slow mobile connection does not launch 15-25 reads at
+ // once. Missing documents are harmless here; any portal carrying a newer practice
+ // is left detectable by verification rather than being reconstructed locally.
+ for(const target of unique){
+  const snapshot=await finishPreviousWithTimeout(portalDoc(target.id).get(),'verification',15000);
+  if(!snapshot.exists)continue;
+  const remote=snapshot.data()||{};
+  if(remote.activePractice)throw new Error('finished-orphan-cleanup-verification-failed');
+ }
  if(db.activePortalPractice?.id===state.id){
   db.activePortalPractice=null;
   if(!db.activePracticeSession||db.activePracticeSession?.plan?.portalDraftId===state.id)db.activePracticeSession=null;
