@@ -1085,14 +1085,17 @@ if(recoveredPracticeSession){
 const recoveredPracticeExpired=!!(practicePlan&&practiceClock.running&&!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now()));
 
 let cloudInitStarted=false,cloudInitRetryTimer=null,cloudInitRetryCount=0;
+function portalFirebaseModulesReady(){return !!window.firebase&&typeof window.firebase.auth==='function'&&typeof window.firebase.firestore==='function'}
 async function initCloud(){
  if(cloudInitStarted)return;
- if(!window.firebase&&window.HotBFirebaseReady){try{await Promise.race([window.HotBFirebaseReady,new Promise((_,reject)=>setTimeout(()=>reject(new Error('firebase-loader-timeout')),8000))])}catch(_){}}
- if(!window.firebase){
+ if(!portalFirebaseModulesReady()&&window.HotBFirebaseReady){try{await Promise.race([window.HotBFirebaseReady,new Promise((_,reject)=>setTimeout(()=>reject(new Error('firebase-loader-timeout')),8000))])}catch(_){}}
+ if(!portalFirebaseModulesReady()){
   try{
    const sources=['https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js','https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js','https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js'];
    for(const src of sources){
     if(window.firebase&&src.includes('firebase-app-compat'))continue;
+    if(typeof window.firebase?.auth==='function'&&src.includes('firebase-auth-compat'))continue;
+    if(typeof window.firebase?.firestore==='function'&&src.includes('firebase-firestore-compat'))continue;
     await Promise.race([
      new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=false;s.dataset.hotbFirebase=src;s.onload=resolve;s.onerror=()=>reject(new Error('firebase-load-failed'));document.head.appendChild(s)}),
      new Promise((_,reject)=>setTimeout(()=>reject(new Error('firebase-load-timeout')),8000))
@@ -1100,7 +1103,7 @@ async function initCloud(){
    }
   }catch(_){}
  }
- if(!window.firebase){
+ if(!portalFirebaseModulesReady()){
   if(cloudInitRetryCount<12){cloudInitRetryCount++;clearTimeout(cloudInitRetryTimer);cloudInitRetryTimer=setTimeout(initCloud,500);return}
   const dynamicScripts=[...document.scripts].filter(script=>script.dataset?.hotbFirebase);
   const attempted=dynamicScripts.map(script=>script.dataset.hotbFirebase||'').filter(Boolean);
@@ -1163,7 +1166,8 @@ async function initCloud(){
   cloudMessage='Cloud backup could not start. Your phone data is still safe.';
   if(portalToken){
    portalBusy=false;
-   portalMessage='HotB could not start the player portal connection. Please reopen the link.';
+   const code=String(error?.code||error?.message||'unknown').replace(/[^a-zA-Z0-9_-]/g,'-');
+   portalMessage='HotB could not start the player portal connection [P212-'+code+']. Please retry.';
    if(route==='portal')render();
   }
  }
@@ -6013,7 +6017,7 @@ window.HotBPortalText=function(name){
  if(!openSmsComposer(url)){portalMessage='Messages could not be opened from this screen.';render()}
 };
 function bindPlayerPortal(){
- $('#retryPracticePortal')?.addEventListener('click',()=>{portalMessage='';portalBusy=false;loadPlayerPortal()});
+ $('#retryPracticePortal')?.addEventListener('click',async()=>{portalMessage='';portalBusy=true;render();if(!cloudAuth||!cloudStore){cloudInitStarted=false;cloudInitRetryCount=0;await initCloud()}if(cloudAuth&&cloudStore)await loadPlayerPortal()});
  if(route==='portal'&&!portalToken&&cloudAuthReady&&cloudUser&&db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&(!player.portalId||(player.name==='Megan Ryan'&&!player.portalPin)||(/^Aniesa(?:\s|$)/i.test(player.name)&&!player.portalPin))))setTimeout(recoverPermanentPlayerPortalsForManager,0);
 
  // Evaluation bindings belong only to the coach portal's evaluation subview.
