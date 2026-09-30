@@ -3062,6 +3062,26 @@ function jenkinsPortalCleanupPayload(player,entry){
  if(player)return jenkinsPortalResetPayload(player);
  return {portalType:'jenkinsPlayer',playerName:entry?.name||'',firstName:practiceFirstName(entry?.name||''),expired:false,accessStatus:'waiting',activePractice:null,evaluationData:firebase.firestore.FieldValue.delete(),focus:firebase.firestore.FieldValue.delete(),coachObservations:firebase.firestore.FieldValue.delete(),observations:firebase.firestore.FieldValue.delete(),measurements:firebase.firestore.FieldValue.delete(),history:firebase.firestore.FieldValue.delete(),practiceHistory:firebase.firestore.FieldValue.delete(),recruiting:firebase.firestore.FieldValue.delete(),stats:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
 }
+async function clearStrandedFinishedPracticeBeforeBuild(){
+ if(!db.activePortalPractice?.id||practicePlan)return true;
+ if(!cloudUser||!cloudStore){alert('HotB needs the coach cloud connection to finish clearing the ended practice. Open Cloud Backup and sign in, then return to Practice.');return false}
+ const state=db.activePortalPractice,coachId=state.coachPortalId||db.coachPortal?.portalId;
+ if(!coachId){alert('HotB could not verify the ended practice, so nothing was changed.');return false}
+ try{
+  const snapshot=await Promise.race([portalDoc(coachId).get(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('stale-practice-check-timeout')),8000))]);
+  const remote=snapshot.exists?snapshot.data()?.activePractice:null;
+  if(remote?.id&&remote.id!==state.id)throw new Error('stale-practice-newer-practice-conflict');
+  // DONE already removed the local live workspace. At this point the retained
+  // activePortalPractice pointer exists only so its exact portal set can be
+  // cleaned. Never reconstruct/resume a finished practice from Build Practice.
+  await clearFinishedOrphanedPractice(state);
+  return !db.activePortalPractice?.id;
+ }catch(error){
+  console.error('HotB automatic ended-practice cleanup failed',error);
+  alert('HotB could not finish clearing the ended practice from every portal. Nothing was rebuilt or reactivated.');
+  return false;
+ }
+}
 async function clearActivePlayerPlans(){
  if(!cloudUser||!cloudStore)throw new Error('cloud-unavailable');
  if(!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId)throw new Error('practice-mismatch');
@@ -6484,7 +6504,7 @@ function bindPractice(){
  });
  $('#recoverOrphanedPractice')?.addEventListener('click',recoverOrphanedActivePractice);
  $('#recoverPublishedPractice')?.addEventListener('click',recoverPublishedPractice);
- $('#openPracticeBuilder')?.addEventListener('click',()=>{if(db.activePortalPractice?.id&&!practicePlan){alert('A practice is still active on the player and coach portals. Resume and finish that practice before building a new one.');return}
+ $('#openPracticeBuilder')?.addEventListener('click',async()=>{if(db.activePortalPractice?.id&&!practicePlan){const cleared=await clearStrandedFinishedPracticeBeforeBuild();if(!cleared)return}
   if(!practicePlan){
    // A saved setup/resolution draft is authoritative. Never replace its verified
    // attendance with the full roster merely because the coach returned through
