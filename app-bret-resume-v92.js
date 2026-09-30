@@ -815,7 +815,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-window.__HOTB_BRET_TEST_BUILD__='v93';
+window.__HOTB_BRET_TEST_BUILD__='v94';
 const PORTAL_BUILD_TOKEN='20260924-631';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
@@ -3156,7 +3156,7 @@ function recoveryAssignmentToEntry(assignment){
  if(/^Not Present$/i.test(value))return {activity:'Not Present'};
  return {activity:value};
 }
-async function finishPreviousWithTimeout(promise,label,ms=10000){
+async function finishPreviousWithTimeout(promise,label,ms=30000){
  let timer;
  try{
   return await Promise.race([
@@ -3174,7 +3174,7 @@ async function clearFinishedOrphanedPractice(state){
   ...(coachId?[{id:coachId,data:{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}]:[]),
   ...[...guestIds].map(id=>({id,data:{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}))
  ];
- const existing=await finishPreviousWithTimeout(Promise.all(targets.map(async target=>{const snapshot=await portalDoc(target.id).get();if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==state.id)throw new Error('finished-orphan-newer-practice-conflict');
+ const existing=await finishPreviousWithTimeout(Promise.all(targets.map(async target=>{const snapshot=await portalDoc(target.id).get({source:'server'}).catch(()=>portalDoc(target.id).get());if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==state.id)throw new Error('finished-orphan-newer-practice-conflict');
   // Recovery cleanup is also idempotent. A portal that no longer contains this
   // finished orphan is verification-only; never expire/reset it on a late retry.
   if(!remotePracticeId)return {target,alreadyCleared:true};
