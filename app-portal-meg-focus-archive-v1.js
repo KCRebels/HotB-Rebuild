@@ -6017,7 +6017,7 @@ window.HotBPortalText=function(name){
  if(!openSmsComposer(url)){portalMessage='Messages could not be opened from this screen.';render()}
 };
 function bindPlayerPortal(){
- $('#retryPracticePortal')?.addEventListener('click',async()=>{portalMessage='';portalBusy=true;render();if(!cloudAuth||!cloudStore){cloudInitStarted=false;cloudInitRetryCount=0;await initCloud()}if(cloudAuth&&cloudStore)await loadPlayerPortal()});
+ $('#retryPracticePortal')?.addEventListener('click',async()=>{const generation=portalLoadGeneration;portalMessage='';portalBusy=true;render();if(!cloudAuth||!cloudStore){cloudInitStarted=false;cloudInitRetryCount=0;await initCloud()}if(cloudAuth&&cloudStore&&portalLoadGeneration===generation)await loadPlayerPortal()});
  if(route==='portal'&&!portalToken&&cloudAuthReady&&cloudUser&&db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&(!player.portalId||(player.name==='Megan Ryan'&&!player.portalPin)||(/^Aniesa(?:\s|$)/i.test(player.name)&&!player.portalPin))))setTimeout(recoverPermanentPlayerPortalsForManager,0);
 
  // Evaluation bindings belong only to the coach portal's evaluation subview.
