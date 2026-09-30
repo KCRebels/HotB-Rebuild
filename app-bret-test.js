@@ -6186,8 +6186,8 @@ function bindPlayerPortal(){
  $('#shareJenkinsCoachPortal')?.addEventListener('click',async()=>{const coach=db.jenkinsCoachPortal;if(!coach?.portalId||!coach?.portalSecret)return;const share={title:"Mark’s HotB Hitting Practice",text:jenkinsCoachPortalShareText()};try{if(navigator.share)await navigator.share(share);else{await navigator.clipboard.writeText(share.text);alert("Mark’s practice link copied.")}}catch(error){if(error?.name!=='AbortError')alert("Mark’s link could not be shared.")}});
  $('#textJenkinsCoachPortal')?.addEventListener('click',()=>{const coach=db.jenkinsCoachPortal;if(!coach?.portalId||!coach?.portalSecret)return;const url=smsComposeUrl(coach.phone,jenkinsCoachPortalShareText());if(url)openSmsComposer(url)});
  $('#setupJenkinsPortals')?.addEventListener('click',setupJenkinsPortals);
- $('#setupBretCoachPortal')?.addEventListener('click',setupBretCoachPortal);
- $('#setupBretPortals')?.addEventListener('click',setupBretPortals);
+ $('#setupBretCoachPortal')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();portalMessage='Bret portal request received…';render();setTimeout(()=>setupBretCoachPortal(),0)});
+ $('#setupBretPortals')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();portalMessage='Team Bret portal request received…';render();setTimeout(()=>setupBretPortals(),0)});
  $('#shareBretCoachPortal')?.addEventListener('click',async()=>{const coach=db.bretCoachPortal;if(!coach?.portalId||!coach?.portalSecret)return;const share={title:"Bret’s HotB Hitting Practice",text:bretCoachPortalShareText()};try{if(navigator.share)await navigator.share(share);else await navigator.clipboard.writeText(share.text)}catch(error){}});
  $('[data-share-practice-bret]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamBret&&player.name===button.dataset.sharePracticeBret))));
  $('[data-text-practice-bret]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamBret&&item.name===button.dataset.textPracticeBret),url=guestPortalTextUrl(player);if(url)openSmsComposer(url)}));
