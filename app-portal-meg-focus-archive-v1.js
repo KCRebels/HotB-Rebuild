@@ -1336,9 +1336,22 @@ async function loadPlayerPortal(){
    }
   }catch(error){
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
-   portalBusy=false;portalData=null;portalMessage='This practice link could not be connected. Ask the coach to send a fresh link.';
-   if(route==='portal')render();
-   return;
+   // Reclaiming an already-authorized device can be rejected by the claim
+   // rules. A successful protected read proves this device still has access;
+   // keep its existing authorization instead of requiring another claim.
+   let existingAccess=false;
+   try{
+    const existing=await portalDoc(requestedPortalToken).get();
+    const data=existing.exists?existing.data():null,uid=portalAuthUser?.uid;
+    existingAccess=!!data&&!!uid&&(data.ownerUid===uid||(Array.isArray(data.authorizedUids)&&data.authorizedUids.includes(uid)));
+   }catch(_){}
+   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
+   if(!existingAccess){
+    const code=String(error?.code||error?.message||'unknown').replace(/[^a-zA-Z0-9_-]/g,'-');
+    portalBusy=false;portalData=null;portalMessage='This practice link could not be connected [P211-'+code+']. Ask the coach to check this existing link.';
+    if(route==='portal')render();
+    return;
+   }
   }
  }
  try{
