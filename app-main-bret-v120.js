@@ -2030,6 +2030,7 @@ function go(r){
  }
  route=r;modal=null;save();render();window.scrollTo(0,0);
  if(r==='practice')resumeRecoveredPracticeClock();
+ if(r==='portal'&&!portalToken&&cloudUser&&cloudStore)setTimeout(()=>recoverPermanentPlayerPortalsForManager(),0);
  if(r==='portal'&&portalToken&&!portalUnsubscribe&&!portalBusy)loadPlayerPortal();
 }
 function currentGame(){return db.currentGame}
@@ -2572,10 +2573,16 @@ async function recoverPermanentPlayerPortalsForManager(){
    portalMessage='All saved permanent portal links are available on this device.';
    return;
   }
-  const dates=[];
-  for(let offset=0;offset<14;offset++){const d=new Date();d.setDate(d.getDate()-offset);dates.push(d.toISOString().slice(0,10))}
+  let snapshotIds=[];
+  try{
+   const history=await portalRecoveryTimeout(cloudRoot().collection('snapshots').orderBy(firebase.firestore.FieldPath.documentId(),'desc').limit(30).get(),'snapshot-history');
+   snapshotIds=history.docs.map(doc=>doc.id);
+  }catch(_){}
+  if(!snapshotIds.length){
+   for(let offset=0;offset<30;offset++){const d=new Date();d.setDate(d.getDate()-offset);snapshotIds.push(dailySnapshotId(d))}
+  }
   let recovered={rebels:0,jenkins:0,bret:0,coaches:0},backupUsed='';
-  for(const dateId of dates){
+  for(const dateId of snapshotIds){
    let backup=null;
    try{backup=await readProtectedDailyBackup(dateId)}catch(_){continue}
    if(!backup)continue;
