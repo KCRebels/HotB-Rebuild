@@ -1906,17 +1906,23 @@ async function cloudPasswordAuth(createAccount=false){
  if(password.length<6){cloudMessage='Your HotB backup password must be at least 6 characters.';render();return}
  cloudBusy=true;cloudMessage=createAccount?'Creating your protected backup login…':'Signing in…';render();
  try{
+  if(firebase?.auth?.Auth?.Persistence?.LOCAL)await cloudAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  const authTimeout=()=>new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error('sign-in-timeout'),{code:'auth/sign-in-timeout'})),12000));
   if(createAccount){
-   const result=await cloudAuth.createUserWithEmailAndPassword(CLOUD_EMAIL,password);await result.user.sendEmailVerification();await cloudAuth.signOut();
+   const result=await Promise.race([cloudAuth.createUserWithEmailAndPassword(CLOUD_EMAIL,password),authTimeout()]);
+   await result.user.sendEmailVerification();await cloudAuth.signOut();
    cloudMessage=`A verification email was sent to ${CLOUD_EMAIL}. Open that email, verify the address, then return here and sign in.`;
   }else{
-   const result=await cloudAuth.signInWithEmailAndPassword(CLOUD_EMAIL,password);
+   const result=await Promise.race([cloudAuth.signInWithEmailAndPassword(CLOUD_EMAIL,password),authTimeout()]);
    if(!result.user.emailVerified){await result.user.sendEmailVerification();await cloudAuth.signOut();cloudMessage=`Verify ${CLOUD_EMAIL} using the email Google sent, then sign in again.`}
-   else cloudMessage='Signed in. Create the first backup when you are ready.';
+   else{
+    cloudUser=result.user;portalAuthUser=result.user;cloudAuthReady=true;
+    cloudMessage='Signed in. Team Bret portal access is ready.';
+   }
   }
  }catch(error){
   const code=String(error?.code||'unknown-error').replace('auth/','');
-  cloudMessage=createAccount?`HotB could not create the login (${code}).`:`HotB could not sign in (${code}).`;
+  cloudMessage=code==='sign-in-timeout'?'HotB sign-in timed out. Your data was not changed. Tap Sign In once more.':createAccount?`HotB could not create the login (${code}).`:`HotB could not sign in (${code}).`;
  }
  cloudBusy=false;render();
 }
