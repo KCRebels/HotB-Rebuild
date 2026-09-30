@@ -3323,7 +3323,63 @@ async function syncPlayerPracticeClock(){
  }catch(error){return false}}));
  return verification.every(Boolean);
 }
+
+async function syncActiveJenkinsPlans(){
+ const button=$('#syncActiveJenkinsPlans');
+ if(button){button.disabled=true;button.textContent='Checking Jenkins Plans…'}
+ try{
+  const user=cloudAuth?.currentUser,active=db.activePortalPractice;
+  if(!user||user.isAnonymous||String(user.email||'').toLowerCase()!==CLOUD_EMAIL||!cloudStore)throw new Error('coach-session-not-ready');
+  if(!practicePlan||!active?.id||active.id!==practicePlan.portalDraftId||practiceClock.finished)throw new Error('active-practice-not-ready');
+  const names=new Set(active.players||[]),count=practicePlan.times?.length||10;
+  const players=db.roster.filter(p=>p.isTeamJenkins&&names.has(p.name)&&practicePlan.schedule?.[p.name]?.length&&practicePlan.players.some(q=>q.name===p.name&&(q.availableFromBlock??0)<(q.availableUntilBlock??count)));
+  if(!players.length)throw new Error('no-Jenkins-players-in-this-practice');
+  let cache={};try{cache=JSON.parse(localStorage.getItem('hotbJenkinsPortalCredentialsV1')||'{}')}catch(_){}
+  const targets=await Promise.all(players.map(async player=>{
+   const known=VERIFIED_JENKINS_PORTALS[player.name],saved=cache[player.name],id=known?.portalId||saved?.portalId||player.portalId,secret=known?.portalSecret||saved?.portalSecret||player.portalSecret;
+   if(!id||!secret)throw new Error('existing-link-missing-'+practiceFirstName(player.name));
+   return {player,id,secret,proof:await portalHash(id,secret)};
+  }));
+  const sourceId=(active.playerPortals||[]).find(p=>!p.isTeamJenkins&&p.portalId)?.portalId||active.coachPortalId;
+  if(!sourceId)throw new Error('published-clock-reference-missing');
+  const activeId=active.id,plan=practicePlan;
+  await cloudStore.runTransaction(async tx=>{
+   const source=await tx.get(portalDoc(sourceId)),published=source.exists?source.data()?.activePractice:null;
+   if(!published||published.id!==activeId||published.clock?.status==='finished'||published.clock?.endedAt)throw new Error('published-practice-not-running');
+   const docs=await Promise.all(targets.map(t=>tx.get(portalDoc(t.id))));
+   if(practicePlan!==plan||db.activePortalPractice?.id!==activeId||practiceClock.finished)throw new Error('practice-changed-during-check');
+   docs.forEach((snap,i)=>{
+    const t=targets[i],remote=snap.exists?snap.data():null;
+    if(!remote||remote.portalType!=='jenkinsPlayer'||remote.playerName!==t.player.name||remote.pinHash!==t.proof)throw new Error('existing-link-verification-failed-'+practiceFirstName(t.player.name));
+    if(remote.activePractice?.id&&remote.activePractice.id!==activeId)throw new Error('different-practice-on-'+practiceFirstName(t.player.name));
+   });
+   targets.forEach(t=>{
+    const payload=playerPracticePortalPayload(t.player.name,published.activatedAt,published.clock);
+    tx.update(portalDoc(t.id),{activePractice:payload,expired:false,accessStatus:'active',updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   });
+  });
+  const verification=await Promise.all(targets.map(async t=>{
+   const snap=await portalDoc(t.id).get(),remote=snap.exists?snap.data():null;
+   return remote?.activePractice?.id===activeId&&remote.activePractice.schedule?.length===plan.schedule[t.player.name].length;
+  }));
+  if(verification.some(ok=>!ok))throw new Error('Jenkins-plan-verification-failed');
+  for(const t of targets){
+   t.player.portalId=t.id;t.player.portalSecret=t.secret;
+   active.playerPortals=(active.playerPortals||[]).filter(p=>p.name!==t.player.name);
+   active.playerPortals.push({name:t.player.name,portalId:t.id,isTeamJenkins:true});
+  }
+  persistPracticeSession();render();
+  alert('Jenkins plans verified for '+targets.map(t=>practiceFirstName(t.player.name)).join(', ')+'. Have the girls refresh their existing links.');
+ }catch(error){
+  if(button){button.disabled=false;button.textContent='Sync Jenkins Plans'}
+  alert('Jenkins sync stopped: '+String(error?.message||error?.code||error));
+ }
+}
+
 async function activatePlayerPlans(){
+ restoreVerifiedJenkinsPortalButtons();
+ for(const player of db.roster.filter(p=>p.isTeamJenkins)){try{const saved=JSON.parse(localStorage.getItem('hotbJenkinsPortalCredentialsV1')||'{}')[player.name];if(saved){player.portalId=player.portalId||saved.portalId;player.portalSecret=player.portalSecret||saved.portalSecret}}catch(_){}}
+
  // Restore the existing directory before testing attendance credentials, even
  // when this device has not opened Player Portals. Never create or rotate links.
  restoreVerifiedRebelsPortalDirectory();
@@ -3479,7 +3535,7 @@ function practicePage(){
   <section class="practice-live-control no-print"><div class="practice-clock-actions">${practiceClock.running||practiceClock.finished?'':`<button class="btn red" id="startPracticeClock">Start</button>`}${practiceClock.finished?'':practiceClock.running?`<button class="btn" type="button" disabled aria-disabled="true">Edit</button>`:`<button class="btn" id="editPracticePlayers">Edit</button>`}${practiceClock.running?`<button class="btn" id="skipPracticeBlock">Skip</button>`:''}<button class="btn black" id="endPracticeClock">DONE!</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':`1 of ${practicePlan.times?.length||10}`}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${Math.max(1,practicePlan.blockMinutes-1)}:00`}</b></div></div></section>
   <section class="practice-delivery-focus no-print"><div><span>BUILT-IN HITTING</span><h2>Machine + Front Toss Focus</h2><p>Choose Standard or a library drill. This changes the existing rotation—it does not add another block.</p></div><div class="practice-delivery-focus-fields">${practiceFocusSelector('Machine',practiceClock.running||practiceClock.finished||currentPortalsActive)}${practiceFocusSelector('Front Toss',practiceClock.running||practiceClock.finished||currentPortalsActive)}</div></section>
   <section class="practice-selected-drills no-print"><div><span>DRILL STATIONS</span><h2>${chosenComplete?'Practice Drills Selected':`Choose ${practicePlan.drillStations} Practice Drills`}</h2>${chosenComplete?`<ol>${practiceChosenDrills.map((drill,index)=>`<li><b>${index+1}</b><span>Drill Station ${index+1} — ${esc(drill.name)}</span></li>`).join('')}</ol>`:'<p>Select the actual drills before printing the coach schedule or player cards.</p>'}</div>${practiceClock.running||practiceClock.finished||currentPortalsActive?'':`<button class="btn ${chosenComplete?'':'red'}" id="choosePracticeDrills">${chosenComplete?'Change Drills':'Choose Drills'}</button>`}</section>
-  <section class="practice-portal-publish no-print"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Previous Practice Still Active':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':portalsActive?'End or deactivate the previous practice before publishing this schedule.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${currentPortalsActive||chosenComplete&&!portalsActive?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Finish Active Practice First':'Activate Player Plans'}</button></section>
+  <section class="practice-portal-publish no-print"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Previous Practice Still Active':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':portalsActive?'End or deactivate the previous practice before publishing this schedule.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${currentPortalsActive||chosenComplete&&!portalsActive?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Finish Active Practice First':'Activate Player Plans'}</button>${currentPortalsActive?'<button class="btn black" id="syncActiveJenkinsPlans">Sync Jenkins Plans</button>':''}</section>
   ${currentPortalsActive&&(practiceGuestPlayers().length||practiceGuestCoaches().length)?`<section class="practice-guest-links no-print"><span>TEMPORARY GUEST LINKS</span><h2>Share Guest Practice Access</h2>${practiceGuestPlayers().filter(guest=>practicePlan.schedule[guest.name]).map(guest=>`<article><div><b>${esc(guest.name)}</b><small>Guest Player · expires when practice ends</small></div><button class="btn" data-share-practice-guest="${esc(guest.guestId)}">Share</button></article>`).join('')}${practiceGuestCoaches().map(guest=>`<article><div><b>${esc(guest.name)}</b><small>Guest Coach · view only</small></div><button class="btn" data-share-practice-guest="${esc(guest.guestId)}">Share</button></article>`).join('')}</section>`:''}
   ${resourceWarnings.map(warning=>`<div class="practice-resource-warning no-print"><b>Resource Check</b><p>${esc(warning)}</p></div>`).join('')}
   <div class="practice-actions practice-actions-three no-print"><button class="btn ${practiceCoachOpen?'active':''}" id="togglePracticeCoach" aria-pressed="${practiceCoachOpen}">Coach</button><button class="btn ${practiceCardsOpen?'active':''}" id="togglePracticeCards" aria-pressed="${practiceCardsOpen}">Player</button><button class="btn black" id="printPracticeCards" ${chosenComplete?'':'disabled'}>Print</button></div>
@@ -6950,6 +7006,7 @@ function bindPractice(){
  });
  $('#skipPracticeBlock')?.addEventListener('click',skipPracticeBlock);
  $('#endPracticeClock')?.addEventListener('click',()=>{endPracticeFromScreen().catch(error=>console.error('HotB DONE cleanup failed',error))});
+ $('#syncActiveJenkinsPlans')?.addEventListener('click',syncActiveJenkinsPlans);
  $('#activatePlayerPlans')?.addEventListener('click',activatePlayerPlans);
  $('#deactivatePlayerPlans')?.addEventListener('click',deactivatePlayerPlans);
  $$('[data-share-practice-guest]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal([...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.sharePracticeGuest))));
