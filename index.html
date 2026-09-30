@@ -9,6 +9,23 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="HotB" />
   <title>HotB</title>
+  <script id="hotb-ios-fresh-shell-v112">
+  // Coach launch only: force one network navigation when an installed iOS web app
+  // wakes on an older cached HTML shell. This changes no HotB/local/Firebase data.
+  (function(){
+    if(new URLSearchParams(location.search).has('portal'))return;
+    var key='hotbFreshShellV112';
+    try{
+      if(sessionStorage.getItem(key)!=='1'){
+        sessionStorage.setItem(key,'1');
+        var u=new URL(location.href);
+        u.searchParams.set('hotbShell','112');
+        u.searchParams.set('_fresh',Date.now().toString());
+        location.replace(u.toString());
+      }
+    }catch(_){}
+  })();
+  </script>
   <script>if(!new URLSearchParams(window.location.search).has('portal')){const manifest=document.createElement('link');manifest.rel='manifest';manifest.href='manifest.webmanifest?v=20260925-hotbicon2';document.head.appendChild(manifest)}</script>
   <link rel="apple-touch-icon" sizes="180x180" href="hotb-app-icon-180.png?v=20260925-hotbicon2" />
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="hotb-app-icon-180.png?v=20260925-hotbicon2" />
