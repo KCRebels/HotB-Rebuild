@@ -2552,10 +2552,11 @@ function copyExactPortalCredential(target,source,kind){
 }
 async function recoverPermanentPlayerPortalsForManager(){
  if(permanentPortalRecoveryStarted||!cloudUser||!cloudStore)return;
- permanentPortalRecoveryStarted=true;portalMessage='Checking the protected Sept. 29 portal directory…';render();
- // render() rebuilds this screen and can otherwise schedule a second recovery before
- // the first async read starts. Arm the one-shot latch in storage across that render.
+ // Arm the cross-render latch BEFORE render(). bindPlayerPortal() runs during render
+ // and must see the latch before it can queue another recovery.
+ permanentPortalRecoveryStarted=true;
  try{sessionStorage.setItem('hotbPortalRecoveryRunningV107','1')}catch(_){}
+ portalMessage='Checking the protected Sept. 29 portal directory…';render();
  try{
   // Read only the protected daily backup. Do not restore the backup and do not
   // write Firebase. Only exact portal credential fields are copied into today's
