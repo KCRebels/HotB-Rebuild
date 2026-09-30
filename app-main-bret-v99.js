@@ -2527,14 +2527,16 @@ async function recoverPermanentPlayerPortalsForManager(){
  // MAIN-TEAM PORTAL LOCK: permanent Rebels player credentials are immutable.
  // Never generate, rotate, repair, or replace a portal ID/PIN from this manager.
  // If local credentials are ever missing, stop and protect the known working links.
- if(!players.some(player=>!player.portalId||!player.portalPin)){permanentPortalRecoveryStarted=true;return}
+ if(!players.some(player=>!player.portalId)){permanentPortalRecoveryStarted=true;return}
  permanentPortalRecoveryStarted=true;
- portalMessage='A permanent player portal credential is missing on this device. HotB has locked the existing player links and will not replace them automatically.';
+ // Keep every locally known permanent link visible. Missing legacy PIN metadata must
+ // not hide the entire portal directory; only a truly missing portal ID is unavailable.
+ portalMessage='One or more permanent player links are not stored on this device. Existing saved portal links remain available below.';
  render();
 }
 function portalCoachView(){
  if(!cloudInitStarted)setTimeout(()=>initCloud(),0);
- const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins&&!player.isTeamBret&&!player.isTeamBret),jenkinsPlayers=db.roster.filter(player=>player.isTeamJenkins),bretPlayers=db.roster.filter(player=>player.isTeamBret),ready=players.length&&players.every(player=>player.portalId),jenkinsReady=jenkinsPlayers.length&&jenkinsPlayers.every(player=>player.portalId&&player.portalSecret),bretReady=bretPlayers.length&&bretPlayers.every(player=>player.portalId&&player.portalSecret);
+ const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins&&!player.isTeamBret),jenkinsPlayers=db.roster.filter(player=>player.isTeamJenkins),bretPlayers=db.roster.filter(player=>player.isTeamBret),ready=players.length&&players.every(player=>player.portalId),jenkinsReady=jenkinsPlayers.length&&jenkinsPlayers.every(player=>player.portalId&&player.portalSecret),bretReady=bretPlayers.length&&bretPlayers.every(player=>player.portalId&&player.portalSecret);
  const coachReady=!!(db.coachPortal?.portalId&&(db.coachPortal?.portalSecret||db.coachPortal?.portalPin));
  // The coach manager itself does not need to block on Firebase auth restoration.
  // Render the saved portal directory immediately; write actions already verify the coach session.
@@ -6425,7 +6427,7 @@ window.HotBPortalText=function(name){
 };
 function bindPlayerPortal(){
  $('#retryPracticePortal')?.addEventListener('click',()=>{portalMessage='';portalBusy=false;loadPlayerPortal()});
- if(route==='portal'&&!portalToken&&cloudAuthReady&&cloudUser&&db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&!player.isTeamBret&&(!player.portalId||(player.name==='Megan Ryan'&&!player.portalPin)||(/^Aniesa(?:\s|$)/i.test(player.name)&&!player.portalPin))))setTimeout(recoverPermanentPlayerPortalsForManager,0);
+ if(route==='portal'&&!portalToken&&cloudAuthReady&&cloudUser&&db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&!player.isTeamBret&&!player.portalId))setTimeout(recoverPermanentPlayerPortalsForManager,0);
 
  // Evaluation bindings belong only to the coach portal's evaluation subview.
  // Player/PIN portal startup must not depend on the optional evaluation module.
