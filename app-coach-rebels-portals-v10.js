@@ -2442,6 +2442,11 @@ function restoreVerifiedRebelsPortalDirectory(){
  for(const player of db.roster){
   if(player.isGuest||player.isTeamJenkins)continue;
   const saved=VERIFIED_REBELS_PORTALS[player.name];if(!saved)continue;
+  if(player.name==='Megan Ryan'){
+   if(player.portalId!==saved.portalId){player.portalId=saved.portalId;changed=true}
+   if(player.portalPin!==saved.portalPin){player.portalPin=saved.portalPin;changed=true}
+   continue;
+  }
   if(!player.portalId&&saved.portalId){player.portalId=saved.portalId;changed=true}
   if(!player.portalPin&&saved.portalPin){player.portalPin=saved.portalPin;changed=true}
  }
