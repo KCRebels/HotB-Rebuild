@@ -3324,6 +3324,9 @@ async function syncPlayerPracticeClock(){
  return verification.every(Boolean);
 }
 async function activatePlayerPlans(){
+ // Restore the existing directory before testing attendance credentials, even
+ // when this device has not opened Player Portals. Never create or rotate links.
+ restoreVerifiedRebelsPortalDirectory();
  if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before activating player portals.');return}
  // Firebase can restore an old/anonymous portal identity before the coach auth
  // observer finishes. Activation is a coach-only write, so verify the live Auth
