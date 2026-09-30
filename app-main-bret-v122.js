@@ -2552,10 +2552,39 @@ function copyExactPortalCredential(target,source,kind){
  target.portalId=source.portalId;target.portalSecret=source.portalSecret;
  return true;
 }
+const VERIFIED_REBELS_PORTALS={
+ 'Aniesa Rohleder':{portalId:'zdriG5hTU7c6sSme8WB1pV9q',portalPin:'996232'},
+ 'Brooklyn Gering':{portalId:'imzggml0NNTQKpb3ntf2jotK',portalPin:'610273'},
+ 'Brynna Peter':{portalId:'hL94ttFwHNFjRhoNJSBwB3B0',portalPin:'481189'},
+ 'Claire Jack':{portalId:'3L8i3eMDH9z6VhAzA-eV0GV2',portalPin:'380378'},
+ 'Hailey Marsh':{portalId:'FfLTZU3mUG_vCpd7_ulFgAuZ'},
+ 'Lakyn Farley':{portalId:'wmdtSaSCkgC1q7jP3FGjGcDg',portalPin:'698901'},
+ 'Lydia Copeland':{portalId:'SLtNWXeIRBm0NJ__woUECmRl',portalPin:'248359'},
+ 'Maia Waddell':{portalId:'ULyoVEFKkNM5y7pGEqCRWAwG',portalPin:'759137'},
+ 'Makenna Whitaker':{portalId:'xFjM6RgiuEcBwLyFanO8wy19',portalPin:'606197'},
+ 'Maleah Pena':{portalId:'P-WUR7lgRiTLTXMKYYJCRTBn',portalPin:'917864'},
+ 'Mattingly Hardy':{portalId:'vIRE8cBEmqrD7dLnXS5j2VgY',portalPin:'808647'},
+ 'Tayte Stepps':{portalId:'SDfyRXOwJePMrQe4i_4eJXLe',portalPin:'397544'}
+};
+function restoreVerifiedRebelsPortalButtons(){
+ let restored=0;
+ for(const player of db.roster){
+  if(player.isGuest||player.isTeamJenkins||player.isTeamBret)continue;
+  const verified=VERIFIED_REBELS_PORTALS[player.name];if(!verified)continue;
+  // Never replace a complete current credential. Fill only what the coach has explicitly verified.
+  if(!player.portalId&&verified.portalId){player.portalId=verified.portalId;restored++}
+  if(!player.portalPin&&verified.portalPin)player.portalPin=verified.portalPin;
+ }
+ if(restored||Object.keys(VERIFIED_REBELS_PORTALS).some(name=>{const p=db.roster.find(x=>x.name===name);return p&&VERIFIED_REBELS_PORTALS[name].portalPin&&!p.portalPin})){
+  localStorage.setItem(DBKEY,JSON.stringify(db));
+ }
+ return restored;
+}
 async function recoverPermanentPlayerPortalsForManager(){
  if(permanentPortalRecoveryStarted||!cloudUser||!cloudStore)return;
  permanentPortalRecoveryStarted=true;
- portalMessage='Checking the protected Sept. 29 portal directory…';
+ const verifiedRestored=restoreVerifiedRebelsPortalButtons();
+ portalMessage=verifiedRestored?'Restored '+verifiedRestored+' verified Rebels portal link'+(verifiedRestored===1?'':'s')+' without changing any existing link.':'Checking the remaining protected portal directory…';
  const status=document.querySelector('.portal-message');if(status)status.textContent=portalMessage;
  try{
   let protectedDb=null,recoverySource='';
