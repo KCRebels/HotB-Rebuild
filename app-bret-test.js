@@ -1700,7 +1700,7 @@ async function setupBretCoachPortal(){
  }catch(error){db.bretCoachPortal=original;cloudBusy=false;portalMessage='Bret’s Hitting Practice coach portal could not be created. Nothing else was changed.';console.error(error);render()}
 }
 document.addEventListener('click',event=>{const button=event.target?.closest?.('[data-bret-create]');if(!button)return;event.preventDefault();event.stopPropagation();window.HotBSetupBretPortals?.(event)},true);
-window.HotBSetupBretPortals=function(event){if(event){event.preventDefault();event.stopPropagation()}portalMessage='Team Bret portal request received…';render();setTimeout(()=>setupBretPortals(),0)};
+window.HotBSetupBretPortals=function(event){if(event?.__hotbBretHandled)return;if(event){event.__hotbBretHandled=true;event.preventDefault();event.stopPropagation()}portalMessage='Team Bret portal request received…';render();setTimeout(()=>setupBretPortals(),0)};
 async function setupBretPortals(){
  if(cloudBusy)return;
  if(!cloudStore||!cloudAuth){portalMessage='Connecting to the portal service…';render();await initCloud()}
