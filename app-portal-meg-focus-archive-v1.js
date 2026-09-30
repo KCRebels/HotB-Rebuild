@@ -1348,6 +1348,11 @@ async function loadPlayerPortal(){
     const existing=await portalDoc(requestedPortalToken).get();
     const data=existing.exists?existing.data():null,uid=portalAuthUser?.uid;
     existingAccess=!!data&&!!uid&&(data.ownerUid===uid||(Array.isArray(data.authorizedUids)&&data.authorizedUids.includes(uid)));
+    // Jenkins bearer access requires both a rules-permitted read and an exact
+    // secret hash match. It does not require claiming another device slot.
+    if(!existingAccess&&data?.portalType==='jenkinsPlayer'&&guestPortalSecret){
+     existingAccess=data.pinHash===await portalHash(requestedPortalToken,guestPortalSecret);
+    }
    }catch(_){}
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
    if(!existingAccess){
