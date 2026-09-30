@@ -1174,6 +1174,7 @@ async function initCloud(){
    }
    if(route==='home'||route==='portal')render();
    if(cloudUser){
+    if(route==='portal'&&!portalToken)setTimeout(()=>recoverPermanentPlayerPortalsForManager(),0);
     // Publish the authenticated coach state immediately. Cloud status reads can be
     // slow on iOS; portal management must not remain stuck on Reconnect while
     // loadCloudStatus is still waiting on Firestore.
@@ -2553,28 +2554,63 @@ function copyExactPortalCredential(target,source,kind){
 async function recoverPermanentPlayerPortalsForManager(){
  if(permanentPortalRecoveryStarted||!cloudUser||!cloudStore)return;
  permanentPortalRecoveryStarted=true;
- portalMessage='V120 — Finding existing permanent portal IDs…';
+ portalMessage='Checking saved permanent portal links…';
  const status=document.querySelector('.portal-message');if(status)status.textContent=portalMessage;
  try{
-  let rebels=0,jenkins=0;
-  for(const player of db.roster){
-   if(player.isTeamBret)continue;
-   const isJenkins=!!player.isTeamJenkins;
-   if(player.isGuest&&!isJenkins)continue;
-   if(player.portalId)continue;
-   const found=await cloudStore.collection('playerPortals').where('playerName','==',player.name).get();
-   const matches=[];
-   found.forEach(doc=>{
-    const data=doc.data()||{};
-    const ok=isJenkins?data.portalType==='jenkinsPlayer'&&data.playerName===player.name&&!data.isTeamBret:data.portalType==='player'&&data.playerName===player.name;
-    if(ok)matches.push(doc.id);
-   });
-   if(matches.length===1){player.portalId=matches[0];if(isJenkins)jenkins++;else rebels++}
+  const mainPlayers=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins&&!player.isTeamBret);
+  const jenkinsPlayers=db.roster.filter(player=>player.isTeamJenkins);
+  const bretPlayers=db.roster.filter(player=>player.isTeamBret);
+  const missingBefore={
+   rebels:mainPlayers.filter(player=>!player.portalId||!player.portalPin).length,
+   jenkins:jenkinsPlayers.filter(player=>!player.portalId||!player.portalSecret).length,
+   bret:bretPlayers.filter(player=>!player.portalId||!player.portalSecret).length,
+   coach:!(db.coachPortal?.portalId&&(db.coachPortal?.portalSecret||db.coachPortal?.portalPin)),
+   jenkinsCoach:!(db.jenkinsCoachPortal?.portalId&&db.jenkinsCoachPortal?.portalSecret),
+   bretCoach:!(db.bretCoachPortal?.portalId&&db.bretCoachPortal?.portalSecret)
+  };
+  if(!missingBefore.rebels&&!missingBefore.jenkins&&!missingBefore.bret&&!missingBefore.coach&&!missingBefore.jenkinsCoach&&!missingBefore.bretCoach){
+   portalMessage='All saved permanent portal links are available on this device.';
+   return;
+  }
+  const dates=[];
+  for(let offset=0;offset<14;offset++){const d=new Date();d.setDate(d.getDate()-offset);dates.push(d.toISOString().slice(0,10))}
+  let recovered={rebels:0,jenkins:0,bret:0,coaches:0},backupUsed='';
+  for(const dateId of dates){
+   let backup=null;
+   try{backup=await readProtectedDailyBackup(dateId)}catch(_){continue}
+   if(!backup)continue;
+   let changed=false;
+   const sourceRoster=Array.isArray(backup.roster)?backup.roster:[];
+   for(const target of mainPlayers){
+    if(target.portalId&&target.portalPin)continue;
+    const source=sourceRoster.find(player=>player.name===target.name&&!player.isGuest&&!player.isTeamJenkins&&!player.isTeamBret);
+    if(copyExactPortalCredential(target,source,'player')){recovered.rebels++;changed=true}
+   }
+   for(const target of jenkinsPlayers){
+    if(target.portalId&&target.portalSecret)continue;
+    const source=sourceRoster.find(player=>player.name===target.name&&player.isTeamJenkins);
+    if(copyExactPortalCredential(target,source,'guest')){recovered.jenkins++;changed=true}
+   }
+   for(const target of bretPlayers){
+    if(target.portalId&&target.portalSecret)continue;
+    const source=sourceRoster.find(player=>player.name===target.name&&player.isTeamBret);
+    if(copyExactPortalCredential(target,source,'guest')){recovered.bret++;changed=true}
+   }
+   if(!(db.coachPortal?.portalId&&(db.coachPortal?.portalSecret||db.coachPortal?.portalPin))&&backup.coachPortal){
+    if(backup.coachPortal.portalId&&(backup.coachPortal.portalSecret||backup.coachPortal.portalPin)){db.coachPortal={...db.coachPortal,...backup.coachPortal};recovered.coaches++;changed=true}
+   }
+   if(!(db.jenkinsCoachPortal?.portalId&&db.jenkinsCoachPortal?.portalSecret)&&copyExactPortalCredential(db.jenkinsCoachPortal,backup.jenkinsCoachPortal,'guest')){recovered.coaches++;changed=true}
+   if(!(db.bretCoachPortal?.portalId&&db.bretCoachPortal?.portalSecret)&&copyExactPortalCredential(db.bretCoachPortal,backup.bretCoachPortal,'guest')){recovered.coaches++;changed=true}
+   if(changed)backupUsed=dateId;
+   const complete=mainPlayers.every(player=>player.portalId&&player.portalPin)&&jenkinsPlayers.every(player=>player.portalId&&player.portalSecret)&&bretPlayers.every(player=>player.portalId&&player.portalSecret);
+   if(complete)break;
   }
   localStorage.setItem(DBKEY,JSON.stringify(db));
-  portalMessage='Existing IDs recovered: '+rebels+' Rebels, '+jenkins+' Jenkins. No portal was created, reset, rotated, or written in Firebase.';
+  const remaining=mainPlayers.filter(player=>!player.portalId||!player.portalPin).length+jenkinsPlayers.filter(player=>!player.portalId||!player.portalSecret).length+bretPlayers.filter(player=>!player.portalId||!player.portalSecret).length;
+  const total=recovered.rebels+recovered.jenkins+recovered.bret+recovered.coaches;
+  portalMessage=total?('Recovered '+total+' existing permanent link'+(total===1?'':'s')+(backupUsed?' from protected cloud backup.':' .')+' No credential was created, reset, or rotated.'+(remaining?' '+remaining+' player link'+(remaining===1?' is':'s are')+' still unavailable.':'')):'Saved links were checked without changing any credential.'+(remaining?' '+remaining+' player link'+(remaining===1?' is':'s are')+' still unavailable on this device.':'');
  }catch(error){
-  portalMessage='V120 lookup stopped safely: '+String(error?.message||error||'unknown')+'. No cloud portal was changed.';
+  portalMessage='Permanent-link check stopped safely: '+String(error?.message||error||'unknown')+'. No portal credential was changed.';
  }finally{
   permanentPortalRecoveryStarted=false;
   render();
