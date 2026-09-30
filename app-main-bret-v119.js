@@ -2553,7 +2553,7 @@ function copyExactPortalCredential(target,source,kind){
 async function recoverPermanentPlayerPortalsForManager(){
  if(permanentPortalRecoveryStarted||!cloudUser||!cloudStore)return;
  permanentPortalRecoveryStarted=true;
- portalMessage='V119 — Finding existing permanent portal IDs…';
+ portalMessage='V120 — Finding existing permanent portal IDs…';
  const status=document.querySelector('.portal-message');if(status)status.textContent=portalMessage;
  try{
   let rebels=0,jenkins=0;
@@ -2574,7 +2574,7 @@ async function recoverPermanentPlayerPortalsForManager(){
   localStorage.setItem(DBKEY,JSON.stringify(db));
   portalMessage='Existing IDs recovered: '+rebels+' Rebels, '+jenkins+' Jenkins. No portal was created, reset, rotated, or written in Firebase.';
  }catch(error){
-  portalMessage='V119 lookup stopped safely: '+String(error?.message||error||'unknown')+'. No cloud portal was changed.';
+  portalMessage='V120 lookup stopped safely: '+String(error?.message||error||'unknown')+'. No cloud portal was changed.';
  }finally{
   permanentPortalRecoveryStarted=false;
   render();
