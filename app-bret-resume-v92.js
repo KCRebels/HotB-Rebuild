@@ -815,7 +815,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-window.__HOTB_BRET_TEST_BUILD__='v94';
+window.__HOTB_BRET_TEST_BUILD__='v95';
 const PORTAL_BUILD_TOKEN='20260924-631';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
@@ -7176,8 +7176,7 @@ function bindPractice(){
   const previous=db.activePortalPractice;
   if(!previous?.id||previous.id===practicePlan?.portalDraftId){render();return}
   if(!cloudUser||!cloudStore){alert('HotB needs the coach cloud connection before it can finish the previous practice. Nothing was changed.');return}
-  if(!confirm('Finish the previous active practice and remove its plans from the player and coach portals? Your newly built practice will stay saved.'))return;
-  const button=$('#finishPreviousPractice');if(button){button.disabled=true;button.textContent='Finishing Previous Practice…'}
+  const button=$('#finishPreviousPractice');if(button){button.disabled=true;button.textContent='Clearing Previous Practice…'}
   try{
    await clearFinishedOrphanedPractice(previous);
    // Bret 68: clearing the old portal publication must never discard or replace
@@ -7190,7 +7189,7 @@ function bindPractice(){
    if(button){button.disabled=false;button.textContent='Finish Active Practice First'}
    const code=String(error?.message||error||'unknown');
    const timed=code.match(/^finish-previous-timeout:(.+)$/);
-   alert(timed?`HotB could not reach the portal service while finishing the previous practice (stage: ${timed[1]}). The new practice was not replaced. Try again after the connection recovers.`:'HotB could not safely finish the previous active practice. Nothing was replaced.\n\nCleanup error: '+code);
+   alert(timed?`HotB is still clearing the ended practice from the portals (stage: ${timed[1]}). Your new practice is saved. Tap Finish Active Practice First again to continue cleanup.`:'HotB could not safely clear the ended practice. Your new practice is still saved.\n\nCleanup error: '+code);
   }
  });
  $('#repairJenkinsNow')?.addEventListener('click',async()=>{const button=$('#repairJenkinsNow');if(button){button.disabled=true;button.textContent='Repairing Jenkins…'}try{await repairActiveJenkinsPortals();alert('Team Jenkins portals were republished AND verified in Firebase for this active practice.');}catch(error){console.error('Manual Jenkins repair failed',error);alert('Jenkins repair failed: '+String(error?.code||error?.message||error));}finally{if(button){button.disabled=false;button.textContent='Repair Jenkins Portals'}}});
