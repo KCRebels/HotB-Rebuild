@@ -1136,6 +1136,7 @@ async function initCloud(){
     try{await loadCloudStatus()}catch(_){cloudMessage='Signed in. Cloud status will retry automatically.'}
     if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();
     if(playerPortalRefreshPending)setTimeout(()=>setupPlayerPortals(false),0);
+    setTimeout(recoverPublishedPlayerFocusReviewDates,0);
    }
    if(cloudUser&&recoveredPracticeExpired&&practicePlan&&practiceClock.running){
     // Do not merely mark an expired restored clock finished locally. Wait for the
@@ -2829,6 +2830,24 @@ function playerFocusPortalPayload(playerName=practiceFocusPlayer,range=practiceF
  const payload={title:'Current Hitting Focus',summary:`Based on ${games.length} saved game${games.length===1?'':'s'} and ${plateAppearances} plate appearance${plateAppearances===1?'':'s'} from ${rangeText}.`,needsWork:focusItems.join(' · '),coachNote:latestNote,drills,range,publishedAt:new Date().toISOString()};
  if(existingFocus&&!payload.needsWork&&!payload.coachNote)return{...payload,needsWork:existingFocus.needsWork||'',coachNote:existingFocus.coachNote||''};
  return payload;
+}
+let playerFocusReviewRecoveryStarted=false;
+async function recoverPublishedPlayerFocusReviewDates(){
+ if(playerFocusReviewRecoveryStarted||!cloudUser||!cloudStore)return;
+ playerFocusReviewRecoveryStarted=true;
+ let changed=false;
+ try{
+  if(!db.playerFocusLastReviewed||typeof db.playerFocusLastReviewed!=='object'||Array.isArray(db.playerFocusLastReviewed))db.playerFocusLastReviewed={};
+  for(const player of competitionRoster().filter(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId)){
+   const snap=await portalDoc(player.portalId).get();if(!snap.exists)continue;
+   const remote=snap.data()||{},dates=[];
+   if(remote.focus?.publishedAt)dates.push(Date.parse(remote.focus.publishedAt)||0);
+   for(const item of Array.isArray(remote.focusArchive)?remote.focusArchive:[])dates.push(Date.parse(item?.publishedAt||item?.archivedAt||0)||0);
+   const latest=Math.max(0,...dates),current=Date.parse(db.playerFocusLastReviewed[player.name]||0)||0;
+   if(latest>current){db.playerFocusLastReviewed[player.name]=new Date(latest).toISOString();changed=true}
+  }
+  if(changed){localStorage.setItem(DBKEY,JSON.stringify(db));render()}
+ }catch(_){playerFocusReviewRecoveryStarted=false}
 }
 function playerFocusLastReviewedAt(playerName){
  const saved=Date.parse(db.playerFocusLastReviewed?.[playerName]||0)||0;
