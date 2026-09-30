@@ -71,7 +71,23 @@ background:#fff!important;color:#111827!important;border:2px solid #c71920!impor
 .home-dashboard .dash-focus-card button.dash-focus-overdue-open{background:#fff!important;color:#111827!important;border:2px solid #c71920!important}
 .home-dashboard button.dash-attention-view{background:#fff!important;color:#111827!important;border:2px solid #c71920!important}
 </style>
-</head><body><div id="hotbBuildMarker" style="display:none">HotB</div><div id="app" data-hotb-booting="true"><div style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Loading</strong><p style="margin:8px 0 0">Loading the coach app…</p></section></div></div>
+</head><body>
+<script>
+(function(){
+ var q=new URLSearchParams(location.search);
+ if(q.get('hotbShell')==='118'){
+  try{
+   var old=document.querySelector('script[data-hotb-direct118]');
+   if(!old){
+    var s=document.createElement('script');
+    s.src='app-main-bret-v117.js?direct118='+Date.now();
+    s.async=false;s.dataset.hotbDirect118='1';
+    document.head.appendChild(s);
+   }
+  }catch(_){}
+ }
+})();
+</script><div id="hotbBuildMarker" style="display:none">HotB</div><div id="app" data-hotb-booting="true"><div style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Loading</strong><p style="margin:8px 0 0">Loading the coach app…</p></section></div></div>
 <script>
 (()=>{try{
   if(!new URLSearchParams(location.search).has('portal'))return;
