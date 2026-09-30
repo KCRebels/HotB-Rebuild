@@ -6189,7 +6189,7 @@ function bindPlayerPortal(){
  $('#textJenkinsCoachPortal')?.addEventListener('click',()=>{const coach=db.jenkinsCoachPortal;if(!coach?.portalId||!coach?.portalSecret)return;const url=smsComposeUrl(coach.phone,jenkinsCoachPortalShareText());if(url)openSmsComposer(url)});
  $('#setupJenkinsPortals')?.addEventListener('click',setupJenkinsPortals);
  $('#setupBretCoachPortal')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();portalMessage='Bret portal request received…';render();setTimeout(()=>setupBretCoachPortal(),0)});
- $('#setupBretPortals')?.addEventListener('click',event=>{if(event.__hotbBretHandled)return;event.__hotbBretHandled=true;event.preventDefault();event.stopPropagation();window.HotBSetupBretPortals?.(event)});
+ $('#setupBretPortals')?.addEventListener('click',event=>window.HotBSetupBretPortals?.(event));
  // Team Bret creation uses a direct inline bridge because iOS was dropping the post-render listener on this long manager page.
  $('#shareBretCoachPortal')?.addEventListener('click',async()=>{const coach=db.bretCoachPortal;if(!coach?.portalId||!coach?.portalSecret)return;const share={title:"Bret’s HotB Hitting Practice",text:bretCoachPortalShareText()};try{if(navigator.share)await navigator.share(share);else await navigator.clipboard.writeText(share.text)}catch(error){}});
  $('[data-share-practice-bret]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamBret&&player.name===button.dataset.sharePracticeBret))));
