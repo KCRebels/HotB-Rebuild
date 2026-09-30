@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0c0d" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="HotB" />
+  <title>HotB Bret Test</title>
+  <script>if(!new URLSearchParams(window.location.search).has('portal')){const manifest=document.createElement('link');manifest.rel='manifest';manifest.href='manifest.webmanifest?v=20260925-hotbicon2';document.head.appendChild(manifest)}</script>
+  <link rel="apple-touch-icon" sizes="180x180" href="hotb-app-icon-180.png?v=20260925-hotbicon2" />
+  <link rel="apple-touch-icon-precomposed" sizes="180x180" href="hotb-app-icon-180.png?v=20260925-hotbicon2" />
+  <link rel="icon" type="image/png" sizes="192x192" href="hotb-app-icon-192.png?v=20260925-hotbicon2" /><link rel="icon" type="image/png" sizes="512x512" href="hotb-app-icon-512.png?v=20260925-hotbicon2" />
+  <link rel="stylesheet" href="styles-v3.css?v=20260927-observation6lines1" />
+  <link rel="preload" as="image" href="home-new-game.png" />
+  <link rel="preload" as="image" href="home-reports.png" />
+  <link rel="preload" as="image" href="home-player-evaluation.svg" />
+  <link rel="preload" as="image" href="home-edit-roster.svg" />
+  <link rel="preload" as="image" href="home-hitting-practice.png" /><link rel="stylesheet" href="evaluation-cleanup.css?v=20260925-evalhead2" /><link rel="stylesheet" href="evaluation-single-metrics.css?v=20260915-eval300" />
+<style id="eval-scout-header-removal">#openRebelsScout{display:none!important}.eval-head .eval-contact-actions{display:none!important}</style>
+<style id="live-game-top-nav-v1">
+/* Live Game header swap only. Do not alter any scoring/workspace geometry below it. */
+.live-game-nav{display:grid!important;grid-template-columns:repeat(5,1fr)!important;align-items:stretch!important;padding:0!important;background:#fff!important;border-bottom:1px solid #d8d8d8!important;color:#555!important}
+.live-game-nav>button{min-width:0!important;height:100%!important;margin:0!important;padding:4px 2px 3px!important;border:0!important;border-radius:0!important;background:#fff!important;color:#555!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:1px!important;font:inherit!important}
+.live-game-nav>button+button{border-left:1px solid #eee!important}
+.live-game-nav .live-game-nav-icon{display:block!important;font-size:19px!important;line-height:20px!important;height:20px!important;font-weight:700!important}
+.live-game-nav>button b{font-size:11px!important;line-height:13px!important;font-weight:700!important}
+.live-game-nav>button.end{color:#c71920!important}
+</style>
+<style id="remove-practice-team-focus-preview">.practice-team-focus-preview{display:none!important}</style><style id="dashboard-focus-397">
+.home-dashboard .dash-focus-card .dash-focus-status{display:grid!important;grid-template-columns:1fr!important;margin:14px 0 0 48px!important;gap:10px!important}
+.home-dashboard .dash-focus-card .dash-focus-group{display:grid!important;grid-template-columns:42px minmax(0,1fr) 82px!important;gap:12px!important;align-items:center!important;min-width:0!important;padding:0!important;border:0!important}
+.home-dashboard .dash-focus-card .dash-focus-group+.dash-focus-group{border-top:1px solid #d9dede!important;padding-top:10px!important}
+.home-dashboard .dash-focus-card .dash-focus-group>b{font-size:23px!important;text-align:center!important;margin:0!important}
+.home-dashboard .dash-focus-card .dash-focus-group>span{font-size:12px!important;line-height:1.15!important;font-weight:800!important}
+.home-dashboard .dash-focus-card .dash-focus-group>.dash-action{width:82px!important;min-width:82px!important;margin:0!important;padding:8px 6px!important}
+</style>
+<style id="dashboard-accent-398">
+.home-dashboard .dash-focus-card .dash-overdue-label{color:#c71920!important}
+.home-dashboard .dash-hotb-metric>b,.home-dashboard .dash-hotb-metric>span{color:#c71920!important}
+</style>
+<style id="dashboard-focus-buttons-399">
+.home-dashboard .dash-focus-card .dash-focus-group>.dash-action,
+.home-dashboard .dash-focus-card .dash-focus-group>.dash-action:disabled{
+background:#fff!important;color:#111827!important;border:2px solid #c71920!important;opacity:1!important
+}
+</style>
+<style id="dashboard-attention-view-400">
+.home-dashboard button.dash-attention-view{background:#fff!important;color:#111827!important;border:2px solid #c71920!important}
+</style>
+<style id="dashboard-button-roles-401">
+.home-dashboard .dash-focus-card button.dash-focus-needs-open,
+.home-dashboard .dash-focus-card button.dash-focus-needs-open:disabled{background:#fff!important;color:#111827!important;border:1.5px solid #344054!important;opacity:1!important}
+.home-dashboard .dash-focus-card button.dash-focus-overdue-open{background:#fff!important;color:#111827!important;border:2px solid #c71920!important}
+.home-dashboard button.dash-attention-view{background:#fff!important;color:#111827!important;border:2px solid #c71920!important}
+</style>
+</head><body><div id="hotbBuildMarker" style="display:none">HotB</div><div id="app" data-hotb-booting="true"><div style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Loading</strong><p style="margin:8px 0 0">Loading the coach app…</p></section></div></div>
+<script>
+(()=>{try{
+  if(!new URLSearchParams(location.search).has('portal'))return;
+  const app=document.getElementById('app');
+  if(!app)return;
+  app.innerHTML='<div class="app portal-app"><main class="portal-page"><section class="portal-welcome"><span>PRIVATE ACCESS</span><h2>Opening Your Portal</h2><p>HotB is checking this private link.</p></section></main></div>';
+}catch(_){}})();
+</script>
+<script>
+(()=>{try{
+ if(new URLSearchParams(location.search).has('portal'))return;
+ window.__HOTB_BOOT_STARTED_AT__=Date.now();
+ // The watchdog is armed only after the final coach app script is requested.
+ // Earlier builds started this timer while dozens of parser-inserted dependencies
+ // were still loading, so slow iPhone launches could report a false H136 failure.
+}catch(_){}})();
+</script>
+<script>
+(()=>{try{
+  if(!new URLSearchParams(location.search).has('portal'))return;
+  // Do not unregister the coach app's service worker from a player portal tab.
+  // The worker already bypasses all ?portal navigations. Unregistering it here
+  // can unexpectedly remove offline/update protection from the coach's PWA.
+  // Clear only old HotB response caches; portal navigation itself remains network-only.
+  if('caches' in window)caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('hotb-app-')).map(key=>caches.delete(key)))).catch(()=>{});
+}catch(_){}})();
+</script>
+<script>
+(()=>{try{
+ if(!new URLSearchParams(location.search).has('portal'))return;
+ // Arm the startup watchdog only after app.js has actually been requested.
+ // The old page-level timer started while Firebase and portal dependencies were
+ // still downloading, so a healthy slow iPhone launch could be falsely replaced
+ // by P23-SCRIPT moments before app.js rendered the real portal.
+ window.__HOTB_PORTAL_SHELL_STARTED_AT__=Date.now();
+}catch(_){}})();
+</script>
+<script>if(!new URLSearchParams(location.search).has("portal")){const s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.async=true;document.head.appendChild(s)}</script><script>
+(function(){
+ const sources=[
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js'
+ ];
+ // Start Firebase loading, but never let a blocked CDN script hold up the HTML parser.
+ // app.js has its own bounded/self-healing Firebase loader for portal connections.
+ window.HotBFirebaseReady=(async()=>{
+  for(const src of sources){
+   await Promise.race([
+    new Promise((resolve,reject)=>{
+     const s=document.createElement('script');
+     s.src=src;s.async=true;s.dataset.hotbFirebase=src;
+     s.onload=resolve;s.onerror=()=>reject(new Error('firebase-load-failed:'+src));
+     document.head.appendChild(s);
+    }),
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error('firebase-shell-timeout')),4000))
+   ]);
+  }
+  if(!window.firebase)throw new Error('firebase-global-missing');
+  return window.firebase;
+ })();
+})();</script>
+<script>
+(()=>{try{
+ const isPortal=new URLSearchParams(location.search).has('portal');
+ if(!isPortal)return;
+ const loadPortalScript=(src,errorCode)=>new Promise((resolve,reject)=>{
+  const script=document.createElement('script');script.src=src;script.async=false;
+  script.onload=resolve;script.onerror=()=>reject(new Error(errorCode));document.head.appendChild(script);
+ });
+ (async()=>{
+  try{
+   // The player clock must have the exact same timing engine available before
+   // app.js evaluates. Load it without document.write so iOS cannot replace the
+   // already-parsed portal document during a delayed script fetch.
+   await loadPortalScript('practice-session.js?v=20260921-resolution325','P30-TIMING');
+   await loadPortalScript('drill-library.js?v=20260904-restored133','P31-DRILLS');
+   await loadPortalScript('sms-links.js?v=20260919-smslinks180','P32-SMS');
+   await loadPortalScript('evaluation-stats.js?v=20260923-ipa28','P33-EVALSTATS');
+   await loadPortalScript('decision-quality.js?v=20260920-decision230','P34-DECISION');
+   await loadPortalScript('at-bat-approach.js?v=20260918-calc8','P35-ABA');
+   await loadPortalScript('app-portal-meg-focus-archive-v1.js?v=20260928-focusall375','P29-DOWNLOAD');
+   await loadPortalScript('player-portal-evaluation-v634.js?v=20260924-evalback654','P36-EVALUI');
+   await loadPortalScript('player-eval-surgical-match.js?v=20260924-playereval618','P37-EVALPOPUPS');
+   window.__HOTB_APP_SCRIPT_LOADED__=true;
+   // app.js owns the live portal connection status from this point forward.
+   // No shell watchdog may overwrite its Firebase/auth/read progress UI.
+  }catch(error){
+   const app=document.getElementById('app'),code=String(error?.message||'P29-DOWNLOAD');
+   if(app)app.innerHTML='<div class="app portal-app"><main class="portal-page"><section class="portal-welcome"><span>PRIVATE ACCESS</span><h2>Portal Script Error</h2><p>HotB could not download the portal program. Error code: '+code+'</p></section></main></div>';
+  }
+ })();
+}catch(_){}})();
+</script><script>if(!new URLSearchParams(location.search).has("portal")){const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;s.defer=true;document.head.appendChild(s)}</script>
+<script>
+if(!new URLSearchParams(location.search).has('portal')){
+ document.write('<script src="practice-scheduler-bret-test-v66-jenkins-partial3.js?v=20260929-jenkinspartial3"><\/script><script src="practice-history.js?v=20260919-attendance2"><\/script><script src="practice-session.js?v=20260921-blockcount1"><\/script>');
+}
+</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="practice-equipment.js?v=20260910-equipmentsetup170"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="coach-practice.js?v=20260904-focus133"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="hitting-analysis.js?v=20260902-approach118"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="evaluation-stats.js?v=20260923-ipa28"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="drill-library.js?v=20260904-restored133"><\\/script><script src="sms-links.js?v=20260919-smslinks180"><\\/script>')</script><script src="coach-observations.js?v=20260920-observation232"></script><script src="team-recommendations.js?v=20260929-teamfocus416"></script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="game-data-cleanup.js?v=20260907-gameaudit141"><\\/script>')</script><script>if(!new URLSearchParams(location.search).has('portal'))document.write('<script src="gamechanger-pitching-import.js?v=20260914-pitchupload208"><\\/script>')</script><script>
+(()=>{try{
+ if(new URLSearchParams(location.search).has('portal'))return;
+ const dependencies=["decision-quality.js?v=20260920-decision230","at-bat-approach.js?v=20260918-calc8","hhb-contact-popup.js?v=20260918-sharedcontact1","reports-heat-no-jump.js?v=20260915-reports299","spray-location.js?v=20260914-spray265","evaluation-hitting-visuals.js?v=20260923-restorevisual2","brooklyn-pitch-performance.js?v=20260927-popupdirect2","brooklyn-player-trends.js?v=20260923-ipa3","evaluation-practice-focus.js?v=20260923-focus3","practice-focus-assignment.js?v=20260917-picker2","count-performance-k-consistency.js?v=20260917-verified1","heat-map-standard.js?v=20260914-heat272","evaluation-interactions.js?v=20260914-display253","evaluation-direct-hitting-rankings.js?v=20260926-jenkinsrank4","evaluation-guide-removal.js?v=20260914-guide276","pitching-stat-display-format.js?v=20260918-consolefix1"];
+ window.__HOTB_COACH_DEPENDENCIES_READY__=(async()=>{
+  for(const src of dependencies){
+   await new Promise((resolve,reject)=>{
+    const s=document.createElement('script');s.src=src;s.async=false;
+    s.onload=resolve;s.onerror=()=>reject(new Error('dependency:'+src));
+    document.head.appendChild(s);
+   });
+  }
+ })();
+}catch(error){window.__HOTB_COACH_DEPENDENCIES_READY__=Promise.reject(error)}})();
+</script><script>
+(()=>{try{
+ if(new URLSearchParams(location.search).has('portal'))return;
+ // Coach app must start only after every synchronous HotB dependency above has
+ // evaluated. Loading app.js earlier created an iOS race where app.js could run
+ // while its practice/game modules were still being parser-inserted.
+ const startApp=async()=>{try{await window.__HOTB_COACH_DEPENDENCIES_READY__;if(!window.HotBEvaluationStats)await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='evaluation-stats.js?v=20260923-ipa28';s.async=false;s.onload=resolve;s.onerror=()=>reject(new Error('dependency:evaluation-stats'));document.head.appendChild(s)})}catch(error){const app=document.getElementById('app');if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">A required HotB module could not load.</p><p style="margin:8px 0 0">Error code: H200-DEPENDENCY</p></section></main></div>';return} await new Promise((resolve,reject)=>{const recovery=document.createElement('script');recovery.src='haskell-recovery-v1.js?v=20260928-haskell384';recovery.async=false;recovery.onload=resolve;recovery.onerror=()=>reject(new Error('dependency:haskell-recovery'));document.head.appendChild(recovery)}); const s=document.createElement('script');s.src='app-bret-resume-v92.js?file=bret92-20260930-2';s.async=false;
+ const fail=(code,message)=>{const app=document.getElementById('app');if(app&&app.dataset.hotbBooting==='true')app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">'+message+'</p><p style="margin:8px 0 0">Error code: '+code+'</p></section></main></div>'};
+ const watchdog=setTimeout(()=>fail('H200-EXECUTE','The app program loaded but did not finish starting.'),12000);
+ s.onload=()=>{window.__HOTB_APP_SCRIPT_LOADED__=true;setTimeout(()=>{const app=document.getElementById('app');if(app&&app.innerHTML.trim()){delete app.dataset.hotbBooting;clearTimeout(watchdog)}},0)};
+ s.onerror=()=>{clearTimeout(watchdog);fail('H200-DOWNLOAD','The app program could not load. Close HotB and reopen it once.')};
+ document.body.appendChild(s);};startApp();
+}catch(_){}})();
+</script>
+<script id="bret-v92-sw-bypass">(function(){if(new URLSearchParams(location.search).has('portal'))return;try{if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister()}))}).catch(function(){})}if('caches'in window){caches.keys().then(function(keys){return Promise.all(keys.filter(function(k){return /hotb/i.test(k)}).map(function(k){return caches.delete(k)}))}).catch(function(){})}}catch(e){}})();</script>
+<script id="hotb-stale-script-guard-v15">(function(){if(new URLSearchParams(location.search).has('portal'))return;if('serviceWorker' in navigator){navigator.serviceWorker.ready.then(function(r){try{r.update()}catch(e){}}).catch(function(){})}})();</script>
+<style id="pitch-performance-bottom-nav-fix">#bppModal{display:block!important;position:fixed!important;inset:0!important;padding:0!important;overflow:hidden!important;box-sizing:border-box!important}#bppModal>.bpp-modal{position:absolute!important;top:calc(env(safe-area-inset-top,0px) + 10px)!important;bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;left:50%!important;transform:translateX(-50%)!important;margin:0!important;width:min(92vw,540px)!important;height:auto!important;max-height:none!important;overflow-y:auto!important;box-sizing:border-box!important}</style><script id="pitch-performance-runtime-geometry">(function(){function fix(){var m=document.getElementById("bppModal");if(!m)return;var b=m.querySelector(".bpp-modal");if(!b)return;var vv=window.visualViewport,h=vv?vv.height:window.innerHeight,top=Math.max(10,(vv?vv.offsetTop:0)+10),nav=document.querySelector(".hotb-bottom-nav,.bottom-nav,[data-bottom-nav]"),reserve=96;if(nav){var r=nav.getBoundingClientRect();if(r.height>0)reserve=Math.max(96,h-r.top+8)}m.style.setProperty("display","block","important");m.style.setProperty("position","fixed","important");m.style.setProperty("inset","0","important");m.style.setProperty("padding","0","important");m.style.setProperty("overflow","hidden","important");b.style.setProperty("position","fixed","important");b.style.setProperty("top",top+"px","important");b.style.setProperty("bottom","auto","important");b.style.setProperty("left","50%","important");b.style.setProperty("transform","translateX(-50%)","important");b.style.setProperty("margin","0","important");b.style.setProperty("width","min(92vw,540px)","important");b.style.setProperty("height","auto","important");b.style.setProperty("max-height",Math.max(260,h-top-reserve)+"px","important");b.style.setProperty("overflow-y","auto","important")}new MutationObserver(fix).observe(document.documentElement,{childList:true,subtree:true});window.addEventListener("resize",fix);if(window.visualViewport){visualViewport.addEventListener("resize",fix);visualViewport.addEventListener("scroll",fix)}})();</script>
+<style id="eval-bottom-nav-clearance">.eval-app .eval-bottom-spacer{display:block!important;width:100%!important;height:82px!important;min-height:82px!important;clear:both!important}</style>
+
+</body></html>
