@@ -1680,7 +1680,14 @@ async function setupJenkinsPortals(){
  }
 }
 async function setupBretCoachPortal(){
- if(!cloudUser||!cloudStore||cloudBusy)return;
+ if(cloudBusy)return;
+ if(!cloudStore||!cloudAuth){portalMessage='Connecting to the portal service…';render();await initCloud()}
+ let authUser=cloudAuth?.currentUser||null;
+ if(!authUser||authUser.isAnonymous||String(authUser.email||'').toLowerCase()!==CLOUD_EMAIL){
+  try{authUser=await waitForPortalAuthState(5000)}catch(_){authUser=cloudAuth?.currentUser||null}
+ }
+ if(authUser&&!authUser.isAnonymous&&String(authUser.email||'').toLowerCase()===CLOUD_EMAIL)cloudUser=authUser;
+ if(!cloudUser||!cloudStore){portalMessage='Coach cloud session is not connected. Open Cloud Backup, sign in, then return here. No links were changed.';render();return}
  const coach=db.bretCoachPortal||(db.bretCoachPortal={name:'Bret Mason',phone:'',portalId:'',portalSecret:''}),original=structuredClone(coach);
  cloudBusy=true;portalMessage='Preparing Bret’s Hitting Practice coach portal…';render();
  try{
@@ -1693,7 +1700,14 @@ async function setupBretCoachPortal(){
  }catch(error){db.bretCoachPortal=original;cloudBusy=false;portalMessage='Bret’s Hitting Practice coach portal could not be created. Nothing else was changed.';console.error(error);render()}
 }
 async function setupBretPortals(){
- if(!cloudUser||!cloudStore||cloudBusy)return;
+ if(cloudBusy)return;
+ if(!cloudStore||!cloudAuth){portalMessage='Connecting to the portal service…';render();await initCloud()}
+ let authUser=cloudAuth?.currentUser||null;
+ if(!authUser||authUser.isAnonymous||String(authUser.email||'').toLowerCase()!==CLOUD_EMAIL){
+  try{authUser=await waitForPortalAuthState(5000)}catch(_){authUser=cloudAuth?.currentUser||null}
+ }
+ if(authUser&&!authUser.isAnonymous&&String(authUser.email||'').toLowerCase()===CLOUD_EMAIL)cloudUser=authUser;
+ if(!cloudUser||!cloudStore){portalMessage='Coach cloud session is not connected. Open Cloud Backup, sign in, then return here. No links were changed.';render();return}
  const players=db.roster.filter(item=>item.isTeamBret),missing=players.filter(player=>!player.portalId||!player.portalSecret),originals=missing.map(player=>({player,portalId:player.portalId,portalSecret:player.portalSecret}));
  if(!missing.length){portalMessage='All Team Bret permanent practice links are ready.';render();return}
  cloudBusy=true;portalMessage='Creating Team Bret permanent practice links…';render();
