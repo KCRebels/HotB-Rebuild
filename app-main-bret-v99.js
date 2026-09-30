@@ -6437,6 +6437,7 @@ function bindPlayerPortal(){
  $('#setupBretCoachPortal')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();portalMessage='Bret portal request received…';render();setTimeout(()=>setupBretCoachPortal(),0)});
  // Team Bret portal creation uses native navigation in the secondary test build.
  $('#shareBretCoachPortal')?.addEventListener('click',async()=>{const coach=db.bretCoachPortal;if(!coach?.portalId||!coach?.portalSecret)return;const share={title:"Bret’s HotB Hitting Practice",text:bretCoachPortalShareText()};try{if(navigator.share)await navigator.share(share);else await navigator.clipboard.writeText(share.text)}catch(error){}});
+ $('#textBretCoachPortal')?.addEventListener('click',()=>{const coach=db.bretCoachPortal;if(!coach?.portalId||!coach?.portalSecret||!coach?.phone)return;const url=smsComposeUrl(coach.phone,bretCoachPortalShareText());if(url)openSmsComposer(url)});
  $$('[data-share-practice-bret]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal(db.roster.find(player=>player.isTeamBret&&player.name===button.dataset.sharePracticeBret))));
  $$('[data-text-practice-bret]').forEach(button=>button.addEventListener('click',()=>{const player=db.roster.find(item=>item.isTeamBret&&item.name===button.dataset.textPracticeBret),url=guestPortalTextUrl(player);if(url)openSmsComposer(url)}));
  document.querySelectorAll('[data-restore-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>restoreJenkinsPortalLink(button.dataset.restorePracticeJenkins)));
