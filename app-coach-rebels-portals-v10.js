@@ -2852,7 +2852,11 @@ async function recoverPublishedPlayerFocusReviewDates(){
 function playerFocusLastReviewedAt(playerName){
  const saved=Date.parse(db.playerFocusLastReviewed?.[playerName]||0)||0;
  const archive=playerFocusArchive(playerName),archived=archive.reduce((latest,item)=>Math.max(latest,Date.parse(item?.publishedAt||item?.archivedAt||0)||0),0);
- return Math.max(saved,archived);
+ const reviewed=(db.coachObservations||[]).filter(item=>item?.source==='player-focus'&&item.playerName===playerName).reduce((latest,item)=>{
+  const when=Date.parse(item?.observedAt||0)||Number(item?.updatedAt||item?.createdAt||0)||0;
+  return Math.max(latest,when);
+ },0);
+ return Math.max(saved,archived,reviewed);
 }
 function playerFocusReviewAge(playerName){
  const last=playerFocusLastReviewedAt(playerName);
