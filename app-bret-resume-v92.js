@@ -815,7 +815,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-window.__HOTB_BRET_TEST_BUILD__='v92';
+window.__HOTB_BRET_TEST_BUILD__='v93';
 const PORTAL_BUILD_TOKEN='20260924-631';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
@@ -6196,7 +6196,7 @@ async function skipPracticeBlock(){
 }
 async function beginPracticeClock(){
  if(practiceClock.finished)return;
- if(!db.activePortalPractice?.id||db.activePortalPractice.id!==practicePlan?.portalDraftId){alert('Activate the player and coach portal plans before starting practice. This keeps every player’s live block and NEXT display synchronized with the coach clock.');return}
+ if(!db.activePortalPractice?.id||db.activePortalPractice.id!==practicePlan?.portalDraftId){await activatePlayerPlans();if(!db.activePortalPractice?.id||db.activePortalPractice.id!==practicePlan?.portalDraftId)return}
  if(practicePlan&&!practicePlan.recoveredCoachSchedule&&window.HotBPracticeScheduler?.validate){const errors=practiceActivationSafetyErrors(practicePlan);if(errors.length){alert(`This practice cannot start because it failed its safety checks:\n\n${errors.join('\n\n')}`);return}}
  // Starting the clock must never discard drills already saved for this exact practice.
  // Recover them from the persisted session if the in-memory list was lost during a render/navigation.
