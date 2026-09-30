@@ -2434,6 +2434,7 @@ const VERIFIED_REBELS_PORTALS={
  'Makenna Whitaker':{portalId:'xFjM6RgiuEcBwLyFanO8wy19',portalPin:'606197'},
  'Maleah Pena':{portalId:'P-WUR7lgRiTLTXMKYYJCRTBn',portalPin:'917864'},
  'Mattingly Hardy':{portalId:'vIRE8cBEmqrD7dLnXS5j2VgY',portalPin:'808647'},
+ 'Megan Ryan':{portalPin:'287195'},
  'Tayte Stepps':{portalId:'SDfyRXOwJePMrQe4i_4eJXLe',portalPin:'781176'}
 };
 function restoreVerifiedRebelsPortalDirectory(){
