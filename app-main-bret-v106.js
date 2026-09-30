@@ -6469,7 +6469,7 @@ window.HotBPortalText=function(name){
 };
 function bindPlayerPortal(){
  $('#retryPracticePortal')?.addEventListener('click',()=>{portalMessage='';portalBusy=false;loadPlayerPortal()});
- if(route==='portal'&&!portalToken&&cloudAuthReady&&cloudUser&&db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&!player.isTeamBret&&!player.portalId))setTimeout(recoverPermanentPlayerPortalsForManager,0);
+ if(route==='portal'&&!portalToken&&cloudAuthReady&&cloudUser&&db.roster.some(player=>player.isTeamBret?(!player.portalId||!player.portalSecret):player.isTeamJenkins?(!player.portalId||!player.portalSecret):!player.isGuest&&(!player.portalId||!player.portalPin)))setTimeout(recoverPermanentPlayerPortalsForManager,0);
 
  // Evaluation bindings belong only to the coach portal's evaluation subview.
  // Player/PIN portal startup must not depend on the optional evaluation module.
