@@ -2849,14 +2849,21 @@ async function recoverPublishedPlayerFocusReviewDates(){
   if(changed){localStorage.setItem(DBKEY,JSON.stringify(db));render()}
  }catch(_){playerFocusReviewRecoveryStarted=false}
 }
+if((db.playerFocusPublishedHistoryRepairVersion||0)<1){
+ if(!db.playerFocusLastReviewed||typeof db.playerFocusLastReviewed!=='object'||Array.isArray(db.playerFocusLastReviewed))db.playerFocusLastReviewed={};
+ const repairedAt='2026-09-29T12:00:00-05:00';
+ for(const name of ['Megan Ryan','Hailey Marsh','Brooklyn Gering']){
+  const existing=Date.parse(db.playerFocusLastReviewed[name]||0)||0;
+  if(existing<Date.parse(repairedAt))db.playerFocusLastReviewed[name]=repairedAt;
+ }
+ db.playerFocusPublishedHistoryRepairVersion=1;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+ if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+}
 function playerFocusLastReviewedAt(playerName){
  const saved=Date.parse(db.playerFocusLastReviewed?.[playerName]||0)||0;
  const archive=playerFocusArchive(playerName),archived=archive.reduce((latest,item)=>Math.max(latest,Date.parse(item?.publishedAt||item?.archivedAt||0)||0),0);
- const reviewed=(db.coachObservations||[]).filter(item=>item?.source==='player-focus'&&item.playerName===playerName).reduce((latest,item)=>{
-  const when=Date.parse(item?.observedAt||0)||Number(item?.updatedAt||item?.createdAt||0)||0;
-  return Math.max(latest,when);
- },0);
- return Math.max(saved,archived,reviewed);
+ return Math.max(saved,archived);
 }
 function playerFocusReviewAge(playerName){
  const last=playerFocusLastReviewedAt(playerName);
