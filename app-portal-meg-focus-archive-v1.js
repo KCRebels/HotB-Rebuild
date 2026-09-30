@@ -867,7 +867,7 @@ teamJenkinsProfiles.forEach(profile=>{
  const index=(db.roster||[]).findIndex(player=>player.name===profile.name);
  const existing=index>=0?db.roster[index]:null,cached=cachedJenkinsPortals[profile.name]||null;
  const next={...profile,side:existing?.side||'R',isGuest:true,isTeamJenkins:true,teamName:'Team Jenkins',isPracticeGuest:false};
- ['portalId','portalSecret'].forEach(key=>{if(existing?.[key])next[key]=existing[key];else if(cached?.[key])next[key]=cached[key]});
+ ['portalId','portalSecret'].forEach(key=>{if(cached?.[key])next[key]=cached[key];else if(existing?.[key])next[key]=existing[key]});
  if(index<0){db.roster.push(next);teamJenkinsChanged=true}
  else if(JSON.stringify(practiceOnlyJenkinsRecord(existing))!==JSON.stringify(next)){db.roster[index]=next;teamJenkinsChanged=true}
 });
