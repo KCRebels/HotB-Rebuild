@@ -105,6 +105,41 @@ background:#fff!important;color:#111827!important;border:2px solid #c71920!impor
 .eval-trends table,.eval-trends th,.eval-trends td{background:#f3f4f6!important;color:#111827!important}
 .player-trends th,.player-trend th,.trend-table th,.eval-trends th{background:#6b7280!important;color:#fff!important}
 </style>
+<style id="hotb-eval-exact-tile-fix-20261003">
+/* Exact Evaluation tile overrides. Visual only; heat/chart selectors are excluded. */
+.eval-app .eval-tiles .eval-tile,
+.portal-player-evaluation .eval-tiles .eval-tile{background:#fff!important;border:2px solid #111!important;color:#111827!important}
+.eval-app .eval-tiles .eval-tile :is(.metric-title,.value,.note,.compare-value,.compare-value *),
+.portal-player-evaluation .eval-tiles .eval-tile :is(.metric-title,.value,.note,.compare-value,.compare-value *){color:#111827!important}
+.eval-app .eval-tiles .eval-tile.dark,
+.portal-player-evaluation .eval-tiles .eval-tile.dark{background:#fff!important;border-color:#c71920!important;color:#c71920!important}
+.eval-app .eval-tiles .eval-tile.dark :is(.metric-title,.value,.note,.compare-value,.compare-value *),
+.portal-player-evaluation .eval-tiles .eval-tile.dark :is(.metric-title,.value,.note,.compare-value,.compare-value *){color:#c71920!important}
+/* HotB+ title is a button with legacy white rules. */
+.eval-app .eval-tiles .eval-tile.dark button.metric-title,
+.portal-player-evaluation .eval-tiles .eval-tile.dark button.metric-title{color:#c71920!important;-webkit-text-fill-color:#c71920!important;opacity:1!important}
+/* Hitting Results: every old filled tile becomes white; preserve red-vs-black category by former fill/rating. */
+.eval-app .performance .perf-grid .perf,
+.portal-player-evaluation .performance .perf-grid .perf{background:#fff!important;border:2px solid #111!important;color:#111827!important}
+.eval-app .performance .perf-grid .perf :is(b,.perf-metric,.perf-label-row,.perf-label-row *),
+.portal-player-evaluation .performance .perf-grid .perf :is(b,.perf-metric,.perf-label-row,.perf-label-row *){color:#111827!important;-webkit-text-fill-color:#111827!important}
+.eval-app .performance .perf-grid .perf:is(.serious,.concern),
+.portal-player-evaluation .performance .perf-grid .perf:is(.serious,.concern){background:#fff!important;border-color:#c71920!important;color:#c71920!important}
+.eval-app .performance .perf-grid .perf:is(.serious,.concern) :is(b,.perf-metric,.perf-label-row,.perf-label-row *),
+.portal-player-evaluation .performance .perf-grid .perf:is(.serious,.concern) :is(b,.perf-metric,.perf-label-row,.perf-label-row *){color:#c71920!important;-webkit-text-fill-color:#c71920!important}
+/* Pitch Performance */
+.eval-app .pitch-performance .pitch-perf,
+.eval-app .pitch-performance-grid>*,
+.eval-app .pitch-type-grid>*{background:#fff!important;border:2px solid #c71920!important;color:#c71920!important}
+.eval-app .pitch-performance .pitch-perf *,
+.eval-app .pitch-performance-grid>* *,
+.eval-app .pitch-type-grid>* *{color:#c71920!important;-webkit-text-fill-color:#c71920!important}
+/* Player Trends: explicitly replace the old near-black table. */
+.eval-app .player-trends table,.eval-app .player-trends tbody,.eval-app .player-trends tr,.eval-app .player-trends td,
+.eval-app .trend-table,.eval-app .trend-table tbody,.eval-app .trend-table tr,.eval-app .trend-table td{background:#f3f4f6!important;color:#111827!important}
+.eval-app .player-trends th,.eval-app .trend-table th{background:#6b7280!important;color:#fff!important}
+.eval-app .player-trends td *,.eval-app .trend-table td *{color:#111827!important;-webkit-text-fill-color:#111827!important}
+</style>
 </head><body><div id="hotbBuildMarker" style="display:none">HotB</div><div id="app" data-hotb-booting="true"><div style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Loading</strong><p style="margin:8px 0 0">Loading the coach app…</p></section></div></div>
 <script>
 (()=>{try{
