@@ -67,6 +67,11 @@ background:#fff!important;color:#111827!important;border:2px solid #c71920!impor
   background:#fff!important;color:#c71920!important;border-color:#c71920!important;
 }
 :where(.metric,.metric-card,.stat-card,.stats-card,.eval-metric,.eval-stat,.eval-kpi,.eval-tile,.result-tile,.performance-tile,.pitch-tile,.summary-tile,.portal-metric,.portal-stat,.portal-tile,.dash-metric,.practice-summary>div) :where(b,strong,h2,h3,span,small){color:inherit!important}
+/* Text must follow the new white-tile treatment; old tile rules set descendants white. */
+:where(.metric,.metric-card,.stat-card,.stats-card,.eval-metric,.eval-stat,.eval-kpi,.eval-tile,.result-tile,.performance-tile,.pitch-tile,.summary-tile,.portal-metric,.portal-stat,.portal-tile,.dash-metric,.practice-summary>div):not([class*="heat"]):not([class*="zone"]) *{color:#111827!important}
+:where(.metric,.metric-card,.stat-card,.stats-card,.eval-metric,.eval-stat,.eval-kpi,.eval-tile,.result-tile,.performance-tile,.pitch-tile,.summary-tile,.portal-metric,.portal-stat,.portal-tile,.dash-metric,.practice-summary>div).red:not([class*="heat"]):not([class*="zone"]) *,
+:where(.metric,.metric-card,.stat-card,.stats-card,.eval-metric,.eval-stat,.eval-kpi,.eval-tile,.result-tile,.performance-tile,.pitch-tile,.summary-tile,.portal-metric,.portal-stat,.portal-tile,.dash-metric,.practice-summary>div)[class*="red"]:not([class*="heat"]):not([class*="zone"]) *,
+:where(.metric,.metric-card,.stat-card,.stats-card,.eval-metric,.eval-stat,.eval-kpi,.eval-tile,.result-tile,.performance-tile,.pitch-tile,.summary-tile,.portal-metric,.portal-stat,.portal-tile,.dash-metric,.practice-summary>div)[style*="#c71920"]:not([class*="heat"]):not([class*="zone"]) *{color:#c71920!important}
 /* Player Trends only: lighter neutral treatment, not heat-map styling. */
 :where(.player-trends,.player-trend,.trend-table,.eval-trends) table,
 :where(.player-trends,.player-trend,.trend-table,.eval-trends) :where(th,td){
