@@ -1927,7 +1927,7 @@ function go(r){
  // controls while its queued verifier still owns the rollback snapshot.
  if(route==='practice'&&r!=='practice'&&(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId)){return}
  if(route==='practice'&&practicePlan)persistPracticeSession();
- if(r==='practice'&&route!=='practice')practiceSection='hub';
+ if(r==='practice'&&route!=='practice')practiceSection=(practicePlan||db.activePracticeSession?.plan)?'builder':'setup';
  // A private portal URL is a dedicated surface. Do not let generic app
  // navigation leave its Firestore listener alive while another coach/app view
  // is rendered; invalidate any in-flight load before changing routes.
@@ -3527,7 +3527,7 @@ function practicePage(){
  if(practiceSection==='good-trends')return teamRecommendationDetailView('good');
  if(practiceSection==='library')return practiceLibrary();
  if(practiceSection==='player')return practicePlayerFocus();
- if(!practicePlan&&practiceSection==='hub')return practiceHub();
+ if(!practicePlan&&practiceSection==='hub')practiceSection='setup';
  if(!practicePlan)return practiceSetup();
  if(practiceDrillPickerOpen)return practiceDrillPicker();
  if(practiceEquipmentSetupOpen)return practiceEquipmentSetup();
@@ -6124,16 +6124,16 @@ async function finishPracticeClock(automatic=false){
  persistPracticeSession();
  // One DONE tap ends the coach-facing practice immediately. Keep the completed
  // plan/session in memory for the background portal cleanup, but move the coach
- // back to the Practice hub now instead of leaving a tappable DONE button that
+ // back to the regular Build Practice screen now instead of leaving a tappable DONE button that
  // can enter the old retry/Closing path.
  if(!automatic){
   // DONE should feel finished to the coach immediately. Leave the live-practice
   // workspace now; the exact plan and activePortalPractice remain in memory while
   // the verified portal cleanup transaction completes in the background.
-  practiceSection='hub';practiceCoachOpen=false;practiceCardsOpen=false;modal=null;
+  practiceSection='setup';practiceCoachOpen=false;practiceCardsOpen=false;modal=null;
   render();window.scrollTo(0,0);
   // Do not block the click handler on Firestore cleanup. The transaction below
-  // still owns cleanup, but the coach is already back at the Practice hub.
+  // still owns cleanup, but the coach is already back at Build Practice.
   await new Promise(resolve=>setTimeout(resolve,0));
  }else render();
  // Publish the finished clock before removing activePractice. This gives every
@@ -6187,7 +6187,7 @@ async function finishPracticeClock(automatic=false){
   stopPracticeClock();
   practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];
   practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
-  practiceCoachOpen=false;practiceCardsOpen=false;practiceSection='hub';modal=null;
+  practiceCoachOpen=false;practiceCardsOpen=false;practiceSection='setup';modal=null;
   render();window.scrollTo(0,0);
  }else if(automatic&&cleanupComplete){
   clearPracticeSession();
@@ -6201,7 +6201,7 @@ function closePracticeWorkspace(){
  // or rolling back state after the coach has intentionally ended/discarded it.
  practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practiceResolution=null;
  if(clearPracticeSession()!==true){console.error('HotB refused to close the practice workspace because recovery state could not be cleared.');return false}
- stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:db.roster.filter(player=>!['Brynna Peter','Claire Jack'].includes(player.name)).map(player=>player.name),startTime:'17:30',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';modal=null;render();window.scrollTo(0,0);return true;
+ stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:db.roster.filter(player=>!['Brynna Peter','Claire Jack'].includes(player.name)).map(player=>player.name),startTime:'17:30',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='setup';modal=null;render();window.scrollTo(0,0);return true;
 }
 async function endPracticeFromScreen(){
  if(practiceCompletionBusy)return;
@@ -6222,8 +6222,8 @@ async function endPracticeFromScreen(){
    }
    catch(error){
     // A finished practice is never resumable. Leave its portal publication record
-    // for recovery cleanup, clear the finished local session, and return to hub.
-    clearPracticeSession();stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceSection='hub';modal=null;render();window.scrollTo(0,0);
+    // for recovery cleanup, clear the finished local session, and return to Build Practice.
+    clearPracticeSession();stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceSection='setup';modal=null;render();window.scrollTo(0,0);
     alert(cloudUser&&cloudStore?'Practice is finished. HotB will retry removing the ended player plans when the cloud connection is available.':'Practice is finished. HotB will remove the ended player plans after Cloud Backup reconnects.');
     return
    }
@@ -6349,7 +6349,7 @@ function bindPractice(){
  $('#practiceHubBack')?.addEventListener('click',()=>{
   if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){return}
   if(practiceSection==='setup'&&persistPracticeDraft()===false){console.error('HotB refused Practice Hub Back because the Practice Resolution draft could not be persisted.');return}
-  practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)
+  practiceSection='setup';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)
  });
  $('#recoverOrphanedPractice')?.addEventListener('click',recoverOrphanedActivePractice);
  $('#recoverPublishedPractice')?.addEventListener('click',recoverPublishedPractice);
@@ -6390,7 +6390,7 @@ function bindPractice(){
       if(Number(practiceSetupState.durationMinutes)===132)practiceSetupState.durationMinutes=120;
       if(persistPracticeDraft()!==true){
        console.error('HotB could not persist the clean setup after rejecting a stale resumed Practice Resolution.');
-       practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='hub';modal=null;render();window.scrollTo(0,0);return;
+       practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='setup';modal=null;render();window.scrollTo(0,0);return;
       }
      }else if(practiceResolution){
       // The restored object must be byte-for-byte the sealed object in the saved
@@ -6399,10 +6399,10 @@ function bindPractice(){
       const savedResolution=db.activePracticeSession?.resolution;
       let savedResolutionBytes='',liveResolutionBytes='';
       try{savedResolutionBytes=JSON.stringify(savedResolution);liveResolutionBytes=JSON.stringify(practiceResolution)}
-      catch(error){console.error('HotB refused a Practice Resolution whose resumed decision could not be sealed.',error);practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='hub';modal=null;render();window.scrollTo(0,0);return}
+      catch(error){console.error('HotB refused a Practice Resolution whose resumed decision could not be sealed.',error);practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='setup';modal=null;render();window.scrollTo(0,0);return}
       if(!savedResolution||savedResolutionBytes!==liveResolutionBytes){
        console.error('HotB refused a Practice Resolution that changed while restoring the saved draft.');
-       practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='hub';modal=null;render();window.scrollTo(0,0);return;
+       practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='setup';modal=null;render();window.scrollTo(0,0);return;
       }
       modal='practiceResolution';
      }
@@ -6479,12 +6479,12 @@ function bindPractice(){
    db.activePracticeSession=practiceSetupOpenSnapshot.activePracticeSession?JSON.parse(JSON.stringify(practiceSetupOpenSnapshot.activePracticeSession)):null;
    save();
   }catch(error){console.error('HotB could not restore the Build Practice open state.',error);alert('HotB could not close Build Practice safely. Try again.');return}
-  practiceSetupOpenSnapshot=null;practiceSection='hub';go('home');
+  practiceSetupOpenSnapshot=null;practiceSection='setup';go('home');
  });
  $('#savePracticeSetup')?.addEventListener('click',()=>{
   practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));
   if(persistPracticeDraft()!==true){alert('HotB could not save this practice setup. Try again.');return}
-  practiceSetupOpenSnapshot=null;practiceSection='hub';go('home');
+  practiceSetupOpenSnapshot=null;practiceSection='setup';go('home');
  });
  $('#generatePractice')?.addEventListener('click',async()=>{
   practiceSetupOpenSnapshot=null;
