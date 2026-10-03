@@ -56,6 +56,24 @@ background:#fff!important;color:#111827!important;border:2px solid #c71920!impor
 .home-dashboard .dash-focus-card button.dash-focus-overdue-open{background:#fff!important;color:#111827!important;border:2px solid #c71920!important}
 .home-dashboard button.dash-attention-view{background:#fff!important;color:#111827!important;border:2px solid #c71920!important}
 </style>
+<style id="hotb-outline-tile-theme-20261003">
+/* Visual-only tile lightening. Deliberately excludes heat maps / zone cells. */
+:where(.metric,.metric-card,.stat-card,.stats-card,.eval-metric,.eval-stat,.eval-kpi,.eval-tile,.result-tile,.performance-tile,.pitch-tile,.summary-tile,.portal-metric,.portal-stat,.portal-tile,.dash-metric,.practice-summary>div):not([class*="heat"]):not([class*="zone"]){
+  background:#fff!important;color:#111827!important;border:2px solid #111!important;
+}
+:where(.metric,.metric-card,.stat-card,.stats-card,.eval-metric,.eval-stat,.eval-kpi,.eval-tile,.result-tile,.performance-tile,.pitch-tile,.summary-tile,.portal-metric,.portal-stat,.portal-tile,.dash-metric,.practice-summary>div).red:not([class*="heat"]):not([class*="zone"]),
+:where(.metric,.metric-card,.stat-card,.stats-card,.eval-metric,.eval-stat,.eval-kpi,.eval-tile,.result-tile,.performance-tile,.pitch-tile,.summary-tile,.portal-metric,.portal-stat,.portal-tile,.dash-metric,.practice-summary>div)[class*="red"]:not([class*="heat"]):not([class*="zone"]),
+:where(.metric,.metric-card,.stat-card,.stats-card,.eval-metric,.eval-stat,.eval-kpi,.eval-tile,.result-tile,.performance-tile,.pitch-tile,.summary-tile,.portal-metric,.portal-stat,.portal-tile,.dash-metric,.practice-summary>div)[style*="#c71920"]:not([class*="heat"]):not([class*="zone"]){
+  background:#fff!important;color:#c71920!important;border-color:#c71920!important;
+}
+:where(.metric,.metric-card,.stat-card,.stats-card,.eval-metric,.eval-stat,.eval-kpi,.eval-tile,.result-tile,.performance-tile,.pitch-tile,.summary-tile,.portal-metric,.portal-stat,.portal-tile,.dash-metric,.practice-summary>div) :where(b,strong,h2,h3,span,small){color:inherit!important}
+/* Player Trends only: lighter neutral treatment, not heat-map styling. */
+:where(.player-trends,.player-trend,.trend-table,.eval-trends) table,
+:where(.player-trends,.player-trend,.trend-table,.eval-trends) :where(th,td){
+  background:#f3f4f6!important;color:#111827!important;
+}
+:where(.player-trends,.player-trend,.trend-table,.eval-trends) th{background:#6b7280!important;color:#fff!important}
+</style>
 </head><body><div id="hotbBuildMarker" style="display:none">HotB</div><div id="app" data-hotb-booting="true"><div style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Loading</strong><p style="margin:8px 0 0">Loading the coach app…</p></section></div></div>
 <script>
 (()=>{try{
