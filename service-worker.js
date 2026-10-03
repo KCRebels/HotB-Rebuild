@@ -1,8 +1,8 @@
-const BUILD_VERSION = '2026.10.03.542';
+const BUILD_VERSION = '2026.10.03.543';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
-const CANONICAL_LAUNCH = './?source=pwa&launch=542';
+const CANONICAL_LAUNCH = './?source=pwa&launch=543';
 const LEGACY_SHELL = './hotb-fresh.html';
 const CORE_FILES = ['./index.html', './hotb-fresh.html', './manifest.webmanifest', './pwa-update.js', './styles.css', './evaluation-cleanup.css', './app.js', './practice-scheduler.js', './team-recommendations.js'];
 const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/, /\/practice-scheduler\.js(?:\?|$)/, /\/pwa-update\.js(?:\?|$)/, /\/manifest\.webmanifest(?:\?|$)/, /\/decision-quality\.js(?:\?|$)/, /\/coach-observations\.js(?:\?|$)/, /\/team-recommendations\.js(?:\?|$)/, /\/styles\.css(?:\?|$)/, /\/evaluation-cleanup\.css(?:\?|$)/];
