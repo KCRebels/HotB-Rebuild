@@ -79,6 +79,32 @@ background:#fff!important;color:#111827!important;border:2px solid #c71920!impor
 }
 :where(.player-trends,.player-trend,.trend-table,.eval-trends) th{background:#6b7280!important;color:#fff!important}
 </style>
+<style id="hotb-eval-tile-outline-fix-20261003">
+/* Eval + portal metric tiles only. Heat/chart/zone classes are intentionally absent. */
+.eval-tiles .eval-tile{background:#fff!important;border:2px solid #111!important;color:#111827!important}
+.eval-tiles .eval-tile *{color:#111827!important}
+.eval-tiles .eval-tile.dark{background:#fff!important;border-color:#c71920!important;color:#c71920!important}
+.eval-tiles .eval-tile.dark *{color:#c71920!important}
+.performance .perf-grid .perf,
+.portal-player-evaluation .performance .perf-grid .perf{background:#fff!important;border:2px solid #111!important;color:#111827!important}
+.performance .perf-grid .perf *,
+.portal-player-evaluation .performance .perf-grid .perf *{color:#111827!important}
+.performance .perf-grid .perf.red,
+.performance .perf-grid .perf.bad,
+.performance .perf-grid .perf.alert,
+.portal-player-evaluation .performance .perf-grid .perf.red{background:#fff!important;border-color:#c71920!important;color:#c71920!important}
+.performance .perf-grid .perf.red *,
+.performance .perf-grid .perf.bad *,
+.performance .perf-grid .perf.alert *,
+.portal-player-evaluation .performance .perf-grid .perf.red *{color:#c71920!important}
+.portal-eval-pitch-grid>*,.pitch-performance-grid>*{background:#fff!important;border:2px solid #c71920!important;color:#c71920!important}
+.portal-eval-pitch-grid>* *,.pitch-performance-grid>* *{color:#c71920!important}
+.player-trends table,.player-trends th,.player-trends td,
+.player-trend table,.player-trend th,.player-trend td,
+.trend-table,.trend-table th,.trend-table td,
+.eval-trends table,.eval-trends th,.eval-trends td{background:#f3f4f6!important;color:#111827!important}
+.player-trends th,.player-trend th,.trend-table th,.eval-trends th{background:#6b7280!important;color:#fff!important}
+</style>
 </head><body><div id="hotbBuildMarker" style="display:none">HotB</div><div id="app" data-hotb-booting="true"><div style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Loading</strong><p style="margin:8px 0 0">Loading the coach app…</p></section></div></div>
 <script>
 (()=>{try{
