@@ -60,6 +60,16 @@ service cloud.firestore {
                 .hasOnly(['authorizedUids', 'pinProof', 'claimedAt'])
             )
             || (
+              // Permanent player portal owners may record that they opened the
+              // exact Focus version currently published to their own portal.
+              resource.data.portalType == 'player'
+              && resource.data.ownerUid == request.auth.uid
+              && request.resource.data.focusOpenedPublishedAt == resource.data.focus.publishedAt
+              && request.resource.data.focusOpenedAt is string
+              && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['focusOpenedPublishedAt', 'focusOpenedAt', 'updatedAt'])
+            )
+            || (
               // Permanent player portal owners may complete only their own Focus.
               // This cannot alter identity, credentials, practice, evaluation, or access.
               resource.data.portalType == 'player'
