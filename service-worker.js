@@ -1,8 +1,8 @@
-const BUILD_VERSION = '2026.10.04.544';
+const BUILD_VERSION = '2026.10.04.545';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
-const CANONICAL_LAUNCH = './?source=pwa&launch=544';
+const CANONICAL_LAUNCH = './?source=pwa&launch=545';
 const LEGACY_SHELL = './hotb-fresh.html';
 const CORE_FILES = ['./index.html', './hotb-fresh.html', './manifest.webmanifest', './pwa-update.js', './styles.css', './evaluation-cleanup.css', './app.js', './practice-scheduler.js', './team-recommendations.js'];
 const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/, /\/practice-scheduler\.js(?:\?|$)/, /\/pwa-update\.js(?:\?|$)/, /\/manifest\.webmanifest(?:\?|$)/, /\/decision-quality\.js(?:\?|$)/, /\/coach-observations\.js(?:\?|$)/, /\/team-recommendations\.js(?:\?|$)/, /\/styles\.css(?:\?|$)/, /\/evaluation-cleanup\.css(?:\?|$)/];
@@ -48,6 +48,8 @@ async function patchFocusReceiptSync(request,response){
     const needle="if(!selected){queueMicrotask(refreshPlayerFocusOpenedReceipts);return `${practiceSectionHeader('Player Focus')}";
     const replacement="if(!selected){queueMicrotask(refreshPlayerFocusOpenedReceipts);clearTimeout(window.__hotbFocusReceiptTimer);window.__hotbFocusReceiptTimer=setTimeout(()=>{if(route==='practice'&&practiceScreen==='player-focus'&&!practiceFocusPlayer){playerFocusReceiptRefreshStarted=false;refreshPlayerFocusOpenedReceipts()}},4000);return `${practiceSectionHeader('Player Focus')}";
     if(source.includes(needle))source=source.replace(needle,replacement);
+    const dashboardBuildPractice="+(analysis.mode==='development'?'<button class=\"dash-action\" style=\"width:100%;margin-top:12px;background:#111827!important;color:#fff!important;border:1.5px solid #111827!important\" data-team-focus-build>Build Practice</button>':'')+";
+    if(source.includes(dashboardBuildPractice))source=source.replace(dashboardBuildPractice,'+');
     return new Response(source,{status:response.status,statusText:response.statusText,headers:response.headers});
   }catch(_){return response}
 }
