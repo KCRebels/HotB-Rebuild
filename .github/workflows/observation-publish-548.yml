@@ -1,4 +1,4 @@
-name: Observation Publish 548 Gate
+name: Observation Publish 550 Gate
 
 on:
   pull_request:
@@ -21,34 +21,53 @@ jobs:
           node --check observation-publish-v2.js
           node --check pwa-update.js
           node --check service-worker.js
-      - name: Verify build wiring
+      - name: Verify current build wiring
         shell: bash
         run: |
           set -euo pipefail
-          grep -q "2026.10.08.548" pwa-update.js
-          grep -q "2026.10.08.548" service-worker.js
-          grep -q "launch','548" pwa-update.js
-          grep -q "launch=548" service-worker.js
-          grep -q "observation-publish-v2.js?v=20261008-548" pwa-update.js
-          grep -q "observation-publish-v2.css?v=20261008-548" pwa-update.js
-          grep -q "observation-publish-v2.js" service-worker.js
-          grep -q "observation-publish-v2.css" service-worker.js
-      - name: Verify production patch anchors still exist
+          grep -q "2026.10.08.550" pwa-update.js
+          grep -q "2026.10.08.550" service-worker.js
+          grep -q "launch','550" pwa-update.js
+          grep -q "launch=550" service-worker.js
+          grep -q "observation-publish-v2.js?v=20261008-550" pwa-update.js
+          grep -q "observation-publish-v2.css?v=20261008-550" pwa-update.js
+      - name: Verify all Observation entry points use the shared modal
         shell: bash
         run: |
           set -euo pipefail
-          grep -q "function bindCoachObservation()" app-coach-rebels-portals-v10.js
-          grep -q "recoverPermanentPlayerPortal(player)" app-coach-rebels-portals-v10.js
-          grep -q "function playerFocusPortalPayload" app-coach-rebels-portals-v10.js
-          grep -q "focusOpenedPublishedAt" app-coach-rebels-portals-v10.js
-          grep -q "playerFocusLastReviewed" app-coach-rebels-portals-v10.js
-      - name: Verify direct-publish safety contract
+          grep -q "function openCoachObservation(options={})" app-coach-rebels-portals-v10.js
+          grep -q "function openFocusObservation()" app-coach-rebels-portals-v10.js
+          grep -q "openCoachObservation({scope:'previous',fromInningPrompt:true})" app-coach-rebels-portals-v10.js
+          grep -q "modal='coachObservation'" app-coach-rebels-portals-v10.js
+          grep -q "if(modal==='coachObservation')bindCoachObservation()" app-coach-rebels-portals-v10.js
+      - name: Verify Player Focus publish contract
         shell: bash
         run: |
           set -euo pipefail
           grep -q "observationPublishPreflight" service-worker.js
           grep -q "remote.portalType!=='player'" service-worker.js
           grep -q "remote.playerName!==player.name" service-worker.js
+          grep -q "playerFocusPortalPayload" service-worker.js
+          grep -q "focusOpenedPublishedAt" service-worker.js
+          grep -q "playerFocusLastReviewed" service-worker.js
           grep -q "MAX_TAGS=3" observation-publish-v2.js
           grep -q "MAX_DRILLS=3" observation-publish-v2.js
+          grep -q "data-observation-replace" observation-publish-v2.js
           grep -q "data-observation-publish-action" observation-publish-v2.js
+      - name: Verify successful game publish is consumed
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "clearPublishedGameObservation" service-worker.js
+          grep -q "g.observations=(g.observations||\[\]).filter" service-worker.js
+          grep -q "game?.id===g.id" service-worker.js
+          grep -q "observationTargetPaId=''" service-worker.js
+          grep -q "observationTargetPlayer=''" service-worker.js
+          grep -q "observationFromInningPrompt=false" service-worker.js
+      - name: Verify failed publish remains recoverable
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "restoreGame();practiceFocusPlayer=previousFocusPlayer" service-worker.js
+          grep -q "try{save()}catch" service-worker.js
+          grep -q "Your observation is still here so you can try Publish again" observation-publish-v2.js
