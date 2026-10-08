@@ -1,0 +1,54 @@
+name: Observation Publish 548 Gate
+
+on:
+  pull_request:
+    paths:
+      - 'observation-publish-v2.js'
+      - 'observation-publish-v2.css'
+      - 'pwa-update.js'
+      - 'service-worker.js'
+      - 'app-coach-rebels-portals-v10.js'
+      - '.github/workflows/observation-publish-548.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: JavaScript syntax
+        run: |
+          node --check observation-publish-v2.js
+          node --check pwa-update.js
+          node --check service-worker.js
+      - name: Verify build wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "2026.10.08.548" pwa-update.js
+          grep -q "2026.10.08.548" service-worker.js
+          grep -q "launch=548" pwa-update.js
+          grep -q "launch=548" service-worker.js
+          grep -q "observation-publish-v2.js?v=20261008-548" pwa-update.js
+          grep -q "observation-publish-v2.css?v=20261008-548" pwa-update.js
+          grep -q "observation-publish-v2.js" service-worker.js
+          grep -q "observation-publish-v2.css" service-worker.js
+      - name: Verify production patch anchors still exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "function bindCoachObservation()" app-coach-rebels-portals-v10.js
+          grep -q "recoverPermanentPlayerPortal(player)" app-coach-rebels-portals-v10.js
+          grep -q "function playerFocusPortalPayload" app-coach-rebels-portals-v10.js
+          grep -q "focusOpenedPublishedAt" app-coach-rebels-portals-v10.js
+          grep -q "playerFocusLastReviewed" app-coach-rebels-portals-v10.js
+      - name: Verify direct-publish safety contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "observationPublishPreflight" service-worker.js
+          grep -q "remote.portalType!='player'\|remote.portalType!=='player'" service-worker.js
+          grep -q "remote.playerName!==player.name" service-worker.js
+          grep -q "MAX_TAGS=3" observation-publish-v2.js
+          grep -q "MAX_DRILLS=3" observation-publish-v2.js
+          grep -q "data-observation-publish-action" observation-publish-v2.js
