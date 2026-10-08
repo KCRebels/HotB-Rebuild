@@ -1,5 +1,5 @@
 (() => {
-  const BUILD_VERSION = '2026.10.08.548';
+  const BUILD_VERSION = '2026.10.08.549';
   window.HOTB_BUILD_VERSION = BUILD_VERSION;
   if (new URLSearchParams(window.location.search).has('portal')) return;
 
@@ -15,11 +15,11 @@
 
   const observationStyles=document.createElement('link');
   observationStyles.rel='stylesheet';
-  observationStyles.href='observation-publish-v2.css?v=20261008-548';
+  observationStyles.href='observation-publish-v2.css?v=20261008-549';
   document.head.appendChild(observationStyles);
 
   const observationPublish=document.createElement('script');
-  observationPublish.src='observation-publish-v2.js?v=20261008-548';
+  observationPublish.src='observation-publish-v2.js?v=20261008-549';
   observationPublish.async=false;
   document.head.appendChild(observationPublish);
 
@@ -46,7 +46,7 @@
       }catch(_){}
       const url=new URL('./',window.location.href);
       url.searchParams.set('source','pwa');
-      url.searchParams.set('launch','548');
+      url.searchParams.set('launch','549');
       url.searchParams.set('hotb-update',version);
       url.searchParams.set('reload',Date.now().toString());
       window.location.replace(url.href);
