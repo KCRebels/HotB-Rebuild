@@ -1,18 +1,23 @@
 (() => {
-  const BUILD_VERSION = '2026.09.30.531';
+  const BUILD_VERSION = '2026.10.07.546';
   window.HOTB_BUILD_VERSION = BUILD_VERSION;
   // Player portals must always use the current network app. They do not install,
   // update, or re-register the coach PWA service worker.
   if (new URLSearchParams(window.location.search).has('portal')) return;
+
+  // Runtime safety fixes must load before the coach starts scoring. This includes
+  // the rolling 10-action Undo cap used to prevent late-game iOS storage freezes.
+  const runtimeSafety=document.createElement('script');
+  runtimeSafety.src='practice-bypass.js?v=20261007-undo10';
+  runtimeSafety.async=false;
+  document.head.appendChild(runtimeSafety);
+
   if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
 
   let updateShown = false;
   let updateAccepted = sessionStorage.getItem('hotbUpdateAccepted') === BUILD_VERSION;
   const hadControllerAtLoad = Boolean(navigator.serviceWorker.controller);
   function showUpdate(version = 'new') {
-    // The running pwa-update.js describes the CURRENT page, not the waiting worker.
-    // A waiting worker therefore means an update exists even when no version string
-    // is available (or when an old worker reports the same value as this page).
     if (updateShown || updateAccepted) return;
     updateShown = true;
     const notice = document.createElement('aside');
@@ -22,10 +27,6 @@
     notice.querySelector('button').addEventListener('click', () => {
       const button=notice.querySelector('button');button.disabled=true;button.textContent='UPDATING…';
       updateAccepted=true;sessionStorage.setItem('hotbUpdateAccepted',BUILD_VERSION);
-      // Do not wait on iOS service-worker promises before navigating. A waiting
-      // worker can leave those promises unresolved in standalone mode and the
-      // user sees a dead button. Send activation as best-effort and navigate
-      // synchronously in the tap gesture to a unique network URL.
       try{
         navigator.serviceWorker.getRegistration('./').then(registration=>{
           try{registration?.waiting?.postMessage({type:'SKIP_WAITING'})}catch(_){}
@@ -34,7 +35,7 @@
       }catch(_){}
       const url=new URL('./',window.location.href);
       url.searchParams.set('source','pwa');
-      url.searchParams.set('launch','531');
+      url.searchParams.set('launch','546');
       url.searchParams.set('hotb-update',version);
       url.searchParams.set('reload',Date.now().toString());
       window.location.replace(url.href);
@@ -46,9 +47,7 @@
     if (navigator.onLine) {
       try { await registration.update(); } catch (_) { /* Retry on the next open or focus. */ }
     }
-    if (registration.waiting) {
-      showUpdate('waiting-worker');
-    }
+    if (registration.waiting) showUpdate('waiting-worker');
   }
 
   window.addEventListener('load', async () => {
