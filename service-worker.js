@@ -1,20 +1,17 @@
-const BUILD_VERSION = '2026.10.07.546';
+const BUILD_VERSION = '2026.10.07.547';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
-const CANONICAL_LAUNCH = './?source=pwa&launch=546';
+const CANONICAL_LAUNCH = './?source=pwa&launch=547';
 const LEGACY_SHELL = './hotb-fresh.html';
-const CORE_FILES = ['./index.html', './hotb-fresh.html', './manifest.webmanifest', './pwa-update.js', './styles.css', './evaluation-cleanup.css', './app.js', './practice-scheduler.js', './team-recommendations.js', './practice-bypass.js'];
-const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/, /\/practice-scheduler\.js(?:\?|$)/, /\/pwa-update\.js(?:\?|$)/, /\/practice-bypass\.js(?:\?|$)/, /\/manifest\.webmanifest(?:\?|$)/, /\/decision-quality\.js(?:\?|$)/, /\/coach-observations\.js(?:\?|$)/, /\/team-recommendations\.js(?:\?|$)/, /\/styles\.css(?:\?|$)/, /\/evaluation-cleanup\.css(?:\?|$)/];
+const CORE_FILES = ['./index.html', './hotb-fresh.html', './manifest.webmanifest', './pwa-update.js', './styles.css', './evaluation-cleanup.css', './hotb-night-fixes.css', './app.js', './practice-scheduler.js', './team-recommendations.js', './practice-bypass.js'];
+const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/, /\/practice-scheduler\.js(?:\?|$)/, /\/pwa-update\.js(?:\?|$)/, /\/practice-bypass\.js(?:\?|$)/, /\/manifest\.webmanifest(?:\?|$)/, /\/decision-quality\.js(?:\?|$)/, /\/coach-observations\.js(?:\?|$)/, /\/team-recommendations\.js(?:\?|$)/, /\/styles\.css(?:\?|$)/, /\/evaluation-cleanup\.css(?:\?|$)/, /\/hotb-night-fixes\.css(?:\?|$)/];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     await Promise.all(CORE_FILES.map(async path => {
-      try {
-        const response = await fetch(path, {cache: 'reload'});
-        if (response.ok) await cache.put(path, response);
-      } catch (_) {}
+      try { const response = await fetch(path, {cache: 'reload'}); if (response.ok) await cache.put(path, response); } catch (_) {}
     }));
   })());
 });
@@ -63,20 +60,13 @@ async function newestAsset(request) {
       await cache.put(request, response.clone());
       const pathname=new URL(request.url).pathname;
       const corePattern=VERSIONED_CORE_PATTERNS.find(pattern=>pattern.test(pathname));
-      if(corePattern){
-        const aliasUrl=new URL(request.url);aliasUrl.search='';
-        await cache.put(new Request(aliasUrl.href),response.clone());
-      }
+      if(corePattern){ const aliasUrl=new URL(request.url);aliasUrl.search='';await cache.put(new Request(aliasUrl.href),response.clone()); }
     }
     return response;
   } catch (_) {
-    const exact=await cache.match(request);
-    if(exact)return exact;
+    const exact=await cache.match(request); if(exact)return exact;
     const pathname=new URL(request.url).pathname;
-    if(VERSIONED_CORE_PATTERNS.some(pattern=>pattern.test(pathname))){
-      const aliasUrl=new URL(request.url);aliasUrl.search='';
-      return (await cache.match(new Request(aliasUrl.href))) || Response.error();
-    }
+    if(VERSIONED_CORE_PATTERNS.some(pattern=>pattern.test(pathname))){ const aliasUrl=new URL(request.url);aliasUrl.search='';return (await cache.match(new Request(aliasUrl.href))) || Response.error(); }
     return Response.error();
   }
 }
@@ -102,6 +92,4 @@ self.addEventListener('fetch', event => {
   if (['script', 'style', 'worker'].includes(request.destination)) event.respondWith(newestAsset(request));
 });
 
-self.addEventListener('message', event => {
-  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
-});
+self.addEventListener('message', event => { if (event.data?.type === 'SKIP_WAITING') self.skipWaiting(); });
