@@ -1,5 +1,5 @@
 (() => {
-  const BUILD_VERSION = '2026.10.07.547';
+  const BUILD_VERSION = '2026.10.08.548';
   window.HOTB_BUILD_VERSION = BUILD_VERSION;
   if (new URLSearchParams(window.location.search).has('portal')) return;
 
@@ -12,6 +12,16 @@
   nightFixes.rel='stylesheet';
   nightFixes.href='hotb-night-fixes.css?v=20261007-1';
   document.head.appendChild(nightFixes);
+
+  const observationStyles=document.createElement('link');
+  observationStyles.rel='stylesheet';
+  observationStyles.href='observation-publish-v2.css?v=20261008-548';
+  document.head.appendChild(observationStyles);
+
+  const observationPublish=document.createElement('script');
+  observationPublish.src='observation-publish-v2.js?v=20261008-548';
+  observationPublish.async=false;
+  document.head.appendChild(observationPublish);
 
   if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
 
@@ -36,7 +46,7 @@
       }catch(_){}
       const url=new URL('./',window.location.href);
       url.searchParams.set('source','pwa');
-      url.searchParams.set('launch','547');
+      url.searchParams.set('launch','548');
       url.searchParams.set('hotb-update',version);
       url.searchParams.set('reload',Date.now().toString());
       window.location.replace(url.href);
@@ -45,9 +55,7 @@
   }
 
   async function checkForUpdate(registration) {
-    if (navigator.onLine) {
-      try { await registration.update(); } catch (_) {}
-    }
+    if (navigator.onLine) { try { await registration.update(); } catch (_) {} }
     if (registration.waiting) showUpdate('waiting-worker');
   }
 
@@ -62,16 +70,10 @@
         });
       });
       window.addEventListener('pageshow', () => checkForUpdate(registration));
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') checkForUpdate(registration);
-      });
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(registration); });
     } catch (_) {}
   });
 
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (hadControllerAtLoad) showUpdate('controller-changed');
-  });
-  navigator.serviceWorker.addEventListener('message', event => {
-    if (event.data?.type === 'HOTB_UPDATE_READY' && event.data.version !== BUILD_VERSION) showUpdate(event.data.version);
-  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadControllerAtLoad) showUpdate('controller-changed'); });
+  navigator.serviceWorker.addEventListener('message', event => { if (event.data?.type === 'HOTB_UPDATE_READY' && event.data.version !== BUILD_VERSION) showUpdate(event.data.version); });
 })();
