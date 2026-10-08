@@ -17,7 +17,7 @@ function patchObservationPublishBridge(source){
  if(!source.includes(needle))return source;
  const replacement=`let observationPublishPending=null;
 async function observationPublishPreflight({playerName}={}){
- const player=db.roster.find(item=>!item.isTeamJenkins&&item.name===playerName);
+ const player=db.roster.find(item=>!item.isTeamJenkins&&playerName&&item.name===playerName);
  if(!player)return{ok:false,message:'Player Focus is only available for competitive-roster players.'};
  if(!cloudUser||!cloudStore)return{ok:false,message:'Sign in through Cloud Backup before publishing Player Focus.'};
  if(!player.portalId)await recoverPermanentPlayerPortal(player);
@@ -33,7 +33,8 @@ async function observationPublishDirect({observation={},drills=[]}={}){
  if(!api||(!focusMode&&!g))return{ok:false,message:'HotB could not find the observation source.'};
  const payload={playerName,paId:String(observation.paId||''),tags:[...new Set(observation.tags||[])].slice(0,3),note:String(observation.note||'').trim()};
  if(!payload.tags.length&&!payload.note)return{ok:false,message:'Add an observation or note before publishing.'};
- let record=null,tempGameAdded=false,previousFocusPlayer=practiceFocusPlayer;
+ let record=null,tempGameIndex=-1,tempGameOriginal=null,previousFocusPlayer=practiceFocusPlayer;
+ const restoreGame=()=>{if(tempGameIndex<0)return;if(tempGameOriginal)db.savedGames[tempGameIndex]=tempGameOriginal;else db.savedGames.splice(tempGameIndex,1);tempGameIndex=-1;tempGameOriginal=null};
  try{
   if(focusMode){
    const pending=observationPublishPending&&observationPublishPending.mode==='focus'&&observationPublishPending.playerName===playerName?(db.coachObservations||[]).find(item=>item.id===observationPublishPending.id):null;
@@ -41,14 +42,15 @@ async function observationPublishDirect({observation={},drills=[]}={}){
    else{record=api.saveStandalone(db.coachObservations,{...payload,observedAt:new Date().toISOString()});observationPublishPending={mode:'focus',playerName,id:record.id}}
   }else{
    record=api.saveObservation(g,payload);observationPublishPending={mode:'game',playerName,id:record.id,gameId:g.id};
-   if(!(db.savedGames||[]).some(item=>item.id===g.id)){db.savedGames.push(g);tempGameAdded=true}
+   const existingGameIndex=(db.savedGames||[]).findIndex(item=>item.id===g.id);
+   if(existingGameIndex>=0){tempGameIndex=existingGameIndex;tempGameOriginal=db.savedGames[existingGameIndex];db.savedGames[existingGameIndex]=g}
+   else{tempGameIndex=db.savedGames.length;db.savedGames.push(g)}
   }
   practiceFocusPlayer=playerName;
   let focus=playerFocusPortalPayload();
   if(!focus)throw new Error('HotB could not build Player Focus from this observation.');
   focus={...focus,drills:[...new Set((drills||[]).map(name=>String(name||'').trim()).filter(Boolean))].slice(0,3),publishedAt:new Date().toISOString()};
-  if(tempGameAdded){const index=db.savedGames.findIndex(item=>item===g);if(index>=0)db.savedGames.splice(index,1);tempGameAdded=false}
-  practiceFocusPlayer=previousFocusPlayer;
+  restoreGame();practiceFocusPlayer=previousFocusPlayer;
   const snap=await portalDoc(player.portalId).get(),remote=snap.exists?snap.data()||{}:{},remoteArchive=Array.isArray(remote.focusArchive)?remote.focusArchive.slice():[];
   if(remote.focus?.publishedAt&&!remoteArchive.some(item=>item?.publishedAt===remote.focus.publishedAt))remoteArchive.push({...remote.focus,archivedAt:new Date().toISOString(),archiveReason:'replaced'});
   await portalDoc(player.portalId).set({focus,focusArchive:remoteArchive,focusOpenedPublishedAt:firebase.firestore.FieldValue.delete(),focusOpenedAt:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
@@ -61,8 +63,7 @@ async function observationPublishDirect({observation={},drills=[]}={}){
   save();observationPublishPending=null;modal=null;render();
   return{ok:true,playerName:player.name,publishedAt:focus.publishedAt};
  }catch(error){
-  if(tempGameAdded){const index=db.savedGames.findIndex(item=>item===g);if(index>=0)db.savedGames.splice(index,1)}
-  practiceFocusPlayer=previousFocusPlayer;
+  restoreGame();practiceFocusPlayer=previousFocusPlayer;
   try{save()}catch(_){}
   return{ok:false,message:String(error?.message||'Player Focus could not be published. Check Cloud Backup and your internet connection.')};
  }
@@ -89,7 +90,8 @@ async function patchCoachBundle(request,response){
   const dashboardBuildPractice="+(analysis.mode==='development'?'<button class=\"dash-action\" style=\"width:100%;margin-top:12px;background:#111827!important;color:#fff!important;border:1.5px solid #111827!important\" data-team-focus-build>Build Practice</button>':'')+";
   if(source.includes(dashboardBuildPractice))source=source.replace(dashboardBuildPractice,'+');
   source=patchObservationPublishBridge(source);
-  return new Response(source,{status:response.status,statusText:response.statusText,headers:response.headers});
+  const headers=new Headers(response.headers);headers.delete('content-length');headers.delete('content-encoding');headers.delete('etag');
+  return new Response(source,{status:response.status,statusText:response.statusText,headers});
  }catch(_){return response}
 }
 
