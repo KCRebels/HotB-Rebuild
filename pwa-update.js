@@ -1,16 +1,17 @@
 (() => {
-  const BUILD_VERSION = '2026.10.07.546';
+  const BUILD_VERSION = '2026.10.07.547';
   window.HOTB_BUILD_VERSION = BUILD_VERSION;
-  // Player portals must always use the current network app. They do not install,
-  // update, or re-register the coach PWA service worker.
   if (new URLSearchParams(window.location.search).has('portal')) return;
 
-  // Runtime safety fixes must load before the coach starts scoring. This includes
-  // the rolling 10-action Undo cap used to prevent late-game iOS storage freezes.
   const runtimeSafety=document.createElement('script');
   runtimeSafety.src='practice-bypass.js?v=20261007-undo10';
   runtimeSafety.async=false;
   document.head.appendChild(runtimeSafety);
+
+  const nightFixes=document.createElement('link');
+  nightFixes.rel='stylesheet';
+  nightFixes.href='hotb-night-fixes.css?v=20261007-1';
+  document.head.appendChild(nightFixes);
 
   if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
 
@@ -35,7 +36,7 @@
       }catch(_){}
       const url=new URL('./',window.location.href);
       url.searchParams.set('source','pwa');
-      url.searchParams.set('launch','546');
+      url.searchParams.set('launch','547');
       url.searchParams.set('hotb-update',version);
       url.searchParams.set('reload',Date.now().toString());
       window.location.replace(url.href);
@@ -45,7 +46,7 @@
 
   async function checkForUpdate(registration) {
     if (navigator.onLine) {
-      try { await registration.update(); } catch (_) { /* Retry on the next open or focus. */ }
+      try { await registration.update(); } catch (_) {}
     }
     if (registration.waiting) showUpdate('waiting-worker');
   }
@@ -64,9 +65,7 @@
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') checkForUpdate(registration);
       });
-    } catch (_) {
-      // The app remains usable if service workers are unavailable or registration fails.
-    }
+    } catch (_) {}
   });
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
