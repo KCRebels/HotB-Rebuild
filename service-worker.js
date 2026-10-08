@@ -1,8 +1,8 @@
-const BUILD_VERSION = '2026.10.08.548';
+const BUILD_VERSION = '2026.10.08.549';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
-const CANONICAL_LAUNCH = './?source=pwa&launch=548';
+const CANONICAL_LAUNCH = './?source=pwa&launch=549';
 const LEGACY_SHELL = './hotb-fresh.html';
 const CORE_FILES = ['./index.html','./hotb-fresh.html','./manifest.webmanifest','./pwa-update.js','./styles.css','./evaluation-cleanup.css','./hotb-night-fixes.css','./observation-publish-v2.css','./observation-publish-v2.js','./app.js','./practice-scheduler.js','./team-recommendations.js','./practice-bypass.js'];
 const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/,/\/practice-scheduler\.js(?:\?|$)/,/\/pwa-update\.js(?:\?|$)/,/\/practice-bypass\.js(?:\?|$)/,/\/manifest\.webmanifest(?:\?|$)/,/\/decision-quality\.js(?:\?|$)/,/\/coach-observations\.js(?:\?|$)/,/\/team-recommendations\.js(?:\?|$)/,/\/styles\.css(?:\?|$)/,/\/evaluation-cleanup\.css(?:\?|$)/,/\/hotb-night-fixes\.css(?:\?|$)/,/\/observation-publish-v2\.js(?:\?|$)/,/\/observation-publish-v2\.css(?:\?|$)/];
@@ -60,6 +60,7 @@ async function observationPublishDirect({observation={},drills=[]}={}){
   if(!db.playerFocusOpened||typeof db.playerFocusOpened!=='object'||Array.isArray(db.playerFocusOpened))db.playerFocusOpened={};delete db.playerFocusOpened[player.name];
   db.coachObservations=(db.coachObservations||[]).filter(item=>!(item?.source==='player-focus'&&item.playerName===player.name));
   Object.keys(db.playerFocusDrillOverrides||{}).filter(key=>key.startsWith(player.name+'::')).forEach(key=>delete db.playerFocusDrillOverrides[key]);
+  if(!focusMode&&g&&record?.id)g.observations=(g.observations||[]).filter(item=>item?.id!==record.id);
   save();observationPublishPending=null;modal=null;render();
   return{ok:true,playerName:player.name,publishedAt:focus.publishedAt};
  }catch(error){
