@@ -1,0 +1,3 @@
+HotB Observation publish integration staging marker.
+Goal: Live Game, end-of-inning, and Player Focus use one complete observation workflow: dictate/type, choose observation tags, choose drills, publish to the player's existing Player Focus portal. No separate Save step for a new observation.
+Production build remains unchanged until the complete workflow is ready.
