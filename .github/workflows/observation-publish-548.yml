@@ -27,7 +27,7 @@ jobs:
           set -euo pipefail
           grep -q "2026.10.08.548" pwa-update.js
           grep -q "2026.10.08.548" service-worker.js
-          grep -q "launch=548" pwa-update.js
+          grep -q "launch','548" pwa-update.js
           grep -q "launch=548" service-worker.js
           grep -q "observation-publish-v2.js?v=20261008-548" pwa-update.js
           grep -q "observation-publish-v2.css?v=20261008-548" pwa-update.js
@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -q "observationPublishPreflight" service-worker.js
-          grep -q "remote.portalType!='player'\|remote.portalType!=='player'" service-worker.js
+          grep -q "remote.portalType!=='player'" service-worker.js
           grep -q "remote.playerName!==player.name" service-worker.js
           grep -q "MAX_TAGS=3" observation-publish-v2.js
           grep -q "MAX_DRILLS=3" observation-publish-v2.js
