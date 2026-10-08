@@ -1,11 +1,11 @@
-const BUILD_VERSION = '2026.10.04.545';
+const BUILD_VERSION = '2026.10.07.546';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
-const CANONICAL_LAUNCH = './?source=pwa&launch=545';
+const CANONICAL_LAUNCH = './?source=pwa&launch=546';
 const LEGACY_SHELL = './hotb-fresh.html';
-const CORE_FILES = ['./index.html', './hotb-fresh.html', './manifest.webmanifest', './pwa-update.js', './styles.css', './evaluation-cleanup.css', './app.js', './practice-scheduler.js', './team-recommendations.js'];
-const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/, /\/practice-scheduler\.js(?:\?|$)/, /\/pwa-update\.js(?:\?|$)/, /\/manifest\.webmanifest(?:\?|$)/, /\/decision-quality\.js(?:\?|$)/, /\/coach-observations\.js(?:\?|$)/, /\/team-recommendations\.js(?:\?|$)/, /\/styles\.css(?:\?|$)/, /\/evaluation-cleanup\.css(?:\?|$)/];
+const CORE_FILES = ['./index.html', './hotb-fresh.html', './manifest.webmanifest', './pwa-update.js', './styles.css', './evaluation-cleanup.css', './app.js', './practice-scheduler.js', './team-recommendations.js', './practice-bypass.js'];
+const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/, /\/practice-scheduler\.js(?:\?|$)/, /\/pwa-update\.js(?:\?|$)/, /\/practice-bypass\.js(?:\?|$)/, /\/manifest\.webmanifest(?:\?|$)/, /\/decision-quality\.js(?:\?|$)/, /\/coach-observations\.js(?:\?|$)/, /\/team-recommendations\.js(?:\?|$)/, /\/styles\.css(?:\?|$)/, /\/evaluation-cleanup\.css(?:\?|$)/];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
@@ -94,7 +94,7 @@ self.addEventListener('fetch', event => {
       return event.respondWith(newestNavigation(canonical));
     }
     if (url.pathname.endsWith('/hotb-fresh.html')) {
-      const canonical = new Request(new URL('./index.html', self.location.href).href, {cache: 'no-store'});
+      const canonical = new Request(new URL('./index.html', self.location.href).href, {cache:'no-store'});
       return event.respondWith(newestNavigation(canonical));
     }
     return event.respondWith(newestNavigation(request));
