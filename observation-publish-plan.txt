@@ -1,3 +1,26 @@
-HotB Observation publish integration staging marker.
-Goal: Live Game, end-of-inning, and Player Focus use one complete observation workflow: dictate/type, choose observation tags, choose drills, publish to the player's existing Player Focus portal. No separate Save step for a new observation.
-Production build remains unchanged until the complete workflow is ready.
+HotB Observation publish integration staging plan
+
+Goal
+Live Game, end-of-inning, and Player Focus use one complete observation workflow: dictate/type, choose up to 3 observation tags, choose drills, then Publish directly to the player's existing permanent Player Focus portal. New observations do not use a separate Save step.
+
+Existing production paths verified
+- bindCoachObservation currently saves the observation locally and closes the modal.
+- bindFocusPublishPreview already owns the correct permanent-portal recovery, remote focus archive, opened-status reset, local archive, last-reviewed update, and drill-override cleanup.
+- The live game OBS button and end-of-inning prompt both already route through coachObservationModal/openCoachObservation.
+
+Implementation contract
+1. Reuse one observation modal for game, end-of-inning, and Player Focus entry points.
+2. Keep Dictate Note, note text, player targeting, and the existing max-3 categorized observation choices.
+3. Add a Suggested Drills section using the same focusSuggestedDrills/playerFocusDrillOverrides source as Player Focus. Allow replacement before publishing.
+4. For a NEW observation, bottom action is Publish, not Save Observation.
+5. Before persisting the new observation, require Cloud Backup sign-in and resolve the player's existing permanent portal. If that preflight fails, leave the observation modal open and do not create a half-finished local observation.
+6. After preflight succeeds, persist the observation into its normal source (live game observation for game/end-inning; standalone player-focus observation for Player Focus), build the Player Focus payload including that new evidence and selected drills, then publish it to the permanent portal.
+7. Publish must preserve the existing publisher behavior: archive prior remote focus, reset focusOpenedPublishedAt/focusOpenedAt, add local archive, update playerFocusLastReviewed, clear local opened status, clear consumed player-focus standalone observations, and clear that player's drill overrides.
+8. If the network write fails after local observation persistence, keep the modal/data recoverable and show a clear publish failure. Do not falsely report success.
+9. Manage/edit mode remains Update Observation. Editing an existing historical observation is not silently republished.
+10. Do not change pitch scoring, undo, PA history, inning state, or game navigation as part of this feature.
+
+Release gate
+- Stage code first on hotb-night-fixes-20261007.
+- Production stays on build 547 until the full workflow is committed and inspected.
+- When promoted, bump the production bundle query/build and service-worker cache version together so iPhone Home Screen receives the same code.
