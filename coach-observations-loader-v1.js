@@ -1,2 +1,0 @@
-/* Loads the unchanged HotB observation module plus the permanent assistant-coach Focus indicator. */
-document.write('<script src="coach-observations-core-v1.js?v=20261009-focus-coach-1"><\/script><script src="assistant-coach-focus-v1.js?v=20261009-focus-coach-1"><\/script>');
