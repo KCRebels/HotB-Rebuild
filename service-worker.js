@@ -1,11 +1,11 @@
-const BUILD_VERSION = '2026.10.08.550';
+const BUILD_VERSION = '2026.10.08.551';
 const CACHE_PREFIX = 'hotb-app-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 const OFFLINE_SHELL = './index.html';
-const CANONICAL_LAUNCH = './?source=pwa&launch=550';
+const CANONICAL_LAUNCH = './?source=pwa&launch=551';
 const LEGACY_SHELL = './hotb-fresh.html';
-const CORE_FILES = ['./index.html','./hotb-fresh.html','./manifest.webmanifest','./pwa-update.js','./styles.css','./evaluation-cleanup.css','./hotb-night-fixes.css','./observation-publish-v2.css','./observation-publish-v2.js','./app.js','./practice-scheduler.js','./team-recommendations.js','./practice-bypass.js'];
-const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/,/\/practice-scheduler\.js(?:\?|$)/,/\/pwa-update\.js(?:\?|$)/,/\/practice-bypass\.js(?:\?|$)/,/\/manifest\.webmanifest(?:\?|$)/,/\/decision-quality\.js(?:\?|$)/,/\/coach-observations\.js(?:\?|$)/,/\/team-recommendations\.js(?:\?|$)/,/\/styles\.css(?:\?|$)/,/\/evaluation-cleanup\.css(?:\?|$)/,/\/hotb-night-fixes\.css(?:\?|$)/,/\/observation-publish-v2\.js(?:\?|$)/,/\/observation-publish-v2\.css(?:\?|$)/];
+const CORE_FILES = ['./index.html','./hotb-fresh.html','./manifest.webmanifest','./pwa-update.js','./styles.css','./evaluation-cleanup.css','./hotb-night-fixes.css','./observation-publish-v2.css','./observation-publish-v2.js','./practice-focus-integration.js','./app.js','./practice-scheduler.js','./team-recommendations.js','./practice-bypass.js'];
+const VERSIONED_CORE_PATTERNS = [/\/app\.js(?:\?|$)/,/\/practice-scheduler\.js(?:\?|$)/,/\/pwa-update\.js(?:\?|$)/,/\/practice-bypass\.js(?:\?|$)/,/\/practice-focus-integration\.js(?:\?|$)/,/\/manifest\.webmanifest(?:\?|$)/,/\/decision-quality\.js(?:\?|$)/,/\/coach-observations\.js(?:\?|$)/,/\/team-recommendations\.js(?:\?|$)/,/\/styles\.css(?:\?|$)/,/\/evaluation-cleanup\.css(?:\?|$)/,/\/hotb-night-fixes\.css(?:\?|$)/,/\/observation-publish-v2\.js(?:\?|$)/,/\/observation-publish-v2\.css(?:\?|$)/];
 
 self.addEventListener('install',event=>{event.waitUntil((async()=>{const cache=await caches.open(CACHE_NAME);await Promise.all(CORE_FILES.map(async path=>{try{const response=await fetch(path,{cache:'reload'});if(response.ok)await cache.put(path,response)}catch(_){}}))})())});
 self.addEventListener('activate',event=>{event.waitUntil((async()=>{const names=await caches.keys();await Promise.all(names.filter(name=>name.startsWith(CACHE_PREFIX)&&name!==CACHE_NAME).map(name=>caches.delete(name)));await self.clients.claim();const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});windows.forEach(client=>client.postMessage({type:'HOTB_UPDATE_READY',version:BUILD_VERSION}))})())});
