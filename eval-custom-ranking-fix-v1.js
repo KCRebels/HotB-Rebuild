@@ -1,8 +1,8 @@
-/* Narrow Evals fix: only AVG, OBP, K% and CONTACT result tiles open the existing ordered roster ranking. */
+/* Evals: AVG, OBP, K% and CONTACT tiles open the native ordered roster ranking, including Custom Dates. */
 (()=>{
  const labels=new Set(['AVG','OBP','K%','CONTACT']);
  document.addEventListener('click',event=>{
-  const tile=event.target?.closest?.('.eval-app .performance .perf');
+  const tile=event.target?.closest?.('.eval-app .perf');
   if(!tile)return;
   const label=String(tile.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase();
   if(!labels.has(label))return;
