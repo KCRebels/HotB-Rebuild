@@ -1,0 +1,32 @@
+name: HotB 613 ranking cache
+on:
+  push:
+    paths:
+      - '.github/workflows/hotb-613-ranking-cache.yml'
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Update production cache tags
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          s=s.replace('pwa-update.js?v=20261010-612','pwa-update.js?v=20261010-613')
+          s=s.replace('evaluation-direct-hitting-rankings.js?v=20261010-evalstable611','evaluation-direct-hitting-rankings.js?v=20261010-hittiles613')
+          p.write_text(s)
+          PY
+      - name: Commit release
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add index.html
+          git commit -m 'Force HotB 613 hitting ranking tile files' || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
