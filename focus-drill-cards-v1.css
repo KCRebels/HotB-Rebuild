@@ -1,0 +1,36 @@
+/* Player Focus suggested-drill card layout. */
+.focus-evidence-section .focus-drill-row{
+  display:grid;
+  grid-template-columns:34px minmax(0,1fr);
+  gap:8px;
+  align-items:center;
+  margin:8px 0;
+  padding:10px 12px;
+  border:2px solid #d7ddda;
+  border-radius:12px;
+  background:#fff;
+}
+.focus-evidence-section .focus-drill-row:first-of-type{
+  border-top:2px solid #d7ddda;
+}
+.focus-evidence-section .focus-drill-row>strong{
+  width:30px;
+  height:30px;
+  margin:0;
+}
+.focus-evidence-section .focus-drill-row>div{
+  min-width:0;
+  display:grid;
+  gap:2px;
+  text-align:left;
+  justify-items:start;
+}
+.focus-evidence-section .focus-drill-row>div b,
+.focus-evidence-section .focus-drill-row>div span{
+  width:100%;
+  text-align:left;
+}
+.focus-evidence-section .focus-drill-row>div b{
+  font-size:16px;
+  line-height:1.2;
+}
