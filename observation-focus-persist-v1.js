@@ -8,7 +8,6 @@
  const uniq=(arr,n=3)=>[...new Set((Array.isArray(arr)?arr:[]).map(x=>String(x||'').trim()).filter(Boolean))].slice(0,n);
  const archiveFor=(db,name)=>name==='Megan Ryan'?(db.megFocusArchive||(db.megFocusArchive=[])):((db.playerFocusArchives||(db.playerFocusArchives={}))[name]||((db.playerFocusArchives[name]=[])));
  const splitNeeds=v=>String(v||'').split(' · ').map(x=>x.trim()).filter(Boolean);
- const drillInfo=name=>(Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[]).find(d=>String(d?.name||'')===String(name||''))||null;
  function patchLocalPublished(playerName,publishedAt,tags,drills){
   const db=read(),archive=archiveFor(db,playerName),idx=archive.findIndex(x=>String(x?.publishedAt||'')===String(publishedAt||''));
   if(idx<0)return null;
@@ -30,16 +29,24 @@
   wrapped.__hotbPersistWrapped=true;bridge.publish=wrapped;return true;
  }
  function currentPublished(db,name){const archive=archiveFor(db,name),published=String(db.playerFocusLastReviewed?.[name]||'');return (published&&archive.find(x=>String(x?.publishedAt||'')===published))||archive.slice().sort((a,b)=>(Date.parse(b?.publishedAt||0)||0)-(Date.parse(a?.publishedAt||0)||0))[0]||null}
+ function fallbackObservationOptions(main,focus){
+  const explicit=uniq(focus?.observationOptions);if(explicit.length)return explicit;
+  const needs=splitNeeds(focus?.needsWork);if(!needs.length)return[];
+  const hotbSection=[...main.querySelectorAll('.focus-evidence-section')].find(s=>s.querySelector('h3')?.textContent.trim()==='What HotB Detects');
+  const hotb=new Set([...hotbSection?.querySelectorAll('.focus-evidence-row b')||[]].map(el=>el.textContent.trim().toLowerCase()));
+  return uniq(needs.filter(item=>!hotb.has(item.toLowerCase())));
+ }
  function paint(){
   const main=document.querySelector('.practice-feature-page'),name=document.querySelector('.practice-feature-lead h2')?.textContent?.trim()||'';if(!main||!name||name==='Choose A Player')return;
   const focus=currentPublished(read(),name);if(!focus)return;
   const coach=[...main.querySelectorAll('.focus-evidence-section')].find(s=>s.querySelector('h3')?.textContent.trim()==='Coach Observations');
-  if(coach&&Array.isArray(focus.observationOptions)&&focus.observationOptions.length&&!coach.querySelector('[data-published-observation-options]')){
-   const box=document.createElement('div');box.dataset.publishedObservationOptions='1';box.style.cssText='margin-top:10px;padding-top:10px;border-top:1px solid #d9dede';box.innerHTML=`<div style="font-size:12px;font-weight:850;color:#667085;margin-bottom:7px;text-transform:uppercase;letter-spacing:.04em">Observation Options</div><div style="display:flex;flex-wrap:wrap;gap:7px">${focus.observationOptions.map(t=>`<span style="display:inline-block;border:1.5px solid #c71920;border-radius:999px;padding:5px 9px;color:#111827;background:#fff;font-size:12px;font-weight:800">${esc(t)}</span>`).join('')}</div>`;coach.appendChild(box)
+  const options=fallbackObservationOptions(main,focus);
+  if(coach&&options.length&&!coach.querySelector('[data-published-observation-options]')){
+   const box=document.createElement('div');box.dataset.publishedObservationOptions='1';box.style.cssText='margin-top:10px;padding-top:10px;border-top:1px solid #d9dede';box.innerHTML=`<div style="font-size:12px;font-weight:850;color:#667085;margin-bottom:7px;text-transform:uppercase;letter-spacing:.04em">Observation Options</div><div style="display:flex;flex-wrap:wrap;gap:7px">${options.map(t=>`<span style="display:inline-block;border:1.5px solid #c71920;border-radius:999px;padding:5px 9px;color:#111827;background:#fff;font-size:12px;font-weight:800">${esc(t)}</span>`).join('')}</div>`;coach.appendChild(box)
   }
   const suggested=[...main.querySelectorAll('.focus-evidence-section')].find(s=>s.querySelector('h3')?.textContent.trim()==='Suggested Drills');
   const drills=uniq(focus.drills);if(suggested&&drills.length&&!suggested.querySelector('[data-published-focus-drills]')){
-   suggested.querySelector('.focus-empty-copy')?.remove();const wrap=document.createElement('div');wrap.dataset.publishedFocusDrills='1';wrap.innerHTML=drills.map((d,i)=>{const info=drillInfo(d),desc=info?.bestUsedFor||info?.primaryPurpose||'';return`<article class="focus-drill-row"><strong class="focus-drill-number">${i+1}</strong><div><b>${esc(d)}</b>${desc?`<span>${esc(desc)}</span>`:''}</div></article>`}).join('');suggested.appendChild(wrap)
+   suggested.querySelector('.focus-empty-copy')?.remove();const wrap=document.createElement('div');wrap.dataset.publishedFocusDrills='1';wrap.innerHTML=drills.map((d,i)=>`<article class="focus-drill-row"><strong class="focus-drill-number">${i+1}</strong><div><b>${esc(d)}</b></div></article>`).join('');suggested.appendChild(wrap)
   }
  }
  let tries=0;const timer=setInterval(()=>{tries++;wrapBridge();paint();if(tries>120)clearInterval(timer)},250);addEventListener('load',()=>{wrapBridge();paint()});document.addEventListener('click',()=>setTimeout(paint,0));new MutationObserver(()=>requestAnimationFrame(paint)).observe(document.documentElement,{childList:true,subtree:true});
