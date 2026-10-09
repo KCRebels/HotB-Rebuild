@@ -7425,8 +7425,9 @@ function exportCsv(){
  const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`HotB_${reportMode}_report.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function bindEval(){
- if(!evaluationReadOnly)bindTestNavigation();
- $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};
+ const evalSelect=$('#evalSelect');
+ if(evalSelect)evalSelect.onchange=e=>{evalPlayer=e.target.value;modal=null;render()};
+ try{if(!evaluationReadOnly)bindTestNavigation()}catch(error){console.error('HotB Evaluation navigation binding failed without disabling Evaluation controls',error)}
  $('#openRebelsScout')?.addEventListener('click',()=>{
   const scoutSlug=String(evalPlayer||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   const url=`https://rebelsscout.com/${scoutSlug}/`;
