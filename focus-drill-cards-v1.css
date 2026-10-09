@@ -1,49 +1,68 @@
-/* Player Focus suggested-drill card layout. */
+/* Player Focus suggested-drill compact row layout. */
 .focus-evidence-section .focus-drill-row{
   display:grid!important;
-  grid-template-columns:32px minmax(0,1fr)!important;
-  column-gap:12px!important;
-  align-items:center!important;
+  grid-template-columns:38px minmax(0,1fr)!important;
+  column-gap:10px!important;
+  align-items:start!important;
   justify-content:start!important;
-  margin:8px 0!important;
-  padding:10px 12px!important;
-  min-height:52px!important;
-  border:2px solid #d7ddda!important;
-  border-radius:12px!important;
+  margin:0!important;
+  padding:10px 0!important;
+  min-height:0!important;
+  border:0!important;
+  border-top:1px solid #dfe4e1!important;
+  border-radius:0!important;
   background:#fff!important;
 }
 .focus-evidence-section .focus-drill-row:first-of-type{
-  border-top:2px solid #d7ddda!important;
+  border-top:0!important;
 }
-.focus-evidence-section .focus-drill-row>strong{
+.focus-evidence-section [data-published-focus-drills] .focus-drill-row:first-child{
+  border-top:0!important;
+}
+.focus-evidence-section .focus-drill-row>strong,
+.focus-evidence-section .focus-drill-row>.focus-drill-number{
   display:grid!important;
   place-items:center!important;
   width:30px!important;
   height:30px!important;
-  margin:0!important;
+  margin:1px 0 0!important;
   justify-self:start!important;
+  border-radius:50%!important;
+  background:#111827!important;
+  color:#fff!important;
+  font-size:13px!important;
+  font-weight:900!important;
+  line-height:1!important;
 }
 .focus-evidence-section .focus-drill-row>div{
-  display:block!important;
+  display:grid!important;
   min-width:0!important;
-  width:auto!important;
+  width:100%!important;
   margin:0!important;
   padding:0!important;
-  justify-self:start!important;
-  align-self:center!important;
+  gap:3px!important;
+  justify-self:stretch!important;
+  align-self:start!important;
   text-align:left!important;
 }
 .focus-evidence-section .focus-drill-row>div b,
 .focus-evidence-section .focus-drill-row>div span{
   display:block!important;
-  width:auto!important;
+  width:100%!important;
   max-width:100%!important;
   margin:0!important;
   padding:0!important;
   text-align:left!important;
-  justify-self:start!important;
 }
 .focus-evidence-section .focus-drill-row>div b{
+  color:#111827!important;
   font-size:16px!important;
-  line-height:1.2!important;
+  line-height:1.15!important;
+  font-weight:850!important;
+}
+.focus-evidence-section .focus-drill-row>div span{
+  color:#667085!important;
+  font-size:12.5px!important;
+  line-height:1.28!important;
+  font-weight:700!important;
 }
