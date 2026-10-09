@@ -4065,7 +4065,7 @@ function evalView(){
  const performanceTile=([label,value,key])=>{
   const statKey=key==='contact'?'contactPct':key==='K'?'kPct':key,guide=['AVG','OBP','SLG','CONTACT','K%'].includes(label);
   const rating=s.PA>=25&&!['hhbPct','qabPct','ipaPct'].includes(statKey)?grade(s[statKey],key):'';
-  return `<div class="perf ${rating}"><b>${value}</b><div class="perf-label-row">${guide?`<button class="perf-metric" data-guide="${label}">${label}</button>`:`<span class="perf-metric">${label}</span>`}<button class="perf-all" data-hitting-ranking="${statKey}">ALL</button></div></div>`;
+  return `<div class="perf ${rating}" data-hitting-ranking-tile="${statKey}"><b>${value}</b><div class="perf-label-row">${guide?`<button class="perf-metric" data-guide="${label}">${label}</button>`:`<span class="perf-metric">${label}</span>`}<button class="perf-all" data-hitting-ranking="${statKey}">ALL</button></div></div>`;
  };
  return `<div class="eval-head">${evaluationReadOnly?`<button class="btn eval-nav" id="portalBack">Portal</button>`:`<span class="page-head-spacer"></span>`}<div class="eval-title"><h1>Evaluation</h1></div><div class="eval-contact-actions"></div></div>
  <label class="eval-player-filter"><span>Player</span><select class="player-select" id="evalSelect"><option>Team</option>${competitionRoster().map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label>
@@ -7439,6 +7439,7 @@ function bindEval(){
  $$('[data-guide]').forEach(x=>x.onclick=()=>{modal='guide:'+x.dataset.guide;render()});
  $$('[data-ranking]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.ranking;render()});
  $$('[data-hitting-ranking]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRanking;render()});
+ $$('[data-hitting-ranking-tile]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRankingTile;render()});
  $$('[data-pitch-ranking]').forEach(x=>x.onclick=()=>{modal='pitchRanking:'+x.dataset.pitchRanking;render()});
  $('#uploadPitchingStats')?.addEventListener('click',()=>$('#pitchingStatsFile')?.click());
  $('#pitchingStatsFile')?.addEventListener('change',async event=>{
