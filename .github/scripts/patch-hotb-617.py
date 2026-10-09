@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Triggered release patch for direct Evaluation ranking buttons.
 app=Path('app-coach-rebels-portals-v10.js')
 s=app.read_text()
 
