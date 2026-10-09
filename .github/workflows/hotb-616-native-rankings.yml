@@ -1,0 +1,24 @@
+name: HotB 616 native rankings
+on:
+  push:
+    paths:
+      - '.github/scripts/patch-hotb-616.py'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch HotB
+        run: python3 .github/scripts/patch-hotb-616.py
+      - name: Commit changes
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add app-coach-rebels-portals-v10.js index.html pwa-update.js service-worker-v616.js
+          git commit -m "Use native Evaluation ranking controls only" || exit 0
+          git pull --rebase origin main
+          git push origin main
