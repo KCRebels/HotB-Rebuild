@@ -1,0 +1,42 @@
+name: HotB 612 Eval native bind
+on:
+  push:
+    paths:
+      - '.github/workflows/hotb-612-eval-native-bind.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch Evaluation binding and production tags
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+          old="""function bindEval(){\n if(!evaluationReadOnly)bindTestNavigation();\n $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};"""
+          new="""function bindEval(){\n const evalSelect=$('#evalSelect');\n if(evalSelect)evalSelect.onchange=e=>{evalPlayer=e.target.value;modal=null;render()};\n try{if(!evaluationReadOnly)bindTestNavigation()}catch(error){console.error('HotB Evaluation navigation binding failed without disabling Evaluation controls',error)}"""
+          if old not in s: raise SystemExit('bindEval target not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('index.html')
+          s=p.read_text()
+          s=s.replace('evaluation-direct-hitting-rankings.js?v=20261010-611','evaluation-direct-hitting-rankings.js?v=20261010-612')
+          s=s.replace('evaluation-direct-hitting-rankings.js?v=20260926-jenkinsrank4','evaluation-direct-hitting-rankings.js?v=20261010-612')
+          s=s.replace('app-coach-rebels-portals-v10.js?v=20261010-evalranking609','app-coach-rebels-portals-v10.js?v=20261010-evalnative612')
+          s=s.replace('app-coach-rebels-portals-v10.js?v=20261010-evalnative611','app-coach-rebels-portals-v10.js?v=20261010-evalnative612')
+          s=s.replace('pwa-update.js?v=20261010-611','pwa-update.js?v=20261010-612')
+          s=s.replace('pwa-update.js?v=20261010-609','pwa-update.js?v=20261010-612')
+          p.write_text(s)
+          PY
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m "Make Evaluation controls bind independently of navigation"
+          git pull --rebase origin main
+          git push
