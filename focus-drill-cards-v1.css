@@ -1,21 +1,20 @@
-/* Player Focus suggested-drill compact row layout. */
+/* Player Focus suggested-drill compact boxed layout. */
 .focus-evidence-section .focus-drill-row{
   display:grid!important;
   grid-template-columns:38px minmax(0,1fr)!important;
   column-gap:10px!important;
   align-items:center!important;
   justify-content:start!important;
-  margin:0!important;
-  padding:10px 0!important;
-  min-height:0!important;
-  border:0!important;
-  border-top:1px solid #dfe4e1!important;
-  border-radius:0!important;
+  margin:7px 0!important;
+  padding:10px 12px!important;
+  min-height:52px!important;
+  border:2px solid #d7ddda!important;
+  border-radius:12px!important;
   background:#fff!important;
 }
 .focus-evidence-section .focus-drill-row:first-of-type,
 .focus-evidence-section [data-published-focus-drills] .focus-drill-row:first-child{
-  border-top:0!important;
+  border-top:2px solid #d7ddda!important;
 }
 .focus-evidence-section .focus-drill-row>strong,
 .focus-evidence-section .focus-drill-row>.focus-drill-number{
