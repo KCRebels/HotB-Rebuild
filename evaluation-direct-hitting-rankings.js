@@ -1,43 +1,26 @@
 (()=>{
- const readDb=()=>{try{return JSON.parse(localStorage.getItem('hotbRebuildDbV1')||'{}')}catch(error){return{}}};
- const selectedPlayer=()=>String(document.querySelector('.eval-app .player-profile .name')?.textContent||document.querySelector('#evalSelect')?.value||'').trim();
- const rebelsNames=new Set(['Aniesa Rohleder','Brooklyn Gering','Brynna Peter','Claire Jack','Hailey Marsh','Lakyn Farley','Lydia Copeland','Maia Waddell','Makenna Whitaker','Maleah Pena','Mattingly Hardy','Megan Ryan','Tayte Stepps']);
- const comparisonRoster=data=>(Array.isArray(data.roster)?data.roster:[]).filter(player=>rebelsNames.has(String(player?.name||'').trim()));
- const allGames=data=>[...(Array.isArray(data.savedGames)?data.savedGames:[]),...(data.currentGame?[data.currentGame]:[])];
- const allPAs=data=>allGames(data).flatMap(game=>Array.isArray(game.plateAppearances)?game.plateAppearances:[]);
- const statsFor=pas=>window.HotBEvaluationStats?.statsForPAs?window.HotBEvaluationStats.statsForPAs(pas):null;
- const decimal3=v=>Number(v).toFixed(3).replace(/^0(?=\.)/,'');
- const sortRows=(rows,lower=false)=>rows.sort((a,b)=>{if(a.value===null&&b.value===null)return a.name.localeCompare(b.name);if(a.value===null)return 1;if(b.value===null)return-1;return(lower?a.value-b.value:b.value-a.value)||a.name.localeCompare(b.name)});
  const closeRanking=()=>document.querySelector('#directPlayerEvalRankingBackdrop')?.remove();
- function showRanking(label,rows,note,kicker='FULL ROSTER RANKINGS'){
-  closeRanking();const selected=selectedPlayer(),backdrop=document.createElement('div');backdrop.id='directPlayerEvalRankingBackdrop';backdrop.className='modal-backdrop';
-  backdrop.innerHTML=`<div class="modal dark ranking-modal"><div class="modal-header"><div><div class="small ranking-kicker">${kicker}</div><h2>${label}</h2></div><button type="button" class="btn" data-player-rank-close>Close</button></div><div class="ranking-list">${rows.map((row,index)=>`<div class="ranking-row ${row.name===selected?'selected-player':''}"><span class="ranking-place">${row.value===null?'—':index+1}</span><span class="ranking-name">${row.name}${row.sub?`<small>${row.sub}</small>`:''}</span><strong>${row.display}</strong></div>`).join('')}</div><p class="small" style="color:#ddd;margin:14px 4px 0">${note}</p></div>`;
-  const close=backdrop.querySelector('[data-player-rank-close]');
-  close.onpointerup=event=>{event.preventDefault();event.stopPropagation();closeRanking()};
-  close.onclick=event=>{event.preventDefault();event.stopPropagation();closeRanking()};
-  backdrop.onclick=event=>{if(event.target===backdrop)closeRanking()};
-  document.body.appendChild(backdrop);
- }
- const hitting={AVG:{key:'AVG',lower:false,format:decimal3},OBP:{key:'OBP',lower:false,format:decimal3},SLG:{key:'SLG',lower:false,format:decimal3},CONTACT:{key:'contactPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`},'K%':{key:'kPct',lower:true,format:v=>`${Math.round(Number(v)*100)}%`},'HHB%':{key:'hhbPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`},'QAB%':{key:'qabPct',lower:false,format:v=>`${Math.round(Number(v)*100)}%`}};
- const pitching={pitcherIP:{label:'IP',lower:false,format:v=>String(v)},pitcherERA:{label:'ERA',lower:true,format:v=>Number(v).toFixed(2)},pitcherWHIP:{label:'WHIP',lower:true,format:v=>Number(v).toFixed(2)},pitcherKBB:{label:'K/BB',lower:false,format:v=>Number(v).toFixed(3)},pitcherOBA:{label:'BAA',lower:true,format:decimal3},pitcherStrikePct:{label:'Strike %',lower:false,format:v=>`${Math.round(Number(v))}%`}};
- function openHitting(label){const def=hitting[label];if(!def)return false;const data=readDb(),roster=comparisonRoster(data),games=allGames(data),pas=allPAs(data);const rows=sortRows(roster.map(player=>{const snapshot=window.HotBEvaluationStats?.evaluationSnapshot?.({savedGames:games,currentGame:null,roster},player.name),stats=snapshot?.stats||statsFor(pas.filter(pa=>pa.hitter===player.name)),n=stats&&stats.PA?Number(stats[def.key]):null,value=Number.isFinite(n)?n:null;return{name:player.name,value,display:value===null?'—':def.format(value),sub:`${stats?.PA||0} PA`}}),def.lower);showRanking(label,rows,`${def.lower?'Lower':'Higher'} ${label} ranks first.`);return true}
- function openSummary(metric){if(!['HotB+','Runs Produced','Execution','Reach%'].includes(metric))return false;const data=readDb(),roster=comparisonRoster(data),pas=allPAs(data).filter(pa=>roster.some(player=>player.name===pa.hitter)),team=statsFor(pas),teamRate=team?.PA?team.rp/team.PA:0;const rows=roster.map(player=>{const playerPas=pas.filter(pa=>pa.hitter===player.name),stats=statsFor(playerPas);let value=null,display='—';if(metric==='HotB+')value=stats?.PA&&teamRate?(stats.rp/stats.PA)/teamRate*100:null;else if(metric==='Runs Produced')value=stats?.PA?stats.rp:null;else if(metric==='Reach%')value=stats?.PA?stats.reachPct:null;else{const execution=window.HotBEvaluationStats?.executionTotalsFromGames?.(allGames(data),player.name,roster);value=execution?.rate??null}if(Number.isFinite(value))display=metric==='HotB+'?String(Math.round(value)):metric==='Runs Produced'?Number(value).toFixed(1):`${Math.round(value*100)}%`;return{name:player.name,value:Number.isFinite(value)?value:null,display,sub:`${stats?.PA||0} PA`}});sortRows(rows);const label=metric==='Execution'?'HP%':metric;showRanking(label,rows,`Higher ${label} ranks first.`);return true}
- function openPitching(key){const def=pitching[key];if(!def)return false;const data=readDb(),roster=comparisonRoster(data);const pitchers=roster.filter(player=>Object.keys(pitching).some(k=>String(player[k]??'').trim()!==''));const rows=sortRows(pitchers.map(player=>{const raw=String(player[key]??'').trim(),n=raw===''?null:Number(raw.replace('%','')),value=Number.isFinite(n)?n:null;return{name:player.name,value,display:value===null?'—':def.format(value)}}),def.lower);showRanking(def.label,rows,`${def.lower?'Lower':'Higher'} ${def.label} ranks first.`,'PITCHER RANKINGS');return true}
  function wireStatControls(){
   document.querySelectorAll('.eval-app .pitcher-stat[data-pitch-ranking]').forEach(card=>{
-   card.onpointerup=event=>{event.preventDefault();event.stopPropagation();openPitching(card.dataset.pitchRanking)};
+   card.onpointerup=event=>{const native=card;if(typeof native.onclick==='function'){event.preventDefault();event.stopPropagation();native.onclick.call(native,event)}};
   });
   document.querySelectorAll('.eval-app .perf').forEach(card=>{
-   card.onpointerup=event=>{if(event.target.closest('.perf-metric'))return;const label=String(card.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase();if(label==='HHB%'&&window.HotBHHBPopup?.open){event.preventDefault();event.stopPropagation();window.HotBHHBPopup.open();return}if(label==='IPA%'||label==='REACH%')return;event.preventDefault();event.stopPropagation();openHitting(label)};
-  });
-  document.querySelectorAll('.eval-app .eval-tile').forEach(card=>{
-   card.onpointerup=event=>{if(event.target.closest('.metric-title'))return;event.preventDefault();event.stopPropagation();openSummary(card.querySelector('.metric-title')?.dataset.guide)};
+   card.onpointerup=event=>{
+    const label=String(card.querySelector('.perf-metric')?.textContent||'').trim().toUpperCase();
+    if(label==='HHB%'&&window.HotBHHBPopup?.open){event.preventDefault();event.stopPropagation();window.HotBHHBPopup.open();return}
+    if(label==='IPA%'||label==='REACH%')return;
+    if(!['AVG','OBP','K%','CONTACT'].includes(label))return;
+    const all=card.querySelector('[data-hitting-ranking]');
+    if(!all||typeof all.onclick!=='function')return;
+    event.preventDefault();event.stopPropagation();
+    all.onclick.call(all,event);
+   };
   });
  }
  const app=document.querySelector('#app');if(!app)return;
  wireStatControls();
  app.addEventListener('change',event=>{
-  if(event.target instanceof Element&&event.target.id==='evalSelect')setTimeout(wireStatControls,0);
+  if(event.target instanceof Element&&['evalSelect','evalCustomStart','evalCustomEnd'].includes(event.target.id))setTimeout(wireStatControls,0);
  });
  app.addEventListener('click',event=>{
   const target=event.target instanceof Element?event.target:null;if(!target)return;
