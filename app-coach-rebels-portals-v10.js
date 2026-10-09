@@ -4065,8 +4065,8 @@ function evalView(){
  const performanceTile=([label,value,key])=>{
   const statKey=key==='contact'?'contactPct':key==='K'?'kPct':key,guide=['AVG','OBP','SLG','CONTACT','K%'].includes(label);
   const rating=s.PA>=25&&!['hhbPct','qabPct','ipaPct'].includes(statKey)?grade(s[statKey],key):'';
-  if(['AVG','OBP','CONTACT','K%'].includes(label))return `<button type="button" class="perf ${rating}" data-hitting-ranking-button="${statKey}"><b>${value}</b><div class="perf-label-row"><span class="perf-metric">${label}</span><span class="perf-all">ALL</span></div></button>`;
-  return `<div class="perf ${rating}"><b>${value}</b><div class="perf-label-row">${guide?`<button class="perf-metric" data-guide="${label}">${label}</button>`:`<span class="perf-metric">${label}</span>`}<button class="perf-all" data-hitting-ranking="${statKey}">ALL</button></div></div>`;
+  const tileRanking=['AVG','OBP','CONTACT','K%'].includes(label)?` data-hitting-ranking-tile="${statKey}"`:'';
+  return `<div class="perf ${rating}"${tileRanking}><b>${value}</b><div class="perf-label-row">${guide?`<button class="perf-metric" data-guide="${label}">${label}</button>`:`<span class="perf-metric">${label}</span>`}<button class="perf-all" data-hitting-ranking="${statKey}">ALL</button></div></div>`;
  };
  return `<div class="eval-head">${evaluationReadOnly?`<button class="btn eval-nav" id="portalBack">Portal</button>`:`<span class="page-head-spacer"></span>`}<div class="eval-title"><h1>Evaluation</h1></div><div class="eval-contact-actions"></div></div>
  <label class="eval-player-filter"><span>Player</span><select class="player-select" id="evalSelect"><option>Team</option>${competitionRoster().map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label>
@@ -4074,8 +4074,8 @@ function evalView(){
  ${player?`<div class="player-card player-profile ${practiceRateLabel?'has-practice-rate':''}"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div>${practiceRateLabel?`<div class="player-practice-rate">${practiceRateLabel}</div>`:''}</div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
-  <button type="button" class="eval-tile dark" data-summary-ranking-button="HotB+"><div class="eval-tile-head"><span class="metric-title">HotB+</span><span class="metric-all">ALL</span></div>${hotb===null?emptyComparison():(player?comparison(hotb,hotb-100,0):`<div class="value">${hotb}</div>`)}<div class="note">Production vs Team</div></button>
-  <button type="button" class="eval-tile" data-summary-ranking-button="Runs Produced"><div class="eval-tile-head"><span class="metric-title">RP</span><span class="metric-all">ALL</span></div>${s.PA?(player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`):emptyComparison()}<div class="note">Runs Produced</div></button>
+  <div class="eval-tile dark" data-summary-ranking-tile="HotB+">${metricHead('HotB+')} ${hotb===null?emptyComparison():(player?comparison(hotb,hotb-100,0):`<div class="value">${hotb}</div>`)}<div class="note">Production vs Team</div></div>
+  <div class="eval-tile" data-summary-ranking-tile="Runs Produced">${metricHead('Runs Produced','RP')} ${s.PA?(player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`):emptyComparison()}<div class="note">Runs Produced</div></div>
   <div class="eval-tile">${slapHitter?metricHead('Reach%'):metricHead('Execution','HP%')}<div class="value">${slapHitter?(reach===null?'—%':pct0(reach)):(execution===null?'—%':pct0(execution))}</div><div class="note">${slapHitter?'Reached Base':'Hitting Plan'}</div></div>
  </div>
  <div class="performance"><div class="performance-head"><h2>Hitting Results</h2><div class="performance-sample"><span>${esc(activeDateFilterLabel())}</span><b>${s.PA} PA</b></div></div><div class="perf-grid">
@@ -7428,12 +7428,23 @@ function exportCsv(){
 function bindEval(){
  const evalSelect=$('#evalSelect');
  if(evalSelect)evalSelect.onchange=e=>{evalPlayer=e.target.value;modal=null;render()};
+ const appRoot=$('#app');
+ if(appRoot&&!appRoot.dataset.evalRankingDelegated){
+  appRoot.dataset.evalRankingDelegated='1';
+  appRoot.addEventListener('click',event=>{
+   const target=event.target instanceof Element?event.target:null;if(!target)return;
+   const hittingTile=target.closest('[data-hitting-ranking-tile]');
+   if(hittingTile){event.preventDefault();event.stopPropagation();modal='hittingRanking:'+hittingTile.dataset.hittingRankingTile;render();return}
+   const summaryTile=target.closest('[data-summary-ranking-tile]');
+   if(summaryTile){event.preventDefault();event.stopPropagation();modal='ranking:'+summaryTile.dataset.summaryRankingTile;render();return}
+  },true);
+ }
  // Evaluation's ranking controls are core controls. Bind them before any optional
  // navigation/date-filter setup so an unrelated binder cannot disable rankings.
  $$('[data-ranking]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.ranking;render()});
- $$('[data-summary-ranking-button]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.summaryRankingButton;render()});
+ $$('[data-summary-ranking-tile]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.summaryRankingTile;render()});
  $$('[data-hitting-ranking]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRanking;render()});
- $$('[data-hitting-ranking-button]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRankingButton;render()});
+ $$('[data-hitting-ranking-tile]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRankingTile;render()});
  $$('[data-pitch-ranking]').forEach(x=>x.onclick=()=>{modal='pitchRanking:'+x.dataset.pitchRanking;render()});
  try{if(!evaluationReadOnly)bindTestNavigation()}catch(error){console.error('HotB Evaluation navigation binding failed without disabling Evaluation controls',error)}
  $('#openRebelsScout')?.addEventListener('click',()=>{
