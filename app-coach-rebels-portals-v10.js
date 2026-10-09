@@ -7427,21 +7427,23 @@ function exportCsv(){
 function bindEval(){
  const evalSelect=$('#evalSelect');
  if(evalSelect)evalSelect.onchange=e=>{evalPlayer=e.target.value;modal=null;render()};
+ // Evaluation's ranking controls are core controls. Bind them before any optional
+ // navigation/date-filter setup so an unrelated binder cannot disable rankings.
+ $$('[data-ranking]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.ranking;render()});
+ $$('[data-hitting-ranking]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRanking;render()});
+ $$('[data-hitting-ranking-tile]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRankingTile;render()});
+ $$('[data-pitch-ranking]').forEach(x=>x.onclick=()=>{modal='pitchRanking:'+x.dataset.pitchRanking;render()});
  try{if(!evaluationReadOnly)bindTestNavigation()}catch(error){console.error('HotB Evaluation navigation binding failed without disabling Evaluation controls',error)}
  $('#openRebelsScout')?.addEventListener('click',()=>{
   const scoutSlug=String(evalPlayer||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   const url=`https://rebelsscout.com/${scoutSlug}/`;
   window.open(url,'_blank','noopener');
  });
- bindDateFilters('eval');
+ try{bindDateFilters('eval')}catch(error){console.error('HotB Evaluation date-filter binding failed without disabling Evaluation controls',error)}
  const recordMeasureButton=$('#recordMeasure2');
  if(recordMeasureButton)recordMeasureButton.onclick=()=>{recordType='';modal='record';render()};
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
  $$('[data-guide]').forEach(x=>x.onclick=()=>{modal='guide:'+x.dataset.guide;render()});
- $$('[data-ranking]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.ranking;render()});
- $$('[data-hitting-ranking]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRanking;render()});
- $$('[data-hitting-ranking-tile]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRankingTile;render()});
- $$('[data-pitch-ranking]').forEach(x=>x.onclick=()=>{modal='pitchRanking:'+x.dataset.pitchRanking;render()});
  $('#uploadPitchingStats')?.addEventListener('click',()=>$('#pitchingStatsFile')?.click());
  $('#pitchingStatsFile')?.addEventListener('change',async event=>{
   const file=event.target.files?.[0];event.target.value='';if(!file)return;
