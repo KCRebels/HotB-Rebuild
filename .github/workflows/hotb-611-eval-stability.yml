@@ -1,0 +1,31 @@
+name: HotB 611 Eval stability
+on:
+  push:
+    paths:
+      - '.github/workflows/hotb-611-eval-stability.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch production load tags
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          s=s.replace('pwa-update.js?v=20261010-609','pwa-update.js?v=20261010-611')
+          s=s.replace('evaluation-direct-hitting-rankings.js?v=20260926-jenkinsrank4','evaluation-direct-hitting-rankings.js?v=20261010-evalstable611')
+          p.write_text(s)
+          PY
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add index.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Force HotB 611 clean Evaluation interaction files"
+          git pull --rebase origin main
+          git push origin HEAD:main
