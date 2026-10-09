@@ -1,15 +1,15 @@
-/* Player Focus suggested-drill compact boxed layout. */
+/* Player Focus suggested-drill tight boxed layout. */
 .focus-evidence-section .focus-drill-row{
   display:grid!important;
-  grid-template-columns:38px minmax(0,1fr)!important;
-  column-gap:10px!important;
+  grid-template-columns:30px minmax(0,1fr)!important;
+  column-gap:8px!important;
   align-items:center!important;
   justify-content:start!important;
-  margin:7px 0!important;
-  padding:10px 12px!important;
-  min-height:52px!important;
+  margin:5px 0!important;
+  padding:7px 10px!important;
+  min-height:44px!important;
   border:2px solid #d7ddda!important;
-  border-radius:12px!important;
+  border-radius:10px!important;
   background:#fff!important;
 }
 .focus-evidence-section .focus-drill-row:first-of-type,
@@ -20,14 +20,14 @@
 .focus-evidence-section .focus-drill-row>.focus-drill-number{
   display:grid!important;
   place-items:center!important;
-  width:30px!important;
-  height:30px!important;
+  width:26px!important;
+  height:26px!important;
   margin:0!important;
   justify-self:start!important;
   border-radius:50%!important;
   background:#111827!important;
   color:#fff!important;
-  font-size:13px!important;
+  font-size:12px!important;
   font-weight:900!important;
   line-height:1!important;
 }
@@ -47,12 +47,11 @@
   margin:0!important;
   padding:0!important;
   color:#111827!important;
-  font-size:16px!important;
-  line-height:1.2!important;
+  font-size:15px!important;
+  line-height:1.15!important;
   font-weight:850!important;
   text-align:left!important;
 }
-/* Coach already knows these drills; keep this list clean and name-only. */
 .focus-evidence-section .focus-drill-row>div span{
   display:none!important;
 }
