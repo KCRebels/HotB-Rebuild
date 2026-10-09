@@ -8,7 +8,7 @@
    const fb=window.firebase,store=fb?.firestore?.(),auth=fb?.auth?.();
    if(store&&auth){
     if(auth.currentUser)return {fb,store,user:auth.currentUser};
-    await new Promise(resolve=>{let done=false;const finish=()=>{if(done)return;done=true;try{off?.()}catch(_){}resolve()};let off;try{off=auth.onAuthStateChanged(()=>finish(),()=>finish())}catch(_){finish()}setTimeout(finish,250)});
+    await new Promise(resolve=>{let done=false,off;const finish=()=>{if(done)return;done=true;try{off?.()}catch(_){}resolve()};try{off=auth.onAuthStateChanged(()=>finish(),()=>finish())}catch(_){finish()}setTimeout(finish,250)});
     if(auth.currentUser)return {fb,store,user:auth.currentUser};
    }
    await wait(250);
@@ -19,17 +19,17 @@
   if(busy){pending=true;return}busy=true;
   try{
    const ctx=await ready();if(!ctx)throw new Error('portal authentication was not ready');
-   const {fb,store}=ctx,ref=store.collection('playerPortals').doc(portalId),snap=await ref.get();
+   const {store}=ctx,ref=store.collection('playerPortals').doc(portalId),snap=await ref.get();
    if(!snap.exists)return;
    const data=snap.data()||{},published=data.focus?.publishedAt;if(!published)return;
    const openedAt=new Date().toISOString();
-   await ref.update({focusOpenedPublishedAt:published,focusOpenedAt:openedAt,updatedAt:fb.firestore.FieldValue.serverTimestamp()});
+   /* Keep this update to the exact fields allowed by the player receipt rule. */
+   await ref.update({focusOpenedPublishedAt:published,focusOpenedAt:openedAt});
    const verify=await ref.get(),saved=verify.data()||{};
    if(String(saved.focusOpenedPublishedAt||'')!==String(published)||!saved.focusOpenedAt)throw new Error('opened receipt did not persist');
   }catch(error){console.error('HotB could not record Player Focus opened receipt.',error)}finally{busy=false;if(pending){pending=false;setTimeout(record,100)}}
  }
- function onFocus(){setTimeout(record,100)}
- document.addEventListener('click',event=>{if(event.target?.closest?.('[data-portal-view="focus"]'))onFocus()},true);
+ document.addEventListener('click',event=>{if(event.target?.closest?.('[data-portal-view="focus"]'))setTimeout(record,100)},true);
  addEventListener('pageshow',()=>setTimeout(record,500));
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(record,500)});
 })();
