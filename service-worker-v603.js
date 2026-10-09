@@ -1,0 +1,4 @@
+const CACHE='hotb-app-2026.10.10.603';
+self.addEventListener('install',event=>{self.skipWaiting();event.waitUntil(caches.open(CACHE))});
+self.addEventListener('activate',event=>{event.waitUntil((async()=>{for(const name of await caches.keys())if(name.startsWith('hotb-app-')&&name!==CACHE)await caches.delete(name);await self.clients.claim()})())});
+self.addEventListener('fetch',event=>{const request=event.request;if(request.method!=='GET')return;const url=new URL(request.url);if(url.origin!==self.location.origin)return;event.respondWith((async()=>{try{const response=await fetch(request,{cache:'no-store'});if(response.ok){const cache=await caches.open(CACHE);cache.put(request,response.clone()).catch(()=>{})}return response}catch(_){return(await caches.match(request))||Response.error()}})())});
