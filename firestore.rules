@@ -39,17 +39,19 @@ service cloud.firestore {
       allow update: if isCoach()
         || (
           signedIn()
-          && request.auth.token.firebase.sign_in_provider == 'anonymous'
-          && request.resource.data.pinProof == resource.data.pinHash
           && (
             (
-              resource.data.ownerUid == null
+              request.auth.token.firebase.sign_in_provider == 'anonymous'
+              && request.resource.data.pinProof == resource.data.pinHash
+              && resource.data.ownerUid == null
               && request.resource.data.ownerUid == request.auth.uid
               && request.resource.data.diff(resource.data).affectedKeys()
                 .hasOnly(['ownerUid', 'pinProof', 'claimedAt'])
             )
             || (
-              request.resource.data.authorizedUids is list
+              request.auth.token.firebase.sign_in_provider == 'anonymous'
+              && request.resource.data.pinProof == resource.data.pinHash
+              && request.resource.data.authorizedUids is list
               && request.resource.data.authorizedUids.hasAny([request.auth.uid])
               && request.resource.data.authorizedUids.size() <= 5
               && request.resource.data.diff(resource.data).affectedKeys()
