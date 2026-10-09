@@ -61,8 +61,16 @@
    const box=document.createElement('div');box.dataset.publishedObservationOptions='1';box.style.cssText='margin-top:10px;padding-top:10px;border-top:1px solid #d9dede';box.innerHTML=`<div style="font-size:12px;font-weight:850;color:#667085;margin-bottom:7px;text-transform:uppercase;letter-spacing:.04em">Observation Options</div><div style="display:flex;flex-wrap:wrap;gap:7px">${options.map(t=>`<span style="display:inline-block;border:1.5px solid #c71920;border-radius:999px;padding:5px 9px;color:#111827;background:#fff;font-size:12px;font-weight:800">${esc(t)}</span>`).join('')}</div>`;coach.appendChild(box)
   }
   const suggested=[...main.querySelectorAll('.focus-evidence-section')].find(s=>s.querySelector('h3')?.textContent.trim()==='Suggested Drills');
-  const drills=uniq(focus.drills);if(suggested&&drills.length&&!suggested.querySelector('[data-published-focus-drills]')){
-   suggested.querySelector('.focus-empty-copy')?.remove();const wrap=document.createElement('div');wrap.dataset.publishedFocusDrills='1';wrap.innerHTML=drills.map((d,i)=>`<article class="focus-drill-row"><strong class="focus-drill-number">${i+1}</strong><div><b>${esc(d)}</b></div></article>`).join('');suggested.appendChild(wrap)
+  const drills=uniq(focus.drills);
+  if(suggested&&drills.length){
+   suggested.querySelector('.focus-empty-copy')?.remove();
+   let wrap=suggested.querySelector('[data-published-focus-drills]');
+   if(!wrap){
+    suggested.querySelectorAll(':scope > .focus-drill-row').forEach(row=>row.remove());
+    wrap=document.createElement('div');wrap.dataset.publishedFocusDrills='1';suggested.appendChild(wrap)
+   }
+   const wanted=drills.join('|'),shown=[...wrap.querySelectorAll('.focus-drill-row b')].map(x=>x.textContent.trim()).join('|');
+   if(shown!==wanted)wrap.innerHTML=drills.map((d,i)=>`<article class="focus-drill-row"><strong class="focus-drill-number">${i+1}</strong><div><b>${esc(d)}</b></div></article>`).join('')
   }
  }
  let syncing=false,lastSync='';async function refresh(){const name=document.querySelector('.practice-feature-lead h2')?.textContent?.trim()||'';if(!name||name==='Choose A Player'||syncing)return;const focus=currentPublished(read(),name),key=name+'|'+String(focus?.publishedAt||'');if(!focus||key===lastSync)return;syncing=true;try{if(await syncRemote(name)){document.querySelector('[data-published-observation-options]')?.remove();document.querySelector('[data-published-focus-drills]')?.remove();paint()}lastSync=key}finally{syncing=false}}
