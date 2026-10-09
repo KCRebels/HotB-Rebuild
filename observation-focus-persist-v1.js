@@ -8,6 +8,7 @@
  const uniq=(arr,n=3)=>[...new Set((Array.isArray(arr)?arr:[]).map(x=>String(x||'').trim()).filter(Boolean))].slice(0,n);
  const archiveFor=(db,name)=>name==='Megan Ryan'?(db.megFocusArchive||(db.megFocusArchive=[])):((db.playerFocusArchives||(db.playerFocusArchives={}))[name]||((db.playerFocusArchives[name]=[])));
  const splitNeeds=v=>String(v||'').split(' · ').map(x=>x.trim()).filter(Boolean);
+ const drillInfo=name=>(Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[]).find(d=>String(d?.name||'')===String(name||''))||null;
  function patchLocalPublished(playerName,publishedAt,tags,drills){
   const db=read(),archive=archiveFor(db,playerName),idx=archive.findIndex(x=>String(x?.publishedAt||'')===String(publishedAt||''));
   if(idx<0)return null;
@@ -38,7 +39,7 @@
   }
   const suggested=[...main.querySelectorAll('.focus-evidence-section')].find(s=>s.querySelector('h3')?.textContent.trim()==='Suggested Drills');
   const drills=uniq(focus.drills);if(suggested&&drills.length&&!suggested.querySelector('[data-published-focus-drills]')){
-   suggested.querySelector('.focus-empty-copy')?.remove();const wrap=document.createElement('div');wrap.dataset.publishedFocusDrills='1';wrap.style.cssText='margin-top:8px';wrap.innerHTML=drills.map((d,i)=>`<div class="focus-drill-row" style="display:flex;align-items:center;gap:10px;padding:10px 0;${i?'border-top:1px solid #e5e7eb;':''}"><span style="display:inline-grid;place-items:center;flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#111827;color:#fff;font-size:12px;font-weight:900">${i+1}</span><b style="font-size:15px;color:#111827">${esc(d)}</b></div>`).join('');suggested.appendChild(wrap)
+   suggested.querySelector('.focus-empty-copy')?.remove();const wrap=document.createElement('div');wrap.dataset.publishedFocusDrills='1';wrap.innerHTML=drills.map((d,i)=>{const info=drillInfo(d),desc=info?.bestUsedFor||info?.primaryPurpose||'';return`<article class="focus-drill-row"><strong class="focus-drill-number">${i+1}</strong><div><b>${esc(d)}</b>${desc?`<span>${esc(desc)}</span>`:''}</div></article>`}).join('');suggested.appendChild(wrap)
   }
  }
  let tries=0;const timer=setInterval(()=>{tries++;wrapBridge();paint();if(tries>120)clearInterval(timer)},250);addEventListener('load',()=>{wrapBridge();paint()});document.addEventListener('click',()=>setTimeout(paint,0));new MutationObserver(()=>requestAnimationFrame(paint)).observe(document.documentElement,{childList:true,subtree:true});
