@@ -14,32 +14,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch live coach app
+      - name: Patch production load tags
         shell: python
         run: |
           from pathlib import Path
-          p=Path('app-coach-rebels-portals-v10.js')
+          p=Path('index.html')
           s=p.read_text()
-          old='return `<div class="perf ${rating}"><b>${value}</b><div class="perf-label-row">'
-          new='return `<div class="perf ${rating}" data-hitting-ranking-tile="${statKey}"><b>${value}</b><div class="perf-label-row">'
+          old="<script src=\"pwa-update.js?v=20260930-531\"></script>"
+          new="<script src=\"pwa-update.js?v=20261010-609\"></script>"
           if old not in s:
-              raise SystemExit('performance tile markup target not found')
+              raise SystemExit('pwa-update tag target not found')
           s=s.replace(old,new,1)
-          old2="$$('[data-hitting-ranking]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRanking;render()});"
-          new2=old2+"\n $$('[data-hitting-ranking-tile]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRankingTile;render()});"
+          old2="app-coach-rebels-portals-v10.js?v=20261003-practicecleanup1"
+          new2="app-coach-rebels-portals-v10.js?v=20261010-evalranking609"
           if old2 not in s:
-              raise SystemExit('hitting ranking binding target not found')
+              raise SystemExit('coach app tag target not found')
           s=s.replace(old2,new2,1)
           p.write_text(s)
-      - name: Verify syntax and exact native hooks
+      - name: Verify production tags
         run: |
-          node --check app-coach-rebels-portals-v10.js
-          grep -q 'data-hitting-ranking-tile="${statKey}"' app-coach-rebels-portals-v10.js
-          grep -q "dataset.hittingRankingTile" app-coach-rebels-portals-v10.js
-      - name: Commit native fix
+          grep -q 'pwa-update.js?v=20261010-609' index.html
+          grep -q 'app-coach-rebels-portals-v10.js?v=20261010-evalranking609' index.html
+      - name: Commit production wiring
         run: |
           git config user.name "KCRebels"
           git config user.email "actions@users.noreply.github.com"
-          git add app-coach-rebels-portals-v10.js
-          git commit -m "Wire Evals result tiles natively to full roster rankings"
+          git add index.html
+          git commit -m "Force production HotB to load native Evals ranking build 609"
           git push
