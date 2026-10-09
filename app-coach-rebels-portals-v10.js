@@ -4772,9 +4772,9 @@ function modalView(){
  if(modal==='focusPublishPreview')return focusPublishPreviewModal();
  if(modal==='nextGame')return nextGameModal();
  if(modal==='lineup')return lineupModal();
- if(modal?.startsWith('hittingRanking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>hittingRankingModal(modal.slice(15))):hittingRankingModal(modal.slice(15));
- if(modal?.startsWith('ranking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>evalRankingModal(modal.slice(8))):evalRankingModal(modal.slice(8));
- if(modal?.startsWith('pitchRanking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>pitcherRankingModal(modal.slice(13))):pitcherRankingModal(modal.slice(13));
+ if(modal?.startsWith('hittingRanking:'))return evaluationReadOnly&&portalData?.evaluationData?withCoachEvaluationData(()=>hittingRankingModal(modal.slice(15))):hittingRankingModal(modal.slice(15));
+ if(modal?.startsWith('ranking:'))return evaluationReadOnly&&portalData?.evaluationData?withCoachEvaluationData(()=>evalRankingModal(modal.slice(8))):evalRankingModal(modal.slice(8));
+ if(modal?.startsWith('pitchRanking:'))return evaluationReadOnly&&portalData?.evaluationData?withCoachEvaluationData(()=>pitcherRankingModal(modal.slice(13))):pitcherRankingModal(modal.slice(13));
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
  if(modal==='reports')return reportModal();
  if(modal==='gamesSelection')return gamesSelectionModal();
