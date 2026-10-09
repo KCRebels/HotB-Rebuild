@@ -17,11 +17,26 @@
   });
  }
 
- // Summary cards only: forward a card tap to the native ALL ranking control.
- // This does not calculate, rename, move, or rewrite any Evaluation metric.
+ const requestedHittingRankings=new Set(['AVG','OBP','contactPct','kPct']);
+
+ // Forward the entire requested Hitting Results tile to HotB's native roster
+ // ranking button. Do not calculate or replace any ranking data here.
  app.addEventListener('click',event=>{
   const target=event.target instanceof Element?event.target:null;
   if(!target)return;
+
+  const perf=target.closest('.eval-app .perf[data-hitting-ranking-tile]');
+  if(perf&&requestedHittingRankings.has(perf.dataset.hittingRankingTile||'')){
+   const ranking=perf.querySelector('[data-hitting-ranking]');
+   if(ranking&&typeof ranking.onclick==='function'){
+    event.preventDefault();
+    event.stopPropagation();
+    ranking.onclick.call(ranking,event);
+    return;
+   }
+  }
+
+  // Summary cards: forward a card tap to the native ALL ranking control.
   const tile=target.closest('.eval-app .eval-tile');
   if(tile&&!target.closest('.metric-title,[data-ranking]')){
    const ranking=tile.querySelector('[data-ranking]');
