@@ -1,0 +1,45 @@
+name: Native Eval Ranking Fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/native-eval-ranking-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch live coach app
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+          old='return `<div class="perf ${rating}"><b>${value}</b><div class="perf-label-row">'
+          new='return `<div class="perf ${rating}" data-hitting-ranking-tile="${statKey}"><b>${value}</b><div class="perf-label-row">'
+          if old not in s:
+              raise SystemExit('performance tile markup target not found')
+          s=s.replace(old,new,1)
+          old2="$$('[data-hitting-ranking]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRanking;render()});"
+          new2=old2+"\n $$('[data-hitting-ranking-tile]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRankingTile;render()});"
+          if old2 not in s:
+              raise SystemExit('hitting ranking binding target not found')
+          s=s.replace(old2,new2,1)
+          p.write_text(s)
+      - name: Verify syntax and exact native hooks
+        run: |
+          node --check app-coach-rebels-portals-v10.js
+          grep -q 'data-hitting-ranking-tile="${statKey}"' app-coach-rebels-portals-v10.js
+          grep -q "dataset.hittingRankingTile" app-coach-rebels-portals-v10.js
+      - name: Commit native fix
+        run: |
+          git config user.name "KCRebels"
+          git config user.email "actions@users.noreply.github.com"
+          git add app-coach-rebels-portals-v10.js
+          git commit -m "Wire Evals result tiles natively to full roster rankings"
+          git push
