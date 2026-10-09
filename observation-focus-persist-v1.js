@@ -36,6 +36,22 @@
   const hotb=new Set([...hotbSection?.querySelectorAll('.focus-evidence-row b')||[]].map(el=>el.textContent.trim().toLowerCase()));
   return uniq(needs.filter(item=>!hotb.has(item.toLowerCase())));
  }
+ async function syncRemote(name){
+  const db=read(),player=(db.roster||[]).find(x=>x?.name===name),id=player?.portalId;if(!id||!window.firebase?.firestore)return false;
+  try{
+   const snap=await window.firebase.firestore().collection('playerPortals').doc(id).get();if(!snap.exists)return false;
+   const remote=snap.data()?.focus;if(!remote)return false;
+   const archive=archiveFor(db,name),published=String(db.playerFocusLastReviewed?.[name]||remote.publishedAt||''),idx=archive.findIndex(x=>String(x?.publishedAt||'')===String(remote.publishedAt||''));
+   if(idx<0)return false;
+   const local=archive[idx]||{},remoteOptions=uniq(remote.observationOptions),remoteDrills=uniq(remote.drills),remoteNeeds=String(remote.needsWork||'');
+   let changed=false,next={...local};
+   if(remoteOptions.length&&JSON.stringify(uniq(local.observationOptions))!==JSON.stringify(remoteOptions)){next.observationOptions=remoteOptions;changed=true}
+   if(remoteDrills.length&&JSON.stringify(uniq(local.drills))!==JSON.stringify(remoteDrills)){next.drills=remoteDrills;changed=true}
+   if(remoteNeeds&&String(local.needsWork||'')!==remoteNeeds){next.needsWork=remoteNeeds;changed=true}
+   if(changed){archive[idx]=next;if(published&&!db.playerFocusLastReviewed?.[name]){db.playerFocusLastReviewed=db.playerFocusLastReviewed||{};db.playerFocusLastReviewed[name]=published}write(db)}
+   return changed
+  }catch(_){return false}
+ }
  function paint(){
   const main=document.querySelector('.practice-feature-page'),name=document.querySelector('.practice-feature-lead h2')?.textContent?.trim()||'';if(!main||!name||name==='Choose A Player')return;
   const focus=currentPublished(read(),name);if(!focus)return;
@@ -49,5 +65,6 @@
    suggested.querySelector('.focus-empty-copy')?.remove();const wrap=document.createElement('div');wrap.dataset.publishedFocusDrills='1';wrap.innerHTML=drills.map((d,i)=>`<article class="focus-drill-row"><strong class="focus-drill-number">${i+1}</strong><div><b>${esc(d)}</b></div></article>`).join('');suggested.appendChild(wrap)
   }
  }
- let tries=0;const timer=setInterval(()=>{tries++;wrapBridge();paint();if(tries>120)clearInterval(timer)},250);addEventListener('load',()=>{wrapBridge();paint()});document.addEventListener('click',()=>setTimeout(paint,0));new MutationObserver(()=>requestAnimationFrame(paint)).observe(document.documentElement,{childList:true,subtree:true});
+ let syncing=false,lastSync='';async function refresh(){const name=document.querySelector('.practice-feature-lead h2')?.textContent?.trim()||'';if(!name||name==='Choose A Player'||syncing)return;const focus=currentPublished(read(),name),key=name+'|'+String(focus?.publishedAt||'');if(!focus||key===lastSync)return;syncing=true;try{if(await syncRemote(name)){document.querySelector('[data-published-observation-options]')?.remove();document.querySelector('[data-published-focus-drills]')?.remove();paint()}lastSync=key}finally{syncing=false}}
+ let tries=0;const timer=setInterval(()=>{tries++;wrapBridge();paint();refresh();if(tries>120)clearInterval(timer)},250);addEventListener('load',()=>{wrapBridge();paint();refresh()});document.addEventListener('click',()=>setTimeout(()=>{paint();refresh()},0));new MutationObserver(()=>requestAnimationFrame(()=>{paint();refresh()})).observe(document.documentElement,{childList:true,subtree:true});
 })();
