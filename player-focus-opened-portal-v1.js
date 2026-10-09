@@ -3,31 +3,33 @@
  const portalId=new URLSearchParams(location.search).get('portal');if(!portalId)return;
  let busy=false,pending=false;
  const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+ async function ready(){
+  for(let attempt=0;attempt<40;attempt++){
+   const fb=window.firebase,store=fb?.firestore?.(),auth=fb?.auth?.();
+   if(store&&auth){
+    if(auth.currentUser)return {fb,store,user:auth.currentUser};
+    await new Promise(resolve=>{let done=false;const finish=()=>{if(done)return;done=true;try{off?.()}catch(_){}resolve()};let off;try{off=auth.onAuthStateChanged(()=>finish(),()=>finish())}catch(_){finish()}setTimeout(finish,250)});
+    if(auth.currentUser)return {fb,store,user:auth.currentUser};
+   }
+   await wait(250);
+  }
+  return null;
+ }
  async function record(){
   if(busy){pending=true;return}busy=true;
   try{
-   const fb=window.firebase;
-   for(let attempt=0;attempt<20;attempt++){
-    const store=fb?.firestore?.(),user=fb?.auth?.().currentUser;
-    if(store&&user){
-     const ref=store.collection('playerPortals').doc(portalId),snap=await ref.get();
-     if(!snap.exists)return;
-     const data=snap.data()||{},published=data.focus?.publishedAt;
-     if(!published)return;
-     const openedAt=new Date().toISOString();
-     await ref.update({focusOpenedPublishedAt:published,focusOpenedAt:openedAt,updatedAt:fb.firestore.FieldValue.serverTimestamp()});
-     return;
-    }
-    await wait(250);
-   }
-   console.error('HotB could not record Player Focus opened receipt because portal authentication was not ready.');
+   const ctx=await ready();if(!ctx)throw new Error('portal authentication was not ready');
+   const {fb,store}=ctx,ref=store.collection('playerPortals').doc(portalId),snap=await ref.get();
+   if(!snap.exists)return;
+   const data=snap.data()||{},published=data.focus?.publishedAt;if(!published)return;
+   const openedAt=new Date().toISOString();
+   await ref.update({focusOpenedPublishedAt:published,focusOpenedAt:openedAt,updatedAt:fb.firestore.FieldValue.serverTimestamp()});
+   const verify=await ref.get(),saved=verify.data()||{};
+   if(String(saved.focusOpenedPublishedAt||'')!==String(published)||!saved.focusOpenedAt)throw new Error('opened receipt did not persist');
   }catch(error){console.error('HotB could not record Player Focus opened receipt.',error)}finally{busy=false;if(pending){pending=false;setTimeout(record,100)}}
  }
- function focusVisible(){
-  const focusButton=document.querySelector('[data-portal-view="focus"]');
-  return !!focusButton&&(focusButton.getAttribute('aria-current')==='page'||document.body.textContent.includes('MY FOCUS'));
- }
- document.addEventListener('click',event=>{if(event.target?.closest?.('[data-portal-view="focus"]'))setTimeout(record,150)},true);
- addEventListener('pageshow',()=>{if(focusVisible())setTimeout(record,300)});
- document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&focusVisible())setTimeout(record,300)});
+ function onFocus(){setTimeout(record,100)}
+ document.addEventListener('click',event=>{if(event.target?.closest?.('[data-portal-view="focus"]'))onFocus()},true);
+ addEventListener('pageshow',()=>setTimeout(record,500));
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(record,500)});
 })();
