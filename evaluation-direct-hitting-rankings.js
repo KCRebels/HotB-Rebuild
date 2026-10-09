@@ -2,6 +2,10 @@
  const app=document.querySelector('#app');
  if(!app)return;
 
+ // Do not touch #evalSelect. The coach app owns player selection and the full
+ // Evaluation rerender. Any helper interception here can mix one player's
+ // header with another player's metrics.
+
  function wirePitchControls(){
   document.querySelectorAll('.eval-app .pitcher-stat[data-pitch-ranking]').forEach(card=>{
    card.onpointerup=event=>{
@@ -13,26 +17,8 @@
   });
  }
 
- // The coach app owns the Evaluation player state. On some cached builds an older
- // ranking helper could interfere before the select's native onchange completed.
- // Run that existing native handler exactly once, before any helper/bubble listeners.
- app.addEventListener('change',event=>{
-  const target=event.target instanceof Element?event.target:null;
-  if(!target)return;
-  if(target.id==='evalSelect'){
-   const nativeHandler=target.onchange;
-   if(typeof nativeHandler==='function'){
-    event.stopImmediatePropagation();
-    nativeHandler.call(target,event);
-    setTimeout(wirePitchControls,0);
-   }
-   return;
-  }
-  if(['evalCustomStart','evalCustomEnd'].includes(target.id))setTimeout(wirePitchControls,0);
- },true);
-
- // HotB+, RP, and HP/Reach use the app's own full-roster ranking modal. Clicking
- // anywhere on the summary tile (except its guide title) forwards to its native ALL control.
+ // Summary cards only: forward a card tap to the native ALL ranking control.
+ // This does not calculate, rename, move, or rewrite any Evaluation metric.
  app.addEventListener('click',event=>{
   const target=event.target instanceof Element?event.target:null;
   if(!target)return;
