@@ -1965,7 +1965,13 @@ function heatStyles(values,color){
 }
 function createGame(opponent,pitcherName,pitcherNumber,order,scrimmage=false){
  const allowed=new Set(competitionRoster().map(player=>player.name));
- order=[...new Set((order||[]).filter(name=>allowed.has(name)))];
+ const seen=new Set();
+ order=(order||[]).filter(name=>{
+  if(name==='Guest')return true;
+  if(!allowed.has(name)||seen.has(name))return false;
+  seen.add(name);
+  return true;
+ });
  if(!order.length)return null;
  const openingPitcher={name:pitcherName,number:pitcherNumber,enteredAt:Date.now(),pitchIndex:0};
  const g={
@@ -3548,7 +3554,7 @@ function practicePage(){
  </div>${reportsTestNav()}`;
 }
 function newGameView(){
- const opts=competitionRoster().map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('');
+ const opts=competitionRoster().map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('')+'<option value="Guest">Guest</option>';
  const teams=[...new Set(db.teams||[])].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
  const pitchers=[...(db.pitchers||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'}));
  const rows=Array.from({length:13},(_,i)=>`<div class="batting-row"><div class="batting-num">${i+1}</div>
@@ -7048,7 +7054,7 @@ function bindNew(){
    const current=selections[i];
    const used=new Set(selections.filter((v,j)=>j!==i&&v));
    const available=competitionRoster().filter(r=>!used.has(r.name));
-   s.innerHTML=`<option value="">Select hitter</option>${available.map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('')}`;
+   s.innerHTML=`<option value="">Select hitter</option>${available.map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('')}<option value="Guest">Guest</option>`;
    s.value=current;
   });
   const vals=selections.filter(Boolean);
