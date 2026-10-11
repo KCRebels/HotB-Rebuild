@@ -27,14 +27,15 @@ function pointsDelta(recent,season,key){if(recent==null||season==null)return 0;r
 function statusHtml(d,invert){if(!d)return'<div class="approved-portal-trend-status even"><span class="approved-portal-trend-even">EVEN</span></div>';const good=invert?d<0:d>0;return `<div class="approved-portal-trend-status ${good?'good':'bad'}"><span class="approved-portal-trend-arrow">${good?'↑':'↓'}</span><span class="approved-portal-trend-delta">${d>0?'+':'−'}${Math.abs(d)}</span></div>`}
 function decorate(){
  ensureStyle();
- const table=document.querySelector('.pem-trend-table');if(!table)return;
+ const table=document.querySelector('.pem-trend-table');if(!table||table.dataset.approvedPortalComplete==='1')return;
  const panel=table.closest('.pem-panel');if(!panel)return;panel.dataset.approvedPortalTrends='1';
  const cells=[...table.children];if(cells.length<8)return;
  cells[0].textContent='MET';
  const rows=[];
- for(let row=4;row<cells.length;row+=4){const info=metricInfo(cells[row]?.textContent),v15=directText(cells[row+1])||'—',v30=directText(cells[row+2])||'—',vs=directText(cells[row+3])||'—',season=numeric(vs,info.key),d15=pointsDelta(numeric(v15,info.key),season,info.key),d30=pointsDelta(numeric(v30,info.key),season,info.key);cells[row].textContent=info.label;rows.push({...info,v15,v30,vs,d15,d30});[[1,v15,d15],[2,v30,d30],[3,vs,0]].forEach(([offset,value,d])=>{const cell=cells[row+offset];cell.innerHTML=`<div class="approved-portal-trend-cell">${statusHtml(d,info.invert)}<div class="approved-portal-trend-value">${value}</div></div>`;cell.dataset.approvedPortalDecorated='1'})}
+ for(let row=4;row<cells.length;row+=4){const info=metricInfo(cells[row]?.textContent),v15=directText(cells[row+1])||'—',v30=directText(cells[row+2])||'—',vs=directText(cells[row+3])||'—',season=numeric(vs,info.key),d15=pointsDelta(numeric(v15,info.key),season,info.key),d30=pointsDelta(numeric(v30,info.key),season,info.key);cells[row].textContent=info.label;rows.push({...info,v15,v30,vs,d15,d30});[[1,v15,d15],[2,v30,d30],[3,vs,0]].forEach(([offset,value,d])=>{const cell=cells[row+offset];cell.innerHTML=`<div class="approved-portal-trend-cell">${statusHtml(d,info.invert)}<div class="approved-portal-trend-value">${value}</div></div>`})}
  const up=[],watch=[];rows.forEach(r=>{if(!r.d15)return;const good=r.invert?r.d15<0:r.d15>0;(good?up:watch).push(`${r.label} ${r.d15>0?'+':'−'}${Math.abs(r.d15)} pts`)});
  const cards=panel.querySelectorAll('.pem-trend-card span');if(cards[0])cards[0].innerHTML=up.length?up.slice(0,3).join('<br>'):'No clear upward trend yet';if(cards[1])cards[1].innerHTML=watch.length?watch.slice(0,2).join('<br>'):'No declining trend flagged';
+ table.dataset.approvedPortalComplete='1';
 }
 let queued=false;function queue(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;decorate()})}
 new MutationObserver(queue).observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
