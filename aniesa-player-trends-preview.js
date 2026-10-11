@@ -10,7 +10,7 @@ function ensureStyle(){
  style.id=STYLE_ID;
  style.textContent=`
  .bpt-panel[data-aniesa-preview="1"] .bpt-table{
-   grid-template-columns:1.25fr repeat(3,1fr)!important;
+   grid-template-columns:1.05fr repeat(3,1fr)!important;
    gap:0!important;
    background:#fff!important;
    border:2px solid #111!important;
@@ -64,14 +64,14 @@ function ensureStyle(){
  .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-delta{font-size:18px;line-height:1;font-weight:950;white-space:nowrap}
  .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-even{font-size:11px;letter-spacing:.02em;font-weight:950}
  .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-value{
-   display:flex;align-items:center;justify-content:center;background:#fff;color:#111827;font-size:21px;font-weight:950;white-space:nowrap;
+   display:flex;align-items:center;justify-content:center;background:#fff;color:#111827;font-size:19px;font-weight:950;white-space:nowrap;
  }
  @media (max-width:430px){
    .bpt-panel[data-aniesa-preview="1"] .bpt-cell{min-height:66px!important}
    .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-cell{min-height:66px}
    .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-arrow{font-size:25px}
    .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-delta{font-size:17px}
-   .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-value{font-size:20px}
+   .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-value{font-size:18px}
  }
  `;
  document.head.appendChild(style);
