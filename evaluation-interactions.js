@@ -38,6 +38,7 @@
  document.addEventListener('click',event=>{if(event.target.closest('[data-close],#uploadPitchingStats,#pitchingStatsFile,[data-info]'))setTimeout(refresh,0)},true);
  document.addEventListener('change',event=>{if(event.target.closest('.eval-app')||event.target.matches('#pitchingStatsFile'))setTimeout(refresh,0)},true);
  window.addEventListener('pageshow',refresh);
+ if(!new URLSearchParams(location.search).has('portal')&&!document.querySelector('script[data-hotb-all-trends]')){const s=document.createElement('script');s.src='coach-player-trends-approved.js?v=20261011-allplayers1';s.async=false;s.dataset.hotbAllTrends='1';document.head.appendChild(s)}
  if(applySpreadsheetPitchingV2()){location.reload();return}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refresh,{once:true});else refresh();
 })();
