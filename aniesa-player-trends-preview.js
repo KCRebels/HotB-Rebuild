@@ -58,8 +58,8 @@ function ensureStyle(){
    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
    border-right:1px solid #aeb4ba;background:#eef0f2;color:#5b6168;font-weight:950;line-height:1;
  }
- .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-status.up{background:#e6f6e9;color:#128536}
- .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-status.down{background:#fde8e8;color:#c71f27}
+ .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-status.good{background:#e6f6e9;color:#128536}
+ .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-status.bad{background:#fde8e8;color:#c71f27}
  .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-arrow{font-size:27px;line-height:.9;font-weight:950}
  .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-delta{font-size:18px;line-height:1;font-weight:950;white-space:nowrap}
  .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-even{
@@ -93,13 +93,14 @@ function directText(cell){
  return '';
 }
 
-function statusFromCell(cell,isSeason){
+function statusFromCell(cell,isSeason,metricLabel){
  if(isSeason)return {kind:'even',delta:''};
  const badge=cell.querySelector('.bpt-change');
  const raw=String(badge?.textContent||'').replace(/PTS/gi,'').trim();
  if(!raw||/EVEN/i.test(raw))return {kind:'even',delta:''};
- if(raw.startsWith('+'))return {kind:'up',delta:raw.replace(/\s+/g,'')};
- if(raw.startsWith('−')||raw.startsWith('-'))return {kind:'down',delta:'−'+raw.replace(/^[−-]/,'').replace(/\s+/g,'')};
+ const isKPercent=/^K\s*%$/i.test(String(metricLabel||'').trim());
+ if(raw.startsWith('+'))return {kind:isKPercent?'bad':'good',direction:'up',delta:raw.replace(/\s+/g,'')};
+ if(raw.startsWith('−')||raw.startsWith('-'))return {kind:isKPercent?'good':'bad',direction:'down',delta:'−'+raw.replace(/^[−-]/,'').replace(/\s+/g,'')};
  return {kind:'even',delta:''};
 }
 
@@ -122,10 +123,11 @@ function decorate(){
   if(cell.dataset.aniesaDecorated==='1')continue;
   const value=directText(cell)||'—';
   const isSeason=i%4===3;
-  const status=statusFromCell(cell,isSeason);
+  const metricLabel=String(cells[i-(i%4)]?.textContent||'').trim();
+  const status=statusFromCell(cell,isSeason,metricLabel);
   const statusHtml=status.kind==='even'
    ?'<div class="aniesa-trend-status even"><span class="aniesa-trend-even">EVEN</span></div>'
-   :`<div class="aniesa-trend-status ${status.kind}"><span class="aniesa-trend-arrow">${status.kind==='up'?'↑':'↓'}</span><span class="aniesa-trend-delta">${status.delta}</span></div>`;
+   :`<div class="aniesa-trend-status ${status.kind}"><span class="aniesa-trend-arrow">${status.direction==='up'?'↑':'↓'}</span><span class="aniesa-trend-delta">${status.delta}</span></div>`;
   cell.innerHTML=`<div class="aniesa-trend-cell">${statusHtml}<div class="aniesa-trend-value">${value}</div></div>`;
   cell.dataset.aniesaDecorated='1';
  }
