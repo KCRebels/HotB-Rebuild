@@ -1,0 +1,8 @@
+/* Eval Team Rankings: keep the full ranking list above HotB's fixed bottom navigation. */
+@media (max-width: 720px){
+  .eval-app + .modal-backdrop .ranking-modal,
+  .modal-backdrop .ranking-modal{
+    max-height:calc(100svh - 96px)!important;
+    transform:translateY(-24px);
+  }
+}
