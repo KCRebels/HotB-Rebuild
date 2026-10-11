@@ -2,7 +2,8 @@
 // Keep only the 10 most recent live-game undo snapshots so long games cannot grow the
 // full-game snapshot history until iOS PWA localStorage is exhausted.
 (() => {
-  const DB_KEY = 'hotb_rebuild_v1';
+  // Must match the production DBKEY used by app-coach-rebels-portals-v10.js.
+  const DB_KEY = 'hotbRebuildDbV1';
   const UNDO_LIMIT = 10;
   const nativeSetItem = Storage.prototype.setItem;
 
@@ -50,7 +51,9 @@
         }
       }
 
-      console.warn('[HotB] localStorage full while saving game undo history; render preserved.');
+      // If the DB still cannot be written with no Undo history, preserve the current
+      // rendered game instead of letting a reconstructable Undo cache freeze the UI.
+      console.warn('[HotB] localStorage full after removing live-game undo history; render preserved.');
       return undefined;
     }
   };
