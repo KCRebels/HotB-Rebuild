@@ -64,7 +64,7 @@ function ensureStyle(){
  .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-delta{font-size:18px;line-height:1;font-weight:950;white-space:nowrap}
  .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-even{
    display:inline-block;
-   font-size:11px;line-height:1;font-weight:950;letter-spacing:.04em;
+   font-size:13px;line-height:1;font-weight:950;letter-spacing:.04em;
    white-space:nowrap;
    transform:rotate(-90deg);
    transform-origin:center;
@@ -78,7 +78,7 @@ function ensureStyle(){
    .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-arrow{font-size:25px}
    .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-delta{font-size:17px}
    .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-value{font-size:18px}
-   .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-even{font-size:10px}
+   .bpt-panel[data-aniesa-preview="1"] .aniesa-trend-even{font-size:12px}
  }
  `;
  document.head.appendChild(style);
