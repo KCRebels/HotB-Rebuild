@@ -43,5 +43,9 @@
   });
  }
 
+ if(typeof document!=='undefined'&&typeof location!=='undefined'&&new URLSearchParams(location.search).has('portal')&&!document.querySelector('script[data-hotb-portal-trends]')){
+  const s=document.createElement('script');s.src='player-portal-trends-approved.js?v=20261011-allplayers1';s.async=false;s.dataset.hotbPortalTrends='1';document.head.appendChild(s);
+ }
+
  return{buildStandaloneLinkMessage,composeSmsUrl,cleanWebUrl,guestPracticeMessage,recruitingProfileMessage};
 });
