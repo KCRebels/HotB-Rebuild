@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#9e1821"><title>Ask the Librarian</title><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f5f7f6}iframe{display:block;width:100%;height:100%;border:0;background:#f5f7f6}</style></head><body><iframe id="librarian" title="Ask the Librarian"></iframe><script>
+(()=>{
+ const params=new URLSearchParams(location.search),ret=params.get('return')||'';
+ const frame=document.getElementById('librarian');
+ frame.src='brooklyn-librarian-preview.html?v=20261012-librarian-title1'+(ret?'&return='+encodeURIComponent(ret):'');
+ function patch(){
+  try{
+   const d=frame.contentDocument;if(!d)return;
+   d.title='Ask the Librarian';
+   const title=d.getElementById('title');if(title)title.textContent='Ask the Librarian';
+   d.querySelectorAll('h1,h2,label,button,span').forEach(el=>{
+    const t=(el.textContent||'').trim();
+    if(/^Ask\s+The\s+Library$/i.test(t))el.textContent='Ask the Librarian';
+   });
+  }catch(_){}
+ }
+ frame.addEventListener('load',()=>{patch();setTimeout(patch,50);setTimeout(patch,250)});
+})();
+</script></body></html>
