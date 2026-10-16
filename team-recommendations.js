@@ -26,3 +26,65 @@ function analyze(db,roster,now=new Date()){
 }
 window.HotBTeamRecommendations={analyze,seasonLabel,seasonMeta,dead};
 })();
+
+/* Good Trends presentation patch — 2026-10-15
+   Good Trends are about change, not just current level. Each player row is ranked
+   by improvement amount and shows baseline → current plus the point change. */
+(()=>{'use strict';
+ const api=window.HotBTeamRecommendations;
+ if(!api?.analyze||api.__goodTrendPresentationV1)return;
+ const originalAnalyze=api.analyze;
+ api.__goodTrendPresentationV1=true;
+ api.analyze=function(...args){
+  const out=originalAnalyze.apply(this,args);
+  try{
+   (out.good||[]).forEach(item=>{
+    (item.players||[]).forEach(player=>{
+     const current=Number(player.value),delta=Number(player.delta);
+     if(Number.isFinite(current)&&Number.isFinite(delta))player.baseline=current-(delta/100);
+    });
+    item.players=(item.players||[]).slice().sort((a,b)=>{
+     const ad=Math.abs(Number(a.delta)),bd=Math.abs(Number(b.delta));
+     if(Number.isFinite(ad)&&Number.isFinite(bd)&&bd!==ad)return bd-ad;
+     return String(a.name||'').localeCompare(String(b.name||''));
+    });
+   });
+   window.__HOTB_LAST_GOOD_TRENDS__=out.good||[];
+  }catch(_){ }
+  return out;
+ };
+ const pct=value=>Math.round(Number(value)*100)+'%';
+ const pts=delta=>(Number(delta)>=0?'+':'−')+Math.abs(Math.round(Number(delta)))+' pts';
+ function applyGoodTrendRows(){
+  const lead=[...document.querySelectorAll('.practice-feature-lead h2')].find(el=>/^(Good Trends|Build On This)$/i.test((el.textContent||'').trim()));
+  if(!lead)return;
+  const main=lead.closest('main')||document;
+  const sections=[...main.querySelectorAll('.focus-evidence-section')];
+  const trends=window.__HOTB_LAST_GOOD_TRENDS__||[];
+  sections.forEach((section,index)=>{
+   const trend=trends[index];
+   if(!trend?.players?.length)return;
+   const cards=[...section.querySelectorAll('button.focus-evidence-player-card')];
+   if(!cards.length)return;
+   const cardByName=new Map(cards.map(card=>[(card.querySelector('b')?.textContent||'').trim(),card]));
+   trend.players.forEach(player=>{
+    const card=cardByName.get(String(player.name||'').trim());
+    if(!card)return;
+    const span=card.querySelector('span');
+    const current=Number(player.value),delta=Number(player.delta),baseline=Number(player.baseline);
+    if(span&&Number.isFinite(current)&&Number.isFinite(delta)&&Number.isFinite(baseline)){
+     span.textContent=pct(baseline)+' → '+pct(current)+'  ('+pts(delta)+')';
+     span.style.whiteSpace='nowrap';
+     span.style.fontSize='12px';
+     span.style.fontWeight='900';
+    }
+    section.appendChild(card);
+   });
+  });
+ }
+ let queued=false;
+ const queue=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;applyGoodTrendRows()})};
+ new MutationObserver(queue).observe(document.documentElement,{childList:true,subtree:true});
+ document.addEventListener('click',queue,true);
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',queue,{once:true});else queue();
+})();
