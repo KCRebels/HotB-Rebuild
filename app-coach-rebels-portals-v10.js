@@ -3851,13 +3851,15 @@ function hitModal(kind){
 }
 function reportBaseGames(){
  if(reportMode==='current')return currentGame()?[currentGame()]:[];
+ // A coach may open a saved scrimmage directly for review, but scrimmages are
+ // never part of aggregate reports, selections, saved groups or All Games.
  if(reportMode==='game')return db.savedGames.filter(game=>game.id===reportGameId);
- if(reportMode==='selection')return db.savedGames.filter(game=>reportSelectedGameIds.includes(game.id));
+ if(reportMode==='selection')return db.savedGames.filter(game=>!game.scrimmage&&reportSelectedGameIds.includes(game.id));
  if(reportMode==='group'){
   const group=db.gameGroups.find(item=>item.id===reportGroupId);
-  return db.savedGames.filter(game=>(group?.gameIds||[]).includes(game.id));
+  return db.savedGames.filter(game=>!game.scrimmage&&(group?.gameIds||[]).includes(game.id));
  }
- return db.savedGames;
+ return db.savedGames.filter(game=>!game.scrimmage);
 }
 function reportGames(){
  const games=reportBaseGames();
@@ -3931,7 +3933,7 @@ function zoneReport(){
  return `<section class="report-heat"><h3>PITCH LOCATION HEAT CHART</h3>${filters}<div class="report-heat-toggle segmented" aria-label="Heat chart value"><button class="${reportHeatDisplay==='COUNT'?'active':''}" data-heat-display="COUNT">COUNT</button><button class="${reportHeatDisplay==='%'?'active':''}" data-heat-display="%">%</button></div><div class="zone-layout report-zone-layout">${['T1','T2','L1','L2'].map(z=>cell(z)).join('')}<div class="core-grid">${['C1','C2','C3','C4'].map(z=>cell(z,'core')).join('')}</div>${['R1','R2','B1','B2'].map(z=>cell(z)).join('')}</div><p class="report-heat-summary"><b>${summaryLabel}</b> — ${located}${reportHeatDisplay==='%'?' total':''} pitch${located===1?'':'es'}</p><div class="heat-key"><span><b>KS</b> Strike Swinging</span><span><b>KL</b> Strike Looking</span><span><b>H4O</b> Hard Hit Ball for an Out</span></div></section>`;
 }
 
-function gameChoiceList(selectedIds){return db.savedGames.map(game=>`<label class="game-choice"><input type="checkbox" value="${game.id}" ${selectedIds.includes(game.id)?'checked':''}><span><b>${new Date(game.date).toLocaleDateString()} · ${esc(game.opponent||'Opponent')}</b><small>${(game.plateAppearances||[]).length} PA</small></span></label>`).join('')}
+function gameChoiceList(selectedIds){return db.savedGames.filter(game=>!game.scrimmage).map(game=>`<label class="game-choice"><input type="checkbox" value="${game.id}" ${selectedIds.includes(game.id)?'checked':''}><span><b>${new Date(game.date).toLocaleDateString()} · ${esc(game.opponent||'Opponent')}</b><small>${(game.plateAppearances||[]).length} PA</small></span></label>`).join('')}
 function gameGroupCard(group){
  const existing=(group.gameIds||[]).filter(id=>db.savedGames.some(game=>game.id===id));
  return `<article class="game-group-card"><div><b>${esc(group.name)}</b><span>${existing.length} game${existing.length===1?'':'s'}</span></div><div class="saved-game-actions"><button class="btn black" data-open-group="${group.id}">Report</button><button class="btn" data-edit-group="${group.id}">Edit</button><button class="btn" data-rename-group="${group.id}">Rename</button><button class="btn red" data-delete-group="${group.id}">Delete Group</button></div></article>`;
