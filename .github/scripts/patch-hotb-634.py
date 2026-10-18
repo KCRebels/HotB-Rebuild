@@ -1,3 +1,4 @@
+# HotB 634 release trigger
 from pathlib import Path
 
 app=Path('app-coach-rebels-portals-v10.js')
