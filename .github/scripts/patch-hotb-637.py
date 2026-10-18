@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# HotB 637: keep scrimmages reviewable individually while excluding them from aggregate reports.
 app=Path('app-coach-rebels-portals-v10.js')
 s=app.read_text()
 old="""function reportBaseGames(){
