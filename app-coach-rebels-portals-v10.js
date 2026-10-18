@@ -3598,16 +3598,18 @@ function liveView(){
  const chartName=g.previewNext?nextName:h.name;
  const activeNames=new Set(g.hittersUsed||g.battingOrder);
  const allChartHitterPitches=g.pitches.filter(p=>p.hitter===chartName);
+ const currentPitcherChartHitterPitches=currentPitcherPitches(g).filter(p=>p.hitter===chartName);
  let sourcePitches;
  if(g.zoneScope==='TEAM'&&!g.previewNext) sourcePitches=currentPitcherPitches(g).filter(p=>activeNames.has(p.hitter));
- else if(g.previewNext) sourcePitches=allChartHitterPitches;
+ else if(g.previewNext) sourcePitches=currentPitcherChartHitterPitches;
  else if(/^AB\d+$/.test(g.historyTab||'')){
    const n=Number(g.historyTab.slice(2)), completed=aps[n-1];
    sourcePitches=completed?allChartHitterPitches.filter(p=>p.pa===completed.pa):[];
  }else if(g.historyTab==='ALL') sourcePitches=allChartHitterPitches;
  else sourcePitches=allChartHitterPitches.filter(p=>p.pa===g.paNumber);
  const allActivePitches=g.pitches.filter(p=>activeNames.has(p.hitter));
- const firstPitches=allActivePitches.filter((p,i,a)=>i===0||p.pa!==a[i-1].pa||p.hitter!==a[i-1].hitter);
+ const currentPitcherActivePitches=currentPitcherPitches(g).filter(p=>activeNames.has(p.hitter));
+ const firstPitches=currentPitcherActivePitches.filter((p,i,a)=>i===0||p.pa!==a[i-1].pa||p.hitter!==a[i-1].hitter);
  const statsMode=g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL';
  const percentMode=!g.firstPitchView&&(g.zoneScope==='TEAM'||g.previewNext||(g.historyTab==='ALL'&&(g.allView||'DOTS')==='PCT'));
  const filter=g.zoneFilter||'K';
