@@ -2087,6 +2087,11 @@ function competitionRoster(){
  return (db.roster||[]).filter(player=>rebelsNames.has(String(player?.name||'').trim().toLowerCase()));
 }
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
+function currentPitcherStartIndex(g=currentGame()){
+ const used=g?.pitchersUsed||[];
+ return Number(used.length?used[used.length-1]?.pitchIndex:0)||0;
+}
+function currentPitcherPitches(g=currentGame()){return (g?.pitches||[]).slice(currentPitcherStartIndex(g))}
 const undoViewKeys=['historyTab','allView','zoneScope','zoneFilter','previewNext','firstPitchView','showAi','pendingZone','pitchType','plan'];
 function gameWithoutUndoViews(game){
  const actionGame=structuredClone(game||{});
@@ -3594,7 +3599,7 @@ function liveView(){
  const activeNames=new Set(g.hittersUsed||g.battingOrder);
  const allChartHitterPitches=g.pitches.filter(p=>p.hitter===chartName);
  let sourcePitches;
- if(g.zoneScope==='TEAM'&&!g.previewNext) sourcePitches=g.pitches.filter(p=>activeNames.has(p.hitter));
+ if(g.zoneScope==='TEAM'&&!g.previewNext) sourcePitches=currentPitcherPitches(g).filter(p=>activeNames.has(p.hitter));
  else if(g.previewNext) sourcePitches=allChartHitterPitches;
  else if(/^AB\d+$/.test(g.historyTab||'')){
    const n=Number(g.historyTab.slice(2)), completed=aps[n-1];
@@ -3732,21 +3737,11 @@ function aiStyle(playerOrPitch){
  return ['R','L','SL'].includes(style)?style:'R';
 }
 function aiPitchRecords(g){
- const season=aiSeason(g),opponent=normalized(g.opponent),pitcherName=normalized(g.pitcherName),pitcherNumber=normalized(g.pitcherNumber);
- const games=[...db.savedGames,...(db.currentGame?[db.currentGame]:[])].filter(game=>
-  (game.id===g.id||aiSeason(game)===season)&&normalized(game.opponent)===opponent
- );
- const hasPitcher=game=>(game.pitches||[]).some(pitch=>normalized(pitch.pitcherName)===pitcherName&&normalized(pitch.pitcherNumber)===pitcherNumber);
- const prior=games.filter(game=>game.id!==g.id&&hasPitcher(game)).sort((a,b)=>new Date(b.date)-new Date(a.date));
- const recentIds=new Set(prior.slice(0,3).map(game=>game.id));
- const records=[];
- games.forEach(game=>{
-  const paIndexes=new Map();
-  (game.pitches||[]).forEach(pitch=>{
-   if(normalized(pitch.pitcherName)!==pitcherName||normalized(pitch.pitcherNumber)!==pitcherNumber)return;
-   const paKey=`${pitch.hitter}::${pitch.pa}`,paPitchIndex=paIndexes.get(paKey)||0;paIndexes.set(paKey,paPitchIndex+1);
-   records.push({pitch,game,paPitchIndex,gameWeight:game.id===g.id?3:recentIds.has(game.id)?1.5:.75});
-  });
+ const pitcherName=normalized(g.pitcherName),pitcherNumber=normalized(g.pitcherNumber),records=[],paIndexes=new Map();
+ currentPitcherPitches(g).forEach(pitch=>{
+  if(normalized(pitch.pitcherName)!==pitcherName||normalized(pitch.pitcherNumber)!==pitcherNumber)return;
+  const paKey=`${pitch.hitter}::${pitch.pa}`,paPitchIndex=paIndexes.get(paKey)||0;paIndexes.set(paKey,paPitchIndex+1);
+  records.push({pitch,game:g,paPitchIndex,gameWeight:3});
  });
  return records;
 }
