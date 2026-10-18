@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 app=Path('app-coach-rebels-portals-v10.js')
 s=app.read_text()
@@ -52,20 +53,22 @@ app.write_text(s)
 
 pwa=Path('pwa-update.js')
 s=pwa.read_text()
-if "BUILD_VERSION='2026.10.10.622'" not in s: raise SystemExit('PWA build 622 anchor not found')
-s=s.replace("BUILD_VERSION='2026.10.10.622'","BUILD_VERSION='2026.10.18.623'",1)
-s=s.replace("launch','622'","launch','623'",1)
+s,n=re.subn(r"const BUILD_VERSION='[^']+'","const BUILD_VERSION='2026.10.18.634'",s,count=1)
+if n!=1: raise SystemExit('PWA build version anchor not found')
+s,n=re.subn(r"u\.searchParams\.set\('launch','[^']+'\)","u.searchParams.set('launch','634')",s,count=1)
+if n!=1: raise SystemExit('PWA launch anchor not found')
 pwa.write_text(s)
 
 index=Path('index.html')
 s=index.read_text()
-if 'app-coach-rebels-portals-v10.js?v=20261010-gameguest622' not in s: raise SystemExit('coach bundle cache anchor not found')
-s=s.replace('app-coach-rebels-portals-v10.js?v=20261010-gameguest622','app-coach-rebels-portals-v10.js?v=20261018-pitcherreset623',1)
-s=s.replace('pwa-update.js?v=20261010-622','pwa-update.js?v=20261018-623',1)
+s,n=re.subn(r'app-coach-rebels-portals-v10\.js\?v=[^"\']+','app-coach-rebels-portals-v10.js?v=20261018-pitcherreset634',s,count=1)
+if n!=1: raise SystemExit('coach bundle cache anchor not found')
+s,n=re.subn(r'pwa-update\.js\?v=[^"\']+','pwa-update.js?v=20261018-634',s,count=1)
+if n!=1: raise SystemExit('PWA script cache anchor not found')
 index.write_text(s)
 
 sw=Path('service-worker-v618.js')
 s=sw.read_text()
-if "const CACHE='hotb-app-2026.10.10.622';" not in s: raise SystemExit('service worker cache 622 anchor not found')
-s=s.replace("const CACHE='hotb-app-2026.10.10.622';","const CACHE='hotb-app-2026.10.18.623';",1)
+s,n=re.subn(r"const CACHE='hotb-app-[^']+';","const CACHE='hotb-app-2026.10.18.634';",s,count=1)
+if n!=1: raise SystemExit('service worker cache anchor not found')
 sw.write_text(s)
