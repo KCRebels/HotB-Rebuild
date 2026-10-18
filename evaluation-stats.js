@@ -22,7 +22,16 @@
 
  function firstPitchStrikeRate(games,playerName){
   let strikes=0,total=0;
-  (games||[]).forEach(game=>{const seen=new Set();(game.pitches||[]).forEach(p=>{if(playerName&&p.hitter!==playerName)return;const key=plateAppearanceKey(p);if(seen.has(key))return;seen.add(key);total++;if(isStrikeResult(p.result))strikes++})});
+  const liveSingleGame=!playerName&&Array.isArray(games)&&games.length===1&&games[0]&&!games[0].ended;
+  (games||[]).forEach(game=>{
+   const seen=new Set(),used=game.pitchersUsed||[];
+   const activePitchIndex=liveSingleGame&&used.length?Number(used[used.length-1]?.pitchIndex||0):0;
+   (game.pitches||[]).forEach((p,index)=>{
+    if(liveSingleGame&&index<activePitchIndex)return;
+    if(playerName&&p.hitter!==playerName)return;
+    const key=plateAppearanceKey(p);if(seen.has(key))return;seen.add(key);total++;if(isStrikeResult(p.result))strikes++;
+   });
+  });
   return{strikes,total,rate:total?strikes/total:null};
  }
 
