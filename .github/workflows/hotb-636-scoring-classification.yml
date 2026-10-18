@@ -29,4 +29,4 @@ jobs:
           git commit -m "Fix FC outs and sacrifice RBI runner state" || exit 0
           git pull --rebase origin main
           git push origin main
-# trigger 636
+# trigger 636 release
