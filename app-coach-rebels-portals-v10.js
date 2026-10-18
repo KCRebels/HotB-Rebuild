@@ -2241,7 +2241,10 @@ function closePA(outcome,extra={}){
   firstPitchStrike,execution:execution.rate,executionSuccesses:execution.successes,executionAttempts:execution.attempts,ts:Date.now()
  };
  g.plateAppearances.push(pa);
- if(outcome==='HIT')g.runners=runnersAfterHit(g.runners,extra.hitType);
+ if(outcome==='HIT'){
+  g.runners=runnersAfterHit(g.runners,extra.hitType);
+  if(Number(extra.rbiCount)>0)g.runners=runnersAfterRBI(g.runners,extra.rbiCount);
+ }
  if(outcome==='BB'||outcome==='HBP')g.runners=batterToFirst(g.runners,{force:true});
  if(outcome==='E')g.runners=batterToFirst(g.runners,{force:true});
  if(outcome==='FC')g.runners=batterToFirst(g.runners);
