@@ -2250,7 +2250,8 @@ function closePA(outcome,extra={}){
  if(outcome==='FC')g.runners=batterToFirst(g.runners);
  if(outcome==='H4O'&&extra.rba)g.runners=runnersAfterRBA(g.runners);
  if(outcome==='H4O'&&Number(extra.rbiCount)>0)g.runners=runnersAfterRBI(g.runners,extra.rbiCount);
- const completedInning=g.inning,inningEnded=['H4O','K','SAC'].includes(outcome)&&recordOut(g);
+ if(outcome==='SAC'&&Number(extra.rbiCount)>0)g.runners=runnersAfterRBI(g.runners,extra.rbiCount);
+ const completedInning=g.inning,inningEnded=['H4O','K','SAC','FC'].includes(outcome)&&recordOut(g);
  g.balls=0;g.strikes=0;g.paNumber++;
  g.currentIdx=(g.currentIdx+1)%g.battingOrder.length;
  g.plan=planFor(g.battingOrder[g.currentIdx]);
