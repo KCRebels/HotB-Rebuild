@@ -1,0 +1,31 @@
+name: HotB 635 RBI runner state
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/patch-hotb-635.py'
+      - '.github/workflows/hotb-635-rbi-runner-state.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch HotB
+        run: python3 .github/scripts/patch-hotb-635.py
+      - name: Verify production bundle syntax
+        run: node --check app-coach-rebels-portals-v10.js
+      - name: Commit changes
+        run: |
+          git config user.name "KCRebels"
+          git config user.email "myeldiablo@yahoo.com"
+          git add app-coach-rebels-portals-v10.js pwa-update.js service-worker-v618.js
+          git commit -m "Fix RBI runner state after hits" || exit 0
+          git pull --rebase origin main
+          git push origin main
