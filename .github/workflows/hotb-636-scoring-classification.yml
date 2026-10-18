@@ -1,0 +1,32 @@
+name: HotB 636 scoring classification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/patch-hotb-636.py'
+      - '.github/workflows/hotb-636-scoring-classification.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch HotB
+        run: python3 .github/scripts/patch-hotb-636.py
+      - name: Verify production bundle syntax
+        run: node --check app-coach-rebels-portals-v10.js
+      - name: Commit changes
+        run: |
+          git config user.name "KCRebels"
+          git config user.email "myeldiablo@yahoo.com"
+          git add app-coach-rebels-portals-v10.js pwa-update.js service-worker-v618.js
+          git commit -m "Fix FC outs and sacrifice RBI runner state" || exit 0
+          git pull --rebase origin main
+          git push origin main
+# trigger 636
