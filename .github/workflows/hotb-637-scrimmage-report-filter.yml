@@ -1,4 +1,4 @@
-name: HotB 637 scrimmage report filter
+name: HotB production patch runner
 
 on:
   push:
@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   patch:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +26,8 @@ jobs:
         run: |
           git config user.name "KCRebels"
           git config user.email "myeldiablo@yahoo.com"
-          git add app-coach-rebels-portals-v10.js pwa-update.js service-worker-v618.js
-          git commit -m "Exclude scrimmages from aggregate reports" || exit 0
+          git add app-coach-rebels-portals-v10.js pwa-update.js service-worker-v620.js
+          git diff --cached --check
+          git commit -m "Fix Hailey player portal refresh guard" || exit 0
           git pull --rebase origin main
           git push origin main
