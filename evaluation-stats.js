@@ -76,9 +76,9 @@
 
  function countPerformance(pas,bucket){
   const matches=(pas||[]).filter(pa=>bucket==='6+'?Number(pa.pitchCount||0)>=6:String(pa.finalCount||'')===bucket);
-  let H=0,H4O=0,K=0;
-  matches.forEach(pa=>{const type=plateAppearanceType(pa);if(type.hit)H++;if(type.hitForOut)H4O++;if(type.strikeout)K++});
-  return{bucket,H,H4O,K,AVG:(H+H4O+K)?H/(H+H4O+K):0};
+  let H=0,H4O=0,K=0,AB=0;
+  matches.forEach(pa=>{const type=plateAppearanceType(pa);if(type.hit)H++;if(type.hitForOut)H4O++;if(type.strikeout)K++;if(type.atBat)AB++});
+  return{bucket,H,H4O,K,AB,AVG:AB?H/AB:0};
  }
 
  function normalizeHeatZone(zone){
@@ -127,7 +127,7 @@
  }
 
  function playerEvaluationData(db,playerName){
-  const games=[...(db?.savedGames||[]),...(db?.currentGame?[db.currentGame]:[])];
+  const games=[...(db?.savedGames||[]),...(db?.currentGame?[db.currentGame]:[])].filter(game=>!game?.scrimmage);
   const pitches=games.flatMap(game=>(game.pitches||[]).filter(p=>!playerName||p.hitter===playerName));
   const pas=games.flatMap(game=>(game.plateAppearances||[]).filter(pa=>!playerName||pa.hitter===playerName));
   return{games,pitches,pas};
