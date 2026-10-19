@@ -1141,6 +1141,10 @@ async function initCloud(){
     if(route==='home'||route==='portal')render();
     try{await loadCloudStatus()}catch(_){cloudMessage='Signed in. Cloud status will retry automatically.'}
     if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();
+    // Permanent player portals are cloud snapshots, so refresh them whenever the
+    // authenticated coach app opens. This repairs any stale weekend stats and
+    // makes future portal data self-healing after an interrupted game-end sync.
+    if(db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId))playerPortalRefreshPending=true;
     if(playerPortalRefreshPending)setTimeout(()=>setupPlayerPortals(false),0);
     setTimeout(recoverPublishedPlayerFocusReviewDates,0);
    }
@@ -7386,6 +7390,10 @@ function bindGameAction(){
    db.currentGame=null;
    modal=null;
    save();
+   // A completed official game changes every player's evaluation snapshot.
+   // Publish those updated stats to the permanent player portals immediately.
+   playerPortalRefreshPending=true;
+   setTimeout(()=>setupPlayerPortals(false),0);
    go('home');
  });
  $('#discardGame')?.addEventListener('click',()=>{modal='discardConfirm';render()});
