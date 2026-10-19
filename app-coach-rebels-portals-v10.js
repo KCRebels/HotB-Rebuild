@@ -1696,19 +1696,10 @@ async function setupPlayerPortals(fromButton=false){
  const timed=(promise,label,ms=8000)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+'-timeout')),ms))]);
  try{
   // Read every existing portal concurrently. The old refresh waited for 13
-  // Firestore reads one after another, so one slow mobile read could make the
-  // button appear frozen for a very long time.
-  // MAIN-TEAM PORTAL LOCK: Refresh may publish new player data, but it may
-  // never create or rotate a permanent Rebels portal credential.
-  const credentialReady=player=>!!player.portalId&&(player.name==='Hailey Marsh'||!!player.portalPin);
-  const missingCredential=players.find(player=>!credentialReady(player));
-  if(missingCredential)throw new Error('permanent-player-portal-locked-missing-credential:'+missingCredential.name);
-  for(const player of players){
-   // Hailey's verified permanent portal is intentionally the legacy no-PIN exception.
-   // Preserve that credential exactly as-is; never invent or rotate a PIN during refresh.
-   if(player.name==='Hailey Marsh')continue;
-   player.portalPinHash=await portalHash(player.portalId,player.portalPin);
-  }
+  // MAIN-TEAM PORTAL LOCK: stats-only refresh uses the existing permanent portal ID.
+  // A missing local PIN must not block evaluation publishing, and credentials are never rewritten here.
+  const missingPortal=players.find(player=>!player.portalId);
+  if(missingPortal)throw new Error('permanent-player-portal-locked-missing-id:'+missingPortal.name);
   // Write existing permanent portals in small independent batches. The full
   // 13-player evaluation payload can be large enough that one mobile Firestore
   // batch does not acknowledge within Safari's timeout window.
