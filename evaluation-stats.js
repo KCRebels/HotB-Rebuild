@@ -42,6 +42,11 @@
 
  function plateAppearanceType(pa){
   const outcome=String(pa?.outcome||'').toUpperCase();
+  const contactType=String(pa?.contactType||'').toUpperCase();
+  const rbiCount=Number(pa?.rbiCount??(pa?.rbi?1:0));
+  const recordedSac=outcome==='SAC'||Boolean(pa?.sac);
+  const inferredSacFly=outcome==='H4O'&&['FO','LO','PO'].includes(contactType)&&rbiCount>0;
+  const sacrifice=recordedSac||inferredSacFly;
   return{
    outcome,
    hit:outcome==='HIT',
@@ -51,9 +56,9 @@
    strikeout:outcome==='K',
    walk:outcome==='BB',
    hitByPitch:outcome==='HBP',
-   sacrifice:outcome==='SAC',
-   atBat:['HIT','H4O','E','FC','K'].includes(outcome),
-   contact:['HIT','H4O','E','FC'].includes(outcome),
+   sacrifice,
+   atBat:['HIT','H4O','E','FC','K'].includes(outcome)&&!sacrifice,
+   contact:['HIT','H4O','E','FC'].includes(outcome)&&!sacrifice,
    reach:['HIT','BB','HBP','E','FC'].includes(outcome)
   };
  }
