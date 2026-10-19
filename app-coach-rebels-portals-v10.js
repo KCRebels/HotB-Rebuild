@@ -1696,9 +1696,13 @@ async function setupPlayerPortals(fromButton=false){
   // button appear frozen for a very long time.
   // MAIN-TEAM PORTAL LOCK: Refresh may publish new player data, but it may
   // never create or rotate a permanent Rebels portal credential.
-  const missingCredential=players.find(player=>!player.portalId||!player.portalPin);
+  const credentialReady=player=>!!player.portalId&&(player.name==='Hailey Marsh'||!!player.portalPin);
+  const missingCredential=players.find(player=>!credentialReady(player));
   if(missingCredential)throw new Error('permanent-player-portal-locked-missing-credential:'+missingCredential.name);
   for(const player of players){
+   // Hailey's verified permanent portal is intentionally the legacy no-PIN exception.
+   // Preserve that credential exactly as-is; never invent or rotate a PIN during refresh.
+   if(player.name==='Hailey Marsh')continue;
    player.portalPinHash=await portalHash(player.portalId,player.portalPin);
   }
   // Write existing permanent portals in small independent batches. The full
