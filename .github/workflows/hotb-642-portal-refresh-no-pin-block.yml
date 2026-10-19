@@ -1,0 +1,80 @@
+name: HotB 642 portal refresh credential fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/hotb-642-portal-refresh-no-pin-block.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Allow stat refresh without local PIN copies
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text(encoding='utf-8')
+          old="""  // Firestore reads one after another, so one slow mobile read could make the
+  // button appear frozen for a very long time.
+  // MAIN-TEAM PORTAL LOCK: Refresh may publish new player data, but it may
+  // never create or rotate a permanent Rebels portal credential.
+  const credentialReady=player=>!!player.portalId&&(player.name==='Hailey Marsh'||!!player.portalPin);
+  const missingCredential=players.find(player=>!credentialReady(player));
+  if(missingCredential)throw new Error('permanent-player-portal-locked-missing-credential:'+missingCredential.name);
+  for(const player of players){
+   // Hailey's verified permanent portal is intentionally the legacy no-PIN exception.
+   // Preserve that credential exactly as-is; never invent or rotate a PIN during refresh.
+   if(player.name==='Hailey Marsh')continue;
+   player.portalPinHash=await portalHash(player.portalId,player.portalPin);
+  }
+"""
+          new="""  // MAIN-TEAM PORTAL LOCK: A stats refresh needs only the existing permanent
+  // portal document ID. Some Home Screen installs no longer retain every legacy
+  // PIN locally even though the permanent player links still work. Do not block
+  // evaluation publishing on a missing local PIN, and never create, rotate, or
+  // rewrite any permanent credential during a stats-only refresh.
+  const missingPortal=players.find(player=>!player.portalId);
+  if(missingPortal)throw new Error('permanent-player-portal-locked-missing-id:'+missingPortal.name);
+"""
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('portal credential refresh block not found')
+          p.write_text(s,encoding='utf-8')
+
+          idx=Path('index.html')
+          x=idx.read_text(encoding='utf-8')
+          oldv='app-coach-rebels-portals-v10.js?v=20261019-portalsync641'
+          newv='app-coach-rebels-portals-v10.js?v=20261019-portalsync642'
+          if oldv in x:
+              x=x.replace(oldv,newv,1)
+          elif newv not in x:
+              raise SystemExit('coach cache reference not found')
+          idx.write_text(x,encoding='utf-8')
+          PY
+
+      - name: Verify
+        run: |
+          node --check app-coach-rebels-portals-v10.js
+          grep -q "permanent-player-portal-locked-missing-id" app-coach-rebels-portals-v10.js
+          grep -q "20261019-portalsync642" index.html
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app-coach-rebels-portals-v10.js index.html
+          git diff --cached --check
+          git commit -m "Allow player stat refresh without local PIN copies"
+          git push
