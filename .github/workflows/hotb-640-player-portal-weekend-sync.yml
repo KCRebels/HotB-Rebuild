@@ -1,0 +1,75 @@
+name: HotB 640 player portal weekend sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/hotb-640-player-portal-weekend-sync.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch automatic player portal stat refresh
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text(encoding='utf-8')
+
+          old="""   db.savedGames.push(completedGame);\n   db.currentGame=null;\n   modal=null;\n   save();\n   go('home');"""
+          new="""   db.savedGames.push(completedGame);\n   db.currentGame=null;\n   modal=null;\n   save();\n   // A completed official game changes every player's evaluation snapshot.\n   // Publish those updated stats to the permanent player portals immediately.\n   playerPortalRefreshPending=true;\n   setTimeout(()=>setupPlayerPortals(false),0);\n   go('home');"""
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('completed-game portal refresh anchor not found')
+
+          old2="""    if(playerPortalRefreshPending)setTimeout(()=>setupPlayerPortals(false),0);"""
+          new2="""    // Permanent player portals are cloud snapshots, so refresh them whenever the\n    // authenticated coach app opens. This repairs any stale weekend stats and\n    // makes future portal data self-healing after an interrupted game-end sync.\n    if(db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId))playerPortalRefreshPending=true;\n    if(playerPortalRefreshPending)setTimeout(()=>setupPlayerPortals(false),0);"""
+          if old2 in s:
+              s=s.replace(old2,new2,1)
+          elif new2 not in s:
+              raise SystemExit('coach startup portal refresh anchor not found')
+
+          p.write_text(s,encoding='utf-8')
+
+          idx=Path('index.html')
+          x=idx.read_text(encoding='utf-8')
+          oldv='app-coach-rebels-portals-v10.js?v=20261018-pitcherreset634'
+          newv='app-coach-rebels-portals-v10.js?v=20261019-portalsync641'
+          if oldv in x:
+              x=x.replace(oldv,newv,1)
+          elif newv not in x:
+              raise SystemExit('coach app cache reference not found')
+          idx.write_text(x,encoding='utf-8')
+          PY
+
+      - name: Sanity check patched coach bundle
+        shell: bash
+        run: |
+          node --check app-coach-rebels-portals-v10.js
+          grep -q "playerPortalRefreshPending=true" app-coach-rebels-portals-v10.js
+          grep -q "20261019-portalsync641" index.html
+
+      - name: Commit portal sync fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app-coach-rebels-portals-v10.js index.html
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git diff --cached --check
+          git commit -m "Keep player portals synced with completed games"
+          git push
