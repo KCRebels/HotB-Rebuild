@@ -1,0 +1,133 @@
+name: HotB 639 softball stat norms
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/hotb-639-softball-stat-norms.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Correct official softball AB and sacrifice handling
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path('evaluation-stats.js')
+          src=p.read_text(encoding='utf-8')
+          old=""" function plateAppearanceType(pa){
+  const outcome=String(pa?.outcome||'').toUpperCase();
+  return{
+   outcome,
+   hit:outcome==='HIT',
+   hitForOut:outcome==='H4O',
+   error:outcome==='E',
+   fieldersChoice:outcome==='FC',
+   strikeout:outcome==='K',
+   walk:outcome==='BB',
+   hitByPitch:outcome==='HBP',
+   sacrifice:outcome==='SAC',
+   atBat:['HIT','H4O','E','FC','K'].includes(outcome),
+   contact:['HIT','H4O','E','FC'].includes(outcome),
+   reach:['HIT','BB','HBP','E','FC'].includes(outcome)
+  };
+ }
+"""
+          new=""" function plateAppearanceType(pa){
+  const outcome=String(pa?.outcome||'').toUpperCase();
+  const contactType=String(pa?.contactType||'').toUpperCase();
+  const rbiCount=Number(pa?.rbiCount??(pa?.rbi?1:0));
+  const recordedSac=outcome==='SAC'||Boolean(pa?.sac);
+  // A caught fly/line/pop out that produces an RBI is, by standard softball
+  // scoring, a sacrifice fly even when an older HotB record missed the sac flag.
+  const inferredSacFly=outcome==='H4O'&&['FO','LO','PO'].includes(contactType)&&rbiCount>0;
+  const sacrifice=recordedSac||inferredSacFly;
+  return{
+   outcome,
+   hit:outcome==='HIT',
+   hitForOut:outcome==='H4O',
+   error:outcome==='E',
+   fieldersChoice:outcome==='FC',
+   strikeout:outcome==='K',
+   walk:outcome==='BB',
+   hitByPitch:outcome==='HBP',
+   sacrifice,
+   atBat:['HIT','H4O','E','FC','K'].includes(outcome)&&!sacrifice,
+   contact:['HIT','H4O','E','FC'].includes(outcome)&&!sacrifice,
+   reach:['HIT','BB','HBP','E','FC'].includes(outcome)
+  };
+ }
+"""
+          if old not in src:
+              raise SystemExit('plateAppearanceType source block not found; refusing unsafe patch')
+          src=src.replace(old,new,1)
+          p.write_text(src,encoding='utf-8')
+
+          # Force both coach and player portal shells to request the corrected module.
+          index=Path('index.html')
+          html=index.read_text(encoding='utf-8')
+          oldver='evaluation-stats.js?v=20260923-ipa28'
+          if oldver not in html:
+              raise SystemExit('evaluation-stats cache reference not found')
+          html=html.replace(oldver,'evaluation-stats.js?v=20261019-statnorm639')
+          index.write_text(html,encoding='utf-8')
+          PY
+
+      - name: Add regression tests for sacrifices and official averages
+        shell: bash
+        run: |
+          cat >> evaluation-stats.test.js <<'JS'
+
+          // Standard softball scoring regression tests.
+          const maiaSac=statsForPAs([
+            ...Array.from({length:7},()=>({outcome:'HIT',hitType:'1B',contactType:'GB'})),
+            ...Array.from({length:6},()=>({outcome:'H4O',contactType:'GO'})),
+            {outcome:'H4O',contactType:'GO',bunt:true,rba:true,sac:true}
+          ]);
+          assert.equal(maiaSac.PA,14);
+          assert.equal(maiaSac.AB,13,'a sacrifice bunt is a PA but not an AB');
+          assert.equal(maiaSac.AVG,7/13,'AVG uses official AB, not PA');
+          assert.equal(maiaSac.SF,0,'a sacrifice bunt is not a sacrifice fly');
+          assert.equal(maiaSac.OBP,7/13,'sacrifice bunt is excluded from the OBP denominator');
+
+          const tayteSf=statsForPAs([
+            {outcome:'HIT',hitType:'1B',contactType:'GB'},
+            {outcome:'H4O',contactType:'PO',rbiCount:1,sac:true,bunt:false}
+          ]);
+          assert.equal(tayteSf.AB,1,'a sacrifice fly is not an AB');
+          assert.equal(tayteSf.SF,1);
+          assert.equal(tayteSf.OBP,1/2,'a sacrifice fly remains in the OBP denominator');
+
+          const inferredSf=statsForPAs([
+            {outcome:'HIT',hitType:'2B',contactType:'LD'},
+            {outcome:'H4O',contactType:'FO',rbiCount:1,sac:false,bunt:false}
+          ]);
+          assert.equal(inferredSf.AB,1,'legacy caught-fly RBI records are normalized as sacrifice flies');
+          assert.equal(inferredSf.SF,1);
+
+          const rbiGroundout=statsForPAs([{outcome:'H4O',contactType:'GO',rbiCount:1,sac:false}]);
+          assert.equal(rbiGroundout.AB,1,'an RBI groundout remains an official AB unless scored as a sacrifice bunt');
+          assert.equal(rbiGroundout.SF,0);
+          JS
+
+          node evaluation-stats.test.js
+
+      - name: Commit corrected stat engine
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add evaluation-stats.js evaluation-stats.test.js index.html
+          git diff --cached --check
+          git commit -m "Fix sacrifice handling in HotB official stats"
+          git push
