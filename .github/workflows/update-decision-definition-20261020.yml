@@ -1,0 +1,47 @@
+name: Update Decision Quality definition
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/update-decision-definition-20261020.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update-copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace Decision Quality definition everywhere
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          old = 'Measures how often a hitter makes a good hitting decision based on the plan, count, and pitch location.'
+          new = 'Measures a player’s decision-making on each pitch based on their hitting plan, the count, and pitch location. As those variables change, the definition of a good decision changes with them.'
+          changed=[]
+          for p in Path('.').rglob('*'):
+              if not p.is_file() or '.git' in p.parts or p.suffix.lower() not in {'.js','.html','.py','.md'}:
+                  continue
+              try:
+                  text=p.read_text(encoding='utf-8')
+              except Exception:
+                  continue
+              if old in text:
+                  p.write_text(text.replace(old,new),encoding='utf-8')
+                  changed.append(str(p))
+          print('Changed:', *changed, sep='\n')
+          if not changed:
+              raise SystemExit('Decision Quality definition text not found')
+          PY
+      - name: Commit updated wording
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'Update Decision Quality definition'
+          git push
