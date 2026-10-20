@@ -1,0 +1,71 @@
+name: HotB 644 player portal IPA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/hotb-644-player-portal-ipa.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fix slap-hitter metric in player portal
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('player-portal-evaluation-v634.js')
+          s=p.read_text(encoding='utf-8')
+          old="resultMetric=d.resultMetric||{label:'HHB%',key:'hhbPct',value:stats?.hhbPct},pub=d.db.published||{}"
+          new="slap=window.HotBEvaluationStats.isSlapHitter(player)||['Maia Waddell','Hailey Marsh'].includes(playerName),resultMetric=slap?{label:'IPA%',key:'ipaPct',value:stats?.ipaPct}:(d.resultMetric||{label:'HHB%',key:'hhbPct',value:stats?.hhbPct}),pub=d.db.published||{}"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('portal result metric anchor not found')
+
+          old2="<button class=\"pem-tile red\" data-pem-open=\"hhb\"><h3>${resultMetric.label.replace('%','')}%</h3>"
+          new2="<button class=\"pem-tile red\" data-pem-open=\"${slap?'ipa':'hhb'}\"><h3>${resultMetric.label.replace('%','')}%</h3>"
+          if old2 in s:
+              s=s.replace(old2,new2,1)
+          elif new2 not in s:
+              raise SystemExit('portal metric button anchor not found')
+
+          old3="const copy={decision:['DECISION QUALITY','Decision %'"
+          if old3 not in s:
+              raise SystemExit('info modal anchor not found')
+          s=s.replace("hhb:['CONTACT QUALITY','HHB','Shows how often balls put in play are classified as hard-hit balls.','HHB is calculated from HotB game data. When no game data is available, the tile remains blank.']","hhb:['CONTACT QUALITY','HHB','Shows how often balls put in play are classified as hard-hit balls.','HHB is calculated from HotB game data. When no game data is available, the tile remains blank.'],ipa:['IMPACT PLATE APPEARANCE','IPA','Shows how often a slap hitter creates an impactful plate appearance.','IPA credits reaching base, producing or advancing a run, a successful sacrifice, or an extended plate appearance.']",1)
+
+          s=s.replace("if(['aba','hhb','decision'].includes(kind))","if(['aba','hhb','ipa','decision'].includes(kind))",1)
+          p.write_text(s,encoding='utf-8')
+
+          idx=Path('index.html')
+          x=idx.read_text(encoding='utf-8')
+          oldv='player-portal-evaluation-v634.js?v=20260924-evalback654'
+          newv='player-portal-evaluation-v634.js?v=20261019-ipa644'
+          if oldv in x:
+              x=x.replace(oldv,newv,1)
+          elif newv not in x:
+              raise SystemExit('portal eval cache reference not found')
+          idx.write_text(x,encoding='utf-8')
+          PY
+      - name: Verify
+        run: |
+          node --check player-portal-evaluation-v634.js
+          grep -q "20261019-ipa644" index.html
+          grep -q "label:'IPA%'" player-portal-evaluation-v634.js
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add player-portal-evaluation-v634.js index.html
+          git diff --cached --check
+          git commit -m "Match slap hitter player portals to IPA"
+          git push
