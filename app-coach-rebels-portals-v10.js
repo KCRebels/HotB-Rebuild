@@ -1698,27 +1698,31 @@ async function setupPlayerPortals(fromButton=false){
   // Read every existing portal concurrently. The old refresh waited for 13
   // MAIN-TEAM PORTAL LOCK: stats-only refresh uses the existing permanent portal ID.
   // A missing local PIN must not block evaluation publishing, and credentials are never rewritten here.
-  const missingPortal=players.find(player=>!player.portalId);
-  if(missingPortal)throw new Error('permanent-player-portal-locked-missing-id:'+missingPortal.name);
-  // Write existing permanent portals in small independent batches. The full
-  // 13-player evaluation payload can be large enough that one mobile Firestore
-  // batch does not acknowledge within Safari's timeout window.
-  for(let i=0;i<players.length;i+=3){
-   const group=players.slice(i,i+3),batch=cloudStore.batch();
-   group.forEach(player=>{
-    const evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
-    batch.update(portalDoc(player.portalId),{portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-   });
-   portalMessage=`Refreshing player records… ${Math.min(i+group.length,players.length)} of ${players.length}`;render();
-   await timed(batch.commit(),'player-portal-write',20000);
+  const publishablePlayers=players.filter(player=>!!player.portalId);
+  const missingPortalNames=players.filter(player=>!player.portalId).map(player=>player.name);
+  if(!publishablePlayers.length)throw new Error('permanent-player-portal-locked-no-ids');
+  // Refresh each permanent portal independently so one stale or missing portal
+  // cannot block the rest of the roster from receiving current stats.
+  const failedPortalRefreshes=[];
+  for(let i=0;i<publishablePlayers.length;i++){
+   const player=publishablePlayers[i],evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
+   try{
+    await timed(portalDoc(player.portalId).update({portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}),'player-portal-write:'+player.name,20000);
+   }catch(error){
+    failedPortalRefreshes.push(player.name);
+    console.warn('Player portal refresh failed for '+player.name,error);
+   }
+   portalMessage=`Refreshing player records… ${i+1} of ${publishablePlayers.length}`;render();
   }
+  if(failedPortalRefreshes.length===publishablePlayers.length)throw new Error('all-player-portal-writes-failed');
   // The batch commit is the authoritative success point. A second round of
   // Firestore reads is not required to publish these records and was causing
   // false failures on iPhone Safari even after the write had completed.
   // Existing identity/type safety was already checked before the batch write.
   db.route=route;localStorage.setItem(DBKEY,JSON.stringify(db));
   if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
-  portalMessage=`Player records refreshed, including My Evaluation (${activeDateFilterLabel()}). Existing permanent links were kept.`;
+  const notUpdated=[...missingPortalNames,...failedPortalRefreshes];
+  portalMessage=notUpdated.length?`Player records refreshed for ${publishablePlayers.length-failedPortalRefreshes.length} players. Could not refresh: ${notUpdated.join(', ')}.`:`Player records refreshed, including My Evaluation (${activeDateFilterLabel()}). Existing permanent links were kept.`;
   scheduleCloudBackup();
  }catch(error){
   originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});
