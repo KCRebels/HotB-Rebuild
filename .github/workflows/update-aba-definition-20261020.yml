@@ -39,18 +39,17 @@ jobs:
               p.write_text(s,encoding='utf-8')
               changed.append(str(p))
 
-          # Player portal / shared popup copies, wherever they live in the bundle.
-          old="head('AT-BAT APPROACH','ABA')+'<div class=\"pc-aba-summary\">'"
-          new="head('AT-BAT APPROACH','ABA')+'<p>"+definition+"</p><div class=\"pc-aba-summary\">'"
-          for p in Path('.').rglob('*'):
-              if not p.is_file() or '.git' in p.parts or p.suffix.lower() not in {'.js','.html','.py'}:
-                  continue
-              try:
-                  text=p.read_text(encoding='utf-8')
-              except Exception:
-                  continue
-              if old in text and definition not in text:
-                  p.write_text(text.replace(old,new),encoding='utf-8')
+          # Player portal ABA popup uses a template literal, not the Scout string-concatenation form.
+          p=Path('player-eval-surgical-match.js')
+          if p.exists():
+              text=p.read_text(encoding='utf-8')
+              anchor="${head('AT-BAT APPROACH','ABA')}<div class=\"pc-aba-summary\">"
+              replacement="${head('AT-BAT APPROACH','ABA')}<p>"+definition+"</p><div class=\"pc-aba-summary\">"
+              if anchor in text and definition not in text:
+                  text=text.replace(anchor,replacement,1)
+                  # Keep the Decision Quality explanation consistent with its actual 0-point scoring rule.
+                  text=text.replace('Poor Decision — excluded from percentage','Poor Decision — zero points')
+                  p.write_text(text,encoding='utf-8')
                   changed.append(str(p))
 
           print('Changed:', *changed, sep='\n')
@@ -64,5 +63,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git diff --cached --check
-          git commit -m 'Clarify ABA definition across HotB'
+          git commit -m 'Finish ABA definition on player portals'
           git push
