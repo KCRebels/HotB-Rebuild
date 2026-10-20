@@ -1,4 +1,4 @@
-name: HotB 642 portal refresh credential fix
+name: HotB 643 independent portal refresh
 
 on:
   push:
@@ -17,38 +17,86 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Allow stat refresh without local PIN copies
+      - name: Patch player portal refresh
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
           p=Path('app-coach-rebels-portals-v10.js')
           s=p.read_text(encoding='utf-8')
-          pattern=r"  // Firestore reads one after another, so one slow mobile read could make the\n  // button appear frozen for a very long time\.\n  // MAIN-TEAM PORTAL LOCK: Refresh may publish new player data, but it may\n  // never create or rotate a permanent Rebels portal credential\.\n  const credentialReady=player=>!!player\.portalId&&\(player\.name==='Hailey Marsh'\|\|!!player\.portalPin\);\n  const missingCredential=players\.find\(player=>!credentialReady\(player\)\);\n  if\(missingCredential\)throw new Error\('permanent-player-portal-locked-missing-credential:'\+missingCredential\.name\);\n  for\(const player of players\)\{\n   // Hailey's verified permanent portal is intentionally the legacy no-PIN exception\.\n   // Preserve that credential exactly as-is; never invent or rotate a PIN during refresh\.\n   if\(player\.name==='Hailey Marsh'\)continue;\n   player\.portalPinHash=await portalHash\(player\.portalId,player\.portalPin\);\n  \}\n"
-          replacement="  // MAIN-TEAM PORTAL LOCK: stats-only refresh uses the existing permanent portal ID.\n  // A missing local PIN must not block evaluation publishing, and credentials are never rewritten here.\n  const missingPortal=players.find(player=>!player.portalId);\n  if(missingPortal)throw new Error('permanent-player-portal-locked-missing-id:'+missingPortal.name);\n"
-          if 'permanent-player-portal-locked-missing-credential:' in s:
-              s,n=re.subn(pattern,replacement,s,count=1)
-              if n!=1: raise SystemExit('portal credential refresh block not found')
-          elif 'permanent-player-portal-locked-missing-id:' not in s:
-              raise SystemExit('expected portal refresh marker not found')
+
+          old1="""  const missingPortal=players.find(player=>!player.portalId);
+  if(missingPortal)throw new Error('permanent-player-portal-locked-missing-id:'+missingPortal.name);
+"""
+          new1="""  const publishablePlayers=players.filter(player=>!!player.portalId);
+  const missingPortalNames=players.filter(player=>!player.portalId).map(player=>player.name);
+  if(!publishablePlayers.length)throw new Error('permanent-player-portal-locked-no-ids');
+"""
+          if old1 in s:
+              s=s.replace(old1,new1,1)
+          elif new1 not in s:
+              raise SystemExit('portal id block not found')
+
+          old2="""  // Write existing permanent portals in small independent batches. The full
+  // 13-player evaluation payload can be large enough that one mobile Firestore
+  // batch does not acknowledge within Safari's timeout window.
+  for(let i=0;i<players.length;i+=3){
+   const group=players.slice(i,i+3),batch=cloudStore.batch();
+   group.forEach(player=>{
+    const evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
+    batch.update(portalDoc(player.portalId),{portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   });
+   portalMessage=`Refreshing player records… ${Math.min(i+group.length,players.length)} of ${players.length}`;render();
+   await timed(batch.commit(),'player-portal-write',20000);
+  }
+"""
+          new2="""  // Refresh each permanent portal independently so one stale or missing portal
+  // cannot block the rest of the roster from receiving current stats.
+  const failedPortalRefreshes=[];
+  for(let i=0;i<publishablePlayers.length;i++){
+   const player=publishablePlayers[i],evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
+   try{
+    await timed(portalDoc(player.portalId).update({portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}),'player-portal-write:'+player.name,20000);
+   }catch(error){
+    failedPortalRefreshes.push(player.name);
+    console.warn('Player portal refresh failed for '+player.name,error);
+   }
+   portalMessage=`Refreshing player records… ${i+1} of ${publishablePlayers.length}`;render();
+  }
+  if(failedPortalRefreshes.length===publishablePlayers.length)throw new Error('all-player-portal-writes-failed');
+"""
+          if old2 in s:
+              s=s.replace(old2,new2,1)
+          elif new2 not in s:
+              raise SystemExit('portal write loop not found')
+
+          old3="""  portalMessage=`Player records refreshed, including My Evaluation (${activeDateFilterLabel()}). Existing permanent links were kept.`;"""
+          new3="""  const notUpdated=[...missingPortalNames,...failedPortalRefreshes];
+  portalMessage=notUpdated.length?`Player records refreshed for ${publishablePlayers.length-failedPortalRefreshes.length} players. Could not refresh: ${notUpdated.join(', ')}.`:`Player records refreshed, including My Evaluation (${activeDateFilterLabel()}). Existing permanent links were kept.`;"""
+          if old3 in s:
+              s=s.replace(old3,new3,1)
+          elif new3 not in s:
+              raise SystemExit('portal success message not found')
+
           p.write_text(s,encoding='utf-8')
+
           idx=Path('index.html')
           x=idx.read_text(encoding='utf-8')
-          oldv='app-coach-rebels-portals-v10.js?v=20261019-portalsync641'
-          newv='app-coach-rebels-portals-v10.js?v=20261019-portalsync642'
+          oldv='app-coach-rebels-portals-v10.js?v=20261019-portalsync642'
+          newv='app-coach-rebels-portals-v10.js?v=20261019-portalsync643'
           if oldv in x:
               x=x.replace(oldv,newv,1)
           elif newv not in x:
-              raise SystemExit('coach cache reference not found')
+              raise SystemExit('cache reference not found')
           idx.write_text(x,encoding='utf-8')
           PY
 
       - name: Verify
         run: |
           node --check app-coach-rebels-portals-v10.js
-          grep -q "permanent-player-portal-locked-missing-id" app-coach-rebels-portals-v10.js
-          grep -q "20261019-portalsync642" index.html
+          grep -q "publishablePlayers" app-coach-rebels-portals-v10.js
+          grep -q "failedPortalRefreshes" app-coach-rebels-portals-v10.js
+          grep -q "20261019-portalsync643" index.html
 
       - name: Commit
         shell: bash
@@ -56,7 +104,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app-coach-rebels-portals-v10.js index.html
-          if git diff --cached --quiet; then exit 0; fi
           git diff --cached --check
-          git commit -m "Allow player stat refresh without local PIN copies"
+          git commit -m "Refresh each player portal independently"
           git push
