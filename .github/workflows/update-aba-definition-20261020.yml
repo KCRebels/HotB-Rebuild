@@ -1,0 +1,68 @@
+name: Update ABA definition
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/update-aba-definition-20261020.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update-copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clarify ABA wording everywhere
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          definition = ('ABA measures how well a hitter executes the right approach in two key situations: '
+                        'the first pitch and with two strikes. 1P evaluates whether the hitter’s first-pitch '
+                        'decision matches the hitting plan and pitch location. 2K evaluates how well the hitter '
+                        'adjusts to protect the plate and compete once the count reaches two strikes. Because the '
+                        'goal changes with the count, what qualifies as a good approach changes too.')
+
+          changed=[]
+
+          # Coach app ABA modal.
+          p=Path('at-bat-approach.js')
+          s=p.read_text(encoding='utf-8')
+          marker='</div><div class="aba-summary-grid">'
+          inject=f'</div><p class="aba-definition">{definition}</p><div class="aba-summary-grid">'
+          if definition not in s and marker in s:
+              s=s.replace(marker, inject, 1)
+              s=s.replace('.aba-modal{width:min(92vw,520px)}', '.aba-modal{width:min(92vw,560px)}.aba-definition{font-size:14px;line-height:1.5;color:#f1f1f1;margin:12px 0 4px}')
+              p.write_text(s,encoding='utf-8')
+              changed.append(str(p))
+
+          # Player portal / shared popup copies, wherever they live in the bundle.
+          old="head('AT-BAT APPROACH','ABA')+'<div class=\"pc-aba-summary\">'"
+          new="head('AT-BAT APPROACH','ABA')+'<p>"+definition+"</p><div class=\"pc-aba-summary\">'"
+          for p in Path('.').rglob('*'):
+              if not p.is_file() or '.git' in p.parts or p.suffix.lower() not in {'.js','.html','.py'}:
+                  continue
+              try:
+                  text=p.read_text(encoding='utf-8')
+              except Exception:
+                  continue
+              if old in text and definition not in text:
+                  p.write_text(text.replace(old,new),encoding='utf-8')
+                  changed.append(str(p))
+
+          print('Changed:', *changed, sep='\n')
+          if not changed:
+              raise SystemExit('No ABA copy changes found')
+          PY
+      - name: Commit ABA definition
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'Clarify ABA definition across HotB'
+          git push
