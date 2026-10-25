@@ -1,0 +1,163 @@
+name: HotB 645 practice time and duration sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/hotb-645-practice-time-duration-sync.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Repair practice time synchronization and duration choices
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # --- Scheduler: support 5-15 twelve-minute blocks (60-180 minutes). ---
+          p=Path('practice-scheduler.js')
+          s=p.read_text(encoding='utf-8')
+
+          old="const DEFAULT_BLOCK_COUNT=10,MAX_BLOCK_COUNT=11,BLOCK_MINUTES=12;"
+          new="const DEFAULT_BLOCK_COUNT=10,MIN_BLOCK_COUNT=5,MAX_BLOCK_COUNT=15,BLOCK_MINUTES=12;\n const blockCountForDuration=value=>{const minutes=Number(value);if(!Number.isFinite(minutes)||minutes%BLOCK_MINUTES!==0)return DEFAULT_BLOCK_COUNT;return Math.max(MIN_BLOCK_COUNT,Math.min(MAX_BLOCK_COUNT,minutes/BLOCK_MINUTES));};"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('scheduler constants anchor not found')
+
+          old="const BLOCK_COUNT=Number(durationMinutes)===132?MAX_BLOCK_COUNT:DEFAULT_BLOCK_COUNT;"
+          count=s.count(old)
+          if count:
+              s=s.replace(old,"const BLOCK_COUNT=blockCountForDuration(durationMinutes);")
+          elif "const BLOCK_COUNT=blockCountForDuration(durationMinutes);" not in s:
+              raise SystemExit('scheduler block-count anchors not found')
+
+          old="if(!plan||![DEFAULT_BLOCK_COUNT,MAX_BLOCK_COUNT].includes(BLOCK_COUNT))errors.push('Schedule must contain ten blocks, or eleven when the emergency extension is approved.');"
+          new="if(!plan||BLOCK_COUNT<MIN_BLOCK_COUNT||BLOCK_COUNT>MAX_BLOCK_COUNT)errors.push(`Schedule must contain ${MIN_BLOCK_COUNT}-${MAX_BLOCK_COUNT} twelve-minute blocks.`);"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('scheduler validation anchor not found')
+
+          old="return {BLOCK_COUNT:DEFAULT_BLOCK_COUNT,DEFAULT_BLOCK_COUNT,MAX_BLOCK_COUNT,BLOCK_MINUTES,blockTimes,buildSchedule,validate};"
+          new="return {BLOCK_COUNT:DEFAULT_BLOCK_COUNT,DEFAULT_BLOCK_COUNT,MIN_BLOCK_COUNT,MAX_BLOCK_COUNT,BLOCK_MINUTES,blockCountForDuration,blockTimes,buildSchedule,validate};"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('scheduler export anchor not found')
+
+          p.write_text(s,encoding='utf-8')
+
+          # --- Coach app: duration selector + inherited player-time synchronization. ---
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text(encoding='utf-8')
+
+          old="const start=practiceTimeMinutes(startTime),blockCount=Number(durationMinutes)===132?11:Number(durationMinutes)===120?10:0,blockMinutes=12;"
+          new="const start=practiceTimeMinutes(startTime),requestedDuration=Number(durationMinutes),blockMinutes=12,blockCount=Number.isFinite(requestedDuration)&&requestedDuration>=60&&requestedDuration<=180&&requestedDuration%blockMinutes===0?requestedDuration/blockMinutes:0;"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('practice availability anchor not found')
+
+          old="const roster=practiceAttendanceRoster(),savedNames=Array.isArray(practiceSetupState.selectedNames)?practiceSetupState.selectedNames:null,selected=new Set(savedNames===null?roster.filter(player=>!['Brynna Peter','Claire Jack'].includes(player.name)&&!player.isPracticeGuest).map(player=>player.name):savedNames),duration=practiceSetupState.durationMinutes||120,startTime=practiceSetupState.startTime||'17:30',endTime=practiceEndValue(startTime,duration),guests=practiceGuestPlayers(),guestCoaches=practiceGuestCoaches();"
+          new="const roster=practiceAttendanceRoster(),savedNames=Array.isArray(practiceSetupState.selectedNames)?practiceSetupState.selectedNames:null,selected=new Set(savedNames===null?roster.filter(player=>!['Brynna Peter','Claire Jack'].includes(player.name)&&!player.isPracticeGuest).map(player=>player.name):savedNames),duration=practiceSetupState.durationMinutes||120,durationOptions=[60,72,84,96,108,120,132,144,156,168,180],startTime=practiceSetupState.startTime||'17:30',endTime=practiceEndValue(startTime,duration),guests=practiceGuestPlayers(),guestCoaches=practiceGuestCoaches();"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('practice setup variables anchor not found')
+
+          old="${[120,...(duration===132?[132]:[])].map(minutes=>`<option value=\"${minutes}\" ${minutes===duration?'selected':''}>${minutes}${minutes===132?' Minutes · Emergency Block 11':' Minutes'}</option>`).join('')}"
+          new="${durationOptions.map(minutes=>`<option value=\"${minutes}\" ${minutes===duration?'selected':''}>${minutes} Minutes · ${minutes/12} Blocks</option>`).join('')}"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('duration selector anchor not found')
+
+          old="$('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});"
+          new="""$('#practiceStartTime')?.addEventListener('change',event=>{
+  if(!event.target.value)return;
+  const previousStart=practiceSetupState.startTime||'17:30',previousDuration=practiceSetupState.durationMinutes||120,previousEnd=practiceEndValue(previousStart,previousDuration);
+  $$('[data-accommodation-arrival]').forEach(input=>{if(input.dataset.custom!=='true'||input.value===previousStart)input.dataset.custom='false'});
+  $$('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true'||input.value===previousEnd)input.dataset.custom='false'});
+  const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;
+  $('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;
+  refreshPracticeAccommodationDefaults();
+  if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}
+  persistPracticeDraft();
+ });"""
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('start-time change handler anchor not found')
+
+          old="$('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});"
+          new="""$('#practiceDuration')?.addEventListener('change',()=>{
+  const previousStart=practiceSetupState.startTime||$('#practiceStartTime')?.value||'17:30',previousDuration=practiceSetupState.durationMinutes||120,previousEnd=practiceEndValue(previousStart,previousDuration);
+  $$('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true'||input.value===previousEnd)input.dataset.custom='false'});
+  refreshPracticeAccommodationDefaults();
+  if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}
+  persistPracticeDraft();
+ });"""
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('duration change handler anchor not found')
+
+          p.write_text(s,encoding='utf-8')
+
+          # --- Cache-bust both production files in the live shell. ---
+          idx=Path('index.html')
+          x=idx.read_text(encoding='utf-8')
+          old='practice-scheduler.js?v=20260922-resolution503'
+          new='practice-scheduler.js?v=20261025-practicetime645'
+          if old in x:
+              x=x.replace(old,new,1)
+          elif new not in x:
+              raise SystemExit('scheduler cache reference not found')
+
+          old='app-coach-rebels-portals-v10.js?v=20261019-portalsync643'
+          new='app-coach-rebels-portals-v10.js?v=20261025-practicetime645'
+          if old in x:
+              x=x.replace(old,new,1)
+          elif new not in x:
+              raise SystemExit('coach cache reference not found')
+          idx.write_text(x,encoding='utf-8')
+          PY
+
+      - name: Verify practice repair
+        shell: bash
+        run: |
+          node --check practice-scheduler.js
+          node --check app-coach-rebels-portals-v10.js
+          grep -q "blockCountForDuration" practice-scheduler.js
+          grep -q "durationOptions=\[60,72,84,96,108,120,132,144,156,168,180\]" app-coach-rebels-portals-v10.js
+          grep -q "previousStart=practiceSetupState.startTime" app-coach-rebels-portals-v10.js
+          grep -q "20261025-practicetime645" index.html
+          node - <<'NODE'
+          const S=require('./practice-scheduler.js');
+          for(const minutes of [60,72,84,96,108,120,132,144,156,168,180]){
+            const blocks=S.blockTimes('15:00',minutes);
+            if(blocks.length!==minutes/12)throw new Error(`wrong block count for ${minutes}`);
+          }
+          if(S.blockTimes('15:00',120)[0].start!=='3:00p')throw new Error('start-time label mismatch');
+          console.log('practice duration/time verification passed');
+          NODE
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add practice-scheduler.js app-coach-rebels-portals-v10.js index.html
+          git diff --cached --check
+          git commit -m "Fix practice time sync and duration controls"
+          git push
