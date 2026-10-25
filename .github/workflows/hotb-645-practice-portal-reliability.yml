@@ -45,7 +45,7 @@ jobs:
           assert.equal(resolution.at(-1).end,'5:12p');
           NODE
           grep -Fq "Array.from({length:13},(_,index)=>60+index*10)" app-coach-rebels-portals-v10.js
-          grep -Fq "$$('[data-accommodation-arrival]').forEach" app-coach-rebels-portals-v10.js
+          grep -Fq "data-accommodation-arrival]').forEach" app-coach-rebels-portals-v10.js
           grep -Fq "authorizedUids:[portalAuthUser.uid]" app-portal-meg-focus-archive-v1.js
           grep -Fq "20261025-duration645" index.html
           grep -Fq "20261025-permanent645" index.html
