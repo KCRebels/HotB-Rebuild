@@ -1,0 +1,61 @@
+name: HotB 645 practice and portal reliability
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/hotb-645-practice-portal-reliability.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch production files
+        run: |
+          python .github/scripts/hotb_645_practice_portal_reliability.py
+          python .github/scripts/hotb_645b_relative_arrival.py
+      - name: Verify JavaScript syntax
+        run: |
+          node --check practice-scheduler.js
+          node --check app-coach-rebels-portals-v10.js
+          node --check app-portal-meg-focus-archive-v1.js
+      - name: Run practice scheduler regression
+        run: node practice-scheduler.test.js
+      - name: Verify adjustable duration and synchronization
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const scheduler=require('./practice-scheduler.js');
+          const ninety=scheduler.blockTimes('15:00',90);
+          assert.equal(ninety.length,10);
+          assert.equal(ninety[0].start,'3:00p');
+          assert.equal(ninety.at(-1).end,'4:30p');
+          const oneTwenty=scheduler.blockTimes('15:15',120);
+          assert.equal(oneTwenty.length,10);
+          assert.equal(oneTwenty.at(-1).end,'5:15p');
+          const resolution=scheduler.blockTimes('15:00',132);
+          assert.equal(resolution.length,11);
+          assert.equal(resolution.at(-1).end,'5:12p');
+          NODE
+          grep -Fq "Array.from({length:13},(_,index)=>60+index*10)" app-coach-rebels-portals-v10.js
+          grep -Fq "$$('[data-accommodation-arrival]').forEach" app-coach-rebels-portals-v10.js
+          grep -Fq "authorizedUids:[portalAuthUser.uid]" app-portal-meg-focus-archive-v1.js
+          grep -Fq "20261025-duration645" index.html
+          grep -Fq "20261025-permanent645" index.html
+          grep -Fq "20261025-practiceportal645" index.html
+      - name: Commit production repair
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add practice-scheduler.js app-coach-rebels-portals-v10.js app-portal-meg-focus-archive-v1.js index.html
+          git diff --cached --check
+          git commit -m "Fix practice timing, duration, and permanent portal links"
+          git push
