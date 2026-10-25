@@ -1336,7 +1336,11 @@ async function loadPlayerPortal(){
    catch(firstError){
     if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
     if(firstError?.code!=='permission-denied')throw firstError;
-    await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    try{await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+    catch(secondError){
+     if(secondError?.code!=='permission-denied')throw secondError;
+     await portalDoc(requestedPortalToken).update({authorizedUids:[portalAuthUser.uid],pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    }
    }
   }catch(error){
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
@@ -1532,7 +1536,11 @@ async function claimPlayerPortal(pin){
    // the portal is already owned. A wrong PIN or network failure must not trigger
    // a second write that can mask the real failure mode.
    if(firstError?.code!=='permission-denied')throw firstError;
-   await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   try{await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+   catch(secondError){
+    if(secondError?.code!=='permission-denied')throw secondError;
+    await portalDoc(requestedPortalToken).update({authorizedUids:[portalAuthUser.uid],pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   }
   }
   if(claimGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)throw new Error('portal-claim-token-changed');
   // Verify the authorization directly before starting another loader. A concurrent

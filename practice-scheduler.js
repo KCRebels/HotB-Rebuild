@@ -7,10 +7,11 @@
  const fixedActivities=['Stretch','Tee Work'];
  const pad=value=>String(value).padStart(2,'0');
  function blockTimes(startTime='18:00',durationMinutes=120){
-  const BLOCK_COUNT=Number(durationMinutes)===132?MAX_BLOCK_COUNT:DEFAULT_BLOCK_COUNT;
+  const requested=Number(durationMinutes)||120,isResolutionExtension=requested===132;
+  const BLOCK_COUNT=isResolutionExtension?MAX_BLOCK_COUNT:DEFAULT_BLOCK_COUNT;
   const [hour,minute]=String(startTime||'18:00').split(':').map(Number);
   const start=(Number.isFinite(hour)?hour:18)*60+(Number.isFinite(minute)?minute:0);
-  const duration=BLOCK_COUNT*BLOCK_MINUTES,blockMinutes=BLOCK_MINUTES;
+  const duration=isResolutionExtension?132:Math.max(60,Math.min(180,Math.round(requested/10)*10)),blockMinutes=duration/BLOCK_COUNT;
   const label=minutes=>{
    const normalized=(minutes+1440)%1440,h=Math.floor(normalized/60),m=normalized%60;
    const displayHour=h%12||12,period=h<12?'a':'p';
@@ -19,7 +20,8 @@
   return Array.from({length:BLOCK_COUNT},(_,index)=>({block:index+1,start:label(start+index*blockMinutes),end:label(start+(index+1)*blockMinutes)}));
  }
  function buildSchedule(players,startTime='18:00',durationMinutes=120,options={}){
-  const BLOCK_COUNT=Number(durationMinutes)===132?MAX_BLOCK_COUNT:DEFAULT_BLOCK_COUNT;
+  const requested=Number(durationMinutes)||120,isResolutionExtension=requested===132;
+  const BLOCK_COUNT=isResolutionExtension?MAX_BLOCK_COUNT:DEFAULT_BLOCK_COUNT;
   const attendees=(players||[]).filter(player=>player&&player.name).map(player=>{
    const from=Math.max(0,Math.min(BLOCK_COUNT,Number(player.availableFromBlock)||0));
    const until=Math.max(from,Math.min(BLOCK_COUNT,Number.isFinite(Number(player.availableUntilBlock))?Number(player.availableUntilBlock):BLOCK_COUNT));
@@ -32,7 +34,7 @@
    return !Number.isInteger(from)||!Number.isInteger(until)||from<0||until<0||from>BLOCK_COUNT||until>BLOCK_COUNT||from>until;
   }).map(player=>player.name);
   const duplicateNames=[...new Set(attendees.map(player=>player.name).filter((name,index,names)=>names.indexOf(name)!==index))];
-  const duration=BLOCK_COUNT*BLOCK_MINUTES,blockMinutes=BLOCK_MINUTES;
+  const duration=isResolutionExtension?132:Math.max(60,Math.min(180,Math.round(requested/10)*10)),blockMinutes=duration/BLOCK_COUNT;
   const times=blockTimes(startTime,duration),warnings=[],fallbackWarnings=[];
   const schedule=Object.fromEntries(attendees.map(player=>[player.name,Array.from({length:BLOCK_COUNT},(_,block)=>block<player.availableFromBlock||block>=player.availableUntilBlock?{activity:'Not Present'}:null)]));
   const teeBlocks={};

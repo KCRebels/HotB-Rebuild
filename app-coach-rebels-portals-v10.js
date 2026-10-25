@@ -1009,7 +1009,7 @@ let practiceSetupOpenSnapshot=null;
 // Sept. 30 practice defaults: Rebels + Jenkins 5:30–7:30, all complete Warm-Up then Tee Work.
 if(!db.activePracticeSession&&!db.activePortalPractice){
  const defaultNames=db.roster.filter(player=>!['Brynna Peter','Claire Jack'].includes(player.name)).map(player=>player.name);
- practiceSetupState={...practiceSetupState,selectedNames:defaultNames,startTime:'17:30',durationMinutes:120,accommodations:{'Makenna Whitaker':{arrival:'18:15',requiresPitchWarmup:false}}};
+ practiceSetupState={...practiceSetupState,selectedNames:defaultNames,startTime:'17:30',durationMinutes:120,accommodations:{'Makenna Whitaker':{requiresPitchWarmup:false}}};
 }
 
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practiceEquipmentSetupOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
@@ -1345,7 +1345,11 @@ async function loadPlayerPortal(){
    catch(firstError){
     if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
     if(firstError?.code!=='permission-denied')throw firstError;
-    await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    try{await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+    catch(secondError){
+     if(secondError?.code!=='permission-denied')throw secondError;
+     await portalDoc(requestedPortalToken).update({authorizedUids:[portalAuthUser.uid],pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    }
    }
   }catch(error){
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
@@ -1523,7 +1527,11 @@ async function claimPlayerPortal(pin){
    // the portal is already owned. A wrong PIN or network failure must not trigger
    // a second write that can mask the real failure mode.
    if(firstError?.code!=='permission-denied')throw firstError;
-   await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   try{await portalDoc(requestedPortalToken).update({authorizedUids:firebase.firestore.FieldValue.arrayUnion(portalAuthUser.uid),pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+   catch(secondError){
+    if(secondError?.code!=='permission-denied')throw secondError;
+    await portalDoc(requestedPortalToken).update({authorizedUids:[portalAuthUser.uid],pinProof:proof,claimedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   }
   }
   if(claimGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)throw new Error('portal-claim-token-changed');
   // Verify the authorization directly before starting another loader. A concurrent
@@ -2672,7 +2680,7 @@ function practiceTimeLabel(value){const minutes=practiceTimeMinutes(value);if(mi
 function practiceAccommodation(player){
  const saved=practiceSetupState.accommodations?.[player.name]||{};
  const isMakenna=player.name==='Makenna Whitaker';
- return {arrival:saved.arrival||(isMakenna?'18:15':''),departure:saved.departure||'',limitations:saved.limitations||'',prePracticeComplete:!!player.isPracticeGuest&&!!saved.prePracticeComplete,canPitch:isPitcherProfile(player)?saved.canPitch!==false:false,requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?false:saved.requiresPitchWarmup!==false):false,canCatch:positionTokens(player).includes('C')?saved.canCatch!==false:false};
+ return {arrival:saved.arrival||'',departure:saved.departure||'',limitations:saved.limitations||'',prePracticeComplete:!!player.isPracticeGuest&&!!saved.prePracticeComplete,canPitch:isPitcherProfile(player)?saved.canPitch!==false:false,requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?false:saved.requiresPitchWarmup!==false):false,canCatch:positionTokens(player).includes('C')?saved.canCatch!==false:false};
 }
 function practiceAccommodationSummary(player,accommodation,startTime,durationMinutes){
  const endTime=practiceEndValue(startTime,durationMinutes),parts=[];
@@ -2691,7 +2699,7 @@ function practiceAttendanceRoster(){return [...db.roster,...practiceGuestPlayers
 function guestRolePosition(role){return role==='Pitcher'?'P':role==='Catcher'?'C':'UT'}
 function practicePlayerByName(name){return practiceAttendanceRoster().find(player=>player.name===name)}
 function practiceAvailability(startTime,durationMinutes,arrival,departure){
- const start=practiceTimeMinutes(startTime),blockCount=Number(durationMinutes)===132?11:Number(durationMinutes)===120?10:0,blockMinutes=12;
+ const requested=Number(durationMinutes)||120,isResolutionExtension=requested===132,blockCount=isResolutionExtension?11:10,blockMinutes=isResolutionExtension?12:Math.max(60,Math.min(180,Math.round(requested/10)*10))/10;
  const arrive=practiceTimeMinutes(arrival||startTime),leave=practiceTimeMinutes(departure||practiceEndValue(startTime,durationMinutes));
  if(start===null||!blockCount||arrive===null||leave===null)return {availableFromBlock:-1,availableUntilBlock:-1};
  const end=start+blockCount*blockMinutes;
@@ -2939,7 +2947,7 @@ function practicePlayerFocus(){
  <div class="focus-bottom-actions" style="margin-bottom:110px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><button type="button" class="btn red" id="previewPlayerFocus" style="min-width:0;padding:12px 6px;font-size:14px;white-space:nowrap">Publish</button><button type="button" class="btn black" id="openMegFocusArchive" style="min-width:0;padding:12px 6px;font-size:14px;white-space:nowrap">Archive</button><button type="button" class="btn black" id="changeFocusPlayer" style="min-width:0;padding:12px 6px;font-size:14px;white-space:nowrap">Team</button></div></main>${reportsTestNav()}`;
 }
 function practiceAttendanceRow(player,index,selected,startTime,duration,endTime){
- const accommodation=practiceAccommodation(player),summary=practiceAccommodationSummary(player,accommodation,startTime,duration),pitcher=isPitcherProfile(player),catcher=positionTokens(player).includes('C'),arrivalValue=accommodation.arrival||startTime,departureValue=accommodation.departure||endTime;
+ const accommodation=practiceAccommodation(player),summary=practiceAccommodationSummary(player,accommodation,startTime,duration),pitcher=isPitcherProfile(player),catcher=positionTokens(player).includes('C'),arrivalValue=accommodation.arrival||(player.name==='Makenna Whitaker'?practiceTimeValue((practiceTimeMinutes(startTime)??0)+45):startTime),departureValue=accommodation.departure||endTime;
  const attendanceChecked=!!selected&&selected.has(player.name);
  return `<div class="practice-attendance-row ${player.isPracticeGuest?'practice-guest-attendee':''}${player.isTeamJenkins?' team-jenkins-player':''}"><div class="practice-player-line"><label class="practice-player"><input type="checkbox" data-practice-player="${index}" ${attendanceChecked?'checked="checked"':''}><span><b>${esc(player.name)}</b><small>${player.isPracticeGuest?'GUEST ':''}${practiceRole(player)||'Hitter'}</small></span></label><button class="practice-adjust" type="button" data-practice-adjust="${index}">Adjust</button></div><small class="practice-accommodation-summary" data-accommodation-summary="${index}">${esc(summary)}</small><div class="practice-accommodation" data-accommodation-panel="${index}" hidden><div class="practice-accommodation-times"><label>Arrival<div class="practice-field-shell practice-time-shell practice-accommodation-time-shell"><input class="input" type="time" value="${esc(arrivalValue)}" aria-label="Arrival time for ${esc(player.name)}" data-accommodation-arrival="${index}" data-custom="${accommodation.arrival?'true':'false'}"><span class="practice-accommodation-time-display">${esc(practiceTimeLabel(arrivalValue))}</span></div></label><label>Departure<div class="practice-field-shell practice-time-shell practice-accommodation-time-shell"><input class="input" type="time" value="${esc(departureValue)}" aria-label="Departure time for ${esc(player.name)}" data-accommodation-departure="${index}" data-custom="${accommodation.departure?'true':'false'}"><span class="practice-accommodation-time-display">${esc(practiceTimeLabel(departureValue))}</span></div></label></div>${player.isPracticeGuest?`<label class="practice-accommodation-toggle practice-prepractice-toggle"><input type="checkbox" data-accommodation-prepractice="${index}" ${accommodation.prePracticeComplete?'checked':''}><span>Warm-Up + Tee completed before practice</span></label>`:''}${pitcher?`<label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-pitch="${index}" ${accommodation.canPitch?'checked':''}><span>Available to pitch live</span></label><label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-warmup="${index}" ${accommodation.requiresPitchWarmup?'checked':''} ${accommodation.canPitch?'':'disabled'}><span>Pitch warm-up required</span></label>`:''}${catcher?`<label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-catch="${index}" ${accommodation.canCatch?'checked':''}><span>Catching</span></label>`:''}<label class="practice-limitations-label">Practice limitations<input class="input" data-accommodation-limitations="${index}" value="${esc(accommodation.limitations||'')}" placeholder="Optional limitation or adjustment"></label>${player.isPracticeGuest?`<button class="practice-remove-guest" type="button" data-remove-guest-player="${esc(player.guestId)}">Remove Guest</button>`:''}<p>${player.isPracticeGuest&&accommodation.prePracticeComplete?'Warm-Up and Tee are credited before practice. Official Blocks 1 and 2 can be used for assigned work.':'Arrival and departure use complete practice blocks. A late player begins with Warm-Up, then Tee Work.'}</p></div></div>`;
 }
@@ -2948,7 +2956,7 @@ function practiceSetup(){
  const roster=practiceAttendanceRoster(),savedNames=Array.isArray(practiceSetupState.selectedNames)?practiceSetupState.selectedNames:null,selected=new Set(savedNames===null?roster.filter(player=>!['Brynna Peter','Claire Jack'].includes(player.name)&&!player.isPracticeGuest).map(player=>player.name):savedNames),duration=practiceSetupState.durationMinutes||120,startTime=practiceSetupState.startTime||'17:30',endTime=practiceEndValue(startTime,duration),guests=practiceGuestPlayers(),guestCoaches=practiceGuestCoaches();
  return `${practiceSectionHeader('Build Practice')}
  <div class="panel practice-setup no-print"><div class="practice-intro"><h2>Who Is At Practice?</h2><p>Select everyone attending. HotB will build the practice with no downtime.</p></div>
- <div class="practice-attendance-tools"><button class="btn" id="practiceSelectAll">All</button><button class="btn" id="practiceSelectNone">None</button><label>Start Time<div class="practice-field-shell practice-time-shell"><input class="input" id="practiceStartTime" type="time" value="${esc(startTime)}" aria-label="Practice start time"><span id="practiceStartTimeDisplay">${esc(window.HotBPracticeScheduler.blockTimes(startTime,duration)[0].start)}</span></div></label><label>Duration<div class="practice-field-shell"><select class="input" id="practiceDuration">${[120,...(duration===132?[132]:[])].map(minutes=>`<option value="${minutes}" ${minutes===duration?'selected':''}>${minutes}${minutes===132?' Minutes · Emergency Block 11':' Minutes'}</option>`).join('')}</select></div></label>></div>
+ <div class="practice-attendance-tools"><button class="btn" id="practiceSelectAll">All</button><button class="btn" id="practiceSelectNone">None</button><label>Start Time<div class="practice-field-shell practice-time-shell"><input class="input" id="practiceStartTime" type="time" value="${esc(startTime)}" aria-label="Practice start time"><span id="practiceStartTimeDisplay">${esc(window.HotBPracticeScheduler.blockTimes(startTime,duration)[0].start)}</span></div></label><label>Duration<div class="practice-field-shell"><select class="input" id="practiceDuration">${[...Array.from({length:13},(_,index)=>60+index*10),...(duration===132?[132]:[])].sort((a,b)=>a-b).map(minutes=>`<option value="${minutes}" ${minutes===duration?'selected':''}>${minutes}${minutes===132?' Minutes · Emergency Block 11':' Minutes'}</option>`).join('')}</select></div></label>></div>
  <div class="practice-attendance practice-rebels-attendance">${db.roster.filter(player=>!player.isTeamJenkins).map(player=>practiceAttendanceRow(player,db.roster.indexOf(player),selected,startTime,duration,endTime)).join('')}</div>
  <section class="team-jenkins-practice-section"><div class="team-jenkins-heading">TEAM JENKINS</div><div class="practice-attendance team-jenkins-attendance">${db.roster.filter(player=>player.isTeamJenkins).map(player=>practiceAttendanceRow(player,db.roster.indexOf(player),selected,startTime,duration,endTime)).join('')}</div></section>
  <section class="practice-guests"><button type="button" class="practice-guests-toggle" id="togglePracticeGuests" aria-expanded="${!!practiceSetupState.guestsOpen}"><span>Guests (${guests.length+guestCoaches.length})</span><b>${practiceSetupState.guestsOpen?'−':'+'}</b></button>${practiceSetupState.guestsOpen?`<div class="practice-guests-body"><h3>Guest Players</h3>${guests.length?`<div class="practice-attendance">${guests.map((player,index)=>`${practiceAttendanceRow(player,db.roster.length+index,selected,startTime,duration,endTime)}<div class="practice-guest-access"><small>${esc(player.phone)}</small><span><button type="button" data-text-practice-guest="${esc(player.guestId)}">Text</button><button type="button" class="practice-guest-share" data-share-setup-guest="${esc(player.guestId)}">Share</button></span></div>`).join('')}</div>`:'<p class="practice-guest-empty">No guest players added.</p>'}<div class="practice-guest-form"><input class="input" id="guestPlayerFirstName" placeholder="First name" aria-label="Guest player first name"><select class="input" id="guestPlayerRole" aria-label="Guest player role"><option>Position Player</option><option>Pitcher</option><option>Catcher</option></select><input class="input" id="guestPlayerPhone" type="tel" inputmode="tel" placeholder="Cell number" aria-label="Guest player cell number"><button class="btn black" id="addGuestPlayer">Add Guest Player</button></div><h3>Guest Coaches</h3>${guestCoaches.map(coach=>`<div class="practice-guest-coach"><div><b>${esc(coach.name)}</b><small>${esc(coach.phone)}</small></div><span><button type="button" class="practice-guest-text" data-text-practice-guest="${esc(coach.guestId)}">Text</button><button type="button" class="practice-guest-share" data-share-setup-guest="${esc(coach.guestId)}">Share</button><button type="button" data-remove-guest-coach="${esc(coach.guestId)}">Remove</button></span></div>`).join('')||'<p class="practice-guest-empty">No guest coaches added.</p>'}<div class="practice-guest-form practice-guest-coach-form"><input class="input" id="guestCoachName" placeholder="Coach name" aria-label="Guest coach name"><input class="input" id="guestCoachPhone" type="tel" inputmode="tel" placeholder="Cell number" aria-label="Guest coach cell number"><button class="btn black" id="addGuestCoach">Add Guest Coach</button></div></div>`:''}</section>
@@ -6328,20 +6336,20 @@ function bindPlayerPortal(){
 }
 function storePracticeAccommodation(index){
  const player=practiceAttendanceRoster()[Number(index)];if(!player)return;
- const start=$('#practiceStartTime')?.value||practiceSetupState.startTime||'18:00',duration=Number($('#practiceDuration')?.value)||practiceSetupState.durationMinutes||120,end=practiceEndValue(start,duration);
+ const start=$('#practiceStartTime')?.value||practiceSetupState.startTime||'18:00',duration=Number($('#practiceDuration')?.value)||practiceSetupState.durationMinutes||120,end=practiceEndValue(start,duration),defaultArrival=player.name==='Makenna Whitaker'?practiceTimeValue((practiceTimeMinutes(start)??0)+45):start;
  const arrival=$(`[data-accommodation-arrival="${index}"]`),departure=$(`[data-accommodation-departure="${index}"]`),pitch=$(`[data-accommodation-pitch="${index}"]`),warmup=$(`[data-accommodation-warmup="${index}"]`),catching=$(`[data-accommodation-catch="${index}"]`),prePractice=$(`[data-accommodation-prepractice="${index}"]`),limitations=$(`[data-accommodation-limitations="${index}"]`);
  if(pitch&&warmup&&!pitch.checked)warmup.checked=false;
- if(arrival)arrival.dataset.custom=arrival.value!==start?'true':'false';if(departure)departure.dataset.custom=departure.value!==end?'true':'false';
+ if(arrival)arrival.dataset.custom=arrival.value!==defaultArrival?'true':'false';if(departure)departure.dataset.custom=departure.value!==end?'true':'false';
  [arrival,departure].forEach(input=>{const display=input?.parentElement?.querySelector('.practice-accommodation-time-display');if(display)display.textContent=practiceTimeLabel(input.value)});
- const accommodation={arrival:arrival?.value!==start?arrival.value:'',departure:departure?.value!==end?departure.value:'',limitations:limitations?.value.trim()||'',prePracticeComplete:!!prePractice?.checked,canPitch:pitch?pitch.checked:false,requiresPitchWarmup:warmup?warmup.checked:false,canCatch:catching?catching.checked:false};
+ const accommodation={arrival:arrival?.value!==defaultArrival?arrival.value:'',departure:departure?.value!==end?departure.value:'',limitations:limitations?.value.trim()||'',prePracticeComplete:!!prePractice?.checked,canPitch:pitch?pitch.checked:false,requiresPitchWarmup:warmup?warmup.checked:false,canCatch:catching?catching.checked:false};
  practiceSetupState.accommodations=practiceSetupState.accommodations||{};practiceSetupState.accommodations[player.name]=accommodation;
  const summary=$(`[data-accommodation-summary="${index}"]`);if(summary)summary.textContent=practiceAccommodationSummary(player,accommodation,start,duration);
  if(warmup)warmup.disabled=!!pitch&&!pitch.checked;
 }
 function refreshPracticeAccommodationDefaults(){
  const start=$('#practiceStartTime')?.value||'17:30',duration=Number($('#practiceDuration')?.value)||120,end=practiceEndValue(start,duration);
- $('[data-accommodation-arrival]').forEach(input=>{if(input.dataset.custom!=='true'){const player=practiceAttendanceRoster()[Number(input.dataset.accommodationArrival)];input.value=player?.name==='Makenna Whitaker'?'18:15':start}});
- $('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true')input.value=end});
+ $$('[data-accommodation-arrival]').forEach(input=>{if(input.dataset.custom!=='true'){const player=practiceAttendanceRoster()[Number(input.dataset.accommodationArrival)];input.value=player?.name==='Makenna Whitaker'?practiceTimeValue((practiceTimeMinutes(start)??0)+45):start}});
+ $$('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true')input.value=end});
  practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));
 }
 function bindPractice(){
