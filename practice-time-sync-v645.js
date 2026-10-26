@@ -11,7 +11,18 @@
   if(!start||!duration)return;
   const newStart=start.value||'17:30',newDuration=Number(duration.value)||120,newEnd=endValue(newStart,newDuration);
   window.start=toMinutes(newStart);
-  document.querySelectorAll('[data-accommodation-arrival]').forEach(input=>{input.dataset.custom='false';input.value=newStart;setDisplay(input)});
+  document.querySelectorAll('[data-accommodation-arrival]').forEach(input=>{
+   const row=input.closest('.practice-attendance-row'),isMakenna=/Makenna\s+Whitaker/i.test(row?.textContent||'');
+   input.dataset.custom=isMakenna?'true':'false';
+   input.value=newStart;
+   setDisplay(input);
+   if(isMakenna){
+    const pitch=row?.querySelector('[data-accommodation-pitch]');
+    const warmup=row?.querySelector('[data-accommodation-warmup]');
+    if(pitch){pitch.checked=true;pitch.disabled=false}
+    if(warmup){warmup.disabled=false;warmup.checked=true}
+   }
+  });
   document.querySelectorAll('[data-accommodation-departure]').forEach(input=>{input.dataset.custom='false';input.value=newEnd;setDisplay(input)});
  };
  const installDurationOptions=select=>{
