@@ -1,11 +1,28 @@
 (()=>{
  const DURATIONS=[60,75,90,105,120,135,150,165,180];
+ const MAK_DEFAULT_FLAG='hotbMakennaDefaultAfterDone';
  const toMinutes=value=>{const m=String(value||'').match(/^(\d{2}):(\d{2})$/);if(!m)return null;return Number(m[1])*60+Number(m[2])};
  const timeValue=minutes=>{const total=(Math.round(minutes)+1440)%1440;return `${String(Math.floor(total/60)).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`};
  const timeLabelFromMinutes=minutes=>{const normalized=(Math.round(minutes)+1440)%1440,h=Math.floor(normalized/60),m=normalized%60;return `${h%12||12}:${String(m).padStart(2,'0')}${h<12?'a':'p'}`};
  const timeLabel=value=>{const total=toMinutes(value);return total===null?'—':timeLabelFromMinutes(total)};
  const endValue=(start,duration)=>{const s=toMinutes(start),d=Number(duration);if(s===null||!Number.isFinite(d))return '';return timeValue(s+d)};
  const setDisplay=input=>{const display=input?.parentElement?.querySelector('.practice-accommodation-time-display');if(display)display.textContent=timeLabel(input.value)};
+ const makennaRow=()=>[...document.querySelectorAll('.practice-attendance-row')].find(row=>/Makenna\s+Whitaker/i.test(row.textContent||''));
+ const applyMakennaDefaultAfterDone=()=>{
+  if(sessionStorage.getItem(MAK_DEFAULT_FLAG)!=='1')return;
+  const start=document.getElementById('practiceStartTime'),duration=document.getElementById('practiceDuration'),row=makennaRow();
+  if(!start||!duration||!row)return;
+  if((start.value||'17:30')!=='17:30'||Number(duration.value)!==120)return;
+  const arrival=row.querySelector('[data-accommodation-arrival]'),departure=row.querySelector('[data-accommodation-departure]'),pitch=row.querySelector('[data-accommodation-pitch]'),warmup=row.querySelector('[data-accommodation-warmup]');
+  if(arrival){arrival.value='18:15';arrival.dataset.custom='true';setDisplay(arrival)}
+  if(departure){departure.value='19:30';departure.dataset.custom='false';setDisplay(departure)}
+  if(pitch){pitch.checked=true;pitch.disabled=false}
+  if(warmup){warmup.checked=false;warmup.disabled=false}
+  sessionStorage.removeItem(MAK_DEFAULT_FLAG);
+  arrival?.dispatchEvent(new Event('change',{bubbles:true}));
+  departure?.dispatchEvent(new Event('change',{bubbles:true}));
+  warmup?.dispatchEvent(new Event('change',{bubbles:true}));
+ };
  const syncAllPlayerTimes=()=>{
   const start=document.getElementById('practiceStartTime'),duration=document.getElementById('practiceDuration');
   if(!start||!duration)return;
@@ -77,10 +94,12 @@
   if(!start||!duration)return;
   installDurationOptions(duration);window.start=toMinutes(start.value||'17:30');
   if(!start.dataset.hotbMasterTimeBound){start.dataset.hotbMasterTimeBound='1';start.dataset.hotbPreviousStart=start.value||'17:30';duration.dataset.hotbPreviousDuration=duration.value||'120'}
+  applyMakennaDefaultAfterDone();
  };
+ document.addEventListener('click',event=>{if(event.target?.closest?.('#endPracticeClock'))sessionStorage.setItem(MAK_DEFAULT_FLAG,'1')},true);
  document.addEventListener('change',event=>{
   const start=document.getElementById('practiceStartTime'),duration=document.getElementById('practiceDuration');if(!start||!duration)return;
-  if(event.target===start||event.target===duration){syncAllPlayerTimes();start.dataset.hotbPreviousStart=start.value||'17:30';duration.dataset.hotbPreviousDuration=duration.value||'120'}
+  if(event.target===start||event.target===duration){sessionStorage.removeItem(MAK_DEFAULT_FLAG);syncAllPlayerTimes();start.dataset.hotbPreviousStart=start.value||'17:30';duration.dataset.hotbPreviousDuration=duration.value||'120'}
  },true);
  new MutationObserver(apply).observe(document.documentElement,{childList:true,subtree:true});
  addEventListener('DOMContentLoaded',apply);setInterval(patchScheduler,500);setTimeout(apply,0);
