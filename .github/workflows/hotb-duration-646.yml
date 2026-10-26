@@ -1,0 +1,32 @@
+name: HotB duration 646
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/hotb_duration_646.py'
+      - '.github/workflows/hotb-duration-646.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply duration engine patch
+        run: python .github/scripts/hotb_duration_646.py
+      - name: Verify JavaScript
+        run: |
+          node --check practice-scheduler.js
+          node --check app-coach-rebels-portals-v10.js
+          grep -q 'durationOptions=\[60,75,90,105,120,135,150,165,180\]' app-coach-rebels-portals-v10.js
+          grep -q '20261025-duration646' index.html
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add practice-scheduler.js app-coach-rebels-portals-v10.js index.html
+          git diff --cached --check
+          git commit -m 'Support selectable HotB practice durations'
+          git push
