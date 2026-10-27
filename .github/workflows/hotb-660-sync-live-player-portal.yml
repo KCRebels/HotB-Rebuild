@@ -1,0 +1,52 @@
+name: HotB 660 Sync Live Player Portal
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/hotb-660-sync-live-player-portal.yml']
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync the bundle actually loaded by player portal links
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source=Path('app-coach-rebels-portals-v10.js')
+          target=Path('app-portal-meg-focus-archive-v1.js')
+          index=Path('index.html')
+          s=source.read_text()
+          required=[
+            'portal-practice-focus-badge',
+            "Retry permission denied before player PIN screen" if False else 'schedulePortalRetry',
+          ]
+          if 'portal-practice-focus-badge' not in s:
+            raise SystemExit('focus badge fix missing from current app bundle')
+          if 'Assigned Drills</h3>' in s:
+            raise SystemExit('duplicate Assigned Drills section still exists in current app bundle')
+          target.write_text(s)
+          x=index.read_text()
+          old="app-portal-meg-focus-archive-v1.js?v=20261025-permanent645"
+          new="app-portal-meg-focus-archive-v1.js?v=20261027-portal660&fresh="
+          if old in x:
+            x=x.replace("await loadPortalScript('"+old+"','P29-DOWNLOAD');", "await loadPortalScript('app-portal-meg-focus-archive-v1.js?v=20261027-portal660&fresh='+Date.now(),'P29-DOWNLOAD');",1)
+          else:
+            import re
+            x,n=re.subn(r"await loadPortalScript\('app-portal-meg-focus-archive-v1\.js\?v=[^']+'\s*,\s*'P29-DOWNLOAD'\);", "await loadPortalScript('app-portal-meg-focus-archive-v1.js?v=20261027-portal660&fresh='+Date.now(),'P29-DOWNLOAD');", x, count=1)
+            if n!=1: raise SystemExit('portal bundle loader anchor not found')
+          index.write_text(x)
+          PY
+          node --check app-portal-meg-focus-archive-v1.js
+          grep -q "portal-practice-focus-badge" app-portal-meg-focus-archive-v1.js
+          ! grep -q "Assigned Drills</h3>" app-portal-meg-focus-archive-v1.js
+          grep -q "portal660&fresh=" index.html
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name KCRebels
+          git config user.email actions@users.noreply.github.com
+          git add app-portal-meg-focus-archive-v1.js index.html
+          git commit -m 'Sync live player portal bundle with current portal fixes'
+          git push
