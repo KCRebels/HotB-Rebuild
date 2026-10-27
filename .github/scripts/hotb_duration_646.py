@@ -34,8 +34,6 @@ elif s.count(new) < 2:
     raise SystemExit('scheduler duration anchors missing')
 
 old = "const times=blockTimes(startTime,duration),warnings=[],fallbackWarnings=[];"
-new = "const times=blockTimes(startTime,duration),warnings=[],fallbackWarnings=[];"
-# No text change is required here; this anchor simply verifies the live build path.
 if old not in s:
     raise SystemExit('scheduler times anchor missing')
 
@@ -82,9 +80,19 @@ elif new not in s:
 
 p.write_text(s, encoding='utf-8')
 
-# Cache-bust the live scheduler and coach bundle.
+# Cache-bust the current live scheduler and coach bundle references.
 idx = Path('index.html')
 x = idx.read_text(encoding='utf-8')
-x = x.replace('practice-scheduler.js?v=20260922-resolution503', 'practice-scheduler.js?v=20261027-duration647', 1)
-x = x.replace('app-coach-rebels-portals-v10.js?v=20261019-portalsync643', 'app-coach-rebels-portals-v10.js?v=20261027-duration647', 1)
+old_scheduler = 'practice-scheduler.js?v=20261025-duration645'
+old_coach = 'app-coach-rebels-portals-v10.js?v=20261025-practiceportal645'
+new_scheduler = 'practice-scheduler.js?v=20261027-duration647'
+new_coach = 'app-coach-rebels-portals-v10.js?v=20261027-duration647'
+if new_scheduler not in x:
+    if old_scheduler not in x:
+        raise SystemExit('scheduler cache-bust anchor missing')
+    x = x.replace(old_scheduler, new_scheduler, 1)
+if new_coach not in x:
+    if old_coach not in x:
+        raise SystemExit('coach cache-bust anchor missing')
+    x = x.replace(old_coach, new_coach, 1)
 idx.write_text(x, encoding='utf-8')
