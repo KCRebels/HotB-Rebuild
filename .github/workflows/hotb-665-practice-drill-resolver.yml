@@ -1,0 +1,49 @@
+name: HotB 665 Practice Drill Resolver
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hotb-665-practice-drill-resolver.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make player practice drill detection tolerant of schedule formatting
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+          old="function portalAssignmentDrillName(assignment){return (Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[]).find(drill=>assignment===drill.name||String(assignment||'').endsWith(`— ${drill.name}`))?.name||''}"
+          new="function portalAssignmentDrillName(assignment){const list=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[],key=value=>String(value||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,' ').trim(),rawKey=key(assignment);if(!rawKey)return'';const matches=list.filter(drill=>{const drillKey=key(drill?.name);return !!drillKey&&(rawKey===drillKey||rawKey.endsWith(' '+drillKey))}).sort((a,b)=>key(b?.name).length-key(a?.name).length);return matches[0]?.name||''}"
+          if old not in s:
+              raise SystemExit('portalAssignmentDrillName anchor not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          idx=Path('index.html')
+          t=idx.read_text()
+          t,n=re.subn(r"app-coach-rebels-portals-v10\.js\?v=20261027-portal\d+&fresh=", "app-coach-rebels-portals-v10.js?v=20261027-portal665&fresh=", t, count=1)
+          if n!=1:
+              raise SystemExit('portal app cache-bust anchor not found')
+          idx.write_text(t)
+          PY
+          node --check app-coach-rebels-portals-v10.js
+          grep -q "rawKey.endsWith(' '+drillKey)" app-coach-rebels-portals-v10.js
+          grep -q "20261027-portal665&fresh=" index.html
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name "KCRebels"
+          git config user.email "actions@users.noreply.github.com"
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m "Resolve player practice drills before Focus badge matching" || exit 0
+          git push
