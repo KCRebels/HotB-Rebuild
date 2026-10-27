@@ -1,0 +1,52 @@
+name: HotB 657 Portal Cache Refresh
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/hotb-657-portal-cache-refresh.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Force fresh portal code on every permanent-link open
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+          s=s.replace("const PORTAL_BUILD_TOKEN='20260924-631';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;","const PORTAL_BUILD_TOKEN='20261027-657';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;",1)
+          if "const PORTAL_BUILD_TOKEN='20261027-657'" not in s:
+              raise SystemExit('portal build token patch failed')
+          p.write_text(s)
+
+          q=Path('index.html')
+          x=q.read_text()
+          marker='<title>HotB</title>'
+          inject='''<title>HotB</title>\n  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />\n  <meta http-equiv="Pragma" content="no-cache" />\n  <meta http-equiv="Expires" content="0" />\n  <script id="hotb-portal-fresh-navigation">(()=>{try{const u=new URL(location.href);if(!u.searchParams.has('portal')||u.searchParams.has('portalFresh'))return;u.searchParams.set('portalFresh',Date.now().toString());location.replace(u.toString())}catch(_){}})();</script>'''
+          if 'hotb-portal-fresh-navigation' not in x:
+              if marker not in x: raise SystemExit('title marker not found')
+              x=x.replace(marker,inject,1)
+          x=x.replace("s.src='app-coach-rebels-portals-v10.js?v=20261027-focus656';","s.src='app-coach-rebels-portals-v10.js?v=20261027-focus657&fresh='+Date.now();",1)
+          if "focus657&fresh=" not in x:
+              # In case another current app version exists, patch the portal/coach loader generically.
+              import re
+              x,n=re.subn(r"s\.src='app-coach-rebels-portals-v10\.js\?v=[^']+';","s.src='app-coach-rebels-portals-v10.js?v=20261027-focus657&fresh='+Date.now();",x,count=1)
+              if n!=1: raise SystemExit('app script source patch failed')
+          q.write_text(x)
+          PY
+          node --check app-coach-rebels-portals-v10.js
+          grep -q "20261027-657" app-coach-rebels-portals-v10.js
+          grep -q "hotb-portal-fresh-navigation" index.html
+          grep -q "focus657&fresh=" index.html
+          ! grep -q "Assigned Drills</h3>" app-coach-rebels-portals-v10.js
+          grep -q "portal-practice-focus-badge" app-coach-rebels-portals-v10.js
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name KCRebels
+          git config user.email actions@users.noreply.github.com
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m 'Force fresh player portal code on permanent-link open'
+          git push
