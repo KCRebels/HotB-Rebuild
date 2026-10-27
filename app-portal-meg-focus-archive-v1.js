@@ -815,7 +815,7 @@ const CLOUD_PENDING_KEY='hotbCloudPendingV1';
 const CLOUD_ERROR_KEY='hotbCloudErrorV1';
 const CLOUD_EMAIL='hotbkcrebels@gmail.com';
 const PORTAL_QUERY_KEY='portal';
-const PORTAL_BUILD_TOKEN='20260924-631';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
+const PORTAL_BUILD_TOKEN='20261027-657';window.HOTB_PORTAL_BUILD_TOKEN=PORTAL_BUILD_TOKEN;
 const portalToken=new URLSearchParams(window.location.search).get(PORTAL_QUERY_KEY)||'';
 const guestPortalSecret=new URLSearchParams(window.location.search).get('guest')||'';
 const firebaseConfig={apiKey:'AIzaSyBAMVx6umLKwVj9QVC-rWSFQFuR23-rlrA',authDomain:'hotb-kc-rebels.firebaseapp.com',projectId:'hotb-kc-rebels',storageBucket:'hotb-kc-rebels.firebasestorage.app',messagingSenderId:'412203516902',appId:'1:412203516902:web:397dccc597ac1149ee4c27'};
@@ -847,6 +847,17 @@ if(!Array.isArray(db.gameGroups))db.gameGroups=[];
 if(!Array.isArray(db.practiceHistory))db.practiceHistory=[];
 if(!Array.isArray(db.coachObservations))db.coachObservations=[];
 if(!db.playerFocusDrillOverrides||typeof db.playerFocusDrillOverrides!=='object')db.playerFocusDrillOverrides={};
+// Protect the two completed Haskell games recovered from the Sept. 25 backup.
+// Merge by immutable game id only; never replace newer app state or duplicate a game.
+if(Array.isArray(window.HotBHaskellRecovery)){
+ const existingGameIds=new Set((db.savedGames||[]).map(game=>game?.id).filter(Boolean));
+ const missingHaskell=window.HotBHaskellRecovery.filter(game=>game?.id&&!existingGameIds.has(game.id));
+ if(missingHaskell.length){
+  db.savedGames=[...(db.savedGames||[]),...structuredClone(missingHaskell)].sort((a,b)=>new Date(a.date||0)-new Date(b.date||0));
+  localStorage.setItem(DBKEY,JSON.stringify(db));
+  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+ }
+}
 // Team Jenkins exists only as a Hitting Practice scheduling roster. These records
 // are deliberately minimal and every non-practice surface filters isTeamJenkins.
 const teamJenkinsProfiles=[
@@ -991,29 +1002,26 @@ let pendingRosterImport=null;
 let timerInt=null,timerStart=0,timerElapsed=0;
 let lastRenderedUndoState=null;
 let practicePlan=null,practiceResolution=null;
-let practiceSetupState={selectedNames:null,startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false},practiceCoachOpen=false,practiceCardsOpen=false;
+let practiceSetupState={selectedNames:null,startTime:'17:30',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false},practiceCoachOpen=false,practiceCardsOpen=false;
 let reportsNavDrawerOpen=false;
 let practiceSection=(!portalToken&&directScreen==='library')?'library':(!portalToken&&directScreen==='focus')?'player':(!portalToken&&directScreen==='practice')?'setup':'hub',practiceFocusPlayer='',practiceFocusRange='weekend',practiceDrillQuery='',practiceDrillCategory='All Drills',practiceSelectedDrill='';
 let practiceSetupOpenSnapshot=null;
+// Sept. 30 practice defaults: Rebels + Jenkins 5:30–7:30, all complete Warm-Up then Tee Work.
+if(!db.activePracticeSession&&!db.activePortalPractice){
+ const defaultNames=db.roster.filter(player=>!['Brynna Peter','Claire Jack'].includes(player.name)).map(player=>player.name);
+ practiceSetupState={...practiceSetupState,selectedNames:defaultNames,startTime:'17:30',durationMinutes:120,accommodations:{'Makenna Whitaker':{requiresPitchWarmup:false}}};
+}
+
 let practiceChosenDrills=[],practiceDraftDrills=[],practiceDrillPickerOpen=false,practiceEquipmentSetupOpen=false,practicePickerQuery='',practicePickerCategory='All Drills';
-let focusDrillReplaceIndex=-1,focusDrillQuery='';
+let focusDrillReplaceIndex=-1,focusDrillQuery='',megFocusArchiveOpen=false;
 let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null},practiceClockTimer=null,practiceEndSpeech=Promise.resolve(),portalClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudAuthReady=false,cloudBusy=false,cloudMessage='',cloudBackupTimer=null,playerEvalSyncTimer=null,playerPortalRefreshPending=false;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
-let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLoadGeneration=0,portalLibraryReturnView='library',portalMegArchiveIndex=null;
+let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLoadGeneration=0,portalLibraryReturnView='library';
 function portalFocusPublishedKey(){const raw=portalData?.focus?.publishedAt;return raw?String(raw):''}
-function portalFocusStateKey(){return portalToken?`hotb_focus_state_v1_${portalToken}`:''}
-function readPortalFocusState(){try{return JSON.parse(localStorage.getItem(portalFocusStateKey())||'{}')||{}}catch(_){return{}}}
-function writePortalFocusState(state){const key=portalFocusStateKey();if(key)localStorage.setItem(key,JSON.stringify(state||{}))}
-function portalFocusLocalState(){
- const state=readPortalFocusState(),cloudArchive=Array.isArray(portalData?.focusArchive)?portalData.focusArchive:[],deleted=new Set(Array.isArray(state.deleted)?state.deleted:[]),localArchive=Array.isArray(state.archive)?state.archive:[],byKey=new Map();
- [...cloudArchive,...localArchive].forEach(item=>{const key=String(item?.publishedAt||item?.archivedAt||'');if(key&&!deleted.has(key))byKey.set(key,item)});
- const currentKey=String(portalData?.focus?.publishedAt||'');
- return {current:currentKey&&state.archivedCurrent===currentKey?null:portalData?.focus,archive:[...byKey.values()],state};
-}
 function portalFocusViewedKey(){return portalToken?`hotb_focus_viewed_${portalToken}`:''}
 function portalFocusIsNew(){const published=portalFocusPublishedKey(),key=portalFocusViewedKey();return !!published&&!!key&&localStorage.getItem(key)!==published}
-function markPortalFocusViewed(){const published=portalFocusPublishedKey(),key=portalFocusViewedKey();if(published&&key)localStorage.setItem(key,published)}
+function markPortalFocusViewed(){const published=portalFocusPublishedKey(),key=portalFocusViewedKey();if(!published||!key)return;localStorage.setItem(key,published);const openedAt=new Date().toISOString();try{const same=String(portalData?.focusOpenedPublishedAt||'')===published,existing=Date.parse(portalData?.focusOpenedAt||0)||0;if(!same||!existing){if(portalData){portalData.focusOpenedPublishedAt=published;portalData.focusOpenedAt=openedAt}portalDoc()?.set({focusOpenedPublishedAt:published,focusOpenedAt:openedAt,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{})}}catch(_){}}
 let observationTargetPaId='',observationTargetPlayer='',observationMode='game',observationScope='current',observationPromptInning=0,observationFromInningPrompt=false,observationRecognition=null;
 let observationEditId='',observationEditGameId='';
 if(!db.coachPortal||typeof db.coachPortal!=='object')db.coachPortal={name:'',phone:'',portalId:'',portalPin:'',portalPinHash:'',portalSecret:''};
@@ -1085,17 +1093,14 @@ if(recoveredPracticeSession){
 const recoveredPracticeExpired=!!(practicePlan&&practiceClock.running&&!window.HotBPracticeSession?.timing(practicePlan,practiceClock,Date.now()));
 
 let cloudInitStarted=false,cloudInitRetryTimer=null,cloudInitRetryCount=0;
-function portalFirebaseModulesReady(){return !!window.firebase&&typeof window.firebase.auth==='function'&&typeof window.firebase.firestore==='function'}
 async function initCloud(){
  if(cloudInitStarted)return;
- if(!portalFirebaseModulesReady()&&window.HotBFirebaseReady){try{await Promise.race([window.HotBFirebaseReady,new Promise((_,reject)=>setTimeout(()=>reject(new Error('firebase-loader-timeout')),8000))])}catch(_){}}
- if(!portalFirebaseModulesReady()){
+ if(!window.firebase&&window.HotBFirebaseReady){try{await Promise.race([window.HotBFirebaseReady,new Promise((_,reject)=>setTimeout(()=>reject(new Error('firebase-loader-timeout')),8000))])}catch(_){}}
+ if(!window.firebase){
   try{
    const sources=['https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js','https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js','https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js'];
    for(const src of sources){
     if(window.firebase&&src.includes('firebase-app-compat'))continue;
-    if(typeof window.firebase?.auth==='function'&&src.includes('firebase-auth-compat'))continue;
-    if(typeof window.firebase?.firestore==='function'&&src.includes('firebase-firestore-compat'))continue;
     await Promise.race([
      new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=false;s.dataset.hotbFirebase=src;s.onload=resolve;s.onerror=()=>reject(new Error('firebase-load-failed'));document.head.appendChild(s)}),
      new Promise((_,reject)=>setTimeout(()=>reject(new Error('firebase-load-timeout')),8000))
@@ -1103,7 +1108,7 @@ async function initCloud(){
    }
   }catch(_){}
  }
- if(!portalFirebaseModulesReady()){
+ if(!window.firebase){
   if(cloudInitRetryCount<12){cloudInitRetryCount++;clearTimeout(cloudInitRetryTimer);cloudInitRetryTimer=setTimeout(initCloud,500);return}
   const dynamicScripts=[...document.scripts].filter(script=>script.dataset?.hotbFirebase);
   const attempted=dynamicScripts.map(script=>script.dataset.hotbFirebase||'').filter(Boolean);
@@ -1136,7 +1141,12 @@ async function initCloud(){
     if(route==='home'||route==='portal')render();
     try{await loadCloudStatus()}catch(_){cloudMessage='Signed in. Cloud status will retry automatically.'}
     if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();
+    // Permanent player portals are cloud snapshots, so refresh them whenever the
+    // authenticated coach app opens. This repairs any stale weekend stats and
+    // makes future portal data self-healing after an interrupted game-end sync.
+    if(db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId))playerPortalRefreshPending=true;
     if(playerPortalRefreshPending)setTimeout(()=>setupPlayerPortals(false),0);
+    setTimeout(recoverPublishedPlayerFocusReviewDates,0);
    }
    if(cloudUser&&recoveredPracticeExpired&&practicePlan&&practiceClock.running){
     // Do not merely mark an expired restored clock finished locally. Wait for the
@@ -1166,8 +1176,7 @@ async function initCloud(){
   cloudMessage='Cloud backup could not start. Your phone data is still safe.';
   if(portalToken){
    portalBusy=false;
-   const code=String(error?.code||error?.message||'unknown').replace(/[^a-zA-Z0-9_-]/g,'-');
-   portalMessage='HotB could not start the player portal connection [P212-'+code+']. Please retry.';
+   portalMessage='HotB could not start the player portal connection. Please reopen the link.';
    if(route==='portal')render();
   }
  }
@@ -1271,7 +1280,8 @@ function waitForPortalAuthState(timeout=8000){
 async function loadPlayerPortal(){
  if(!portalToken)return;
  const requestedPortalToken=portalToken,loadGeneration=++portalLoadGeneration;
- if(!cloudAuth||!cloudStore){portalBusy=false;portalData=null;portalMessage='HotB is still connecting to the player portal service. Please wait a moment and reopen this link.';if(route==='portal')render();return;}
+ const schedulePortalRetry=()=>{const prev=window.__HOTB_PORTAL_RETRY_STATE__||{token:'',count:0};const state=prev.token===requestedPortalToken?prev:{token:requestedPortalToken,count:0};if(state.count>=3)return false;state.count+=1;window.__HOTB_PORTAL_RETRY_STATE__=state;portalBusy=true;portalData=null;portalMessage='Opening your portal…';if(route==='portal')render();setTimeout(()=>{if(portalToken===requestedPortalToken)loadPlayerPortal()},400*state.count);return true};
+ if(!cloudAuth||!cloudStore){if(schedulePortalRetry())return;portalBusy=false;portalData=null;portalMessage='HotB could not reach the player portal service. Please check the connection and reopen the link.';if(route==='portal')render();return;}
  // A reload or token change must never leave the previous portal document
  // listening in the background. That old listener could otherwise repaint
  // stale practice data after a failed read or while PIN entry is shown.
@@ -1308,10 +1318,10 @@ async function loadPlayerPortal(){
    }
   }catch(error){
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
+   const authTimedOut=String(error?.message||'')==='portal-auth-timeout';
+   if(authTimedOut&&schedulePortalRetry())return;
    portalBusy=false;
-   portalMessage=String(error?.message||'')==='portal-auth-timeout'
-    ?'HotB could not reach the player portal sign-in service. Please reopen the link.'
-    :'Player access is not active yet. The coach must finish Firebase portal setup.';
+   portalMessage=authTimedOut?'HotB could not reach the player portal sign-in service. Please reopen the link.':'Player access is not active yet. The coach must finish Firebase portal setup.';
    if(route==='portal')render();
    return;
   }
@@ -1344,27 +1354,9 @@ async function loadPlayerPortal(){
    }
   }catch(error){
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
-   // Reclaiming an already-authorized device can be rejected by the claim
-   // rules. A successful protected read proves this device still has access;
-   // keep its existing authorization instead of requiring another claim.
-   let existingAccess=false;
-   try{
-    const existing=await portalDoc(requestedPortalToken).get();
-    const data=existing.exists?existing.data():null,uid=portalAuthUser?.uid;
-    existingAccess=!!data&&!!uid&&(data.ownerUid===uid||(Array.isArray(data.authorizedUids)&&data.authorizedUids.includes(uid)));
-    // Jenkins bearer access requires both a rules-permitted read and an exact
-    // secret hash match. It does not require claiming another device slot.
-    if(!existingAccess&&data?.portalType==='jenkinsPlayer'&&guestPortalSecret){
-     existingAccess=data.pinHash===await portalHash(requestedPortalToken,guestPortalSecret);
-    }
-   }catch(_){}
-   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
-   if(!existingAccess){
-    const code=String(error?.code||error?.message||'unknown').replace(/[^a-zA-Z0-9_-]/g,'-');
-    portalBusy=false;portalData=null;portalMessage='This practice link could not be connected [P211-'+code+']. Ask the coach to check this existing link.';
-    if(route==='portal')render();
-    return;
-   }
+   portalBusy=false;portalData=null;portalMessage='This practice link could not be connected. Ask the coach to send a fresh link.';
+   if(route==='portal')render();
+   return;
   }
  }
  try{
@@ -1373,6 +1365,7 @@ async function loadPlayerPortal(){
    new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-read-timeout')),8000))
   ]);
   if(snapshot.exists){
+   window.__HOTB_PORTAL_RETRY_STATE__={token:requestedPortalToken,count:0};
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
    const loaded={id:snapshot.id,...snapshot.data()};
    // A portal URL must never display a cloud document whose identity does not
@@ -1460,6 +1453,8 @@ async function loadPlayerPortal(){
   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
   portalData=null;
   const code=String(error?.code||'');
+  if(code==='permission-denied'&&!guestPortalSecret&&!isCoachPortalUser()){try{await portalAuthUser?.getIdToken?.(true)}catch(_){}if(schedulePortalRetry())return;}
+  if((String(error?.message||'')==='portal-read-timeout'||code==='unavailable')&&schedulePortalRetry())return;
   if(String(error?.message||'')==='portal-read-timeout')portalMessage='HotB could not reach the player portal. Please reopen the link.';
   else if(code==='permission-denied'&&!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
   else if(code==='unavailable')portalMessage='HotB could not reach the player portal service. Please check the connection and reopen the link.';
@@ -1622,17 +1617,87 @@ async function setupJenkinsCoachPortal(){
   clearTimeout(watchdog);watchdog=null;localStorage.setItem(DBKEY,JSON.stringify(db));cloudBusy=false;portalMessage='Mark’s permanent Hitting Practice coach link is ready.';render();
  }catch(error){clearTimeout(watchdog);watchdog=null;db.jenkinsCoachPortal=original;cloudBusy=false;const reason=String(error?.message||error||'unknown');portalMessage=`Mark’s Hitting Practice coach portal could not be created (${reason}). Nothing else was changed.`;console.error(error);render()}
 }
-async function setupJenkinsPortals(){
- const players=db.roster.filter(item=>item.isTeamJenkins);
- const missing=players.filter(player=>!player.portalId||!player.portalSecret);
- // TEAM JENKINS PORTAL LOCK: all eight permanent practice credentials are
- // immutable. Never generate, rotate, repair, or replace them from this manager.
- if(missing.length){
-  portalMessage='A Team Jenkins permanent credential is missing on this device. HotB has locked the existing links and will not replace them automatically.';
- }else{
-  portalMessage='All 8 Team Jenkins permanent practice links are locked. HotB will not replace or rotate them.';
+async function restoreJenkinsPortalLink(playerName){
+ if(!cloudUser||!cloudStore||cloudBusy)return;
+ const player=db.roster.find(item=>item.isTeamJenkins&&item.name===playerName);
+ if(!player)return;
+ const raw=prompt('Paste '+practiceFirstName(playerName)+'’s original permanent HotB link here:');
+ if(!raw)return;
+ let parsed,portalId='',portalSecret='';
+ try{parsed=new URL(raw.trim());portalId=parsed.searchParams.get(PORTAL_QUERY_KEY)||'';portalSecret=parsed.searchParams.get('guest')||''}catch(_){}
+ if(!portalId||!portalSecret){portalMessage='That is not a complete HotB permanent practice link.';render();return}
+ cloudBusy=true;portalMessage='Verifying '+practiceFirstName(playerName)+'’s original link…';render();
+ try{
+  const snapshot=await portalDoc(portalId).get(),remote=snapshot.exists?snapshot.data():null;
+  if(!remote||remote.portalType!=='jenkinsPlayer'||remote.playerName!==playerName)throw new Error('jenkins-link-identity-mismatch');
+  const proof=await portalHash(portalId,portalSecret);
+  if(remote.pinHash!==proof)throw new Error('jenkins-link-secret-mismatch');
+  player.portalId=portalId;player.portalSecret=portalSecret;
+  const cache=JSON.parse(localStorage.getItem('hotbJenkinsPortalCredentialsV1')||'{}')||{};
+  cache[playerName]={portalId,portalSecret};
+  localStorage.setItem('hotbJenkinsPortalCredentialsV1',JSON.stringify(cache));
+  localStorage.setItem(DBKEY,JSON.stringify(db));
+  cloudBusy=false;portalMessage=practiceFirstName(playerName)+'’s original permanent link is restored. It was not changed.';render();
+ }catch(error){
+  console.error('Jenkins original link restore failed',error);cloudBusy=false;portalMessage='HotB could not verify that original link for '+practiceFirstName(playerName)+'. Nothing was changed.';render();
  }
+}
+async function copyJenkinsPortalTransfer(){
+ const names=['Taylor Woods','Amelia Steffen','Leslie Cundiff'],players=names.map(name=>db.roster.find(player=>player.isTeamJenkins&&player.name===name));
+ if(players.some(player=>!player?.portalId||!player?.portalSecret)){portalMessage='The three verified Jenkins links are not all available in this copy of HotB.';render();return}
+ const payload={type:'hotb-jenkins-transfer-v1',players:players.map(player=>({name:player.name,portalId:player.portalId,portalSecret:player.portalSecret}))};
+ const code='HOTB-JENKINS-1:'+btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+ try{await navigator.clipboard.writeText(code);portalMessage='Taylor, Amelia and Leslie transfer code copied. Open your Home Screen HotB, return to Player Portals, and tap Import 3 Jenkins Links.'}
+ catch(error){prompt('Copy this Jenkins transfer code:',code);portalMessage='Taylor, Amelia and Leslie transfer code is ready to copy.'}
  render();
+}
+async function importJenkinsPortalTransfer(){
+ if(cloudBusy)return;
+ const raw=prompt('Paste the Jenkins transfer code from the working v9 page:');if(!raw)return;
+ let payload;
+ try{const encoded=String(raw).trim().replace(/^HOTB-JENKINS-1:/,'');payload=JSON.parse(decodeURIComponent(escape(atob(encoded))))}catch(error){portalMessage='That Jenkins transfer code could not be read. Nothing was changed.';render();return}
+ const required=['Taylor Woods','Amelia Steffen','Leslie Cundiff'];
+ if(payload?.type!=='hotb-jenkins-transfer-v1'||!Array.isArray(payload.players)||required.some(name=>!payload.players.some(item=>item?.name===name&&item.portalId&&item.portalSecret))){portalMessage='That transfer code does not contain all three Jenkins links. Nothing was changed.';render();return}
+ if(!cloudUser||!cloudStore){portalMessage='HotB needs the coach cloud connection to verify the three Jenkins links before importing them. Nothing was changed.';render();return}
+ cloudBusy=true;portalMessage='Verifying Taylor, Amelia and Leslie before import…';render();
+ try{
+  for(const name of required){
+   const item=payload.players.find(entry=>entry.name===name),snapshot=await portalDoc(item.portalId).get(),remote=snapshot.exists?snapshot.data():null,proof=await portalHash(item.portalId,item.portalSecret);
+   if(!remote||remote.portalType!=='jenkinsPlayer'||remote.playerName!==name||remote.pinHash!==proof||remote.expired===true)throw new Error('jenkins-transfer-verification-failed:'+name);
+  }
+  const cache=JSON.parse(localStorage.getItem('hotbJenkinsPortalCredentialsV1')||'{}')||{};
+  for(const name of required){const item=payload.players.find(entry=>entry.name===name),player=db.roster.find(entry=>entry.isTeamJenkins&&entry.name===name);if(!player)throw new Error('jenkins-transfer-player-missing:'+name);player.portalId=item.portalId;player.portalSecret=item.portalSecret;cache[name]={portalId:item.portalId,portalSecret:item.portalSecret}}
+  localStorage.setItem('hotbJenkinsPortalCredentialsV1',JSON.stringify(cache));localStorage.setItem(DBKEY,JSON.stringify(db));
+  cloudBusy=false;portalMessage='Taylor, Amelia and Leslie were verified and connected to this Home Screen HotB. No portal credentials were changed.';render();
+ }catch(error){console.error('Jenkins transfer import failed',error);cloudBusy=false;portalMessage='HotB could not verify all three Jenkins links. Nothing was imported or changed.';render()}
+}
+async function setupJenkinsPortals(){
+ if(!cloudUser||!cloudStore||cloudBusy)return;
+ const protectedNames=new Set(['Neveah Schlappi','Lilliana Schlappi','Perri Wagner','Pacie Dougherty','Emmie Wible']);
+ const creatableNames=new Set(['Taylor Woods','Amelia Steffen','Leslie Cundiff']);
+ const players=db.roster.filter(item=>item.isTeamJenkins),protectedPlayers=players.filter(player=>protectedNames.has(player.name)),creatablePlayers=players.filter(player=>creatableNames.has(player.name));
+ const missingProtected=protectedPlayers.filter(player=>!player.portalId||!player.portalSecret);
+ if(missingProtected.length){portalMessage='Restore the known working Jenkins links first: '+missingProtected.map(player=>practiceFirstName(player.name)).join(', ')+'. HotB will not replace them.';render();return}
+ const missingCreatable=creatablePlayers.filter(player=>!player.portalId||!player.portalSecret),originals=missingCreatable.map(player=>({player,portalId:player.portalId,portalSecret:player.portalSecret}));
+ if(!missingCreatable.length){portalMessage='All Team Jenkins permanent links are ready. The five recovered links remain protected.';render();return}
+ cloudBusy=true;portalMessage='Creating permanent links only for '+missingCreatable.map(player=>practiceFirstName(player.name)).join(', ')+'…';render();
+ try{
+  for(const player of missingCreatable){player.portalId=newPortalId();player.portalSecret=newGuestSecret()}
+  const batch=cloudStore.batch();
+  for(const player of missingCreatable){
+   const pinHash=await portalHash(player.portalId,player.portalSecret);
+   batch.set(portalDoc(player.portalId),{portalType:'jenkinsPlayer',playerName:player.name,firstName:practiceFirstName(player.name),phone:player.phone,pinHash,ownerUid:null,expired:false,accessStatus:'waiting',activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:false});
+  }
+  await Promise.race([batch.commit(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('jenkins-portal-write-timeout')),8000))]);
+  const verification=await Promise.race([Promise.all(missingCreatable.map(async player=>{const snapshot=await portalDoc(player.portalId).get(),remote=snapshot.exists?snapshot.data():null;return !!remote&&remote.portalType==='jenkinsPlayer'&&remote.playerName===player.name&&remote.expired===false})),new Promise((_,reject)=>setTimeout(()=>reject(new Error('jenkins-portal-verify-timeout')),8000))]);
+  if(verification.some(ok=>!ok))throw new Error('jenkins-portal-verification-failed');
+  const cache=JSON.parse(localStorage.getItem('hotbJenkinsPortalCredentialsV1')||'{}')||{};for(const player of missingCreatable)cache[player.name]={portalId:player.portalId,portalSecret:player.portalSecret};localStorage.setItem('hotbJenkinsPortalCredentialsV1',JSON.stringify(cache));
+  db.route=route;localStorage.setItem(DBKEY,JSON.stringify(db));if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');scheduleCloudBackup();
+  cloudBusy=false;portalMessage='Permanent Jenkins links created only for '+missingCreatable.map(player=>practiceFirstName(player.name)).join(', ')+'. Existing Jenkins and Rebels links were not changed.';render();
+ }catch(error){
+  originals.forEach(({player,portalId,portalSecret})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalSecret===undefined)delete player.portalSecret;else player.portalSecret=portalSecret});
+  console.error('Team Jenkins portal setup failed',error);cloudBusy=false;portalMessage='The three new Jenkins links could not be completed. Existing Jenkins and Rebels links were not changed.';render();
+ }
 }
 async function setupPlayerPortals(fromButton=false){
  if(!cloudUser||!cloudStore){if(!fromButton){playerPortalRefreshPending=true;setTimeout(()=>{if(playerPortalRefreshPending)setupPlayerPortals(false)},1000)}else{portalMessage='Player refresh cannot start because the coach cloud connection is not ready. Reopen HotB and try again.';render()}return}
@@ -1643,34 +1708,33 @@ async function setupPlayerPortals(fromButton=false){
  const timed=(promise,label,ms=8000)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+'-timeout')),ms))]);
  try{
   // Read every existing portal concurrently. The old refresh waited for 13
-  // Firestore reads one after another, so one slow mobile read could make the
-  // button appear frozen for a very long time.
-  // MAIN-TEAM PORTAL LOCK: Refresh may publish new player data, but it may
-  // never create or rotate a permanent Rebels portal credential.
-  const missingCredential=players.find(player=>!player.portalId||!player.portalPin);
-  if(missingCredential)throw new Error('permanent-player-portal-locked-missing-credential:'+missingCredential.name);
-  for(const player of players){
-   player.portalPinHash=await portalHash(player.portalId,player.portalPin);
+  // MAIN-TEAM PORTAL LOCK: stats-only refresh uses the existing permanent portal ID.
+  // A missing local PIN must not block evaluation publishing, and credentials are never rewritten here.
+  const publishablePlayers=players.filter(player=>!!player.portalId);
+  const missingPortalNames=players.filter(player=>!player.portalId).map(player=>player.name);
+  if(!publishablePlayers.length)throw new Error('permanent-player-portal-locked-no-ids');
+  // Refresh each permanent portal independently so one stale or missing portal
+  // cannot block the rest of the roster from receiving current stats.
+  const failedPortalRefreshes=[];
+  for(let i=0;i<publishablePlayers.length;i++){
+   const player=publishablePlayers[i],evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
+   try{
+    await timed(portalDoc(player.portalId).update({portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}),'player-portal-write:'+player.name,20000);
+   }catch(error){
+    failedPortalRefreshes.push(player.name);
+    console.warn('Player portal refresh failed for '+player.name,error);
+   }
+   portalMessage=`Refreshing player records… ${i+1} of ${publishablePlayers.length}`;render();
   }
-  // Write existing permanent portals in small independent batches. The full
-  // 13-player evaluation payload can be large enough that one mobile Firestore
-  // batch does not acknowledge within Safari's timeout window.
-  for(let i=0;i<players.length;i+=3){
-   const group=players.slice(i,i+3),batch=cloudStore.batch();
-   group.forEach(player=>{
-    const evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
-    batch.update(portalDoc(player.portalId),{portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-   });
-   portalMessage=`Refreshing player records… ${Math.min(i+group.length,players.length)} of ${players.length}`;render();
-   await timed(batch.commit(),'player-portal-write',20000);
-  }
+  if(failedPortalRefreshes.length===publishablePlayers.length)throw new Error('all-player-portal-writes-failed');
   // The batch commit is the authoritative success point. A second round of
   // Firestore reads is not required to publish these records and was causing
   // false failures on iPhone Safari even after the write had completed.
   // Existing identity/type safety was already checked before the batch write.
   db.route=route;localStorage.setItem(DBKEY,JSON.stringify(db));
   if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
-  portalMessage=`Player records refreshed, including My Evaluation (${activeDateFilterLabel()}). Existing permanent links were kept.`;
+  const notUpdated=[...missingPortalNames,...failedPortalRefreshes];
+  portalMessage=notUpdated.length?`Player records refreshed for ${publishablePlayers.length-failedPortalRefreshes.length} players. Could not refresh: ${notUpdated.join(', ')}.`:`Player records refreshed, including My Evaluation (${activeDateFilterLabel()}). Existing permanent links were kept.`;
   scheduleCloudBackup();
  }catch(error){
   originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});
@@ -1878,7 +1942,7 @@ function go(r){
  // controls while its queued verifier still owns the rollback snapshot.
  if(route==='practice'&&r!=='practice'&&(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId)){return}
  if(route==='practice'&&practicePlan)persistPracticeSession();
- if(r==='practice'&&route!=='practice')practiceSection='hub';
+ if(r==='practice'&&route!=='practice')practiceSection=(practicePlan||db.activePracticeSession?.plan)?'builder':'setup';
  // A private portal URL is a dedicated surface. Do not let generic app
  // navigation leave its Firestore listener alive while another coach/app view
  // is rendered; invalidate any in-flight load before changing routes.
@@ -1916,7 +1980,13 @@ function heatStyles(values,color){
 }
 function createGame(opponent,pitcherName,pitcherNumber,order,scrimmage=false){
  const allowed=new Set(competitionRoster().map(player=>player.name));
- order=[...new Set((order||[]).filter(name=>allowed.has(name)))];
+ const seen=new Set();
+ order=(order||[]).filter(name=>{
+  if(name==='Guest')return true;
+  if(!allowed.has(name)||seen.has(name))return false;
+  seen.add(name);
+  return true;
+ });
  if(!order.length)return null;
  const openingPitcher={name:pitcherName,number:pitcherNumber,enteredAt:Date.now(),pitchIndex:0};
  const g={
@@ -2032,6 +2102,11 @@ function competitionRoster(){
  return (db.roster||[]).filter(player=>rebelsNames.has(String(player?.name||'').trim().toLowerCase()));
 }
 function currentHitter(g=currentGame()){return hitterObj(g?.battingOrder?.[g.currentIdx]||'')}
+function currentPitcherStartIndex(g=currentGame()){
+ const used=g?.pitchersUsed||[];
+ return Number(used.length?used[used.length-1]?.pitchIndex:0)||0;
+}
+function currentPitcherPitches(g=currentGame()){return (g?.pitches||[]).slice(currentPitcherStartIndex(g))}
 const undoViewKeys=['historyTab','allView','zoneScope','zoneFilter','previewNext','firstPitchView','showAi','pendingZone','pitchType','plan'];
 function gameWithoutUndoViews(game){
  const actionGame=structuredClone(game||{});
@@ -2181,13 +2256,17 @@ function closePA(outcome,extra={}){
   firstPitchStrike,execution:execution.rate,executionSuccesses:execution.successes,executionAttempts:execution.attempts,ts:Date.now()
  };
  g.plateAppearances.push(pa);
- if(outcome==='HIT')g.runners=runnersAfterHit(g.runners,extra.hitType);
+ if(outcome==='HIT'){
+  g.runners=runnersAfterHit(g.runners,extra.hitType);
+  if(Number(extra.rbiCount)>0)g.runners=runnersAfterRBI(g.runners,extra.rbiCount);
+ }
  if(outcome==='BB'||outcome==='HBP')g.runners=batterToFirst(g.runners,{force:true});
  if(outcome==='E')g.runners=batterToFirst(g.runners,{force:true});
  if(outcome==='FC')g.runners=batterToFirst(g.runners);
  if(outcome==='H4O'&&extra.rba)g.runners=runnersAfterRBA(g.runners);
  if(outcome==='H4O'&&Number(extra.rbiCount)>0)g.runners=runnersAfterRBI(g.runners,extra.rbiCount);
- const completedInning=g.inning,inningEnded=['H4O','K','SAC'].includes(outcome)&&recordOut(g);
+ if(outcome==='SAC'&&Number(extra.rbiCount)>0)g.runners=runnersAfterRBI(g.runners,extra.rbiCount);
+ const completedInning=g.inning,inningEnded=['H4O','K','SAC','FC'].includes(outcome)&&recordOut(g);
  g.balls=0;g.strikes=0;g.paNumber++;
  g.currentIdx=(g.currentIdx+1)%g.battingOrder.length;
  g.plan=planFor(g.battingOrder[g.currentIdx]);
@@ -2220,19 +2299,26 @@ function seasonMeta(value){
  const date=new Date(value);
  if(Number.isNaN(date.getTime()))return {season:'',segment:''};
  const year=date.getFullYear(),month=date.getMonth()+1,day=date.getDate();
- if((month===7&&day>=31)||month===8)return {season:'',segment:'Dead Period'};
+ if(month===8&&day>=2)return {season:'',segment:'Dead Period'};
  const startYear=month>=9?year:year-1;
  const season=`${startYear}–${String(startYear+1).slice(-2)}`;
  let segment='Off Season';
  if(month>=9&&month<=11)segment='Fall';
- else if((month===5&&day>=20)||month===6||(month===7&&day<=30))segment='Summer';
+ else if((month===5&&day>=20)||month===6||month===7||(month===8&&day===1))segment='Summer';
  return {season,segment};
 }
 window.HotBSeasonMeta=seasonMeta;
 function currentSeasonLabel(now=new Date()){
  const year=now.getFullYear(),month=now.getMonth()+1,day=now.getDate();
- const startYear=(month>=9||month===8||(month===7&&day>=31))?year:year-1;
+ // HotB season: Sept 1 through Aug 1. Aug 2-31 is the dead season, and the
+ // upcoming season label is used so Sept 1 starts cleanly without a manual reset.
+ const startYear=month>=9||(month===8&&day>=2)?year:year-1;
  return `${startYear}–${String(startYear+1).slice(-2)}`;
+}
+function isDeadSeason(now=new Date()){return now.getMonth()===7&&now.getDate()>=2}
+function currentSeasonGames(now=new Date()){
+ const season=currentSeasonLabel(now);
+ return (db.savedGames||[]).filter(game=>!game.scrimmage&&seasonMeta(game.date).season===season);
 }
 function availableSeasons(){
  return [...new Set([selectedSeason,currentSeasonLabel(),...db.savedGames.map(game=>seasonMeta(game.date).season),...(db.currentGame?[seasonMeta(db.currentGame.date).season]:[])].filter(Boolean))].sort().reverse();
@@ -2251,7 +2337,7 @@ function gameMatchesDateFilter(game){
  return meta.segment===({fall:'Fall',summer:'Summer',offseason:'Off Season'}[dateFilterMode]);
 }
 function filteredGames(includeCurrent=true){return statGames(includeCurrent).filter(gameMatchesDateFilter)}
-function filteredSavedGamesForManagement(){return [...db.savedGames].sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime())}
+function filteredSavedGamesForManagement(){return [...db.savedGames].filter(gameMatchesDateFilter).sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime())}
 function filteredPAs(includeCurrent=true){return filteredGames(includeCurrent).flatMap(game=>game.plateAppearances||[])}
 
 function activeDateFilterLabel(){
@@ -2265,15 +2351,23 @@ function dateFilterControls(prefix){
  return `<div class="date-filter-controls">${prefix==='eval'?`<label><span>Year</span>${yearSelect}</label><label><span>Season</span>${seasonSelect}</label>`:`${yearSelect}${seasonSelect}`}${dateFilterMode==='custom'?`<label>Start<input class="input" id="${prefix}DateStart" type="date" value="${customDateStart}"></label><label>End<input class="input" id="${prefix}DateEnd" type="date" value="${customDateEnd}"></label>`:''}</div>`;
 }
 function bindDateFilters(prefix){
- $(`#${prefix}SeasonFilter`)?.addEventListener('change',event=>{selectedSeason=event.target.value;render()});
- $(`#${prefix}DateRange`)?.addEventListener('change',event=>{dateFilterMode=event.target.value;render()});
- const startInput=$(`#${prefix}DateStart`),endInput=$(`#${prefix}DateEnd`);
- startInput?.addEventListener('change',event=>{customDateStart=event.target.value});
- endInput?.addEventListener('change',event=>{customDateEnd=event.target.value});
- startInput?.addEventListener('blur',()=>render());
- endInput?.addEventListener('blur',()=>render());
+ const seasonInput=document.getElementById(prefix+'SeasonFilter');
+ const rangeInput=document.getElementById(prefix+'DateRange');
+ const startInput=document.getElementById(prefix+'DateStart');
+ const endInput=document.getElementById(prefix+'DateEnd');
+ if(seasonInput)seasonInput.addEventListener('change',event=>{selectedSeason=event.target.value;render()});
+ if(rangeInput)rangeInput.addEventListener('change',event=>{dateFilterMode=event.target.value;render()});
+ if(startInput){
+  startInput.addEventListener('change',event=>{customDateStart=event.target.value});
+  startInput.addEventListener('blur',()=>render());
+ }
+ if(endInput){
+  endInput.addEventListener('change',event=>{customDateEnd=event.target.value});
+  endInput.addEventListener('blur',()=>render());
+ }
 }
 function render(){
+ if(route==='practice'&&practiceSection==='setup'&&window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__){clearTimeout(window.__HOTB_PRACTICE_SETUP_DEFERRED_RENDER__);window.__HOTB_PRACTICE_SETUP_DEFERRED_RENDER__=setTimeout(()=>{if(!window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__)render()},250);return}
  captureGameUndo();
  if(portalClockTimer){clearInterval(portalClockTimer);portalClockTimer=null}
  const app=document.getElementById('app');
@@ -2300,22 +2394,36 @@ function fitEvalMetricValues(){
  });
 }
 function homeView(){
- const cloudPending=localStorage.getItem(CLOUD_PENDING_KEY)==='true',cloudError=localStorage.getItem(CLOUD_ERROR_KEY),cloudText=!cloudUser?'Sign in to protect this device\'s data':cloudPending&&!navigator.onLine?'Waiting for internet':cloudError?'Backup needs attention':cloudLastBackup?`Backed up ${cloudLastBackup.toLocaleString()}`:'Ready for first backup';
- return `<div class="home-hero">
-   <div class="home-brand">
-    <img class="home-logo-img" src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="Kansas City Rebels Regional">
-    <img class="home-hotb-logo-asset" src="hotb-logo1.png" alt="Rebels HotB Elite Hitting App">
-   </div>
-   <div class="home-actions">
-    <button class="home-card primary home-card-featured home-card-new" data-go="${db.currentGame?'live':'new'}"><img class="home-new-game-icon" src="home-new-game.png" alt="" aria-hidden="true"><h3>${db.currentGame?'Resume<br>Game':'New<br>Game'}</h3></button>
-    <button class="home-card home-card-featured home-card-reports" data-go="reports"><img class="home-reports-icon" src="home-reports.png" alt="" aria-hidden="true"><h3>Reports</h3></button>
-    <button class="home-card home-card-eval" data-go="eval"><img class="home-eval-icon" src="home-player-evaluation.svg" alt="" aria-hidden="true"><h3>Player<br>Evaluation</h3></button>
-    <button class="home-card home-card-roster" data-go="roster"><img class="home-roster-icon" src="home-edit-roster.svg" alt="" aria-hidden="true"><h3>Edit<br>Roster</h3></button>
-    <button class="home-card home-card-practice" id="homeHittingPractice" data-go="practice"><img class="home-practice-icon" src="home-hitting-practice.png" alt="" aria-hidden="true"><h3>${practicePlan||db.activePracticeSession?'Resume Hitting<br>Practice':'Hitting<br>Practice'}</h3></button>
-    <button class="home-card cloud-card ${cloudError?'attention':cloudLastBackup?'healthy':''}" id="openCloudBackup"><span class="home-cloud-icon" aria-hidden="true"><svg viewBox="0 0 64 48" width="44" height="36" role="presentation" focusable="false"><path d="M18 40h30c8 0 14-6 14-14s-6-14-14-14c-1 0-3 0-4 .5C41 5 34 1 27 1 17 1 9 9 9 19v1C4 22 1 26 1 31c0 5 4 9 9 9h8Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M32 39V17M23 26l9-9 9 9" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h3>Cloud<br>Backup</h3></button>
-   </div>
- </div><div class="home-footer"><span>HOTB (THE ELITE HITTING APP) · REBUILD <small class="app-version">Version: ${esc(window.HOTB_BUILD_VERSION||'2026.09.14.1')}</small></span><div class="home-footer-actions"><button class="home-guide-button" id="openRecoveryGuide">Recovery Guide</button><button class="home-guide-button home-portal-button" data-go="portal">Player Portal</button></div></div>`;
+ const now=new Date(),analysis=window.HotBTeamRecommendations?.analyze?.(db,competitionRoster(),now)||{mode:'season',games:(db.savedGames||[]).filter(g=>!g.scrimmage),focus:[],good:[],seasonStats:null,recent:null},officialGames=analysis.games,competitionNames=new Set(competitionRoster().map(player=>player.name)),teamPas=officialGames.flatMap(game=>game.plateAppearances||[]).filter(pa=>competitionNames.has(pa.hitter)),teamStats=analysis.seasonStats|| (window.HotBEvaluationStats?.statsForPAs?HotBEvaluationStats.statsForPAs(teamPas):null);
+ const fmtAvg=value=>teamStats?.PA?Number(value||0).toFixed(3).replace(/^0/,''):'—',fmtPct=value=>teamStats?.PA?Math.round(Number(value||0)*100)+'%':'—',playerHotB=window.HotBEvaluationStats?.hotBMetrics?[...competitionNames].map(name=>{const pas=teamPas.filter(pa=>pa.hitter===name);return pas.length?Number(HotBEvaluationStats.hotBMetrics(pas,teamPas)?.hotB):NaN}).filter(Number.isFinite):[],teamHotB=playerHotB.length?Math.round(playerHotB.reduce((sum,value)=>sum+value,0)/playerHotB.length):'—';
+ const recent=analysis.recent,recentPas=recent?(recent.plateAppearances||[]).filter(pa=>competitionNames.has(pa.hitter)):[],recentStats=recentPas.length&&window.HotBEvaluationStats?.statsForPAs?HotBEvaluationStats.statsForPAs(recentPas):null,recentPlayerHotB=recentPas.length&&window.HotBEvaluationStats?.hotBMetrics?[...competitionNames].map(name=>{const pas=recentPas.filter(pa=>pa.hitter===name);return pas.length?Number(HotBEvaluationStats.hotBMetrics(pas,recentPas)?.hotB):NaN}).filter(Number.isFinite):[],recentHotB=recentPlayerHotB.length?Math.round(recentPlayerHotB.reduce((sum,value)=>sum+value,0)/recentPlayerHotB.length):'—';
+ const focusAges=competitionRoster().filter(player=>!player.isGuest&&!player.isTeamJenkins).map(player=>playerFocusReviewAge(player.name)),needs=focusAges.filter(x=>x.days!==null&&x.days>=7&&x.days<14).length,overdue=focusAges.filter(x=>x.days===null||x.days>=14).length,practiceReady=!!(practicePlan||db.activePracticeSession),practiceLive=!!practiceClock.running,blocks=practicePlan?.blocks?.length||practicePlan?.schedule?.length||0,players=practicePlan?.players?.length||practicePlan?.roster?.length||0;
+ const dashIcon=(kind)=>({practice:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 7.5c3 2.1 3.4 6.8.7 9.3M17.5 7.5c-3 2.1-3.4 6.8-.7 9.3"/></svg>',game:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M2.5 9h19"/><text x="6.2" y="17" font-size="7" font-family="Arial,sans-serif" font-weight="700" fill="currentColor" stroke="none">3</text><text x="14.2" y="17" font-size="7" font-family="Arial,sans-serif" font-weight="700" fill="currentColor" stroke="none">2</text><path d="M12 10.5v8"/></svg>',stats:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10v3H7z"/><path d="M5 5h14v16H5z"/><path d="m8 14 2.2 2.2L16 10.5"/></svg>',focus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',recent:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18H5z"/><path d="M8 16v2M12 12v6M16 8v10"/></svg>',attention:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/></svg>'}[kind]||'');
+ const btn='background:#fff!important;color:#111827!important;border:1.5px solid #344054!important',red='background:#fff!important;color:#c71920!important;border:2px solid #c71920!important',focusTitle=analysis.mode==='development'?'Suggested Focus This Week':'Team Focus',goodTitle=analysis.mode==='development'?'Build On This':'Good Trends',items=list=>list.length?list.map(x=>'<div><b>'+esc(x.title)+'</b><span>'+esc(x.metric)+'</span></div>').join(''):'';
+ const focusItems=items(analysis.focus)||'<div><b>'+(analysis.mode==='no-data'?'No Game Data Yet':'No Clear Focus')+'</b><span>'+(analysis.mode==='no-data'?'Complete a game to generate recommendations':'No strong team trend identified')+'</span></div>',goodItems=items(analysis.good)||'<div><b>'+(analysis.mode==='no-data'?'No Trends Yet':'No Significant Improvement Yet')+'</b><span>'+(analysis.mode==='no-data'?'More game data is needed to identify improvement':'HotB will show meaningful team improvements here')+'</span></div>';
+ return '<style id="hotb-dashboard-style">.home-dashboard{background:#f7f8f8;min-height:100vh;padding:18px 18px 112px;color:#111827;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}.home-dashboard-head{display:flex;justify-content:center;margin:2px 2px 16px}.home-dashboard-logo{width:170px;max-height:72px;object-fit:contain}.dash-card{background:#fff;border:1.5px solid #d9dede;border-radius:18px;padding:15px 18px 15px 16px;margin:0 0 10px;box-shadow:0 2px 8px rgba(16,24,40,.05)}.dash-row{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center}.dash-icon{font-size:24px;font-weight:900;text-align:center;color:#344054;display:grid;place-items:center}.dash-icon svg{width:27px;height:27px}.dash-copy small{display:block;font-size:12px;font-weight:900;letter-spacing:.5px;color:#344054;text-transform:uppercase}.dash-copy b{display:block;font-size:20px;line-height:1.15;margin:2px 0}.dash-copy span{font-size:14px;color:#667085}.home-dashboard button.dash-action{border-radius:12px;padding:9px 11px;font-weight:900;font-size:13px;white-space:nowrap}.dash-metrics{display:grid;grid-template-columns:repeat(5,1fr);margin-top:12px}.dash-metric{text-align:center;border-left:1px solid #d9dede;padding:2px 4px}.dash-metric:first-child{border-left:0}.dash-metric b{display:block;font-size:19px}.dash-metric span{display:block;font-size:11px;color:#667085}.dash-hotb-metric>b,.dash-hotb-metric>span,.dash-recent-label{color:#c71920!important}.dash-focus-status{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 0 48px}.dash-focus-group{display:grid;grid-template-columns:38px 1fr;align-items:center}.dash-focus-group+div{border-left:1px solid #d9dede;padding-left:10px}.dash-focus-group>b{font-size:22px}.dash-focus-group>span{font-size:12px;font-weight:800;color:#667085}.dash-recommendations{display:grid;gap:8px;margin-top:8px}.dash-recommendations>div{padding-left:14px;position:relative;display:grid}.dash-recommendations>div:before{content:"•";position:absolute;color:#c71920}.dash-recommendations b{font-size:14px}.dash-recommendations span{font-size:12px;color:#667085}.home-dashboard .reports-test-bottom-nav{display:grid}</style><main class="home-dashboard"><div class="home-dashboard-head"><img class="home-dashboard-logo" src="hotb-logo1.png" alt="HotB Hitting App"></div>'+
+
+ '<section class="dash-card"><div class="dash-row"><div class="dash-icon">'+dashIcon('game')+'</div><div class="dash-copy"><small>'+(db.currentGame?'Game':'Next Game')+'</small><b style="'+(!db.currentGame&&db.nextGame?.date?'color:#c71920':'')+'">'+(db.currentGame?'Game Active':nextGameDashboardTitle())+'</b><span>'+(db.currentGame?'vs. '+esc(db.currentGame.opponent||'Opponent'):nextGameDashboardOpponent())+'</span>'+(!db.currentGame&&db.nextGame?.date?'<span style="display:block;margin-top:3px;font-weight:800">'+nextGameDashboardCountdown()+'</span>':'')+'</div><button class="dash-action" style="'+btn+'" '+(db.currentGame?'data-test-nav="new"':'data-set-next-game')+'>'+(db.currentGame?'Resume':db.nextGame?'Edit':'Set Game')+'</button></div></section>'+
+ '<section class="dash-card"><div class="dash-row"><div class="dash-icon">'+dashIcon('stats')+'</div><div class="dash-copy"><small>Team Snapshot</small><b>'+officialGames.length+' Game'+(officialGames.length===1?'':'s')+' <span style="color:#98a2b3">|</span> '+(teamStats?.PA||0)+' PA</b></div><button class="dash-action" style="'+btn+'" data-test-nav="eval">Evals</button></div><div class="dash-metrics"><div class="dash-metric dash-hotb-metric"><b>'+teamHotB+'</b><span>HotB</span></div><div class="dash-metric"><b>'+fmtAvg(teamStats?.AVG)+'</b><span>AVG</span></div><div class="dash-metric"><b>'+fmtAvg(teamStats?.OBP)+'</b><span>OBP</span></div><div class="dash-metric"><b>'+fmtPct(teamStats?.kPct)+'</b><span>K%</span></div><div class="dash-metric"><b>'+fmtPct(teamStats?.contactPct)+'</b><span>Contact%</span></div></div></section>'+
+ '<section class="dash-card"><div class="dash-row"><div class="dash-icon">'+dashIcon('focus')+'</div><div class="dash-copy"><small>Player Focus</small></div><button class="dash-action" style="'+red+'" data-test-nav="focus">Open</button></div><div class="dash-focus-status"><div class="dash-focus-group"><b>'+needs+'</b><span>Needs Attention</span></div><div class="dash-focus-group"><b style="color:#c71920">'+overdue+'</b><span style="color:#c71920">Overdue</span></div></div></section>'+
+ '<section class="dash-card"><div class="dash-row"><div class="dash-icon">'+dashIcon('recent')+'</div><div class="dash-copy"><small class="dash-recent-label">Recent Game</small><b>'+(recent?'vs. '+esc(recent.opponent||'Opponent'):'No Games This Season')+'</b><span>'+(recent?.date?new Date(recent.date).toLocaleDateString():'')+'</span></div><button class="dash-action" style="'+btn+'" data-test-nav="reports">View Report</button></div>'+(recentStats?'<div class="dash-metrics"><div class="dash-metric dash-hotb-metric"><b>'+recentHotB+'</b><span>HotB</span></div><div class="dash-metric"><b>'+Number(recentStats.AVG||0).toFixed(3).replace(/^0/,'')+'</b><span>AVG</span></div><div class="dash-metric"><b>'+Number(recentStats.OBP||0).toFixed(3).replace(/^0/,'')+'</b><span>OBP</span></div><div class="dash-metric"><b>'+Math.round(Number(recentStats.kPct||0)*100)+'%</b><span>K%</span></div><div class="dash-metric"><b>'+Math.round(Number(recentStats.contactPct||0)*100)+'%</b><span>Contact%</span></div></div>':'')+'</section>'+
+ (analysis.mode==='dead'?'<section class="dash-card"><div class="dash-row"><div class="dash-icon">—</div><div class="dash-copy"><small>Offseason</small><b>Dead Season</b><span>New season begins September 1</span></div></div></section>':'<section class="dash-card"><div class="dash-row" style="align-items:start"><div class="dash-icon" style="color:#c71920">'+dashIcon('attention')+'</div><div class="dash-copy"><small>'+esc(focusTitle)+'</small><div class="dash-recommendations">'+focusItems+'</div></div><button class="dash-action" style="'+red+'" data-team-analysis="focus">View</button></div>'+(analysis.mode==='development'?'<button class="dash-action" style="width:100%;margin-top:12px;background:#111827!important;color:#fff!important;border:1.5px solid #111827!important" data-team-focus-build>Build Practice</button>':'')+'</section><section class="dash-card"><div class="dash-row" style="align-items:start"><div class="dash-icon">'+dashIcon('stats')+'</div><div class="dash-copy"><small>'+esc(goodTitle)+'</small><div class="dash-recommendations">'+goodItems+'</div></div><button class="dash-action" style="'+btn+'" data-team-analysis="good">View</button></div></section>')+
+ '</main>'+reportsTestNav();
 }
+function nextGameDate(){const g=db.nextGame;if(!g?.date)return null;const time=/^\d{2}:\d{2}$/.test(String(g.time||''))?g.time:'12:00';const d=new Date(g.date+'T'+time+':00');return Number.isNaN(d.getTime())?null:d}
+function nextGameDashboardTitle(){const d=nextGameDate();if(!d)return'Not Set';return d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})+(db.nextGame?.time?' · '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}):'')}
+function nextGameDashboardOpponent(){const d=nextGameDate();if(!d)return'Set your next game date, time, and opponent.';return 'vs. '+(String(db.nextGame?.opponent||'Opponent').trim()||'Opponent')}
+function nextGameDashboardCountdown(){const d=nextGameDate();if(!d)return'';const diff=d.getTime()-Date.now(),days=Math.max(0,Math.ceil(diff/86400000));return diff>=0?(days===0?'Today':days===1?'Tomorrow':days+' days'):'Date passed'}
+function nextGameModal(){const g=db.nextGame||{};return `<div class="modal-backdrop"><div class="modal"><div class="modal-header"><div><div class="small info-kicker">DASHBOARD</div><h2>Next Game</h2></div><button class="btn" data-close>Close</button></div><label class="field">Date<input class="input" id="nextGameDate" type="date" value="${esc(g.date||'')}"></label><label class="field">Time<input class="input" id="nextGameTime" type="time" value="${esc(g.time||'')}"></label><label class="field">Opponent<input class="input" id="nextGameOpponent" type="text" value="${esc(g.opponent||'')}" placeholder="Opponent"></label><button class="btn primary block" id="saveNextGame">Save</button>${g.date?'<button class="btn block" id="clearNextGame" style="margin-top:8px">Clear</button>':''}</div></div>`}
+function dashboardFocusAttention(kind){
+ const players=competitionRoster().filter(player=>!player.isGuest&&!player.isTeamJenkins).map(player=>({name:player.name,...playerFocusReviewAge(player.name)}));
+ return (kind==='overdue'?players.filter(item=>item.days===null||item.days>=14):players.filter(item=>item.days!==null&&item.days>=7&&item.days<14)).sort((a,b)=>(b.days??99999)-(a.days??99999));
+}
+function dashboardFocusAttentionModal(){
+ const kind=modal==='focusAttentionOverdue'?'overdue':'needs',rows=dashboardFocusAttention(kind),title=kind==='overdue'?'Late':'Needs Attention',subtitle=kind==='overdue'?'14+ days since last published Focus':'7–13 days since last published Focus';
+ return `<div class="modal-backdrop"><div class="modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER FOCUS</div><h2>${title}</h2></div><button class="btn" data-close>Close</button></div><p style="margin-top:0;color:#667085">${subtitle}</p><section style="display:grid;gap:10px">${rows.map(item=>`<button type="button" class="btn block" data-dashboard-focus-player="${esc(item.name)}" style="display:flex;justify-content:space-between;align-items:center;text-align:left;padding:14px 16px"><b>${esc(practiceFirstName(item.name))}</b><span>${item.days===null?'Never':item.days+' days'}</span></button>`).join('')||'<p>No players in this category.</p>'}</section></div></div>`;
+}
+
 function portalHeader(title='Player Portal',showBack=false){
  const practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType);
  // Practice-only links do not have a permanent dashboard. Their Back/Portal
@@ -2352,27 +2460,78 @@ function focusSuggestedDrills(query,playerName=practiceFocusPlayer,range=practic
  if(!Array.isArray(saved))return recommended;
  return saved.map(name=>library.find(drill=>drill.name===name)).filter(Boolean).slice(0,3);
 }
+const VERIFIED_REBELS_PORTALS={
+ 'Aniesa Rohleder':{portalId:'zdriG5hTU7c6sSme8WB1pV9q',portalPin:'996232'},
+ 'Brooklyn Gering':{portalId:'imzggml0NNTQKpb3ntf2jotK',portalPin:'610273'},
+ 'Brynna Peter':{portalId:'hL94ttFwHNFjRhoNJSBwB3B0',portalPin:'481189'},
+ 'Claire Jack':{portalId:'3L8i3eMDH9z6VhAzA-eV0GV2',portalPin:'380378'},
+ 'Hailey Marsh':{portalId:'FfLTZU3mUG_vCpd7_ulFgAuZ'},
+ 'Lakyn Farley':{portalId:'wmdtSaSCkgC1q7jP3FGjGcDg',portalPin:'698901'},
+ 'Lydia Copeland':{portalId:'SLtNWXeIRBm0NJ__woUECmRl',portalPin:'248359'},
+ 'Maia Waddell':{portalId:'ULyoVEFKkNM5y7pGEqCRWAwG',portalPin:'759137'},
+ 'Makenna Whitaker':{portalId:'xFjM6RgiuEcBwLyFanO8wy19',portalPin:'606197'},
+ 'Maleah Pena':{portalId:'P-WUR7lgRiTLTXMKYYJCRTBn',portalPin:'917864'},
+ 'Mattingly Hardy':{portalId:'vIRE8cBEmqrD7dLnXS5j2VgY',portalPin:'808647'},
+ 'Megan Ryan':{portalId:'KtBokuG11qKGjlbdN0GWRM8g',portalPin:'251502'},
+ 'Tayte Stepps':{portalId:'SDfyRXOwJePMrQe4i_4eJXLe',portalPin:'781176'}
+};
+function restoreVerifiedRebelsPortalDirectory(){
+ let changed=false;
+ for(const player of db.roster){
+  if(player.isGuest||player.isTeamJenkins)continue;
+  const saved=VERIFIED_REBELS_PORTALS[player.name];if(!saved)continue;
+  if(player.name==='Megan Ryan'){
+   if(player.portalId!==saved.portalId){player.portalId=saved.portalId;changed=true}
+   if(player.portalPin!==saved.portalPin){player.portalPin=saved.portalPin;changed=true}
+   continue;
+  }
+  if(!player.portalId&&saved.portalId){player.portalId=saved.portalId;changed=true}
+  if(!player.portalPin&&saved.portalPin){player.portalPin=saved.portalPin;changed=true}
+ }
+ if(changed)localStorage.setItem(DBKEY,JSON.stringify(db));
+}
 let permanentPortalRecoveryStarted=false;
 async function recoverPermanentPlayerPortalsForManager(){
  if(permanentPortalRecoveryStarted||!cloudUser||!cloudStore)return;
  const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins);
+ const credentialReady=player=>!!player.portalId&&(player.name==='Hailey Marsh'||!!player.portalPin);
  // MAIN-TEAM PORTAL LOCK: permanent Rebels player credentials are immutable.
  // Never generate, rotate, repair, or replace a portal ID/PIN from this manager.
  // If local credentials are ever missing, stop and protect the known working links.
- if(!players.some(player=>!player.portalId||!player.portalPin)){permanentPortalRecoveryStarted=true;return}
+ if(!players.some(player=>!credentialReady(player))){permanentPortalRecoveryStarted=true;return}
  permanentPortalRecoveryStarted=true;
  portalMessage='A permanent player portal credential is missing on this device. HotB has locked the existing player links and will not replace them automatically.';
  render();
 }
+const VERIFIED_JENKINS_PORTALS={
+ 'Lilliana Schlappi':{portalId:'pqP1gidhlUQHBQrsjgAdzFIb',portalSecret:'GBLdIPk8c0wGfI9k5ONl7enCd290j_3odRmv4c2AaQriiG6Z'},
+ 'Perri Wagner':{portalId:'tiWCaSMN5ajMNgZW-4HnKCwU',portalSecret:'gtLH8jqs-PosttifUspMfH-oiwYwamSugPWixyuVVXexof5K'},
+ 'Pacie Dougherty':{portalId:'DiXGzMMY0ycnENReiXlZyW_M',portalSecret:'yWS9_OcenNwb57kxvsXh3x1FgqodyagS_Z68N2LIc62iEPgK'},
+ 'Emmie Wible':{portalId:'Vf_zZaYHZqAYUz3QcKa0OIyk',portalSecret:'28sNfL36C4kX3DAQ7J0GluShNEimE_bYQgeog2W6y_syyln2'},
+ 'Neveah Schlappi':{portalId:'BmLs8c3egMs2hu6aluC1P-az',portalSecret:'Iv4inNLCK13TBcRA909CLxECIm65m4KCwjNe_2UUDJPrYYDr'}
+};
+function restoreVerifiedJenkinsPortalButtons(){
+ let changed=0;
+ for(const player of db.roster){
+  if(!player.isTeamJenkins)continue;
+  const verified=VERIFIED_JENKINS_PORTALS[player.name];if(!verified)continue;
+  if(!player.portalId){player.portalId=verified.portalId;changed++}
+  if(!player.portalSecret){player.portalSecret=verified.portalSecret;changed++}
+ }
+ if(changed)localStorage.setItem(DBKEY,JSON.stringify(db));
+ return changed;
+}
 function portalCoachView(){
- const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins),jenkinsPlayers=db.roster.filter(player=>player.isTeamJenkins),ready=players.length&&players.every(player=>player.portalId),jenkinsReady=jenkinsPlayers.length&&jenkinsPlayers.every(player=>player.portalId&&player.portalSecret);
+ restoreVerifiedRebelsPortalDirectory();
+ restoreVerifiedJenkinsPortalButtons();
+ const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins),jenkinsPlayers=db.roster.filter(player=>player.isTeamJenkins),ready=players.length&&players.every(player=>player.portalId&&(player.name==='Hailey Marsh'||player.portalPin)),jenkinsReady=jenkinsPlayers.length&&jenkinsPlayers.every(player=>player.portalId&&player.portalSecret);
+ for(const player of jenkinsPlayers){try{const saved=JSON.parse(localStorage.getItem('hotbJenkinsPortalCredentialsV1')||'{}')?.[player.name];if(saved){player.portalId=player.portalId||saved.portalId;player.portalSecret=player.portalSecret||saved.portalSecret}}catch(_){}}
  const coachReady=!!(db.coachPortal?.portalId&&(db.coachPortal?.portalSecret||db.coachPortal?.portalPin));
- if(!cloudAuthReady)return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>Connecting Player Portal Manager…</h2><p>Restoring the saved coach cloud session on this device.</p></section><p class="small">No player links are being changed.</p><button class="btn black block" data-go="home">Return Home</button></main>`;
- if(!cloudUser)return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>Reconnect Player Portal Manager</h2><p>Your saved player links have not been removed. The coach cloud session on this device needs to be reconnected.</p></section><p class="small">Reconnect through Cloud Backup on the Home Screen. Your player links remain saved.</p><button class="btn black block" data-go="home">Return Home</button></main>`;
+ if(!cloudInitStarted)setTimeout(()=>initCloud(),0);
  const jenkinsCoach=db.jenkinsCoachPortal||{},jenkinsCoachReady=!!(jenkinsCoach.portalId&&jenkinsCoach.portalSecret);
  const jenkinsCoachCard=`<section class="portal-coach-setup team-jenkins-portal-manager"><span>HITTING PRACTICE ONLY</span><h2>Mark Jenkins</h2><p>Permanent Team Jenkins coach access. Mark sees only the current Hitting Practice coach card.</p><button class="btn black block" id="setupJenkinsCoachPortal" ${cloudBusy?'disabled':''}>${jenkinsCoachReady?'Refresh Mark Portal':'Create Mark Portal'}</button>${jenkinsCoachReady?`<div class="portal-coach-ready"><b>Mark Jenkins</b><span>Practice Only</span><div class="portal-player-actions"><button type="button" class="btn" id="shareJenkinsCoachPortal">Share</button><button type="button" class="btn" id="textJenkinsCoachPortal">Text</button></div></div>`:''}</section>`;
- const jenkinsList=`<section class="portal-coach-setup team-jenkins-portal-manager"><span>HITTING PRACTICE ONLY</span><h2>Team Jenkins</h2><p>These permanent links can show only the current Hitting Practice. When no practice is active, the same link remains valid but shows no practice.</p>${jenkinsPlayers.length?`<section class="portal-player-list">${jenkinsPlayers.map(player=>{const linkReady=!!(player.portalId&&player.portalSecret);return `<article><div><b>${esc(practiceFirstName(player.name))}</b><span>${linkReady?'Permanent Practice Link':'Practice Link Not Available On This Device'}</span></div><div class="portal-player-actions"><button type="button" class="btn" data-share-practice-jenkins="${esc(player.name)}" ${linkReady?'':'disabled'}>Share</button><button type="button" class="btn" data-text-practice-jenkins="${esc(player.name)}" ${linkReady&&player.phone?'':'disabled'}>${linkReady?(player.phone?'Text':'No Cell'):'Unavailable'}</button></div></article>`}).join('')}</section>`:''}<button class="btn black block" id="setupJenkinsPortals" type="button">Team Jenkins Links Locked</button></section>`;
- return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>${ready?'Player Portals Are Ready':'Create Private Player Portals'}</h2><p>Each player receives one private link and a six-digit PIN. Her first successful login connects that portal to her device.</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}<section class="portal-coach-setup"><span>ONE COACH</span><h2>${coachReady?'Coach Portal Is Ready':'Create Coach Portal'}</h2><p>This coach receives one private, block-by-block duty plan for each active practice.</p><label class="label" for="coachPortalName">Coach Name</label><input class="input" id="coachPortalName" value="${esc(db.coachPortal?.name||'')}" placeholder="Coach name"><label class="label" for="coachPortalPhone">Cell Number (optional)</label><input class="input" id="coachPortalPhone" inputmode="tel" value="${esc(db.coachPortal?.phone||'')}" placeholder="Cell number"><button class="btn black block" id="setupCoachPortal" ${cloudBusy?'disabled':''}>${coachReady?'Refresh Coach Portal':'Create Coach Portal'}</button>${coachReady?`<div class="portal-coach-ready"><b>${esc(db.coachPortal.name)}</b><span>${db.coachPortal.portalSecret?'Permanent Link · No PIN':`PIN ${esc(db.coachPortal.portalPin)}`}</span><div class="portal-player-actions"><button type="button" class="btn" id="shareCoachPortal">Share</button><button type="button" class="btn" id="textCoachPortal" ${db.coachPortal.phone?'':'disabled'}>${db.coachPortal.phone?'Text':'No Cell'}</button><button class="btn" id="resetCoachPortal">Reset</button></div></div>`:''}</section><button class="btn black block portal-setup-button" id="setupPlayerPortals" ${cloudBusy?'disabled':''}>${ready?'Refresh Player Records':'Create Player Portals'}</button>${ready?`<section class="portal-player-list">${players.map(player=>`<article><div><b>${esc(practiceFirstName(player.name))}</b><span>Permanent Link · No PIN</span></div><div class="portal-player-actions"><button type="button" class="btn" data-share-portal="${esc(player.name)}">Share</button><button type="button" class="btn" data-text-portal="${esc(player.name)}" ${player.phone?'':'disabled'}>${player.phone?'Text':'No Cell'}</button><button class="btn" data-reset-portal="${esc(player.name)}">Reset</button></div></article>`).join('')}</section><p class="portal-private-note">Share or Text sends each player her permanent private link. No PIN is required. The same link reconnects on a replacement phone; Reset is available only if you intentionally want to clear existing device claims.</p>`:''}${jenkinsCoachCard}${jenkinsList}</main>`;
+ const jenkinsList=`<section class="portal-coach-setup team-jenkins-portal-manager"><span>HITTING PRACTICE ONLY</span><h2>Team Jenkins</h2><p>These permanent links can show only the current Hitting Practice. When no practice is active, the same link remains valid but shows no practice.</p>${jenkinsPlayers.length?`<section class="portal-player-list">${jenkinsPlayers.map(player=>{const linkReady=!!(player.portalId&&player.portalSecret);return `<article><div><b>${esc(practiceFirstName(player.name))}</b><span>${linkReady?'Permanent Practice Link':'Practice Link Not Available On This Device'}</span></div><div class="portal-player-actions">${linkReady?`<a class="btn" style="text-decoration:none;text-align:center;position:relative;z-index:9999;pointer-events:auto" target="_blank" rel="noopener" href="${esc(guestPortalUrl(player))}">Open Portal</a>`:'' }<button type="button" class="btn" data-share-practice-jenkins="${esc(player.name)}" ${linkReady?'':'disabled'}>Share</button><button type="button" class="btn" data-text-practice-jenkins="${esc(player.name)}" ${linkReady&&player.phone?'':'disabled'}>${linkReady?(player.phone?'Text':'No Cell'):'Unavailable'}</button>${!linkReady&&['Neveah Schlappi','Lilliana Schlappi','Perri Wagner','Pacie Dougherty','Emmie Wible'].includes(player.name)?`<button type="button" class="btn" data-restore-practice-jenkins="${esc(player.name)}">Restore Original</button>`:''}</div></article>`}).join('')}</section>`:''}<button class="btn black block" id="setupJenkinsPortals" ${cloudBusy?'disabled':''}>${jenkinsReady?'Team Jenkins Portals Ready':'Create Missing Jenkins Links'}</button><button type="button" class="btn block" id="copyJenkinsPortalTransfer" ${jenkinsPlayers.filter(player=>['Taylor Woods','Amelia Steffen','Leslie Cundiff'].includes(player.name)).every(player=>player.portalId&&player.portalSecret)?'':'disabled'}>Copy 3 Jenkins Links</button><button type="button" class="btn block" id="importJenkinsPortalTransfer" ${cloudBusy?'disabled':''}>Import 3 Jenkins Links</button></section>`;
+ return `${portalHeader()}<main class="portal-page"><section class="portal-welcome"><span>COACH SETUP</span><h2>${ready?'Player Portals Are Ready':'Create Private Player Portals'}</h2><p>Each player receives one private link and a six-digit PIN. Her first successful login connects that portal to her device.</p></section>${portalMessage?`<p class="portal-message">${esc(portalMessage)}</p>`:''}<section class="portal-coach-setup"><span>ONE COACH</span><h2>${coachReady?'Coach Portal Is Ready':'Create Coach Portal'}</h2><p>This coach receives one private, block-by-block duty plan for each active practice.</p><label class="label" for="coachPortalName">Coach Name</label><input class="input" id="coachPortalName" value="${esc(db.coachPortal?.name||'')}" placeholder="Coach name"><label class="label" for="coachPortalPhone">Cell Number (optional)</label><input class="input" id="coachPortalPhone" inputmode="tel" value="${esc(db.coachPortal?.phone||'')}" placeholder="Cell number"><button class="btn black block" id="setupCoachPortal" ${cloudBusy?'disabled':''}>${coachReady?'Refresh Coach Portal':'Create Coach Portal'}</button>${coachReady?`<div class="portal-coach-ready"><b>${esc(db.coachPortal.name)}</b><span>${db.coachPortal.portalSecret?'Permanent Link · No PIN':`PIN ${esc(db.coachPortal.portalPin)}`}</span><div class="portal-player-actions"><button type="button" class="btn" id="shareCoachPortal">Share</button><button type="button" class="btn" id="textCoachPortal" ${db.coachPortal.phone?'':'disabled'}>${db.coachPortal.phone?'Text':'No Cell'}</button><button class="btn" id="resetCoachPortal">Reset</button></div></div>`:''}</section><button class="btn black block portal-setup-button" id="setupPlayerPortals" ${cloudBusy?'disabled':''}>${ready?'Refresh Player Records':'Create Player Portals'}</button>${players.length?`<section class="portal-player-list">${players.map(player=>{const linkReady=!!player.portalId&&(player.name==='Hailey Marsh'||!!player.portalPin);return `<article><div><b>${esc(practiceFirstName(player.name))}</b><span>${linkReady?'Permanent Link':'Permanent Link Not Available On This Device'}</span></div><div class="portal-player-actions"><a class="btn" href="${linkReady?playerPortalUrl(player):'#'}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center;position:relative;z-index:9999;pointer-events:auto;${linkReady?'':'opacity:.45;pointer-events:none'}">Open Portal</a><button type="button" class="btn" data-share-portal="${esc(player.name)}" ${linkReady?'':'disabled'}>Share</button><button type="button" class="btn" data-text-portal="${esc(player.name)}" ${linkReady&&player.phone?'':'disabled'}>${linkReady?(player.phone?'Text':'No Cell'):'Unavailable'}</button></div></article>`}).join('')}</section><p class="portal-private-note">These are the existing Rebels portal links saved on this device. HotB will not replace or rotate them.</p>`:''}${jenkinsCoachCard}${jenkinsList}</main>`;
 }
 function portalLoginView(){
  const practiceOnly=!!guestPortalSecret;
@@ -2420,7 +2579,7 @@ function coachEvaluationPortalPayload(){
 function withCoachEvaluationData(callback){const original=db,readOnly=evaluationReadOnly;db=portalData?.evaluationData||{roster:[],savedGames:[],measurements:[],coaches:[],practiceHistory:[],currentGame:null};evaluationReadOnly=true;try{return callback()}finally{db=original;evaluationReadOnly=readOnly}}
 function coachPortalEvaluationView(){return withCoachEvaluationData(()=>evalView())}
 function portalAssignmentDrillName(assignment){return (Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[]).find(drill=>assignment===drill.name||String(assignment||'').endsWith(`— ${drill.name}`))?.name||''}
-function portalPracticeAssignment(entry){const drill=portalAssignmentDrillName(entry.assignment),jenkins=portalData?.portalType==='jenkinsPlayer',practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType),allowed=!practiceOnly||!!drill&&(portalData?.activePractice?.drills||[]).includes(drill);return !jenkins&&drill&&allowed?`<button class="portal-practice-drill-link" data-portal-practice-drill="${esc(drill)}">${esc(entry.assignment)}</button>`:`<strong>${esc(entry.assignment)}</strong>`}
+function portalPracticeAssignment(entry){const drill=portalAssignmentDrillName(entry.assignment),jenkins=portalData?.portalType==='jenkinsPlayer',practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType),allowed=!practiceOnly||!!drill&&(portalData?.activePractice?.drills||[]).includes(drill),focusDrills=Array.isArray(portalData?.focus?.drills)?portalData.focus.drills:[],isFocus=!!drill&&focusDrills.includes(drill),badge=isFocus?' <small class="portal-practice-focus-badge" style="display:inline-block;margin-left:6px;padding:2px 6px;border:1.5px solid #c71920;border-radius:999px;color:#c71920;background:#fff;font-size:9px;font-weight:950;line-height:1;vertical-align:middle">FOCUS</small>':'';return !jenkins&&drill&&allowed?`<button class="portal-practice-drill-link" data-portal-practice-drill="${esc(drill)}">${esc(entry.assignment)}${badge}</button>`:`<strong>${esc(entry.assignment)}${badge}</strong>`}
 function portalNextAssignmentDetails(assignment){
  const value=String(assignment||''),drill=portalAssignmentDrillName(value);
  let match=value.match(/^Drill Station (\d+)\s+—\s+(.+)$/i);
@@ -2441,31 +2600,14 @@ function portalPracticeView(){
  const drillAssignments=practice?.drillAssignments||practice?.drills?.map(drill=>({name:drill,location:'Assigned Drill'}))||[];
  const clockReady=!practice||clock.block==='Not Started'||clock.block==='DONE!'||clock.block==='ROTATE'||(Number(clock.currentBlock)>=1&&Number(clock.currentBlock)<=10);
  if(practice&&!clockReady)return `${portalHeader('My Practice',true)}<main class="portal-page"><section class="portal-empty"><span>MY PRACTICE</span><h2>Syncing Practice</h2><p>HotB is verifying the live practice clock. Your schedule will appear as soon as synchronization is confirmed.</p></section></main>`;
- return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${Math.max(1,(Number(practice.blockMinutes)||12)-1)} minutes + 1-minute rotate</p></section><section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">${esc(clock.block)}</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">${esc(clock.left)}</b></div></section><section class="portal-practice-next" id="portalPracticeNext" hidden><button id="portalPracticeNextButton" data-portal-practice-drill=""><span id="portalPracticeNextHeading">NEXT</span><strong id="portalPracticeNextDetail"></strong><small>Tap for drill instructions</small></button></section><article class="practice-player-card portal-player-card"><header><h2>${esc(first)}${role?` <small>(${esc(role)})</small>`:''}</h2></header><ol>${(practice.schedule||[]).map(entry=>`<li data-portal-block="${entry.block}"><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>${portalData?.portalType!=='jenkinsPlayer'&&drillAssignments.length?`<section class="portal-practice-drills"><h3>Assigned Drills</h3>${drillAssignments.map(item=>`<p><button class="portal-practice-drill-link" data-portal-practice-drill="${esc(item.name)}"><span>${esc(item.location)}</span>${esc(item.name)}</button></p>`).join('')}</section>`:''}`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
-}
-function portalFocusList(value){
- if(Array.isArray(value))return value.map(item=>String(item||'').trim()).filter(Boolean);
- return String(value||'').split(/\s*[·•*]\s*|\s*;\s*|\n+/).map(item=>item.trim()).filter(Boolean);
-}
-function portalFocusDrills(focus){
- const raw=Array.isArray(focus?.drills)?focus.drills:portalFocusList(focus?.drills||focus?.drillPlan||'');
- return raw.map(item=>typeof item==='string'?item:String(item?.name||item?.drill||'')).map(item=>item.trim()).filter(Boolean);
+ return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${Math.max(1,(Number(practice.blockMinutes)||12)-1)} minutes + 1-minute rotate</p></section><section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">${esc(clock.block)}</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">${esc(clock.left)}</b></div></section><section class="portal-practice-next" id="portalPracticeNext" hidden><button id="portalPracticeNextButton" data-portal-practice-drill=""><span id="portalPracticeNextHeading">NEXT</span><strong id="portalPracticeNextDetail"></strong><small>Tap for drill instructions</small></button></section><article class="practice-player-card portal-player-card"><header><h2>${esc(first)}${role?` <small>(${esc(role)})</small>`:''}</h2></header><ol>${(practice.schedule||[]).map(entry=>`<li data-portal-block="${entry.block}"><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
 }
 function portalFocusBody(focus){
- if(!focus)return `<section class="portal-empty"><span>MY FOCUS</span><h2>No Focus Plan Yet</h2><p>Your private two-week hitting analysis has not been published. No other player’s information is available from this portal.</p></section>`;
- const needs=portalFocusList(focus.needsWork||focus.needs||focus.focusItems||''),drills=portalFocusDrills(focus);
- return `<section class="portal-welcome"><span>MY PLAYER FOCUS</span><h2>${esc(focus.title||'Current Hitting Focus')}</h2><p>${esc(focus.summary||'')}</p></section><section class="portal-focus-content">${needs.length?`<div><span>NEEDS WORK</span><section class="portal-focus-stacked-items">${needs.map(item=>`<b>${esc(item)}</b>`).join('')}</section></div>`:''}${focus.coachNote?`<div><span>COACH NOTE</span><b>${esc(focus.coachNote)}</b></div>`:''}${drills.length?`<div><span>DRILL PLAN</span><section class="portal-focus-drill-buttons">${drills.map(drill=>`<button type="button" class="portal-focus-drill" data-portal-focus-drill="${esc(drill)}">${esc(drill)}</button>`).join('')}</section></div>`:''}</section>`;
+ return focus?`<section class="portal-welcome"><span>MY PLAYER FOCUS</span><h2>${esc(focus.title||'Current Hitting Focus')}</h2><p>${esc(focus.summary||'')}</p></section><section class="portal-focus-content">${focus.needsWork?`<div><span>NEEDS WORK</span><b>${esc(focus.needsWork)}</b></div>`:''}${focus.coachNote?`<div><span>COACH NOTE</span><b>${esc(focus.coachNote)}</b></div>`:''}${focus.drills?.length?`<div><span>DRILL PLAN</span><b>${esc(focus.drills.join(' · '))}</b></div>`:''}</section>`:`<section class="portal-empty"><span>MY FOCUS</span><h2>No Focus Plan Yet</h2><p>Your private two-week hitting analysis has not been published. No other player’s information is available from this portal.</p></section>`;
 }
 function portalFocusView(){
  markPortalFocusViewed();
- const isMeg=portalData?.portalType==='player',localFocus=portalFocusLocalState(),archive=localFocus.archive;
- const current=localFocus.current;
- return `${portalHeader('My Focus',true)}<style>.portal-focus-stacked-items{display:grid;gap:10px;margin-top:10px}.portal-focus-stacked-items b{display:block}.portal-focus-drill-buttons{display:grid;gap:12px;margin-top:14px}.portal-focus-drill{display:block;width:100%;margin:0;padding:15px 18px;border:2px solid #d4d9d7;border-radius:14px;background:#fff;color:#111827;font:700 18px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:left;box-shadow:none}.portal-focus-drill:active{transform:scale(.99);background:#f3f4f4}.portal-focus-actions{display:grid;gap:10px;margin:18px 0 8px}.portal-focus-archive-list{display:grid;gap:12px}.portal-focus-archive-card{border:2px solid #d4d9d7;border-radius:14px;padding:14px;background:#fff}.portal-focus-archive-card time{display:block;font-size:12px;font-weight:800;color:#6b7280;margin-bottom:6px}.portal-focus-archive-card p{margin:6px 0}.portal-focus-archive-card small{display:block;margin-top:8px;color:#4b5563}</style><main class="portal-page">${!current&&isMeg?'<section class="portal-empty"><span>MY FOCUS</span><h2>No New Focus</h2><p>There are no new observations right now.</p></section>':portalFocusBody(current)}${isMeg?`${current?'<div class="portal-focus-actions"><button type="button" class="btn red block" id="archiveCurrentMegFocus">Save</button></div>':''}<section class="portal-focus-archive-card" style="margin-top:18px"><span style="display:block;font-size:13px;font-weight:900;letter-spacing:.09em;color:#a52a2a;margin-bottom:12px">ARCHIVE</span><div style="display:grid;gap:10px">${archive.length?archive.slice().sort((a,b)=>String(b.publishedAt||b.archivedAt||'').localeCompare(String(a.publishedAt||a.archivedAt||''))).map((focus,index)=>{const d=new Date(focus?.publishedAt||focus?.archivedAt||0),label=Number.isNaN(d.getTime())?'Saved Focus':d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});return `<button type="button" class="btn black block" data-open-meg-focus-archive="${index}">${esc(label)}</button>`}).join(''):'<p style="margin:0;color:#6b7280">No past Focus plans yet.</p>'}</div></section>`:''}</main>`;
-}
-function portalMegFocusArchiveView(){
- const archive=portalFocusLocalState().archive.slice().sort((a,b)=>String(b.publishedAt||b.archivedAt||'').localeCompare(String(a.publishedAt||a.archivedAt||''))),selected=Number.isInteger(portalMegArchiveIndex)?archive[portalMegArchiveIndex]:null;
- const date=focus=>{const d=new Date(focus?.publishedAt||focus?.archivedAt||0);return Number.isNaN(d.getTime())?'Saved Focus':d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
- return `${portalHeader('Focus Archive',true)}<main class="portal-page"><section class="portal-welcome"><span>MY FOCUS ARCHIVE</span><h2>Past Focus Plans</h2><p>Your completed and previous Focus plans stay here.</p></section><section class="portal-focus-archive-list">${selected?[selected].map(focus=>`<article class="portal-focus-archive-card" style="display:grid;gap:14px;padding:18px;margin:0 0 14px"><time style="margin:0;padding-bottom:10px;border-bottom:1px solid #e5e7eb">${esc(date(focus))}</time><div><span style="display:block;font-size:12px;font-weight:800;letter-spacing:.08em;color:#a52a2a;margin-bottom:5px">NEEDS WORK</span><div style="display:grid;gap:6px;font-size:18px;font-weight:700;line-height:1.35">${String(focus.needsWork||focus.title||'Player Focus').split(/\s*[·•*]\s*|\s*;\s*/).filter(Boolean).map(item=>`<div>${esc(item)}</div>`).join('')}</div></div>${focus.coachNote?`<div><span style="display:block;font-size:12px;font-weight:800;letter-spacing:.08em;color:#a52a2a;margin-bottom:5px">COACH NOTE</span><p style="margin:0;line-height:1.45">${esc(focus.coachNote)}</p></div>`:''}${focus.drills?.length?`<div><span style="display:block;font-size:12px;font-weight:800;letter-spacing:.08em;color:#a52a2a;margin-bottom:5px">DRILL PLAN</span><div style="display:grid;gap:6px">${focus.drills.map(drill=>`<div style="line-height:1.45">${esc(drill)}</div>`).join('')}</div></div>`:''}<button type="button" class="btn red block" id="deleteMegArchivedFocus">Delete</button></article>`).join(''):'<section class="portal-empty"><span>ARCHIVE</span><h2>No Past Focus Plans</h2><p>Completed Focus plans will appear here.</p></section>'}</section></main>`;
+ return `${portalHeader('My Focus',true)}<main class="portal-page">${portalFocusBody(portalData?.focus)}</main>`;
 }
 function portalPlayerEvaluationView(){
  const payload=portalData?.evaluationData,playerName=portalData?.playerName||'';
@@ -2502,7 +2644,7 @@ function portalPlayerEvaluationView(){
 }
 function portalLibraryView(){
  const allDrills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[],practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType),practiceEnded=practiceOnly&&portalPracticeClockValues(portalData?.activePractice).block==='DONE!',allowed=practiceOnly?new Set(practiceEnded?[]:portalData?.activePractice?.drills||[]):null,drills=allowed?allDrills.filter(drill=>allowed.has(drill.name)):allDrills,selected=drills.find(drill=>drill.name===portalSelectedDrill);
- if(selected){const detail=(title,value)=>value?`<section class="practice-drill-detail-section"><h3>${esc(title)}</h3><p>${esc(value)}</p></section>`:'';return `${portalHeader('Drill Library',true)}<main class="portal-page practice-drill-detail"><button class="practice-library-return" id="portalLibraryBack">‹ ${portalLibraryReturnView==='practice'?'Back To My Practice':portalLibraryReturnView==='focus'?'Back To My Focus':'Back To All Drills'}</button><section class="practice-drill-detail-head"><span>${esc(selected.category)}</span><h2>${esc(selected.name)}</h2><p>${esc(selected.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(selected.hittingMethod)}</span>${selected.equipment?`<span>${esc(selected.equipment)}</span>`:''}</div></section>${detail('Best Used For',selected.bestUsedFor)}${detail('How It Works',selected.howItWorks)}${detail('Key Coaching Cues',selected.coachingCues)}${detail('What Success Looks Like',selected.success)}${detail('Space / Setup',selected.spaceSetup)}${selected.mediaLink?`<a class="btn black block" href="${esc(selected.mediaLink)}" target="_blank" rel="noopener">Watch Drill</a>`:''}</main>`}
+ if(selected){const detail=(title,value)=>value?`<section class="practice-drill-detail-section"><h3>${esc(title)}</h3><p>${esc(value)}</p></section>`:'';return `${portalHeader('Drill Library',true)}<main class="portal-page practice-drill-detail"><button class="practice-library-return" id="portalLibraryBack">‹ ${portalLibraryReturnView==='practice'?'Back To My Practice':'Back To All Drills'}</button><section class="practice-drill-detail-head"><span>${esc(selected.category)}</span><h2>${esc(selected.name)}</h2><p>${esc(selected.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(selected.hittingMethod)}</span>${selected.equipment?`<span>${esc(selected.equipment)}</span>`:''}</div></section>${detail('Best Used For',selected.bestUsedFor)}${detail('How It Works',selected.howItWorks)}${detail('Key Coaching Cues',selected.coachingCues)}${detail('What Success Looks Like',selected.success)}${detail('Space / Setup',selected.spaceSetup)}${selected.mediaLink?`<a class="btn black block" href="${esc(selected.mediaLink)}" target="_blank" rel="noopener">Watch Drill</a>`:''}</main>`}
  const query=portalDrillQuery.trim().toLowerCase(),shown=drills.filter(drill=>!query||Object.values(drill).some(value=>String(value).toLowerCase().includes(query)));
  return `${portalHeader('Drill Library',true)}<main class="portal-page"><div class="practice-library-search"><input class="input" id="portalDrillSearch" type="search" placeholder="Search drills" value="${esc(portalDrillQuery)}" aria-label="Search drills"></div><p class="practice-library-count">${shown.length} ${shown.length===1?'drill':'drills'}</p><section class="practice-drill-list">${shown.map(drill=>`<button class="practice-drill-card" data-portal-drill="${esc(drill.name)}"><span>${esc(drill.category)}</span><h3>${esc(drill.name)}</h3><p>${esc(drill.primaryPurpose)}</p><div class="practice-drill-tags"><span>${esc(drill.hittingMethod)}</span></div></button>`).join('')}</section></main>`;
 }
@@ -2531,7 +2673,6 @@ function playerPortalPage(){
  if(!portalData.activePractice&&portalLibraryReturnView==='practice'){portalView='home';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library'}
  if(portalView==='practice')return portalPracticeView();
  if(portalView==='focus')return portalFocusView();
- if(portalView==='focusArchive'&&portalData?.portalType==='player')return portalMegFocusArchiveView();
  if(portalView==='evaluation'){const fallback=portalPlayerEvaluationView();if(typeof window.HotBPlayerEvaluationRender==='function'){queueMicrotask(()=>{if(route==='portal'&&portalView==='evaluation')window.HotBPlayerEvaluationRender()})}return fallback;}
  if(portalView==='library')return portalLibraryView();
  if(portalView==='ask')return portalAskView();
@@ -2543,8 +2684,8 @@ function practiceEndValue(startTime,durationMinutes){const start=practiceTimeMin
 function practiceTimeLabel(value){const minutes=practiceTimeMinutes(value);if(minutes===null)return '—';const hour=Math.floor(minutes/60);return `${hour%12||12}:${String(minutes%60).padStart(2,'0')}${hour<12?'a':'p'}`}
 function practiceAccommodation(player){
  const saved=practiceSetupState.accommodations?.[player.name]||{};
- const hasPrePracticeSetting=Object.prototype.hasOwnProperty.call(saved,'prePracticeComplete');
- return {arrival:saved.arrival||'',departure:saved.departure||(player.isTeamJenkins?'19:30':''),limitations:saved.limitations||'',prePracticeComplete:player.isTeamJenkins?(hasPrePracticeSetting?!!saved.prePracticeComplete:true):(!!player.isPracticeGuest&&!!saved.prePracticeComplete),canPitch:isPitcherProfile(player)?saved.canPitch!==false:false,requiresPitchWarmup:isPitcherProfile(player)?saved.requiresPitchWarmup!==false:false,canCatch:positionTokens(player).includes('C')?saved.canCatch!==false:false};
+ const isMakenna=player.name==='Makenna Whitaker';
+ return {arrival:saved.arrival||'',departure:saved.departure||'',limitations:saved.limitations||'',prePracticeComplete:!!player.isPracticeGuest&&!!saved.prePracticeComplete,canPitch:isPitcherProfile(player)?saved.canPitch!==false:false,requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?false:saved.requiresPitchWarmup!==false):false,canCatch:positionTokens(player).includes('C')?saved.canCatch!==false:false};
 }
 function practiceAccommodationSummary(player,accommodation,startTime,durationMinutes){
  const endTime=practiceEndValue(startTime,durationMinutes),parts=[];
@@ -2563,7 +2704,7 @@ function practiceAttendanceRoster(){return [...db.roster,...practiceGuestPlayers
 function guestRolePosition(role){return role==='Pitcher'?'P':role==='Catcher'?'C':'UT'}
 function practicePlayerByName(name){return practiceAttendanceRoster().find(player=>player.name===name)}
 function practiceAvailability(startTime,durationMinutes,arrival,departure){
- const start=practiceTimeMinutes(startTime),blockCount=Number(durationMinutes)===132?11:Number(durationMinutes)===120?10:0,blockMinutes=12;
+ const start=practiceTimeMinutes(startTime),duration=Number(durationMinutes)||120,blockMinutes=12,blockCount=duration>=60&&duration<=180&&duration%blockMinutes===0?duration/blockMinutes:10;
  const arrive=practiceTimeMinutes(arrival||startTime),leave=practiceTimeMinutes(departure||practiceEndValue(startTime,durationMinutes));
  if(start===null||!blockCount||arrive===null||leave===null)return {availableFromBlock:-1,availableUntilBlock:-1};
  const end=start+blockCount*blockMinutes;
@@ -2717,7 +2858,7 @@ function playerFocusPortalPayload(playerName=practiceFocusPlayer,range=practiceF
  const observed=window.HotBCoachObservations?.summarize(games,selected.name,standalone)||{patterns:[],rows:[]};
  const focusItems=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>item.label)].filter((item,index,list)=>item&&list.indexOf(item)===index).slice(0,3);
  const query=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>`${item.label} ${item.focus||''}`)].join(' ');
- const drills=focusSuggestedDrills(query,playerName,range).map(drill=>drill.name);
+ const drills=!playerHasNewFocusObservation(playerName,observed)?[]:focusSuggestedDrills(query,playerName,range).map(drill=>drill.name);
  const latestNote=(observed.rows||[]).filter(item=>item.note).sort((a,b)=>Number(b.createdAt||b.updatedAt||0)-Number(a.createdAt||a.updatedAt||0))[0]?.note||'';
  // Keep the preview stable after a portal-ID recovery/save. save() re-renders the
  // screen, so preserve the visible Focus evidence until the publish finishes.
@@ -2727,9 +2868,73 @@ function playerFocusPortalPayload(playerName=practiceFocusPlayer,range=practiceF
  if(existingFocus&&!payload.needsWork&&!payload.coachNote)return{...payload,needsWork:existingFocus.needsWork||'',coachNote:existingFocus.coachNote||''};
  return payload;
 }
+let playerFocusReviewRecoveryStarted=false;
+async function recoverPublishedPlayerFocusReviewDates(){
+ if(playerFocusReviewRecoveryStarted||!cloudUser||!cloudStore)return;
+ playerFocusReviewRecoveryStarted=true;
+ let changed=false;
+ try{
+  if(!db.playerFocusLastReviewed||typeof db.playerFocusLastReviewed!=='object'||Array.isArray(db.playerFocusLastReviewed))db.playerFocusLastReviewed={};
+  for(const player of competitionRoster().filter(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId)){
+   const snap=await portalDoc(player.portalId).get();if(!snap.exists)continue;
+   const remote=snap.data()||{},dates=[];
+   if(remote.focus?.publishedAt)dates.push(Date.parse(remote.focus.publishedAt)||0);
+   for(const item of Array.isArray(remote.focusArchive)?remote.focusArchive:[])dates.push(Date.parse(item?.publishedAt||item?.archivedAt||0)||0);
+   const latest=Math.max(0,...dates),current=Date.parse(db.playerFocusLastReviewed[player.name]||0)||0;
+   if(latest>current){db.playerFocusLastReviewed[player.name]=new Date(latest).toISOString();changed=true}
+  }
+  if(changed){localStorage.setItem(DBKEY,JSON.stringify(db));render()}
+ }catch(_){playerFocusReviewRecoveryStarted=false}
+}
+if((db.playerFocusPublishedHistoryRepairVersion||0)<1){
+ if(!db.playerFocusLastReviewed||typeof db.playerFocusLastReviewed!=='object'||Array.isArray(db.playerFocusLastReviewed))db.playerFocusLastReviewed={};
+ const repairedAt='2026-09-29T12:00:00-05:00';
+ for(const name of ['Megan Ryan','Hailey Marsh','Brooklyn Gering']){
+  const existing=Date.parse(db.playerFocusLastReviewed[name]||0)||0;
+  if(existing<Date.parse(repairedAt))db.playerFocusLastReviewed[name]=repairedAt;
+ }
+ db.playerFocusPublishedHistoryRepairVersion=1;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+ if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+}
+function playerFocusLastReviewedAt(playerName){
+ const saved=Date.parse(db.playerFocusLastReviewed?.[playerName]||0)||0;
+ const archive=playerFocusArchive(playerName),archived=archive.reduce((latest,item)=>Math.max(latest,Date.parse(item?.publishedAt||item?.archivedAt||0)||0),0);
+ return Math.max(saved,archived);
+}
+function playerFocusReviewAge(playerName){
+ const last=playerFocusLastReviewedAt(playerName);
+ return {last,days:last?Math.max(0,Math.floor((Date.now()-last)/86400000)):null};
+}
+function playerFocusArchive(playerName=practiceFocusPlayer){
+ if(playerName==='Megan Ryan'){if(!Array.isArray(db.megFocusArchive))db.megFocusArchive=[];return db.megFocusArchive}
+ if(!db.playerFocusArchives||typeof db.playerFocusArchives!=='object'||Array.isArray(db.playerFocusArchives))db.playerFocusArchives={};
+ if(!Array.isArray(db.playerFocusArchives[playerName]))db.playerFocusArchives[playerName]=[];
+ return db.playerFocusArchives[playerName];
+}
+function playerFocusArchiveDate(focus){const raw=focus?.publishedAt||focus?.archivedAt;const date=raw?new Date(raw):null;return date&&!Number.isNaN(date.getTime())?date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'Saved Focus'}
+function playerHasNewFocusObservation(playerName,observed){const last=playerFocusArchive(playerName).reduce((latest,item)=>Math.max(latest,Date.parse(item?.publishedAt||item?.archivedAt||0)||0),0);if(!last)return (observed?.rows||[]).length>0;return (observed?.rows||[]).some(item=>{const when=Date.parse(item?.observedAt||item?.createdAt||item?.updatedAt||0)||Number(item?.createdAt||item?.updatedAt||0)||0;return when>last})}
+function playerFocusArchiveView(){
+ const playerName=practiceFocusPlayer,first=practiceFirstName(playerName),archive=playerFocusArchive(playerName).slice().sort((a,b)=>String(b.publishedAt||'').localeCompare(String(a.publishedAt||'')));
+ return `<div class="page-match-head no-print" style="position:relative;display:flex;align-items:center;justify-content:center"><h1 style="position:absolute;left:50%;transform:translateX(-50%);margin:0;white-space:nowrap">Focus Archive</h1></div><main class="practice-feature-page no-print"><button class="practice-library-return" id="backFromMegFocusArchive">‹ Back To ${esc(first)}</button><section class="practice-feature-lead"><span>PLAYER FOCUS ARCHIVE</span><h2>${esc(first)}</h2><p>Every Focus you have published to ${esc(first)} is saved here.</p></section><section class="focus-evidence-section">${archive.length?archive.map(focus=>`<article class="focus-note-row" style="position:relative;padding-right:58px"><time>${esc(playerFocusArchiveDate(focus))}</time><div><b>${esc(focus.needsWork||focus.title||'Player Focus')}</b>${focus.coachNote?`<p>${esc(focus.coachNote)}</p>`:''}${focus.drills?.length?`<small>Drills: ${esc(focus.drills.join(' · '))}</small>`:''}</div><button type="button" data-delete-meg-focus="${esc(focus.publishedAt||focus.archivedAt||'')}" aria-label="Delete archived Focus" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);width:38px;height:38px;padding:0;border:0;border-radius:6px;background:#b42318;color:#fff;font:900 22px/38px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center">×</button></article>`).join(''):'<p class="focus-empty-copy">No published Focus plans are archived yet.</p>'}</section><div style="margin-bottom:110px"></div></main>${reportsTestNav()}`;
+}
+function teamRecommendationDetailView(kind='focus'){
+ const a=window.HotBTeamRecommendations?.analyze?.(db,competitionRoster(),new Date())||{mode:'no-data',focus:[],good:[]},list=kind==='good'?a.good:a.focus,dev=a.mode==='development',title=kind==='good'?(dev?'Build On This':'Good Trends'):(dev?'Suggested Focus This Week':'Team Focus');
+ const metricLabel=item=>item.id==='two-strike'||item.id==='kPct'?'K%':item.id==='hhbPct'||item.id==='season-hhb'?'HHB%':item.id==='decision'?'Decision%':item.id==='popups'?'Results':'Contact%',orderedPlayers=item=>{const rows=[...(item.players||[])],higherIsConcern=['kPct','two-strike','popups'].includes(item.id);return rows.sort((x,y)=>{const a=Number(x.value),b=Number(y.value);if(!Number.isFinite(a)&&!Number.isFinite(b))return String(x.name).localeCompare(String(y.name));if(!Number.isFinite(a))return 1;if(!Number.isFinite(b))return-1;return higherIsConcern?b-a:a-b})};
+ return practiceSectionHeader(title)+'<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>'+(dev?'DEVELOPMENT MODE':'TEAM ANALYSIS')+'</span><h2>'+esc(title)+'</h2><p>'+(kind==='good'?'What is improving and worth reinforcing.':'What the current team data says should be addressed next.')+'</p></section>'+(list.length?list.map((item,index)=>'<section class="focus-evidence-section"><h3>'+(index+1)+'. '+esc(item.title)+'</h3><p class="focus-empty-copy"><b>'+esc(item.metric)+'</b></p>'+(item.players?.length?orderedPlayers(item).map(p=>'<button type="button" data-team-focus-player="'+esc(p.name)+'" class="focus-evidence-player-card"><b>'+esc(p.name)+'</b><span>'+esc(item.id==='popups'?p.value:Math.round(Number(p.value||0)*100)+'%')+'</span></button>').join(''):'<p class="focus-empty-copy">Season-level team pattern.</p>')+'</section>').join(''):'<section class="focus-evidence-section"><p class="focus-empty-copy">No strong team trend identified.</p></section>')+'<div class="focus-bottom-actions" style="margin-bottom:110px;display:grid;grid-template-columns:'+(kind==='focus'?'1fr 1fr':'1fr')+';gap:8px">'+(kind==='focus'?'<button type="button" class="btn red" id="teamFocusBuildPractice">Build Practice</button>':'')+'<button type="button" class="btn black" id="teamFocusBack">Dashboard</button></div></main>'+reportsTestNav();
+}
+function playerFocusStatus(playerName){
+ const {days}=playerFocusReviewAge(playerName);
+ return days===null||days>=14?'overdue':days>=7?'needs':'current';
+}
+function playerFocusOpenedReceipt(playerName){const receipt=db.playerFocusOpened?.[playerName],published=String(db.playerFocusLastReviewed?.[playerName]||'');if(!receipt||!published||String(receipt.publishedAt||'')!==published)return null;const opened=Date.parse(receipt.openedAt||0)||0;return opened?{...receipt,opened}:null}
+function playerFocusRosterMeta(playerName,status){const age=playerFocusReviewAge(playerName);if(status==='overdue'||status==='needs'){const label=status==='overdue'?'OVERDUE':'NEEDS ATTENTION',detail=age.days===null?'No Focus published yet':age.days+' day'+(age.days===1?'':'s')+' since last publish';return{label,detail}}const receipt=playerFocusOpenedReceipt(playerName);if(receipt){const date=new Date(receipt.opened);return{label:'OPENED',detail:date.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}}const published=Date.parse(db.playerFocusLastReviewed?.[playerName]||0)||0;if(published){const date=new Date(published);return{label:'NOT OPENED',detail:'Sent '+date.toLocaleDateString(undefined,{month:'short',day:'numeric'})}}return{label:'NOT OPENED',detail:''}}
+let playerFocusReceiptRefreshStarted=false;
+async function refreshPlayerFocusOpenedReceipts(){if(playerFocusReceiptRefreshStarted||!cloudUser||!cloudStore)return;playerFocusReceiptRefreshStarted=true;let changed=false;try{if(!db.playerFocusOpened||typeof db.playerFocusOpened!=='object'||Array.isArray(db.playerFocusOpened))db.playerFocusOpened={};for(const player of competitionRoster().filter(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId)){const published=String(db.playerFocusLastReviewed?.[player.name]||'');if(!published)continue;const snap=await portalDoc(player.portalId).get();if(!snap.exists)continue;const remote=snap.data()||{},remotePublished=String(remote.focusOpenedPublishedAt||''),openedAt=remote.focusOpenedAt;if(remotePublished!==published||!openedAt)continue;const remoteOpened=Date.parse(openedAt)||0,current=Date.parse(db.playerFocusOpened[player.name]?.openedAt||0)||0;if(remoteOpened&&remoteOpened>current){db.playerFocusOpened[player.name]={publishedAt:published,openedAt:new Date(remoteOpened).toISOString()};changed=true}}if(changed){localStorage.setItem(DBKEY,JSON.stringify(db));if(route==='practice'&&practiceScreen==='player-focus'&&!practiceFocusPlayer)render()}}catch(_){}finally{playerFocusReceiptRefreshStarted=false}}
 function practicePlayerFocus(){
  const selected=db.roster.find(player=>!player.isTeamJenkins&&player.name===practiceFocusPlayer);
- if(!selected)return `${practiceSectionHeader('Player Focus')}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>PLAYER FOCUS</span><h2>Choose A Player</h2><p>Review what HotB detects together with what you observed as a coach.</p></section><section class="practice-focus-roster" style="padding-bottom:96px">${competitionRoster().map(player=>`<button data-focus-player="${esc(player.name)}"><b>${esc(player.name)}</b><span>${practiceRole(player)||'Hitter'}</span></button>`).join('')}</section></main>${reportsTestNav()}`;
+ if(practiceFocusPlayer&&megFocusArchiveOpen)return playerFocusArchiveView();
+ if(!selected){queueMicrotask(refreshPlayerFocusOpenedReceipts);return `${practiceSectionHeader('Player Focus')}<main class="practice-feature-page no-print"><section class="practice-feature-lead"><span>PLAYER FOCUS</span><h2>Choose A Player</h2><p>Review what HotB detects together with what you observed as a coach.</p></section><section class="practice-focus-roster" style="padding-bottom:96px">${competitionRoster().map(player=>{const status=playerFocusStatus(player.name),border=status==='overdue'?'#c71920':status==='needs'?'#111827':'#d9dede',meta=playerFocusRosterMeta(player.name,status),sent=status==='current'&&meta.label==='NOT OPENED',first=practiceFirstName(player.name);return `<button data-focus-player="${esc(player.name)}" data-focus-status="${status}" style="border:2px solid ${border}!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(168px,48%)!important;column-gap:12px!important;align-items:stretch!important;min-height:68px!important;padding:6px 12px!important"><b style="display:flex!important;align-items:center!important;min-width:0!important">${esc(first)}</b><span style="display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:flex-start!important;box-sizing:border-box!important;min-width:0!important;min-height:52px!important;padding:5px 12px!important;text-align:left!important"><strong style="font-size:15px;line-height:1.15;color:${status==='overdue'?'#c71920':'#344054'};width:100%;text-align:left;white-space:nowrap">${esc(meta.label)}</strong>${meta.detail?`<small style="font-size:13px;line-height:1.2;color:${sent?'#111827':'#667085'};font-weight:${sent?'700':'600'};margin-top:5px;white-space:nowrap;width:100%;text-align:left">${esc(meta.detail)}</small>`:''}</span></button>`}).join('')}</section></main>${reportsTestNav()}`;}
  const games=playerFocusGames(),standalone=window.HotBCoachObservations?.standaloneInRange(db.coachObservations,practiceFocusRange)||[],analysis=window.HotBHittingAnalysis?.analyzePlayer(games,selected)||{issues:[],plateAppearances:0,confidence:'no-data'};
  const observed=window.HotBCoachObservations?.summarize(games,selected.name,standalone)||{patterns:[],rows:[],total:0};
  const combinedQuery=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>`${item.label} ${item.focus||''}`)].join(' ');
@@ -2744,19 +2949,19 @@ function practicePlayerFocus(){
  <section class="focus-evidence-section"><div class="focus-observation-head"><h3>Coach Observations</h3><div class="focus-observation-actions"><button type="button" id="manageFocusObservations">Manage</button><button type="button" id="addFocusObservation">Add</button></div></div>${observed.patterns.length?observed.patterns.map(item=>`<article class="focus-evidence-row ${item.count>=2?'recurring':''}"><div><b>${esc(item.tag)}</b><span>${esc(item.status)}</span></div><strong>${item.count}×</strong></article>`).join(''):`<p class="focus-empty-copy">No coach observations for ${practiceFocusRange==='weekend'?'this past weekend':'the past two weeks'}.</p>`}${notes.map(item=>`<article class="focus-note-row"><time>${esc(observationDate(item))}</time><p>${esc(item.note)}</p></article>`).join('')}</section>
  <section class="focus-evidence-section"><h3>What HotB Detects</h3>${analysis.issues?.length?analysis.issues.slice(0,5).map(item=>`<article class="focus-evidence-row"><div><b>${esc(item.label)}</b><span>${esc(item.evidence)}</span></div></article>`).join(''):`<p class="focus-empty-copy">${evidenceCount?'Not enough repeated statistical evidence to identify a tendency yet.':'No plate appearances in this range.'}</p>`}</section>
  <section class="focus-evidence-section"><div class="focus-drill-head"><h3>Suggested Drills</h3>${drills.length?'<button type="button" id="manageFocusDrills">Manage</button>':''}</div>${drills.length?drills.map((drill,index)=>`<article class="focus-drill-row"><strong>${index+1}</strong><div><b>${esc(drill.name)}</b><span>${esc(drill.bestUsedFor||drill.primaryPurpose)}</span></div></article>`).join(''):`<p class="focus-empty-copy">Suggestions will appear when HotB or the coach identifies something to work on.</p>`}</section>
- <div class="focus-bottom-actions" style="margin-bottom:110px"><button class="btn black" id="changeFocusPlayer">Choose Another Player</button><button class="btn red" id="previewPlayerFocus">Publish</button></div></main>${reportsTestNav()}`;
+ <div class="focus-bottom-actions" style="margin-bottom:110px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><button type="button" class="btn red" id="previewPlayerFocus" style="min-width:0;padding:12px 6px;font-size:14px;white-space:nowrap">Publish</button><button type="button" class="btn black" id="openMegFocusArchive" style="min-width:0;padding:12px 6px;font-size:14px;white-space:nowrap">Archive</button><button type="button" class="btn black" id="changeFocusPlayer" style="min-width:0;padding:12px 6px;font-size:14px;white-space:nowrap">Team</button></div></main>${reportsTestNav()}`;
 }
 function practiceAttendanceRow(player,index,selected,startTime,duration,endTime){
- const accommodation=practiceAccommodation(player),summary=practiceAccommodationSummary(player,accommodation,startTime,duration),pitcher=isPitcherProfile(player),catcher=positionTokens(player).includes('C'),arrivalValue=accommodation.arrival||startTime,departureValue=accommodation.departure||endTime;
+ const accommodation=practiceAccommodation(player),summary=practiceAccommodationSummary(player,accommodation,startTime,duration),pitcher=isPitcherProfile(player),catcher=positionTokens(player).includes('C'),arrivalValue=accommodation.arrival||(player.name==='Makenna Whitaker'?practiceTimeValue((practiceTimeMinutes(startTime)??0)+45):startTime),departureValue=accommodation.departure||endTime;
  const attendanceChecked=!!selected&&selected.has(player.name);
- return `<div class="practice-attendance-row ${player.isPracticeGuest?'practice-guest-attendee':''}${player.isTeamJenkins?' team-jenkins-player':''}"><div class="practice-player-line"><label class="practice-player"><input type="checkbox" data-practice-player="${index}" ${attendanceChecked?'checked="checked"':''}><span><b>${esc(player.name)}</b><small>${player.isPracticeGuest?'GUEST ':''}${practiceRole(player)||'Hitter'}</small></span></label><button class="practice-adjust" type="button" data-practice-adjust="${index}">Adjust</button></div><small class="practice-accommodation-summary" data-accommodation-summary="${index}">${esc(summary)}</small><div class="practice-accommodation" data-accommodation-panel="${index}" hidden><div class="practice-accommodation-times"><label>Arrival<div class="practice-field-shell practice-time-shell practice-accommodation-time-shell"><input class="input" type="time" value="${esc(arrivalValue)}" aria-label="Arrival time for ${esc(player.name)}" data-accommodation-arrival="${index}" data-custom="${accommodation.arrival?'true':'false'}"><span class="practice-accommodation-time-display">${esc(practiceTimeLabel(arrivalValue))}</span></div></label><label>Departure<div class="practice-field-shell practice-time-shell practice-accommodation-time-shell"><input class="input" type="time" value="${esc(departureValue)}" aria-label="Departure time for ${esc(player.name)}" data-accommodation-departure="${index}" data-custom="${accommodation.departure?'true':'false'}"><span class="practice-accommodation-time-display">${esc(practiceTimeLabel(departureValue))}</span></div></label></div>${(player.isPracticeGuest||player.isTeamJenkins)?`<label class="practice-accommodation-toggle practice-prepractice-toggle"><input type="checkbox" data-accommodation-prepractice="${index}" ${accommodation.prePracticeComplete?'checked':''}><span>Warm-Up + Tee completed before practice</span></label>`:''}${pitcher?`<label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-pitch="${index}" ${accommodation.canPitch?'checked':''}><span>Available to pitch live</span></label><label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-warmup="${index}" ${accommodation.requiresPitchWarmup?'checked':''} ${accommodation.canPitch?'':'disabled'}><span>Pitch warm-up required</span></label>`:''}${catcher?`<label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-catch="${index}" ${accommodation.canCatch?'checked':''}><span>Catching</span></label>`:''}<label class="practice-limitations-label">Practice limitations<input class="input" data-accommodation-limitations="${index}" value="${esc(accommodation.limitations||'')}" placeholder="Optional limitation or adjustment"></label>${player.isPracticeGuest?`<button class="practice-remove-guest" type="button" data-remove-guest-player="${esc(player.guestId)}">Remove Guest</button>`:''}<p>${(player.isPracticeGuest||player.isTeamJenkins)&&accommodation.prePracticeComplete?'Warm-Up and Tee are credited before practice. Official Blocks 1 and 2 can be used for assigned work.':'Arrival and departure use complete practice blocks. A late player begins with Warm-Up, then Tee Work.'}</p></div></div>`;
+ return `<div class="practice-attendance-row ${player.isPracticeGuest?'practice-guest-attendee':''}${player.isTeamJenkins?' team-jenkins-player':''}"><div class="practice-player-line"><label class="practice-player"><input type="checkbox" data-practice-player="${index}" ${attendanceChecked?'checked="checked"':''}><span><b>${esc(player.name)}</b><small>${player.isPracticeGuest?'GUEST ':''}${practiceRole(player)||'Hitter'}</small></span></label><button class="practice-adjust" type="button" data-practice-adjust="${index}">Adjust</button></div><small class="practice-accommodation-summary" data-accommodation-summary="${index}">${esc(summary)}</small><div class="practice-accommodation" data-accommodation-panel="${index}" hidden><div class="practice-accommodation-times"><label>Arrival<div class="practice-field-shell practice-time-shell practice-accommodation-time-shell"><input class="input" type="time" value="${esc(arrivalValue)}" aria-label="Arrival time for ${esc(player.name)}" data-accommodation-arrival="${index}" data-custom="${accommodation.arrival?'true':'false'}"><span class="practice-accommodation-time-display">${esc(practiceTimeLabel(arrivalValue))}</span></div></label><label>Departure<div class="practice-field-shell practice-time-shell practice-accommodation-time-shell"><input class="input" type="time" value="${esc(departureValue)}" aria-label="Departure time for ${esc(player.name)}" data-accommodation-departure="${index}" data-custom="${accommodation.departure?'true':'false'}"><span class="practice-accommodation-time-display">${esc(practiceTimeLabel(departureValue))}</span></div></label></div>${player.isPracticeGuest?`<label class="practice-accommodation-toggle practice-prepractice-toggle"><input type="checkbox" data-accommodation-prepractice="${index}" ${accommodation.prePracticeComplete?'checked':''}><span>Warm-Up + Tee completed before practice</span></label>`:''}${pitcher?`<label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-pitch="${index}" ${accommodation.canPitch?'checked':''}><span>Available to pitch live</span></label><label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-warmup="${index}" ${accommodation.requiresPitchWarmup?'checked':''} ${accommodation.canPitch?'':'disabled'}><span>Pitch warm-up required</span></label>`:''}${catcher?`<label class="practice-accommodation-toggle"><input type="checkbox" data-accommodation-catch="${index}" ${accommodation.canCatch?'checked':''}><span>Catching</span></label>`:''}<label class="practice-limitations-label">Practice limitations<input class="input" data-accommodation-limitations="${index}" value="${esc(accommodation.limitations||'')}" placeholder="Optional limitation or adjustment"></label>${player.isPracticeGuest?`<button class="practice-remove-guest" type="button" data-remove-guest-player="${esc(player.guestId)}">Remove Guest</button>`:''}<p>${player.isPracticeGuest&&accommodation.prePracticeComplete?'Warm-Up and Tee are credited before practice. Official Blocks 1 and 2 can be used for assigned work.':'Arrival and departure use complete practice blocks. A late player begins with Warm-Up, then Tee Work.'}</p></div></div>`;
 }
 function practiceSetup(){
  if(!practiceSetupOpenSnapshot){try{practiceSetupOpenSnapshot={setupState:JSON.parse(JSON.stringify(practiceSetupState)),resolution:practiceResolution?JSON.parse(JSON.stringify(practiceResolution)):null,activePracticeSession:db.activePracticeSession?JSON.parse(JSON.stringify(db.activePracticeSession)):null}}catch(error){console.error('HotB could not capture Build Practice open state.',error)}}
- const roster=practiceAttendanceRoster(),savedNames=Array.isArray(practiceSetupState.selectedNames)?practiceSetupState.selectedNames:null,selected=new Set(savedNames===null?roster.filter(player=>!player.isTeamJenkins).map(player=>player.name):savedNames),duration=practiceSetupState.durationMinutes||120,startTime=practiceSetupState.startTime||'18:00',endTime=practiceEndValue(startTime,duration),guests=practiceGuestPlayers(),guestCoaches=practiceGuestCoaches();
+ const roster=practiceAttendanceRoster(),savedNames=Array.isArray(practiceSetupState.selectedNames)?practiceSetupState.selectedNames:null,selected=new Set(savedNames===null?roster.filter(player=>!['Brynna Peter','Claire Jack'].includes(player.name)&&!player.isPracticeGuest).map(player=>player.name):savedNames),duration=practiceSetupState.durationMinutes||120,durationOptions=[60,72,84,96,108,120,132,144,156,168,180],startTime=practiceSetupState.startTime||'17:30',endTime=practiceEndValue(startTime,duration),guests=practiceGuestPlayers(),guestCoaches=practiceGuestCoaches();
  return `${practiceSectionHeader('Build Practice')}
  <div class="panel practice-setup no-print"><div class="practice-intro"><h2>Who Is At Practice?</h2><p>Select everyone attending. HotB will build the practice with no downtime.</p></div>
- <div class="practice-attendance-tools"><button class="btn" id="practiceSelectAll">All</button><button class="btn" id="practiceSelectNone">None</button><label>Start Time<div class="practice-field-shell practice-time-shell"><input class="input" id="practiceStartTime" type="time" value="${esc(startTime)}" aria-label="Practice start time"><span id="practiceStartTimeDisplay">${esc(window.HotBPracticeScheduler.blockTimes(startTime,duration)[0].start)}</span></div></label><label>Duration<div class="practice-field-shell"><select class="input" id="practiceDuration">${[120,...(duration===132?[132]:[])].map(minutes=>`<option value="${minutes}" ${minutes===duration?'selected':''}>${minutes}${minutes===132?' Minutes · Emergency Block 11':' Minutes'}</option>`).join('')}</select></div></label>></div>
+ <div class="practice-attendance-tools"><button class="btn" id="practiceSelectAll">All</button><button class="btn" id="practiceSelectNone">None</button><label>Start Time<div class="practice-field-shell practice-time-shell"><input class="input" id="practiceStartTime" type="time" value="${esc(startTime)}" aria-label="Practice start time"><span id="practiceStartTimeDisplay">${esc(window.HotBPracticeScheduler.blockTimes(startTime,duration)[0].start)}</span></div></label><label>Duration<div class="practice-field-shell"><select class="input" id="practiceDuration">${durationOptions.map(minutes=>`<option value="${minutes}" ${minutes===duration?'selected':''}>${minutes} Minutes</option>`).join('')}</select></div></label>></div>
  <div class="practice-attendance practice-rebels-attendance">${db.roster.filter(player=>!player.isTeamJenkins).map(player=>practiceAttendanceRow(player,db.roster.indexOf(player),selected,startTime,duration,endTime)).join('')}</div>
  <section class="team-jenkins-practice-section"><div class="team-jenkins-heading">TEAM JENKINS</div><div class="practice-attendance team-jenkins-attendance">${db.roster.filter(player=>player.isTeamJenkins).map(player=>practiceAttendanceRow(player,db.roster.indexOf(player),selected,startTime,duration,endTime)).join('')}</div></section>
  <section class="practice-guests"><button type="button" class="practice-guests-toggle" id="togglePracticeGuests" aria-expanded="${!!practiceSetupState.guestsOpen}"><span>Guests (${guests.length+guestCoaches.length})</span><b>${practiceSetupState.guestsOpen?'−':'+'}</b></button>${practiceSetupState.guestsOpen?`<div class="practice-guests-body"><h3>Guest Players</h3>${guests.length?`<div class="practice-attendance">${guests.map((player,index)=>`${practiceAttendanceRow(player,db.roster.length+index,selected,startTime,duration,endTime)}<div class="practice-guest-access"><small>${esc(player.phone)}</small><span><button type="button" data-text-practice-guest="${esc(player.guestId)}">Text</button><button type="button" class="practice-guest-share" data-share-setup-guest="${esc(player.guestId)}">Share</button></span></div>`).join('')}</div>`:'<p class="practice-guest-empty">No guest players added.</p>'}<div class="practice-guest-form"><input class="input" id="guestPlayerFirstName" placeholder="First name" aria-label="Guest player first name"><select class="input" id="guestPlayerRole" aria-label="Guest player role"><option>Position Player</option><option>Pitcher</option><option>Catcher</option></select><input class="input" id="guestPlayerPhone" type="tel" inputmode="tel" placeholder="Cell number" aria-label="Guest player cell number"><button class="btn black" id="addGuestPlayer">Add Guest Player</button></div><h3>Guest Coaches</h3>${guestCoaches.map(coach=>`<div class="practice-guest-coach"><div><b>${esc(coach.name)}</b><small>${esc(coach.phone)}</small></div><span><button type="button" class="practice-guest-text" data-text-practice-guest="${esc(coach.guestId)}">Text</button><button type="button" class="practice-guest-share" data-share-setup-guest="${esc(coach.guestId)}">Share</button><button type="button" data-remove-guest-coach="${esc(coach.guestId)}">Remove</button></span></div>`).join('')||'<p class="practice-guest-empty">No guest coaches added.</p>'}<div class="practice-guest-form practice-guest-coach-form"><input class="input" id="guestCoachName" placeholder="Coach name" aria-label="Guest coach name"><input class="input" id="guestCoachPhone" type="tel" inputmode="tel" placeholder="Cell number" aria-label="Guest coach cell number"><button class="btn black" id="addGuestCoach">Add Guest Coach</button></div></div>`:''}</section>
@@ -3153,7 +3358,66 @@ async function syncPlayerPracticeClock(){
  }catch(error){return false}}));
  return verification.every(Boolean);
 }
+
+async function syncActiveJenkinsPlans(){
+ const button=$('#syncActiveJenkinsPlans');
+ if(button){button.disabled=true;button.textContent='Checking Jenkins Plans…'}
+ try{
+  const user=cloudAuth?.currentUser,active=db.activePortalPractice;
+  if(!user||user.isAnonymous||String(user.email||'').toLowerCase()!==CLOUD_EMAIL||!cloudStore)throw new Error('coach-session-not-ready');
+  if(!practicePlan||!active?.id||active.id!==practicePlan.portalDraftId||practiceClock.finished)throw new Error('active-practice-not-ready');
+  const names=new Set(active.players||[]),count=practicePlan.times?.length||10;
+  const players=db.roster.filter(p=>p.isTeamJenkins&&names.has(p.name)&&practicePlan.schedule?.[p.name]?.length&&practicePlan.players.some(q=>q.name===p.name&&(q.availableFromBlock??0)<(q.availableUntilBlock??count)));
+  if(!players.length)throw new Error('no-Jenkins-players-in-this-practice');
+  let cache={};try{cache=JSON.parse(localStorage.getItem('hotbJenkinsPortalCredentialsV1')||'{}')}catch(_){}
+  const targets=await Promise.all(players.map(async player=>{
+   const known=VERIFIED_JENKINS_PORTALS[player.name],saved=cache[player.name],id=known?.portalId||saved?.portalId||player.portalId,secret=known?.portalSecret||saved?.portalSecret||player.portalSecret;
+   if(!id||!secret)throw new Error('existing-link-missing-'+practiceFirstName(player.name));
+   return {player,id,secret,proof:await portalHash(id,secret)};
+  }));
+  const sourceId=(active.playerPortals||[]).find(p=>!p.isTeamJenkins&&p.portalId)?.portalId||active.coachPortalId;
+  if(!sourceId)throw new Error('published-clock-reference-missing');
+  const activeId=active.id,plan=practicePlan;
+  await cloudStore.runTransaction(async tx=>{
+   const source=await tx.get(portalDoc(sourceId)),published=source.exists?source.data()?.activePractice:null;
+   if(!published||published.id!==activeId||published.clock?.status==='finished'||published.clock?.endedAt)throw new Error('published-practice-not-running');
+   const docs=await Promise.all(targets.map(t=>tx.get(portalDoc(t.id))));
+   if(practicePlan!==plan||db.activePortalPractice?.id!==activeId||practiceClock.finished)throw new Error('practice-changed-during-check');
+   docs.forEach((snap,i)=>{
+    const t=targets[i],remote=snap.exists?snap.data():null;
+    if(!remote||remote.portalType!=='jenkinsPlayer'||remote.playerName!==t.player.name||remote.pinHash!==t.proof)throw new Error('existing-link-verification-failed-'+practiceFirstName(t.player.name));
+    if(remote.activePractice?.id&&remote.activePractice.id!==activeId)throw new Error('different-practice-on-'+practiceFirstName(t.player.name));
+   });
+   targets.forEach(t=>{
+    const payload=playerPracticePortalPayload(t.player.name,published.activatedAt,published.clock);
+    tx.update(portalDoc(t.id),{activePractice:payload,expired:false,accessStatus:'active',updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+   });
+  });
+  const verification=await Promise.all(targets.map(async t=>{
+   const snap=await portalDoc(t.id).get(),remote=snap.exists?snap.data():null;
+   return remote?.activePractice?.id===activeId&&remote.activePractice.schedule?.length===plan.schedule[t.player.name].length;
+  }));
+  if(verification.some(ok=>!ok))throw new Error('Jenkins-plan-verification-failed');
+  for(const t of targets){
+   t.player.portalId=t.id;t.player.portalSecret=t.secret;
+   active.playerPortals=(active.playerPortals||[]).filter(p=>p.name!==t.player.name);
+   active.playerPortals.push({name:t.player.name,portalId:t.id,isTeamJenkins:true});
+  }
+  persistPracticeSession();render();
+  alert('Jenkins plans verified for '+targets.map(t=>practiceFirstName(t.player.name)).join(', ')+'. Have the girls refresh their existing links.');
+ }catch(error){
+  if(button){button.disabled=false;button.textContent='Sync Jenkins Plans'}
+  alert('Jenkins sync stopped: '+String(error?.message||error?.code||error));
+ }
+}
+
 async function activatePlayerPlans(){
+ restoreVerifiedJenkinsPortalButtons();
+ for(const player of db.roster.filter(p=>p.isTeamJenkins)){try{const saved=JSON.parse(localStorage.getItem('hotbJenkinsPortalCredentialsV1')||'{}')[player.name];if(saved){player.portalId=player.portalId||saved.portalId;player.portalSecret=player.portalSecret||saved.portalSecret}}catch(_){}}
+
+ // Restore the existing directory before testing attendance credentials, even
+ // when this device has not opened Player Portals. Never create or rotate links.
+ restoreVerifiedRebelsPortalDirectory();
  if(!cloudUser||!cloudStore){alert('Sign in through Cloud Backup before activating player portals.');return}
  // Firebase can restore an old/anonymous portal identity before the coach auth
  // observer finishes. Activation is a coach-only write, so verify the live Auth
@@ -3171,7 +3435,7 @@ async function activatePlayerPlans(){
  cloudUser=activationUser;
  if(!practicePlan||practiceChosenDrills.length!==practicePlan.drillStations){alert('Choose all practice drills before activating player plans.');return}
  if(practiceClock.finished){alert('This practice is already finished and cannot be activated again. Build a new practice to publish new player plans.');return}
- if(db.activePortalPractice?.id){alert(db.activePortalPractice.id===practicePlan.portalDraftId?'This exact practice is already active on the player and coach portals. HotB will not republish it or reset its live clock.':'Another practice is still active on the player and coach portals. End or deactivate that practice before activating this one.');return}
+ if(db.activePortalPractice?.id===practicePlan.portalDraftId){alert('This exact practice is already active on the player and coach portals. HotB will not republish it or reset its live clock.');return}
  if(window.HotBPracticeScheduler?.validate){const errors=window.HotBPracticeScheduler.validate(practicePlan);if(errors.length){alert(`The practice plans cannot be activated because this schedule failed its safety checks:\n\n${errors.join('\n\n')}`);return}}
  const planBlockCount=practicePlan.times?.length||10,attending=new Set(practicePlan.players.filter(player=>(player.availableFromBlock??0)<(player.availableUntilBlock??planBlockCount)).map(player=>player.name)),jenkins=db.roster.filter(player=>player.isTeamJenkins&&attending.has(player.name)),missing=db.roster.filter(player=>!player.isTeamJenkins&&attending.has(player.name)&&!player.portalId);
  if(missing.length){alert(`Create Player Portals first. Missing: ${missing.map(player=>practiceFirstName(player.name)).join(', ')}.`);return}
@@ -3290,9 +3554,11 @@ function practiceEquipmentSetup(){
  return `<div class="page-match-head page-head-centered no-print"><span class="page-head-spacer"></span><h1>Practice Setup</h1><span class="page-head-spacer"></span></div><main class="practice-feature-page practice-equipment-setup no-print" style="padding-bottom:140px"><button class="practice-library-return" id="backToPracticeDrills">‹ Back To Choose Drills</button><section class="practice-feature-lead"><span>COACH CHECKLIST</span><h2>Set Up Every Station</h2><p>Use the drill details below to prepare equipment and space before opening the completed practice plan.</p></section><section class="practice-equipment-list">${stations.map(station=>`<article class="practice-equipment-card"><header><span>${esc(station.label)}</span><h3>${esc(station.drill?.name||'Standard')}</h3></header><div><b>Required Equipment</b><ul>${station.equipment.map(item=>`<li>${esc(item)}</li>`).join('')||'<li>No equipment required</li>'}</ul></div><p><b>Hitting Method</b><span>${esc(station.hittingMethod)}</span></p><p><b>Space Setup</b><span>${esc(station.spaceSetup)}</span></p></article>`).join('')}</section><button class="btn black block practice-setup-complete" id="completePracticeSetup">Setup Complete</button></main>${reportsTestNav()}`;
 }
 function practicePage(){
+ if(practiceSection==='team-focus')return teamRecommendationDetailView('focus');
+ if(practiceSection==='good-trends')return teamRecommendationDetailView('good');
  if(practiceSection==='library')return practiceLibrary();
  if(practiceSection==='player')return practicePlayerFocus();
- if(!practicePlan&&practiceSection==='hub')return practiceHub();
+ if(!practicePlan&&practiceSection==='hub')practiceSection='setup';
  if(!practicePlan)return practiceSetup();
  if(practiceDrillPickerOpen)return practiceDrillPicker();
  if(practiceEquipmentSetupOpen)return practiceEquipmentSetup();
@@ -3304,7 +3570,7 @@ function practicePage(){
   <section class="practice-live-control no-print"><div class="practice-clock-actions">${practiceClock.running||practiceClock.finished?'':`<button class="btn red" id="startPracticeClock">Start</button>`}${practiceClock.finished?'':practiceClock.running?`<button class="btn" type="button" disabled aria-disabled="true">Edit</button>`:`<button class="btn" id="editPracticePlayers">Edit</button>`}${practiceClock.running?`<button class="btn" id="skipPracticeBlock">Skip</button>`:''}<button class="btn black" id="endPracticeClock">DONE!</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':`1 of ${practicePlan.times?.length||10}`}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${Math.max(1,practicePlan.blockMinutes-1)}:00`}</b></div></div></section>
   <section class="practice-delivery-focus no-print"><div><span>BUILT-IN HITTING</span><h2>Machine + Front Toss Focus</h2><p>Choose Standard or a library drill. This changes the existing rotation—it does not add another block.</p></div><div class="practice-delivery-focus-fields">${practiceFocusSelector('Machine',practiceClock.running||practiceClock.finished||currentPortalsActive)}${practiceFocusSelector('Front Toss',practiceClock.running||practiceClock.finished||currentPortalsActive)}</div></section>
   <section class="practice-selected-drills no-print"><div><span>DRILL STATIONS</span><h2>${chosenComplete?'Practice Drills Selected':`Choose ${practicePlan.drillStations} Practice Drills`}</h2>${chosenComplete?`<ol>${practiceChosenDrills.map((drill,index)=>`<li><b>${index+1}</b><span>Drill Station ${index+1} — ${esc(drill.name)}</span></li>`).join('')}</ol>`:'<p>Select the actual drills before printing the coach schedule or player cards.</p>'}</div>${practiceClock.running||practiceClock.finished||currentPortalsActive?'':`<button class="btn ${chosenComplete?'':'red'}" id="choosePracticeDrills">${chosenComplete?'Change Drills':'Choose Drills'}</button>`}</section>
-  <section class="practice-portal-publish no-print"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Previous Practice Still Active':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':portalsActive?'End or deactivate the previous practice before publishing this schedule.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${currentPortalsActive||chosenComplete&&!portalsActive?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Finish Active Practice First':'Activate Player Plans'}</button></section>
+  <section class="practice-portal-publish no-print"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${currentPortalsActive||chosenComplete?'':'disabled'}>${currentPortalsActive?'Deactivate':'Activate Player Plans'}</button>${currentPortalsActive?'<button class="btn black" id="syncActiveJenkinsPlans">Sync Jenkins Plans</button>':''}</section>
   ${currentPortalsActive&&(practiceGuestPlayers().length||practiceGuestCoaches().length)?`<section class="practice-guest-links no-print"><span>TEMPORARY GUEST LINKS</span><h2>Share Guest Practice Access</h2>${practiceGuestPlayers().filter(guest=>practicePlan.schedule[guest.name]).map(guest=>`<article><div><b>${esc(guest.name)}</b><small>Guest Player · expires when practice ends</small></div><button class="btn" data-share-practice-guest="${esc(guest.guestId)}">Share</button></article>`).join('')}${practiceGuestCoaches().map(guest=>`<article><div><b>${esc(guest.name)}</b><small>Guest Coach · view only</small></div><button class="btn" data-share-practice-guest="${esc(guest.guestId)}">Share</button></article>`).join('')}</section>`:''}
   ${resourceWarnings.map(warning=>`<div class="practice-resource-warning no-print"><b>Resource Check</b><p>${esc(warning)}</p></div>`).join('')}
   <div class="practice-actions practice-actions-three no-print"><button class="btn ${practiceCoachOpen?'active':''}" id="togglePracticeCoach" aria-pressed="${practiceCoachOpen}">Coach</button><button class="btn ${practiceCardsOpen?'active':''}" id="togglePracticeCards" aria-pressed="${practiceCardsOpen}">Player</button><button class="btn black" id="printPracticeCards" ${chosenComplete?'':'disabled'}>Print</button></div>
@@ -3313,7 +3579,7 @@ function practicePage(){
  </div>${reportsTestNav()}`;
 }
 function newGameView(){
- const opts=competitionRoster().map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('');
+ const opts=competitionRoster().map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('')+'<option value="Guest">Guest</option>';
  const teams=[...new Set(db.teams||[])].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
  const pitchers=[...(db.pitchers||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'}));
  const rows=Array.from({length:13},(_,i)=>`<div class="batting-row"><div class="batting-num">${i+1}</div>
@@ -3352,16 +3618,18 @@ function liveView(){
  const chartName=g.previewNext?nextName:h.name;
  const activeNames=new Set(g.hittersUsed||g.battingOrder);
  const allChartHitterPitches=g.pitches.filter(p=>p.hitter===chartName);
+ const currentPitcherChartHitterPitches=currentPitcherPitches(g).filter(p=>p.hitter===chartName);
  let sourcePitches;
- if(g.zoneScope==='TEAM'&&!g.previewNext) sourcePitches=g.pitches.filter(p=>activeNames.has(p.hitter));
- else if(g.previewNext) sourcePitches=allChartHitterPitches;
+ if(g.zoneScope==='TEAM'&&!g.previewNext) sourcePitches=currentPitcherPitches(g).filter(p=>activeNames.has(p.hitter));
+ else if(g.previewNext) sourcePitches=currentPitcherChartHitterPitches;
  else if(/^AB\d+$/.test(g.historyTab||'')){
    const n=Number(g.historyTab.slice(2)), completed=aps[n-1];
    sourcePitches=completed?allChartHitterPitches.filter(p=>p.pa===completed.pa):[];
  }else if(g.historyTab==='ALL') sourcePitches=allChartHitterPitches;
  else sourcePitches=allChartHitterPitches.filter(p=>p.pa===g.paNumber);
  const allActivePitches=g.pitches.filter(p=>activeNames.has(p.hitter));
- const firstPitches=allActivePitches.filter((p,i,a)=>i===0||p.pa!==a[i-1].pa||p.hitter!==a[i-1].hitter);
+ const currentPitcherActivePitches=currentPitcherPitches(g).filter(p=>activeNames.has(p.hitter));
+ const firstPitches=currentPitcherActivePitches.filter((p,i,a)=>i===0||p.pa!==a[i-1].pa||p.hitter!==a[i-1].hitter);
  const statsMode=g.zoneScope==='TEAM'||g.previewNext||g.historyTab==='ALL';
  const percentMode=!g.firstPitchView&&(g.zoneScope==='TEAM'||g.previewNext||(g.historyTab==='ALL'&&(g.allView||'DOTS')==='PCT'));
  const filter=g.zoneFilter||'K';
@@ -3491,21 +3759,11 @@ function aiStyle(playerOrPitch){
  return ['R','L','SL'].includes(style)?style:'R';
 }
 function aiPitchRecords(g){
- const season=aiSeason(g),opponent=normalized(g.opponent),pitcherName=normalized(g.pitcherName),pitcherNumber=normalized(g.pitcherNumber);
- const games=[...db.savedGames,...(db.currentGame?[db.currentGame]:[])].filter(game=>
-  (game.id===g.id||aiSeason(game)===season)&&normalized(game.opponent)===opponent
- );
- const hasPitcher=game=>(game.pitches||[]).some(pitch=>normalized(pitch.pitcherName)===pitcherName&&normalized(pitch.pitcherNumber)===pitcherNumber);
- const prior=games.filter(game=>game.id!==g.id&&hasPitcher(game)).sort((a,b)=>new Date(b.date)-new Date(a.date));
- const recentIds=new Set(prior.slice(0,3).map(game=>game.id));
- const records=[];
- games.forEach(game=>{
-  const paIndexes=new Map();
-  (game.pitches||[]).forEach(pitch=>{
-   if(normalized(pitch.pitcherName)!==pitcherName||normalized(pitch.pitcherNumber)!==pitcherNumber)return;
-   const paKey=`${pitch.hitter}::${pitch.pa}`,paPitchIndex=paIndexes.get(paKey)||0;paIndexes.set(paKey,paPitchIndex+1);
-   records.push({pitch,game,paPitchIndex,gameWeight:game.id===g.id?3:recentIds.has(game.id)?1.5:.75});
-  });
+ const pitcherName=normalized(g.pitcherName),pitcherNumber=normalized(g.pitcherNumber),records=[],paIndexes=new Map();
+ currentPitcherPitches(g).forEach(pitch=>{
+  if(normalized(pitch.pitcherName)!==pitcherName||normalized(pitch.pitcherNumber)!==pitcherNumber)return;
+  const paKey=`${pitch.hitter}::${pitch.pa}`,paPitchIndex=paIndexes.get(paKey)||0;paIndexes.set(paKey,paPitchIndex+1);
+  records.push({pitch,game:g,paPitchIndex,gameWeight:3});
  });
  return records;
 }
@@ -3609,13 +3867,15 @@ function hitModal(kind){
 }
 function reportBaseGames(){
  if(reportMode==='current')return currentGame()?[currentGame()]:[];
+ // A coach may open a saved scrimmage directly for review, but scrimmages are
+ // never part of aggregate reports, selections, saved groups or All Games.
  if(reportMode==='game')return db.savedGames.filter(game=>game.id===reportGameId);
- if(reportMode==='selection')return db.savedGames.filter(game=>reportSelectedGameIds.includes(game.id));
+ if(reportMode==='selection')return db.savedGames.filter(game=>!game.scrimmage&&reportSelectedGameIds.includes(game.id));
  if(reportMode==='group'){
   const group=db.gameGroups.find(item=>item.id===reportGroupId);
-  return db.savedGames.filter(game=>(group?.gameIds||[]).includes(game.id));
+  return db.savedGames.filter(game=>!game.scrimmage&&(group?.gameIds||[]).includes(game.id));
  }
- return db.savedGames;
+ return db.savedGames.filter(game=>!game.scrimmage);
 }
 function reportGames(){
  const games=reportBaseGames();
@@ -3689,7 +3949,7 @@ function zoneReport(){
  return `<section class="report-heat"><h3>PITCH LOCATION HEAT CHART</h3>${filters}<div class="report-heat-toggle segmented" aria-label="Heat chart value"><button class="${reportHeatDisplay==='COUNT'?'active':''}" data-heat-display="COUNT">COUNT</button><button class="${reportHeatDisplay==='%'?'active':''}" data-heat-display="%">%</button></div><div class="zone-layout report-zone-layout">${['T1','T2','L1','L2'].map(z=>cell(z)).join('')}<div class="core-grid">${['C1','C2','C3','C4'].map(z=>cell(z,'core')).join('')}</div>${['R1','R2','B1','B2'].map(z=>cell(z)).join('')}</div><p class="report-heat-summary"><b>${summaryLabel}</b> — ${located}${reportHeatDisplay==='%'?' total':''} pitch${located===1?'':'es'}</p><div class="heat-key"><span><b>KS</b> Strike Swinging</span><span><b>KL</b> Strike Looking</span><span><b>H4O</b> Hard Hit Ball for an Out</span></div></section>`;
 }
 
-function gameChoiceList(selectedIds){return db.savedGames.map(game=>`<label class="game-choice"><input type="checkbox" value="${game.id}" ${selectedIds.includes(game.id)?'checked':''}><span><b>${new Date(game.date).toLocaleDateString()} · ${esc(game.opponent||'Opponent')}</b><small>${(game.plateAppearances||[]).length} PA</small></span></label>`).join('')}
+function gameChoiceList(selectedIds){return db.savedGames.filter(game=>!game.scrimmage).map(game=>`<label class="game-choice"><input type="checkbox" value="${game.id}" ${selectedIds.includes(game.id)?'checked':''}><span><b>${new Date(game.date).toLocaleDateString()} · ${esc(game.opponent||'Opponent')}</b><small>${(game.plateAppearances||[]).length} PA</small></span></label>`).join('')}
 function gameGroupCard(group){
  const existing=(group.gameIds||[]).filter(id=>db.savedGames.some(game=>game.id===id));
  return `<article class="game-group-card"><div><b>${esc(group.name)}</b><span>${existing.length} game${existing.length===1?'':'s'}</span></div><div class="saved-game-actions"><button class="btn black" data-open-group="${group.id}">Report</button><button class="btn" data-edit-group="${group.id}">Edit</button><button class="btn" data-rename-group="${group.id}">Rename</button><button class="btn red" data-delete-group="${group.id}">Delete Group</button></div></article>`;
@@ -3715,14 +3975,14 @@ function reportsTestNav(){
  const item=(label,action,iconName)=>`<button class="reports-test-menu-item ${currentNav===action?'active':''}" data-test-nav="${action}" style="${activeStyle(action)}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle(action)}" aria-hidden="true">${icon(iconName)}</span><b>${label}</b></button>`;
  const practiceMenuLabel=practicePlan?`Practice <small style="font-size:12px;font-weight:900;margin-left:7px;color:${practiceClock.running?'#c71920':'#667085'}">${practiceClock.running?'Live':'Built'}</small>`:'Practice';
  const gameMenuLabel=db.currentGame?'Game <small style="font-size:12px;font-weight:900;margin-left:7px;color:#c71920">Active</small>':'New Game';
- return `<nav class="reports-test-bottom-nav" aria-label="HotB test navigation">
+ return `<nav class="reports-test-bottom-nav" aria-label="HotB test navigation" style="display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;grid-template-rows:1fr!important;width:100%!important;max-width:720px!important;overflow:hidden!important">
   <button class="${currentNav==='home'?'active':''}" data-test-nav="home" style="${activeStyle('home')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('home')}">${icon('home')}</span><b style="font-size:14px!important;line-height:16px!important">Home</b></button>
   <button class="${currentNav==='new'?'active':''}" data-test-nav="new" style="${activeStyle('new')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('new')}">${icon('game')}</span><b style="font-size:14px!important;line-height:16px!important">Game</b></button>
   <button class="${currentNav==='eval'?'active':''}" data-test-nav="eval" style="${activeStyle('eval')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('eval')}">${icon('eval')}</span><b style="font-size:14px!important;line-height:16px!important">Evals</b></button>
   <button class="${currentNav==='practice'?'active':''}" data-test-nav="practice" style="${activeStyle('practice')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('practice')}">${icon('practice')}</span><b style="font-size:14px!important;line-height:16px!important">Practice</b></button>
   <button class="${currentNav==='focus'?'active':''}" data-test-nav="focus" style="${activeStyle('focus')}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${activeStyle('focus')}">${icon('focus')}</span><b style="font-size:14px!important;line-height:16px!important">Focus</b></button>
   <button class="${reportsNavDrawerOpen?'active':''}" data-test-nav="menu" style="${reportsNavDrawerOpen?'color:#c71920!important;':''}"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;${reportsNavDrawerOpen?'color:#c71920!important;':'color:#555'}">${icon('menu')}</span><b style="font-size:14px!important;line-height:16px!important">Menu</b></button>
- </nav>${reportsNavDrawerOpen?`<div class="reports-test-menu-shade" data-test-menu-close></div><aside class="reports-test-menu-drawer" aria-label="HotB menu"><header><div><small>HOTB</small><strong>Menu</strong></div><button type="button" data-test-menu-close aria-label="Close menu">×</button></header><div class="reports-test-menu-list">${item('Home','home','home')}${item(gameMenuLabel,'new','game')}${item('Evaluations','eval','eval')}${item(practiceMenuLabel,'practice','practice')}${item('Player Focus','focus','focus')}${item('Drill Library','library','library')}${item('Reports','reports','reports')}${`<button class="reports-test-menu-item" data-test-nav="scout"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;color:#555" aria-hidden="true">${icon('scout')}</span><b style="color:#111!important;font-weight:900!important;text-transform:uppercase!important;letter-spacing:.8px!important">SCOUT</b></button>`}${item('Roster','roster','roster')}${item('Backup','backup','backup')}</div></aside>`:''}`;
+ </nav>${reportsNavDrawerOpen?`<div class="reports-test-menu-shade" data-test-menu-close></div><aside class="reports-test-menu-drawer" aria-label="HotB menu"><header><div><small>HOTB</small><strong>Menu</strong></div><button type="button" data-test-menu-close aria-label="Close menu">×</button></header><div class="reports-test-menu-list">${item('Home','home','home')}${item(gameMenuLabel,'new','game')}${item('Evaluations','eval','eval')}${item(practiceMenuLabel,'practice','practice')}${item('Player Focus','focus','focus')}${item('Drill Library','library','library')}${item('Reports','reports','reports')}${`<button class="reports-test-menu-item" data-test-nav="scout"><span class="test-nav-icon" style="width:24px;height:24px;display:grid;place-items:center;color:#555" aria-hidden="true">${icon('scout')}</span><b style="color:#111!important;font-weight:900!important;text-transform:uppercase!important;letter-spacing:.8px!important">SCOUT</b></button>`}${item('Roster','roster','roster')}${item('Backup','backup','backup')}<div style="height:12px;border-top:1px solid #e5e7eb;margin-top:6px"></div>${item('Player Portal','portal','roster')}${item('Recovery Guide','recovery','focus')}</div></aside>`:''}`;
 }
 function reportsTestDrawer(){const full=reportsTestNav(),cut=full.indexOf('</nav>');return cut>=0?full.slice(cut+6):''}
  function reportsPage(){
@@ -3830,7 +4090,8 @@ function evalView(){
  const performanceTile=([label,value,key])=>{
   const statKey=key==='contact'?'contactPct':key==='K'?'kPct':key,guide=['AVG','OBP','SLG','CONTACT','K%'].includes(label);
   const rating=s.PA>=25&&!['hhbPct','qabPct','ipaPct'].includes(statKey)?grade(s[statKey],key):'';
-  return `<div class="perf ${rating}"><b>${value}</b><div class="perf-label-row">${guide?`<button class="perf-metric" data-guide="${label}">${label}</button>`:`<span class="perf-metric">${label}</span>`}<button class="perf-all" data-hitting-ranking="${statKey}">ALL</button></div></div>`;
+  const tileRanking=['AVG','OBP','CONTACT','K%'].includes(label)?` data-hitting-ranking-tile="${statKey}"`:'';
+  return `<div class="perf ${rating}"${tileRanking}><b>${value}</b><div class="perf-label-row">${guide?`<button class="perf-metric" data-guide="${label}">${label}</button>`:`<span class="perf-metric">${label}</span>`}<button class="perf-all" data-hitting-ranking="${statKey}">ALL</button></div></div>`;
  };
  return `<div class="eval-head">${evaluationReadOnly?`<button class="btn eval-nav" id="portalBack">Portal</button>`:`<span class="page-head-spacer"></span>`}<div class="eval-title"><h1>Evaluation</h1></div><div class="eval-contact-actions"></div></div>
  <label class="eval-player-filter"><span>Player</span><select class="player-select" id="evalSelect"><option>Team</option>${competitionRoster().map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label>
@@ -3838,8 +4099,8 @@ function evalView(){
  ${player?`<div class="player-card player-profile ${practiceRateLabel?'has-practice-rate':''}"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div>${practiceRateLabel?`<div class="player-practice-rate">${practiceRateLabel}</div>`:''}</div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
-  <div class="eval-tile dark">${metricHead('HotB+')} ${hotb===null?emptyComparison():(player?comparison(hotb,hotb-100,0):`<div class="value">${hotb}</div>`)}<div class="note">Production vs Team</div></div>
-  <div class="eval-tile">${metricHead('Runs Produced','RP')} ${s.PA?(player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`):emptyComparison()}<div class="note">Runs Produced</div></div>
+  <div class="eval-tile dark" data-summary-ranking-tile="HotB+">${metricHead('HotB+')} ${hotb===null?emptyComparison():(player?comparison(hotb,hotb-100,0):`<div class="value">${hotb}</div>`)}<div class="note">Production vs Team</div></div>
+  <div class="eval-tile" data-summary-ranking-tile="Runs Produced">${metricHead('Runs Produced','RP')} ${s.PA?(player?comparison(s.rp.toFixed(1),s.rp-avgPlayerRp,1):`<div class="value">${s.rp.toFixed(1)}</div>`):emptyComparison()}<div class="note">Runs Produced</div></div>
   <div class="eval-tile">${slapHitter?metricHead('Reach%'):metricHead('Execution','HP%')}<div class="value">${slapHitter?(reach===null?'—%':pct0(reach)):(execution===null?'—%':pct0(execution))}</div><div class="note">${slapHitter?'Reached Base':'Hitting Plan'}</div></div>
  </div>
  <div class="performance"><div class="performance-head"><h2>Hitting Results</h2><div class="performance-sample"><span>${esc(activeDateFilterLabel())}</span><b>${s.PA} PA</b></div></div><div class="perf-grid">
@@ -4289,7 +4550,7 @@ function focusPublishPreviewModal(){
  const focus=window.__HOTB_FOCUS_PREVIEW_PAYLOAD__||playerFocusPortalPayload(),first=practiceFirstName(practiceFocusPlayer);
  if(focus&&!window.__HOTB_FOCUS_PREVIEW_PAYLOAD__)window.__HOTB_FOCUS_PREVIEW_PAYLOAD__=focus;
  if(!focus)return'';
- return `<div class="modal-backdrop"><div class="modal focus-publish-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER PORTAL PREVIEW</div><h2>${esc(first)}’s My Focus</h2></div><button class="btn" data-close>Close</button></div><p class="focus-publish-help">This is exactly what ${esc(first)} will see.</p><div class="focus-preview-shell"><div class="focus-preview-header"><span>Back</span><b>My Focus</b><i></i></div><div class="focus-portal-preview">${portalFocusBody(focus)}</div></div><div class="focus-publish-actions"><button class="btn" data-close>Cancel</button><button class="btn red" id="confirmPublishPlayerFocus">Publish to ${esc(first)}</button></div></div></div>`;
+ return `<div class="modal-backdrop"><div class="modal focus-publish-modal"><div class="modal-header"><div><div class="small info-kicker">PLAYER PORTAL PREVIEW</div><h2>${esc(first)}’s My Focus</h2></div><button class="btn" data-close>Close</button></div><p class="focus-publish-help">This is exactly what ${esc(first)} will see.</p><div class="focus-preview-shell"><div class="focus-preview-header"><span></span><b>My Focus</b><i></i></div><div class="focus-portal-preview">${portalFocusBody(focus)}</div></div><div class="focus-publish-actions"><button class="btn" data-close>Cancel</button><button class="btn red" id="confirmPublishPlayerFocus">Publish to ${esc(first)}</button></div></div></div>`;
 }
 function practiceBuildNoticeModal(){
  const notices=practicePlan?.buildNotices||[];if(!notices.length)return'';
@@ -4534,10 +4795,11 @@ function modalView(){
  if(modal==='manageFocusObservations')return manageFocusObservationsModal();
  if(modal==='manageFocusDrills')return manageFocusDrillsModal();
  if(modal==='focusPublishPreview')return focusPublishPreviewModal();
+ if(modal==='nextGame')return nextGameModal();
  if(modal==='lineup')return lineupModal();
- if(modal?.startsWith('hittingRanking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>hittingRankingModal(modal.slice(15))):hittingRankingModal(modal.slice(15));
- if(modal?.startsWith('ranking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>evalRankingModal(modal.slice(8))):evalRankingModal(modal.slice(8));
- if(modal?.startsWith('pitchRanking:'))return isCoachEvaluation()?withCoachEvaluationData(()=>pitcherRankingModal(modal.slice(13))):pitcherRankingModal(modal.slice(13));
+ if(modal?.startsWith('hittingRanking:'))return evaluationReadOnly&&portalData?.evaluationData?withCoachEvaluationData(()=>hittingRankingModal(modal.slice(15))):hittingRankingModal(modal.slice(15));
+ if(modal?.startsWith('ranking:'))return evaluationReadOnly&&portalData?.evaluationData?withCoachEvaluationData(()=>evalRankingModal(modal.slice(8))):evalRankingModal(modal.slice(8));
+ if(modal?.startsWith('pitchRanking:'))return evaluationReadOnly&&portalData?.evaluationData?withCoachEvaluationData(()=>pitcherRankingModal(modal.slice(13))):pitcherRankingModal(modal.slice(13));
  if(modal==='HIT'||modal==='H4O')return hitModal(modal);
  if(modal==='reports')return reportModal();
  if(modal==='gamesSelection')return gamesSelectionModal();
@@ -4555,11 +4817,19 @@ function bind(){
   go('practice');practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0);
  };
  $$('[data-close]').forEach(el=>el.onclick=()=>{if(modal==='record'){if(timerInt)clearInterval(timerInt);timerInt=null;timerElapsed=0;recordType=''}modal=modal==='reportGamesList'?'reports':null;render()});
+ document.querySelectorAll('[data-set-next-game]').forEach(button=>button.onclick=()=>{modal='nextGame';render()});
+ if(modal==='nextGame'){
+  $('#saveNextGame')?.addEventListener('click',()=>{const date=$('#nextGameDate')?.value||'',time=$('#nextGameTime')?.value||'',opponent=String($('#nextGameOpponent')?.value||'').trim();if(!date){alert('Choose the game date.');return}db.nextGame={date,time,opponent};save();modal=null;render()});
+  $('#clearNextGame')?.addEventListener('click',()=>{delete db.nextGame;save();modal=null;render()});
+ }
+ document.querySelectorAll('[data-team-analysis]').forEach(button=>button.onclick=()=>{go('practice');practiceSection=button.dataset.teamAnalysis==='good'?'good-trends':'team-focus';render();window.scrollTo(0,0)});
+ document.querySelectorAll('[data-team-focus-build]').forEach(button=>button.onclick=()=>{go('practice');practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0)});
  const focusObservationButton=$('#addFocusObservation');if(focusObservationButton)focusObservationButton.onclick=event=>{event.preventDefault();event.stopPropagation();openFocusObservation()};
  if(route==='new')bindNew();
  if(route==='roster')bindRoster();
  if(route==='live')bindLive();
  if(route==='eval')bindEval();
+ if(route==='home')bindTestNavigation();
  if(route==='reports')bindReportsPage();
  if(route==='practice')bindPractice();
  if(route==='portal')bindPlayerPortal();
@@ -4645,7 +4915,7 @@ function bind(){
    // Resolution commit preserves the verified attendee order as transaction data.
    // This keeps plan.players, setup.selectedNames and persisted recovery aligned.
    if(expectedNames.length!==actualNames.length||actualNames.some((name,index)=>name!==expectedNames[index]))return failProof('player-order');
-   const expectedBlocks=Number(expected.durationMinutes)===132?11:10;
+   const expectedBlocks=(Number(expected.durationMinutes)||120)/12;
    if(!Array.isArray(plan.times)||plan.times.length!==expectedBlocks)return failProof('times-count');
    const scheduleKeys=Object.keys(plan.schedule||{}),scheduleSet=new Set(scheduleKeys);
    if(scheduleKeys.length!==scheduleSet.size||scheduleSet.size!==expectedSet.size||expectedNames.some((name,index)=>scheduleKeys[index]!==name))return failProof('schedule-key-order');
@@ -5504,7 +5774,7 @@ function persistPracticeDraft(){
  }
  // Setup drafts never persist the temporary 132-minute apply state. A verified
  // Resolution snapshot itself is also defined as the failed 120-minute source.
- if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
+ const draftDuration=Number(practiceSetupState.durationMinutes);if(!(draftDuration>=60&&draftDuration<=180&&draftDuration%12===0))practiceSetupState.durationMinutes=120;
  let resolutionToPersist=null;
  if(practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
   // Resolution 532: WebKit/PWA structuredClone has proved less reliable here than
@@ -5880,16 +6150,16 @@ async function finishPracticeClock(automatic=false){
  persistPracticeSession();
  // One DONE tap ends the coach-facing practice immediately. Keep the completed
  // plan/session in memory for the background portal cleanup, but move the coach
- // back to the Practice hub now instead of leaving a tappable DONE button that
+ // back to the regular Build Practice screen now instead of leaving a tappable DONE button that
  // can enter the old retry/Closing path.
  if(!automatic){
   // DONE should feel finished to the coach immediately. Leave the live-practice
   // workspace now; the exact plan and activePortalPractice remain in memory while
   // the verified portal cleanup transaction completes in the background.
-  practiceSection='hub';practiceCoachOpen=false;practiceCardsOpen=false;modal=null;
+  practiceSection='setup';practiceCoachOpen=false;practiceCardsOpen=false;modal=null;
   render();window.scrollTo(0,0);
   // Do not block the click handler on Firestore cleanup. The transaction below
-  // still owns cleanup, but the coach is already back at the Practice hub.
+  // still owns cleanup, but the coach is already back at Build Practice.
   await new Promise(resolve=>setTimeout(resolve,0));
  }else render();
  // Publish the finished clock before removing activePractice. This gives every
@@ -5943,7 +6213,7 @@ async function finishPracticeClock(automatic=false){
   stopPracticeClock();
   practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];
   practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;
-  practiceCoachOpen=false;practiceCardsOpen=false;practiceSection='hub';modal=null;
+  practiceCoachOpen=false;practiceCardsOpen=false;practiceSection='setup';modal=null;
   render();window.scrollTo(0,0);
  }else if(automatic&&cleanupComplete){
   clearPracticeSession();
@@ -5957,7 +6227,7 @@ function closePracticeWorkspace(){
  // or rolling back state after the coach has intentionally ended/discarded it.
  practiceResolutionApplyDraftId=null;practiceResolutionApplyOwnedDraftId=null;practiceResolutionApplyToken=null;practiceResolution=null;
  if(clearPracticeSession()!==true){console.error('HotB refused to close the practice workspace because recovery state could not be cleared.');return false}
- stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:db.roster.filter(player=>!player.isTeamJenkins).map(player=>player.name),startTime:'18:00',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='hub';modal=null;render();window.scrollTo(0,0);return true;
+ stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceDrillPickerOpen=false;practiceEquipmentSetupOpen=false;practiceCoachOpen=false;practiceCardsOpen=false;practiceSetupState={selectedNames:db.roster.filter(player=>!['Brynna Peter','Claire Jack'].includes(player.name)).map(player=>player.name),startTime:'17:30',durationMinutes:120,accommodations:{},guestPlayers:[],guestCoaches:[],guestsOpen:false};practiceSection='setup';modal=null;render();window.scrollTo(0,0);return true;
 }
 async function endPracticeFromScreen(){
  if(practiceCompletionBusy)return;
@@ -5978,8 +6248,8 @@ async function endPracticeFromScreen(){
    }
    catch(error){
     // A finished practice is never resumable. Leave its portal publication record
-    // for recovery cleanup, clear the finished local session, and return to hub.
-    clearPracticeSession();stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceSection='hub';modal=null;render();window.scrollTo(0,0);
+    // for recovery cleanup, clear the finished local session, and return to Build Practice.
+    clearPracticeSession();stopPracticeClock();practicePlan=null;practiceChosenDrills=[];practiceDraftDrills=[];practiceSection='setup';modal=null;render();window.scrollTo(0,0);
     alert(cloudUser&&cloudStore?'Practice is finished. HotB will retry removing the ended player plans when the cloud connection is available.':'Practice is finished. HotB will remove the ended player plans after Cloud Backup reconnects.');
     return
    }
@@ -6030,7 +6300,7 @@ window.HotBPortalText=function(name){
  if(!openSmsComposer(url)){portalMessage='Messages could not be opened from this screen.';render()}
 };
 function bindPlayerPortal(){
- $('#retryPracticePortal')?.addEventListener('click',async()=>{const generation=portalLoadGeneration;portalMessage='';portalBusy=true;render();if(!cloudAuth||!cloudStore){cloudInitStarted=false;cloudInitRetryCount=0;await initCloud()}if(cloudAuth&&cloudStore&&portalLoadGeneration===generation)await loadPlayerPortal()});
+ $('#retryPracticePortal')?.addEventListener('click',()=>{portalMessage='';portalBusy=false;loadPlayerPortal()});
  if(route==='portal'&&!portalToken&&cloudAuthReady&&cloudUser&&db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&(!player.portalId||(player.name==='Megan Ryan'&&!player.portalPin)||(/^Aniesa(?:\s|$)/i.test(player.name)&&!player.portalPin))))setTimeout(recoverPermanentPlayerPortalsForManager,0);
 
  // Evaluation bindings belong only to the coach portal's evaluation subview.
@@ -6041,6 +6311,9 @@ function bindPlayerPortal(){
  $('#shareJenkinsCoachPortal')?.addEventListener('click',async()=>{const coach=db.jenkinsCoachPortal;if(!coach?.portalId||!coach?.portalSecret)return;const share={title:"Mark’s HotB Hitting Practice",text:jenkinsCoachPortalShareText()};try{if(navigator.share)await navigator.share(share);else{await navigator.clipboard.writeText(share.text);alert("Mark’s practice link copied.")}}catch(error){if(error?.name!=='AbortError')alert("Mark’s link could not be shared.")}});
  $('#textJenkinsCoachPortal')?.addEventListener('click',()=>{const coach=db.jenkinsCoachPortal;if(!coach?.portalId||!coach?.portalSecret)return;const url=smsComposeUrl(coach.phone,jenkinsCoachPortalShareText());if(url)openSmsComposer(url)});
  $('#setupJenkinsPortals')?.addEventListener('click',setupJenkinsPortals);
+ $('#copyJenkinsPortalTransfer')?.addEventListener('click',copyJenkinsPortalTransfer);
+ $('#importJenkinsPortalTransfer')?.addEventListener('click',importJenkinsPortalTransfer);
+ document.querySelectorAll('[data-restore-practice-jenkins]').forEach(button=>button.addEventListener('click',()=>restoreJenkinsPortalLink(button.dataset.restorePracticeJenkins)));
  $('#setupCoachPortal')?.addEventListener('click',setupCoachPortal);
  $('#resetCoachPortal')?.addEventListener('click',resetCoachPortal);
  // Bind delivery in app.js as the authoritative path. The capture-phase helper
@@ -6059,39 +6332,36 @@ function bindPlayerPortal(){
  $('#portalBack')?.addEventListener('click',()=>{portalView='home';portalSelectedDrill='';render();window.scrollTo(0,0)});
  $('#portalPracticeBack')?.addEventListener('click',()=>{portalView='practice';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';render();window.scrollTo(0,0)});
  document.querySelectorAll('[data-portal-view]').forEach(button=>button.addEventListener('click',()=>{portalView=button.dataset.portalView;portalSelectedDrill='';portalDrillQuery='';portalDrillResults=[];render();window.scrollTo(0,0);if(portalView==='evaluation'&&!window.HotBEvaluationStats&&!document.querySelector('script[data-portal-evaluation-stats]')){const s=document.createElement('script');s.src='evaluation-stats.js?v=20260923-ipa28';s.async=true;s.dataset.portalEvaluationStats='true';s.onload=()=>{if(route==='portal'&&portalView==='evaluation')render()};s.onerror=()=>{portalMessage='Evaluation tools could not load on this device. Reopen the portal and try again.';if(route==='portal'&&portalView==='evaluation')render()};document.head.appendChild(s)}}));
- const portalLibraryBackButton=document.getElementById('portalLibraryBack');if(portalLibraryBackButton)portalLibraryBackButton.addEventListener('click',()=>{const returnView=portalLibraryReturnView;if(returnView==='practice')portalView='practice';else if(returnView==='focus')portalView='focus';portalLibraryReturnView='library';portalSelectedDrill='';render();window.scrollTo(0,0)});
  $('#portalDrillSearch')?.addEventListener('input',event=>{portalDrillQuery=event.target.value;render();const search=$('#portalDrillSearch');if(search){search.focus();search.setSelectionRange(search.value.length,search.value.length)}});
  $$('[data-portal-drill]').forEach(button=>button.addEventListener('click',()=>{portalSelectedDrill=button.dataset.portalDrill;render();window.scrollTo(0,0)}));
- $('#openMegPortalFocusArchive')?.addEventListener('click',()=>{if(portalData?.portalType!=='player')return;portalMegArchiveIndex=null;portalView='focusArchive';render();window.scrollTo(0,0)});
- document.querySelectorAll('[data-open-meg-focus-archive]').forEach(button=>button.addEventListener('click',()=>{if(portalData?.portalType!=='player')return;portalMegArchiveIndex=Number(button.dataset.openMegFocusArchive);portalView='focusArchive';render();window.scrollTo(0,0)}));
-  $('#deleteMegArchivedFocus')?.addEventListener('click',async()=>{if(portalData?.portalType!=='player'||!Number.isInteger(portalMegArchiveIndex)||!cloudStore)return;if(!confirm('Delete this Focus permanently?'))return;const sorted=(Array.isArray(portalData.focusArchive)?portalData.focusArchive:[]).slice().sort((a,b)=>String(b.publishedAt||b.archivedAt||'').localeCompare(String(a.publishedAt||a.archivedAt||''))),target=sorted[portalMegArchiveIndex];if(!target)return;const archive=(Array.isArray(portalData.focusArchive)?portalData.focusArchive:[]).filter(item=>item!==target&&!(target.publishedAt&&item?.publishedAt===target.publishedAt&&item?.archivedAt===target.archivedAt));const prior=portalData.focusArchive,priorFocus=portalData.focus,key=String(target?.publishedAt||target?.archivedAt||'');const state=readPortalFocusState(),deleted=new Set(Array.isArray(state.deleted)?state.deleted:[]);if(key)deleted.add(key);state.deleted=[...deleted];state.archive=(Array.isArray(state.archive)?state.archive:[]).filter(item=>String(item?.publishedAt||item?.archivedAt||'')!==key);if(String(state.archivedCurrent||'')===key)state.archivedCurrent=key;writePortalFocusState(state);portalData.focusArchive=archive;portalData.focus=null;portalMegArchiveIndex=null;portalView='focus';render();window.scrollTo(0,0);try{if(portalUnsubscribe){portalUnsubscribe();portalUnsubscribe=null}await portalDoc().update({focus:null,focusArchive:archive,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});await loadPlayerPortal()}catch(error){portalData.focusArchive=prior;portalData.focus=priorFocus;portalView='focus';render()}});
- $('#archiveCurrentMegFocus')?.addEventListener('click',async()=>{if(portalData?.portalType!=='player'||!portalData?.focus)return;const button=$('#archiveCurrentMegFocus');if(button){button.disabled=true;button.textContent='Saving…'}if(!cloudStore){portalMessage='HotB is reconnecting. Reopen this link and try Save again.';render();return}try{const current=structuredClone(portalData.focus),archive=Array.isArray(portalData.focusArchive)?portalData.focusArchive.slice():[];if(!archive.some(item=>item?.publishedAt===current.publishedAt))archive.push({...current,archivedAt:new Date().toISOString(),archiveReason:'completed'});const savedFocus=archive.find(item=>item?.publishedAt===current.publishedAt)||current,state=readPortalFocusState();state.archivedCurrent=String(current.publishedAt||current.archivedAt||'');state.archive=[...(Array.isArray(state.archive)?state.archive:[]).filter(item=>String(item?.publishedAt||item?.archivedAt||'')!==state.archivedCurrent),savedFocus];writePortalFocusState(state);portalData.focus=null;portalData.focusArchive=archive;portalView='home';portalSelectedDrill='';portalDrillResults=[];render();window.scrollTo(0,0);if(portalUnsubscribe){portalUnsubscribe();portalUnsubscribe=null}await portalDoc().update({focus:null,focusArchive:archive,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});await loadPlayerPortal()}catch(error){portalData.focus=current;portalData.focusArchive=archive.filter(item=>item?.publishedAt!==current.publishedAt||item?.archiveReason!=='completed');portalView='focus';portalMessage='HotB could not save this Focus. Please try again.';render()}});
- document.querySelectorAll('[data-portal-focus-drill]').forEach(button=>button.addEventListener('click',()=>{const drill=button.dataset.portalFocusDrill;if(!drill)return;const exists=(Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[]).some(item=>item.name===drill);if(!exists){portalMessage='HotB could not find that drill in the Drill Library.';render();return}portalLibraryReturnView='focus';portalSelectedDrill=drill;portalView='library';render();window.scrollTo(0,0)}));
- document.querySelectorAll('[data-portal-practice-drill]').forEach(button=>button.addEventListener('click',()=>{const drill=button.dataset.portalPracticeDrill;if(!drill)return;const practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType);if(practiceOnly&&(portalPracticeClockValues(portalData?.activePractice).block==='DONE!'||!(portalData?.activePractice?.drills||[]).includes(drill)))return;portalLibraryReturnView='practice';portalSelectedDrill=drill;portalView='library';render();window.scrollTo(0,0)}));
-
+ $$('[data-portal-practice-drill]').forEach(button=>button.addEventListener('click',()=>{const drill=button.dataset.portalPracticeDrill;if(!drill)return;const practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType);if(practiceOnly&&(portalPracticeClockValues(portalData?.activePractice).block==='DONE!'||!(portalData?.activePractice?.drills||[]).includes(drill)))return;portalLibraryReturnView='practice';portalSelectedDrill=drill;portalView='library';render();window.scrollTo(0,0)}));
+ $('#portalLibraryBack')?.addEventListener('click',()=>{if(portalLibraryReturnView==='practice')portalView='practice';portalLibraryReturnView='library';portalSelectedDrill='';render();window.scrollTo(0,0)});
  $('#findPortalDrills')?.addEventListener('click',()=>{portalDrillQuery=$('#portalProblem')?.value.trim()||'';portalDrillResults=recommendPortalDrills(portalDrillQuery);render();window.scrollTo(0,0)});
  $$('[data-portal-recommendation]').forEach(button=>button.addEventListener('click',()=>{portalSelectedDrill=button.dataset.portalRecommendation;portalView='library';render();window.scrollTo(0,0)}));
 }
 function storePracticeAccommodation(index){
  const player=practiceAttendanceRoster()[Number(index)];if(!player)return;
- const start=$('#practiceStartTime')?.value||practiceSetupState.startTime||'18:00',duration=Number($('#practiceDuration')?.value)||practiceSetupState.durationMinutes||120,end=practiceEndValue(start,duration);
+ const start=$('#practiceStartTime')?.value||practiceSetupState.startTime||'18:00',duration=Number($('#practiceDuration')?.value)||practiceSetupState.durationMinutes||120,end=practiceEndValue(start,duration),defaultArrival=player.name==='Makenna Whitaker'?practiceTimeValue((practiceTimeMinutes(start)??0)+45):start;
  const arrival=$(`[data-accommodation-arrival="${index}"]`),departure=$(`[data-accommodation-departure="${index}"]`),pitch=$(`[data-accommodation-pitch="${index}"]`),warmup=$(`[data-accommodation-warmup="${index}"]`),catching=$(`[data-accommodation-catch="${index}"]`),prePractice=$(`[data-accommodation-prepractice="${index}"]`),limitations=$(`[data-accommodation-limitations="${index}"]`);
  if(pitch&&warmup&&!pitch.checked)warmup.checked=false;
- if(arrival)arrival.dataset.custom=arrival.value!==start?'true':'false';if(departure)departure.dataset.custom=departure.value!==end?'true':'false';
+ if(arrival)arrival.dataset.custom=arrival.value!==defaultArrival?'true':'false';if(departure)departure.dataset.custom=departure.value!==end?'true':'false';
  [arrival,departure].forEach(input=>{const display=input?.parentElement?.querySelector('.practice-accommodation-time-display');if(display)display.textContent=practiceTimeLabel(input.value)});
- const accommodation={arrival:arrival?.value!==start?arrival.value:'',departure:departure?.value!==end?departure.value:'',limitations:limitations?.value.trim()||'',prePracticeComplete:!!prePractice?.checked,canPitch:pitch?pitch.checked:false,requiresPitchWarmup:warmup?warmup.checked:false,canCatch:catching?catching.checked:false};
+ const accommodation={arrival:arrival?.value!==defaultArrival?arrival.value:'',departure:departure?.value!==end?departure.value:'',limitations:limitations?.value.trim()||'',prePracticeComplete:!!prePractice?.checked,canPitch:pitch?pitch.checked:false,requiresPitchWarmup:warmup?warmup.checked:false,canCatch:catching?catching.checked:false};
  practiceSetupState.accommodations=practiceSetupState.accommodations||{};practiceSetupState.accommodations[player.name]=accommodation;
  const summary=$(`[data-accommodation-summary="${index}"]`);if(summary)summary.textContent=practiceAccommodationSummary(player,accommodation,start,duration);
  if(warmup)warmup.disabled=!!pitch&&!pitch.checked;
 }
 function refreshPracticeAccommodationDefaults(){
- const start=$('#practiceStartTime')?.value||'18:00',duration=Number($('#practiceDuration')?.value)||120,end=practiceEndValue(start,duration);
- $$('[data-accommodation-arrival]').forEach(input=>{if(input.dataset.custom!=='true')input.value=start});
- $('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true'){const player=practiceAttendanceRoster()[Number(input.dataset.accommodationDeparture)];input.value=player?.isTeamJenkins?'19:30':end}});
+ const start=$('#practiceStartTime')?.value||'17:30',duration=Number($('#practiceDuration')?.value)||120,end=practiceEndValue(start,duration);
+ $$('[data-accommodation-arrival]').forEach(input=>{if(input.dataset.custom!=='true'){const player=practiceAttendanceRoster()[Number(input.dataset.accommodationArrival)];input.value=player?.name==='Makenna Whitaker'?practiceTimeValue((practiceTimeMinutes(start)??0)+45):start}});
+ $$('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true')input.value=end});
  practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));
 }
 function bindPractice(){
  bindTestNavigation();
+ $('#teamFocusBack')?.addEventListener('click',()=>go('home'));
+ $('#teamFocusBuildPractice')?.addEventListener('click',()=>{practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0)});
+ $$('[data-team-focus-player]').forEach(button=>button.addEventListener('click',()=>{practiceSection='player';practiceFocusPlayer=button.dataset.teamFocusPlayer;render();window.scrollTo(0,0)}));
  $('#practiceMachineFocus')?.addEventListener('change',event=>{practicePlan.machineFocus=event.target.value||'Standard';persistPracticeSession();render()});
  $('#practiceFrontTossFocus')?.addEventListener('change',event=>{practicePlan.frontTossFocus=event.target.value||'Standard';persistPracticeSession();render()});
  $('#choosePracticeDrills')?.addEventListener('click',()=>{practiceDraftDrills=practiceChosenDrills.slice(0,practicePlan.drillStations);practiceDrillPickerOpen=true;practicePickerQuery='';practicePickerCategory='All Drills';render();window.scrollTo(0,0)});
@@ -6105,7 +6375,7 @@ function bindPractice(){
  $('#practiceHubBack')?.addEventListener('click',()=>{
   if(practiceResolutionApplyToken||practiceResolutionApplyDraftId||practiceResolutionApplyOwnedDraftId){return}
   if(practiceSection==='setup'&&persistPracticeDraft()===false){console.error('HotB refused Practice Hub Back because the Practice Resolution draft could not be persisted.');return}
-  practiceSection='hub';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)
+  practiceSection='setup';practiceFocusPlayer='';practiceSelectedDrill='';render();window.scrollTo(0,0)
  });
  $('#recoverOrphanedPractice')?.addEventListener('click',recoverOrphanedActivePractice);
  $('#recoverPublishedPractice')?.addEventListener('click',recoverPublishedPractice);
@@ -6146,7 +6416,7 @@ function bindPractice(){
       if(Number(practiceSetupState.durationMinutes)===132)practiceSetupState.durationMinutes=120;
       if(persistPracticeDraft()!==true){
        console.error('HotB could not persist the clean setup after rejecting a stale resumed Practice Resolution.');
-       practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='hub';modal=null;render();window.scrollTo(0,0);return;
+       practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='setup';modal=null;render();window.scrollTo(0,0);return;
       }
      }else if(practiceResolution){
       // The restored object must be byte-for-byte the sealed object in the saved
@@ -6155,10 +6425,10 @@ function bindPractice(){
       const savedResolution=db.activePracticeSession?.resolution;
       let savedResolutionBytes='',liveResolutionBytes='';
       try{savedResolutionBytes=JSON.stringify(savedResolution);liveResolutionBytes=JSON.stringify(practiceResolution)}
-      catch(error){console.error('HotB refused a Practice Resolution whose resumed decision could not be sealed.',error);practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='hub';modal=null;render();window.scrollTo(0,0);return}
+      catch(error){console.error('HotB refused a Practice Resolution whose resumed decision could not be sealed.',error);practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='setup';modal=null;render();window.scrollTo(0,0);return}
       if(!savedResolution||savedResolutionBytes!==liveResolutionBytes){
        console.error('HotB refused a Practice Resolution that changed while restoring the saved draft.');
-       practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='hub';modal=null;render();window.scrollTo(0,0);return;
+       practiceSetupState=previousSetup;practiceResolution=previousResolution;practiceSection='setup';modal=null;render();window.scrollTo(0,0);return;
       }
       modal='practiceResolution';
      }
@@ -6168,12 +6438,12 @@ function bindPractice(){
    // Fresh Build Practice starts with every current non-Jenkins player selected.
    // Render first, then force actual checkbox properties so stale iOS form-state
    // restoration cannot override the checked markup.
-   practiceSetupState.selectedNames=practiceAttendanceRoster().filter(player=>!player.isTeamJenkins).map(player=>player.name);
+   practiceSetupState={...practiceSetupState,selectedNames:practiceAttendanceRoster().filter(player=>!['Brynna Peter','Claire Jack'].includes(player.name)&&!player.isPracticeGuest).map(player=>player.name),startTime:'17:30',durationMinutes:120,accommodations:{'Makenna Whitaker':{arrival:'18:15',requiresPitchWarmup:false}}};
    practiceSection='setup';
    render();
    $$('[data-practice-player]').forEach((input,index)=>{
     const player=practiceAttendanceRoster()[index];
-    input.checked=!!player&&!player.isTeamJenkins;
+    input.checked=!!player&&!['Brynna Peter','Claire Jack'].includes(player.name)&&!player.isPracticeGuest;
    });
    persistPracticeDraft();
    window.scrollTo(0,0);
@@ -6200,9 +6470,12 @@ function bindPractice(){
   else db.coachObservations=(db.coachObservations||[]).filter(item=>item.id!==id);
   save();render();
  }));
+ $('#openMegFocusArchive')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();if(!db.roster.some(player=>!player.isTeamJenkins&&player.name===practiceFocusPlayer))return;practiceSection='player';megFocusArchiveOpen=true;render();window.scrollTo(0,0)});
+ $('#backFromMegFocusArchive')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();megFocusArchiveOpen=false;practiceSection='player';render();window.scrollTo(0,0)});
+  document.querySelectorAll('[data-delete-meg-focus]').forEach(button=>button.addEventListener('click',()=>{const key=button.dataset.deleteMegFocus;if(!key||!confirm('Delete this Focus permanently?'))return;const filtered=playerFocusArchive(practiceFocusPlayer).filter(item=>String(item?.publishedAt||item?.archivedAt||'')!==key);if(practiceFocusPlayer==='Megan Ryan')db.megFocusArchive=filtered;else{if(!db.playerFocusArchives||typeof db.playerFocusArchives!=='object')db.playerFocusArchives={};db.playerFocusArchives[practiceFocusPlayer]=filtered}save();render()}));
  $('#addFocusObservation')?.addEventListener('click',openFocusObservation);
  $('#previewPlayerFocus')?.addEventListener('click',()=>{window.__HOTB_FOCUS_PREVIEW_PAYLOAD__=playerFocusPortalPayload();modal='focusPublishPreview';render()});
- $('#changeFocusPlayer')?.addEventListener('click',()=>{practiceFocusPlayer='';render();window.scrollTo(0,0)});
+ $('#changeFocusPlayer')?.addEventListener('click',()=>{megFocusArchiveOpen=false;practiceFocusPlayer='';render();window.scrollTo(0,0)});
  $('#practiceSelectAll')?.addEventListener('click',()=>{$$('[data-practice-player]').forEach(input=>input.checked=true);if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#practiceSelectNone')?.addEventListener('click',()=>{$$('[data-practice-player]').forEach(input=>input.checked=false);if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $$('[data-practice-player]').forEach(input=>input.addEventListener('change',()=>{if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()}));
@@ -6221,6 +6494,7 @@ function bindPractice(){
   if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}
   persistPracticeDraft();
  }));
+ const protectPracticeMasterControl=c=>{if(!c)return;const on=()=>window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__=true,off=()=>{window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__=false;clearTimeout(window.__HOTB_PRACTICE_SETUP_DEFERRED_RENDER__)};c.addEventListener('pointerdown',on);c.addEventListener('focus',on);c.addEventListener('blur',()=>setTimeout(off,0))};protectPracticeMasterControl($('#practiceStartTime'));protectPracticeMasterControl($('#practiceDuration'));
  $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#endPracticeDraft')?.addEventListener('click',endPracticeDraft);
@@ -6232,12 +6506,12 @@ function bindPractice(){
    db.activePracticeSession=practiceSetupOpenSnapshot.activePracticeSession?JSON.parse(JSON.stringify(practiceSetupOpenSnapshot.activePracticeSession)):null;
    save();
   }catch(error){console.error('HotB could not restore the Build Practice open state.',error);alert('HotB could not close Build Practice safely. Try again.');return}
-  practiceSetupOpenSnapshot=null;practiceSection='hub';go('home');
+  practiceSetupOpenSnapshot=null;practiceSection='setup';go('home');
  });
  $('#savePracticeSetup')?.addEventListener('click',()=>{
   practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));
   if(persistPracticeDraft()!==true){alert('HotB could not save this practice setup. Try again.');return}
-  practiceSetupOpenSnapshot=null;practiceSection='hub';go('home');
+  practiceSetupOpenSnapshot=null;practiceSection='setup';go('home');
  });
  $('#generatePractice')?.addEventListener('click',async()=>{
   practiceSetupOpenSnapshot=null;
@@ -6275,26 +6549,7 @@ function bindPractice(){
   practiceSetupState.selectedNames=attendees.map(player=>player.name);
   practiceSetupState.startTime=startTime;
   practiceSetupState.durationMinutes=durationMinutes;
-  // Emergency Block 11 is a verified Resolution-only state. A normal/manual build
-  // must never inherit 132 minutes from stale DOM, restored form state, or an
-  // interrupted apply transaction.
-  if(durationMinutes===132&&!practiceResolutionApplyDraftId){
-   // If an apply is active, leave its ownership intact and let the outer verifier
-   // restore the verified 120-minute snapshot. Manual stale Block 11 state is still
-   // normalized immediately and can never be persisted as a normal setup draft.
-   if(resolutionApplyBuild)return;
-   alert('Block 11 can only be added by Practice Resolution after HotB verifies it for this exact practice.');
-   const durationControl=$('#practiceDuration');if(durationControl)durationControl.value='120';
-   practiceSetupState.durationMinutes=120;
-   persistPracticeDraft();
-   render();
-   return;
-  }
-  if(durationMinutes!==120&&durationMinutes!==132){
-   if(resolutionApplyBuild)return;
-   alert('HotB can only build the normal 120-minute practice or a verified 132-minute Practice Resolution.');
-   return;
-  }
+  if(!(durationMinutes>=60&&durationMinutes<=180&&durationMinutes%12===0)){if(resolutionApplyBuild)return;alert('Practice duration must use 12-minute block intervals.');return}
   roster.forEach((player,index)=>storePracticeAccommodation(index));
   // The transaction begins from the exact canonical setup actually submitted to
   // the scheduler, not from the pre-normalization form representation.
@@ -6511,12 +6766,12 @@ function bindPractice(){
      if(!r||r!==practiceResolution)return fail('global-transaction');
      if(typeof r.signature!=='string'||!r.signature||r.signature!==currentPracticeResolutionSignature())return fail('source-signature');
      if(typeof r.decisionSignature!=='string'||!r.decisionSignature||r.decisionSignature!==practiceResolutionDecisionSignature(r))return fail('decision-signature');
-     const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===120?10:duration===132?11:0,names=players.map(player=>player?.name),verifiedNames=new Set(names);
+     const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration>=60&&duration<=180&&duration%12===0?duration/12:0,names=players.map(player=>player?.name),verifiedNames=new Set(names);
      if(!blockCount||!players.length||names.length!==verifiedNames.size)return fail('verified-identity');
      if(typeof r.canExtend!=='boolean'||r.noPitchersMode!==null)return fail('resolution-shape');
      const clockMinutes=value=>{const m=String(value||'').match(/^(\d{2}):(\d{2})$/);if(!m)return null;const h=Number(m[1]),min=Number(m[2]);return h<24&&min<60?h*60+min:null};
      if(clockMinutes(r.startTime)===null||String(r.startTime)!==String(practiceSetupState.startTime||''))return fail('start-time');
-     if(duration!==120)return fail('duration');
+     if(!(duration>=60&&duration<=180&&duration%12===0))return fail('duration');
      for(const player of players){
       if(!player||String(player.name||'').trim()!==String(player.name||'')||!String(player.name||''))return fail('player-name');
       if(typeof player.isPitcher!=='boolean'||typeof player.isCatcher!=='boolean'||typeof player.isGuest!=='boolean'||typeof player.prePracticeComplete!=='boolean')return fail('player-role-shape['+player.name+']');
@@ -6763,6 +7018,7 @@ function bindPractice(){
  });
  $('#skipPracticeBlock')?.addEventListener('click',skipPracticeBlock);
  $('#endPracticeClock')?.addEventListener('click',()=>{endPracticeFromScreen().catch(error=>console.error('HotB DONE cleanup failed',error))});
+ $('#syncActiveJenkinsPlans')?.addEventListener('click',syncActiveJenkinsPlans);
  $('#activatePlayerPlans')?.addEventListener('click',activatePlayerPlans);
  $('#deactivatePlayerPlans')?.addEventListener('click',deactivatePlayerPlans);
  $$('[data-share-practice-guest]').forEach(button=>button.addEventListener('click',()=>shareGuestPortal([...practiceGuestPlayers(),...practiceGuestCoaches()].find(item=>item.guestId===button.dataset.sharePracticeGuest))));
@@ -6799,7 +7055,7 @@ function bindNew(){
    const current=selections[i];
    const used=new Set(selections.filter((v,j)=>j!==i&&v));
    const available=competitionRoster().filter(r=>!used.has(r.name));
-   s.innerHTML=`<option value="">Select hitter</option>${available.map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('')}`;
+   s.innerHTML=`<option value="">Select hitter</option>${available.map(r=>`<option value="${esc(r.name)}">${esc(r.name)} (${r.side})</option>`).join('')}<option value="Guest">Guest</option>`;
    s.value=current;
   });
   const vals=selections.filter(Boolean);
@@ -6873,9 +7129,12 @@ function bindTestNavigation(){
   if(action==='focus'){go('practice');practiceSection='player';practiceFocusPlayer='';render();window.scrollTo(0,0);return}
   if(action==='practice'){if(practicePlan){go('practice');practiceSection='builder';render();window.scrollTo(0,0);if(practiceClock.running)resumeRecoveredPracticeClock();return}go('practice');practiceSection='setup';practiceSetupOpenSnapshot=null;render();window.scrollTo(0,0);return}
   if(action==='backup'){modal='cloudBackup';render();return}
+  if(action==='recovery'){modal='recoveryGuide';render();return}
+  if(action==='portal'){go('portal');return}
   if(action==='library'){go('practice');practiceSection='library';render();window.scrollTo(0,0);return}
   if(action==='scout'){window.location.href='https://rebelsscout.com/';return}
-  if(action==='reports'){go('reports');return}
+  if(action==='reports'){selectedSeason=currentSeasonLabel();dateFilterMode='full';go('reports');return}
+  if(action==='eval'){selectedSeason=currentSeasonLabel();dateFilterMode='full';go('eval');return}
   go(action);
  };
  document.querySelectorAll('[data-test-nav]').forEach(button=>button.addEventListener('click',()=>testNavigate(button.dataset.testNav)));
@@ -6960,8 +7219,16 @@ function bindFocusPublishPreview(){
    }
    if(!player.portalId)throw new Error('existing-player-portal-not-found');
    if(button)button.textContent='Publishing…';
-   await portalDoc(player.portalId).set({focus,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-   modal=null;render();alert(`${practiceFirstName(player.name)}’s Player Focus is now available in her portal.`);
+   const snap=await portalDoc(player.portalId).get(),remote=snap.exists?snap.data()||{}:{},remoteArchive=Array.isArray(remote.focusArchive)?remote.focusArchive.slice():[];
+   if(remote.focus?.publishedAt&&!remoteArchive.some(item=>item?.publishedAt===remote.focus.publishedAt))remoteArchive.push({...remote.focus,archivedAt:new Date().toISOString(),archiveReason:'replaced'});
+   await portalDoc(player.portalId).set({focus,focusArchive:remoteArchive,focusOpenedPublishedAt:firebase.firestore.FieldValue.delete(),focusOpenedAt:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+   const localArchive=playerFocusArchive(player.name);if(!localArchive.some(item=>item?.publishedAt===focus.publishedAt))localArchive.push(structuredClone(focus));
+   if(!db.playerFocusLastReviewed||typeof db.playerFocusLastReviewed!=='object'||Array.isArray(db.playerFocusLastReviewed))db.playerFocusLastReviewed={};
+   db.playerFocusLastReviewed[player.name]=focus.publishedAt||new Date().toISOString();if(!db.playerFocusOpened||typeof db.playerFocusOpened!=='object'||Array.isArray(db.playerFocusOpened))db.playerFocusOpened={};delete db.playerFocusOpened[player.name];
+   db.coachObservations=(db.coachObservations||[]).filter(item=>!(item?.source==='player-focus'&&item.playerName===player.name));
+   Object.keys(db.playerFocusDrillOverrides||{}).filter(key=>key.startsWith(player.name+'::')).forEach(key=>delete db.playerFocusDrillOverrides[key]);
+   save();
+   window.__HOTB_FOCUS_PREVIEW_PAYLOAD__=null;modal=null;render();alert(`${practiceFirstName(player.name)}’s Player Focus is now available in her portal.`);
   }catch(error){
    if(button){button.disabled=false;button.textContent=`Publish to ${practiceFirstName(player.name)}`}
    if(String(error?.message||'')==='existing-player-portal-not-found')alert(`HotB could not match ${practiceFirstName(player.name)} to an existing permanent portal. Her existing portal was not changed.`);
@@ -7113,6 +7380,10 @@ function bindGameAction(){
    db.currentGame=null;
    modal=null;
    save();
+   // A completed official game changes every player's evaluation snapshot.
+   // Publish those updated stats to the permanent player portals immediately.
+   playerPortalRefreshPending=true;
+   setTimeout(()=>setupPlayerPortals(false),0);
    go('home');
  });
  $('#discardGame')?.addEventListener('click',()=>{modal='discardConfirm';render()});
@@ -7166,21 +7437,37 @@ function exportCsv(){
  const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`HotB_${reportMode}_report.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function bindEval(){
- if(!evaluationReadOnly)bindTestNavigation();
- $('#evalSelect').onchange=e=>{evalPlayer=e.target.value;render()};
+ const evalSelect=$('#evalSelect');
+ if(evalSelect)evalSelect.onchange=e=>{evalPlayer=e.target.value;modal=null;render()};
+ const appRoot=$('#app');
+ if(appRoot&&!appRoot.dataset.evalRankingDelegated){
+  appRoot.dataset.evalRankingDelegated='1';
+  appRoot.addEventListener('click',event=>{
+   const target=event.target instanceof Element?event.target:null;if(!target)return;
+   const hittingTile=target.closest('[data-hitting-ranking-tile]');
+   if(hittingTile){event.preventDefault();event.stopPropagation();modal='hittingRanking:'+hittingTile.dataset.hittingRankingTile;render();return}
+   const summaryTile=target.closest('[data-summary-ranking-tile]');
+   if(summaryTile){event.preventDefault();event.stopPropagation();modal='ranking:'+summaryTile.dataset.summaryRankingTile;render();return}
+  },true);
+ }
+ // Evaluation's ranking controls are core controls. Bind them before any optional
+ // navigation/date-filter setup so an unrelated binder cannot disable rankings.
+ $$('[data-ranking]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.ranking;render()});
+ $$('[data-summary-ranking-tile]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.summaryRankingTile;render()});
+ $$('[data-hitting-ranking]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRanking;render()});
+ $$('[data-hitting-ranking-tile]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRankingTile;render()});
+ $$('[data-pitch-ranking]').forEach(x=>x.onclick=()=>{modal='pitchRanking:'+x.dataset.pitchRanking;render()});
+ try{if(!evaluationReadOnly)bindTestNavigation()}catch(error){console.error('HotB Evaluation navigation binding failed without disabling Evaluation controls',error)}
  $('#openRebelsScout')?.addEventListener('click',()=>{
   const scoutSlug=String(evalPlayer||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   const url=`https://rebelsscout.com/${scoutSlug}/`;
   window.open(url,'_blank','noopener');
  });
- bindDateFilters('eval');
+ try{bindDateFilters('eval')}catch(error){console.error('HotB Evaluation date-filter binding failed without disabling Evaluation controls',error)}
  const recordMeasureButton=$('#recordMeasure2');
  if(recordMeasureButton)recordMeasureButton.onclick=()=>{recordType='';modal='record';render()};
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
  $$('[data-guide]').forEach(x=>x.onclick=()=>{modal='guide:'+x.dataset.guide;render()});
- $$('[data-ranking]').forEach(x=>x.onclick=()=>{modal='ranking:'+x.dataset.ranking;render()});
- $$('[data-hitting-ranking]').forEach(x=>x.onclick=()=>{modal='hittingRanking:'+x.dataset.hittingRanking;render()});
- $$('[data-pitch-ranking]').forEach(x=>x.onclick=()=>{modal='pitchRanking:'+x.dataset.pitchRanking;render()});
  $('#uploadPitchingStats')?.addEventListener('click',()=>$('#pitchingStatsFile')?.click());
  $('#pitchingStatsFile')?.addEventListener('change',async event=>{
   const file=event.target.files?.[0];event.target.value='';if(!file)return;
