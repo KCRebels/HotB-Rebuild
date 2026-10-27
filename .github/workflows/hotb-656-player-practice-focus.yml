@@ -1,0 +1,50 @@
+name: HotB 656 Player Practice Focus
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/hotb-656-player-practice-focus.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch player My Practice focus and cleanup
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+          old="function portalPracticeAssignment(entry){const drill=portalAssignmentDrillName(entry.assignment),jenkins=portalData?.portalType==='jenkinsPlayer',practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType),allowed=!practiceOnly||!!drill&&(portalData?.activePractice?.drills||[]).includes(drill);return !jenkins&&drill&&allowed?`<button class=\"portal-practice-drill-link\" data-portal-practice-drill=\"${esc(drill)}\">${esc(entry.assignment)}</button>`:`<strong>${esc(entry.assignment)}</strong>`}"
+          new="function portalPracticeAssignment(entry){const drill=portalAssignmentDrillName(entry.assignment),jenkins=portalData?.portalType==='jenkinsPlayer',practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType),allowed=!practiceOnly||!!drill&&(portalData?.activePractice?.drills||[]).includes(drill),focusDrills=Array.isArray(portalData?.focus?.drills)?portalData.focus.drills:[],isFocus=!!drill&&focusDrills.includes(drill),badge=isFocus?' <small class=\"portal-practice-focus-badge\" style=\"display:inline-block;margin-left:6px;padding:2px 6px;border:1.5px solid #c71920;border-radius:999px;color:#c71920;background:#fff;font-size:9px;font-weight:950;line-height:1;vertical-align:middle\">FOCUS</small>':'';return !jenkins&&drill&&allowed?`<button class=\"portal-practice-drill-link\" data-portal-practice-drill=\"${esc(drill)}\">${esc(entry.assignment)}${badge}</button>`:`<strong>${esc(entry.assignment)}${badge}</strong>`}"
+          if old not in s:
+              if new not in s: raise SystemExit('portalPracticeAssignment anchor not found')
+          else:
+              s=s.replace(old,new,1)
+          old2="</ol></article>${portalData?.portalType!=='jenkinsPlayer'&&drillAssignments.length?`<section class=\"portal-practice-drills\"><h3>Assigned Drills</h3>${drillAssignments.map(item=>`<p><button class=\"portal-practice-drill-link\" data-portal-practice-drill=\"${esc(item.name)}\"><span>${esc(item.location)}</span>${esc(item.name)}</button></p>`).join('')}</section>`:''}"
+          if old2 in s:
+              s=s.replace(old2,"</ol></article>",1)
+          elif 'Assigned Drills</h3>' in s:
+              raise SystemExit('Assigned Drills section changed unexpectedly')
+          p.write_text(s)
+
+          q=Path('index.html')
+          x=q.read_text()
+          x=x.replace("   await loadPortalScript('player-practice-focus-badge-v1.js?v=20261027-focus650','P38-FOCUSBADGE');\n",'')
+          x=x.replace('app-coach-rebels-portals-v10.js?v=20261027-portal655','app-coach-rebels-portals-v10.js?v=20261027-focus656')
+          q.write_text(x)
+          PY
+          node --check app-coach-rebels-portals-v10.js
+          grep -q "portal-practice-focus-badge" app-coach-rebels-portals-v10.js
+          ! grep -q "Assigned Drills</h3>" app-coach-rebels-portals-v10.js
+          grep -q "focus656" index.html
+          ! grep -q "player-practice-focus-badge-v1.js" index.html
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name KCRebels
+          git config user.email actions@users.noreply.github.com
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m 'Show player Focus drills in My Practice and remove duplicate drill list'
+          git push
