@@ -20,13 +20,23 @@ jobs:
         run: |
           node --check practice-scheduler.js
           node --check app-coach-rebels-portals-v10.js
-          grep -q 'durationOptions=\[60,75,90,105,120,135,150,165,180\]' app-coach-rebels-portals-v10.js
-          grep -q '20261025-duration646' index.html
+          grep -q 'durationOptions=\[60,72,84,96,108,120,132,144,156,168,180\]' app-coach-rebels-portals-v10.js
+          grep -q 'duration%blockMinutes===0' app-coach-rebels-portals-v10.js
+          grep -q 'duration%BLOCK_MINUTES===0' practice-scheduler.js
+          grep -q '20261027-duration647' index.html
+          node - <<'NODE'
+          const scheduler=require('./practice-scheduler.js');
+          for(const minutes of [60,72,84,96,108,120,132,144,156,168,180]){
+            if(scheduler.validDuration(minutes)!==minutes)throw new Error(`Expected ${minutes} to be valid`);
+            if(scheduler.blockTimes('17:30',minutes).length!==minutes/12)throw new Error(`Wrong block count for ${minutes}`);
+          }
+          if(scheduler.validDuration(135)!==120)throw new Error('135 minutes must be rejected/fall back to 120');
+          NODE
       - name: Commit
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add practice-scheduler.js app-coach-rebels-portals-v10.js index.html
           git diff --cached --check
-          git commit -m 'Support selectable HotB practice durations'
+          git commit -m 'Use 12-minute HotB practice duration intervals'
           git push
