@@ -1,0 +1,42 @@
+name: HotB 664 Focus From Portal
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hotb-664-focus-from-portal.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use current published portal Focus when activating practice
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+          old="""  permanentPlayers.forEach(player=>batch.update(portalDoc(player.portalId),{activePractice:{...playerPracticePortalPayload(player.name,activationTimestamp),clock:{status:'not-started',startedAt:null,endedAt:null}},updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));"""
+          new="""  permanentPlayers.forEach(player=>{const activationDoc=activationDocs.find(({target})=>target.id===player.portalId),remote=activationDoc?.snapshot?.exists?activationDoc.snapshot.data()||{}:{},activePractice={...playerPracticePortalPayload(player.name,activationTimestamp),clock:{status:'not-started',startedAt:null,endedAt:null}};if(Array.isArray(remote?.focus?.drills))activePractice.focusDrills=remote.focus.drills.map(item=>typeof item==='string'?item:item?.name||item?.drill||'').filter(Boolean);batch.update(portalDoc(player.portalId),{activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})});"""
+          if old not in s:
+              raise SystemExit('activation anchor not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          ip=Path('index.html')
+          h=ip.read_text()
+          h=h.replace('app-coach-rebels-portals-v10.js?v=20261027-portal663','app-coach-rebels-portals-v10.js?v=20261027-portal664')
+          ip.write_text(h)
+          PY
+          node --check app-coach-rebels-portals-v10.js
+          grep -q "remote?.focus?.drills" app-coach-rebels-portals-v10.js
+          grep -q "portal664" index.html
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m 'Use published portal Focus drills when activating practice'
+          git push
