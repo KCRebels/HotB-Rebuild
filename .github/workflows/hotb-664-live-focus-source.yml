@@ -1,0 +1,52 @@
+name: HotB 664 Live Focus Source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hotb-664-live-focus-source.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read published Focus from each permanent player portal during activation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+          old="""function playerPracticePortalPayload(name,activatedAt=null,clockOverride=null){"""
+          new="""function playerPracticePortalPayload(name,activatedAt=null,clockOverride=null,focusDrillsOverride=null){"""
+          if old not in s: raise SystemExit('payload signature anchor missing')
+          s=s.replace(old,new,1)
+          old2=""" const publishedAt=String(db.playerFocusLastReviewed?.[name]||''),archive=playerFocusArchive(name),publishedFocus=(publishedAt&&archive.find(item=>String(item?.publishedAt||'')===publishedAt))||archive.slice().sort((a,b)=>String(b?.publishedAt||b?.archivedAt||'').localeCompare(String(a?.publishedAt||a?.archivedAt||'')))[0]||null,focusDrills=Array.isArray(publishedFocus?.drills)?publishedFocus.drills.map(item=>typeof item==='string'?item:item?.name||item?.drill||'').filter(Boolean):[];"""
+          new2=""" const publishedAt=String(db.playerFocusLastReviewed?.[name]||''),archive=playerFocusArchive(name),publishedFocus=(publishedAt&&archive.find(item=>String(item?.publishedAt||'')===publishedAt))||archive.slice().sort((a,b)=>String(b?.publishedAt||b?.archivedAt||'').localeCompare(String(a?.publishedAt||a?.archivedAt||'')))[0]||null,localFocusDrills=Array.isArray(publishedFocus?.drills)?publishedFocus.drills.map(item=>typeof item==='string'?item:item?.name||item?.drill||'').filter(Boolean):[],focusDrills=Array.isArray(focusDrillsOverride)?focusDrillsOverride:localFocusDrills;"""
+          if old2 not in s: raise SystemExit('local focus source anchor missing')
+          s=s.replace(old2,new2,1)
+          old3="""  permanentPlayers.forEach(player=>batch.update(portalDoc(player.portalId),{activePractice:{...playerPracticePortalPayload(player.name,activationTimestamp),clock:{status:'not-started',startedAt:null,endedAt:null}},updatedAt:firebase.firestore.FieldValue.serverTimestamp()}));"""
+          new3="""  permanentPlayers.forEach(player=>{const activationDoc=activationDocs.find(({target})=>target.id===player.portalId),remote=activationDoc?.snapshot?.exists?activationDoc.snapshot.data()||{}:{},remoteFocusDrills=Array.isArray(remote?.focus?.drills)?remote.focus.drills.map(item=>typeof item==='string'?item:item?.name||item?.drill||'').filter(Boolean):[],activePractice=playerPracticePortalPayload(player.name,activationTimestamp,null,remoteFocusDrills);batch.update(portalDoc(player.portalId),{activePractice:{...activePractice,clock:{status:'not-started',startedAt:null,endedAt:null}},updatedAt:firebase.firestore.FieldValue.serverTimestamp()})});"""
+          if old3 not in s: raise SystemExit('activation publish anchor missing')
+          s=s.replace(old3,new3,1)
+          p.write_text(s)
+
+          idx=Path('index.html')
+          t=idx.read_text()
+          t=t.replace('20261027-portal663','20261027-portal664')
+          idx.write_text(t)
+          PY
+          node --check app-coach-rebels-portals-v10.js
+          grep -q "remoteFocusDrills" app-coach-rebels-portals-v10.js
+          grep -q "20261027-portal664" index.html
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name "KCRebels"
+          git config user.email "actions@users.noreply.github.com"
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m "Use live published Focus when activating player practice portals" || exit 0
+          git push
