@@ -1,0 +1,49 @@
+name: HotB 653 Practice Fix
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/hotb-653-practice-fix.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js'); s=p.read_text()
+          def r(a,b,n):
+            global s
+            if a in s:s=s.replace(a,b,1)
+            elif b not in s:raise SystemExit(n)
+          r("function render(){\n captureGameUndo();","function render(){\n if(route==='practice'&&practiceSection==='setup'&&window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__){clearTimeout(window.__HOTB_PRACTICE_SETUP_DEFERRED_RENDER__);window.__HOTB_PRACTICE_SETUP_DEFERRED_RENDER__=setTimeout(()=>{if(!window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__)render()},250);return}\n captureGameUndo();",'render')
+          a=" $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});\n $('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});"
+          b=" const protectPracticeMasterControl=c=>{if(!c)return;const on=()=>window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__=true,off=()=>{window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__=false;clearTimeout(window.__HOTB_PRACTICE_SETUP_DEFERRED_RENDER__)};c.addEventListener('pointerdown',on);c.addEventListener('focus',on);c.addEventListener('blur',()=>setTimeout(off,0))};protectPracticeMasterControl($('#practiceStartTime'));protectPracticeMasterControl($('#practiceDuration'));\n $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});\n $('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});"
+          r(a,b,'controls')
+          r(" if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;"," const draftDuration=Number(practiceSetupState.durationMinutes);if(!(draftDuration>=60&&draftDuration<=180&&draftDuration%12===0))practiceSetupState.durationMinutes=120;",'draft')
+          start=s.index("  // Emergency Block 11 is a verified Resolution-only state.")
+          end=s.index("  roster.forEach((player,index)=>storePracticeAccommodation(index));",start)
+          s=s[:start]+"  if(!(durationMinutes>=60&&durationMinutes<=180&&durationMinutes%12===0)){if(resolutionApplyBuild)return;alert('Practice duration must use 12-minute block intervals.');return}\n"+s[end:]
+          s=s.replace("const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===120?10:duration===132?11:0","const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration>=60&&duration<=180&&duration%12===0?duration/12:0",1)
+          s=s.replace("if(duration!==120)return fail('duration');","if(!(duration>=60&&duration<=180&&duration%12===0))return fail('duration');",1)
+          r(" if(db.activePortalPractice?.id){alert(db.activePortalPractice.id===practicePlan.portalDraftId?'This exact practice is already active on the player and coach portals. HotB will not republish it or reset its live clock.':'Another practice is still active on the player and coach portals. End or deactivate that practice before activating this one.');return}"," if(db.activePortalPractice?.id===practicePlan.portalDraftId){alert('This exact practice is already active on the player and coach portals. HotB will not republish it or reset its live clock.');return}",'activation')
+          s=s.replace("currentPortalsActive?'Practice Is Active':portalsActive?'Previous Practice Still Active':'Activate This Practice'","currentPortalsActive?'Practice Is Active':'Activate This Practice'",1)
+          s=s.replace("currentPortalsActive?'Attending players and the configured coach can view their plans now.':portalsActive?'End or deactivate the previous practice before publishing this schedule.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'","currentPortalsActive?'Attending players and the configured coach can view their plans now.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'",1)
+          s=s.replace("currentPortalsActive||chosenComplete&&!portalsActive?'':'disabled'","currentPortalsActive||chosenComplete?'':'disabled'",1)
+          s=s.replace("currentPortalsActive?'Deactivate':portalsActive?'Finish Active Practice First':'Activate Player Plans'","currentPortalsActive?'Deactivate':'Activate Player Plans'",1)
+          p.write_text(s)
+          q=Path('index.html'); x=q.read_text().replace('app-coach-rebels-portals-v10.js?v=20261027-duration647','app-coach-rebels-portals-v10.js?v=20261027-practice653'); q.write_text(x)
+          PY
+      - name: Verify and commit
+        run: |
+          node --check app-coach-rebels-portals-v10.js
+          grep -q practice653 index.html
+          git diff --check
+          git config user.name KCRebels
+          git config user.email actions@users.noreply.github.com
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m 'Fix practice time picker duration and activation'
+          git push
