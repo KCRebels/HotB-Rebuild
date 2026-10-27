@@ -1,0 +1,63 @@
+name: HotB 658 Portal Permission Retry
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/hotb-658-portal-permission-retry.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retry transient permission errors before PIN fallback
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+          old="""  const code=String(error?.code||'');
+  if((String(error?.message||'')==='portal-read-timeout'||code==='unavailable')&&schedulePortalRetry())return;
+  if(String(error?.message||'')==='portal-read-timeout')portalMessage='HotB could not reach the player portal. Please reopen the link.';
+  else if(code==='permission-denied'&&!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
+  else if(code==='unavailable')portalMessage='HotB could not reach the player portal service. Please check the connection and reopen the link.';
+  else if(!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
+  else portalMessage='This player portal link is not valid.';"""
+          new="""  const code=String(error?.code||'');
+  const transientPermission=code==='permission-denied'&&!guestPortalSecret&&!isCoachPortalUser();
+  if(transientPermission){
+   try{await portalAuthUser?.getIdToken?.(true)}catch(_){}
+   if(schedulePortalRetry())return;
+  }
+  if((String(error?.message||'')==='portal-read-timeout'||code==='unavailable')&&schedulePortalRetry())return;
+  if(String(error?.message||'')==='portal-read-timeout')portalMessage='HotB could not reach the player portal. Please reopen the link.';
+  else if(code==='permission-denied'&&!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
+  else if(code==='unavailable')portalMessage='HotB could not reach the player portal service. Please check the connection and reopen the link.';
+  else if(!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
+  else portalMessage='This player portal link is not valid.';"""
+          if old not in s:
+              if new not in s: raise SystemExit('portal read catch anchor not found')
+          else:
+              s=s.replace(old,new,1)
+          p.write_text(s)
+
+          q=Path('index.html')
+          x=q.read_text()
+          x=x.replace("s.src='app-coach-rebels-portals-v10.js?v=20261027-focus657&fresh='+Date.now();","s.src='app-coach-rebels-portals-v10.js?v=20261027-portal658&fresh='+Date.now();",1)
+          if 'portal658&fresh=' not in x: raise SystemExit('index cache bust anchor not found')
+          q.write_text(x)
+          PY
+          node --check app-coach-rebels-portals-v10.js
+          grep -q "transientPermission" app-coach-rebels-portals-v10.js
+          grep -q "getIdToken?.(true)" app-coach-rebels-portals-v10.js
+          grep -q "portal658&fresh=" index.html
+          ! grep -q "Assigned Drills</h3>" app-coach-rebels-portals-v10.js
+          grep -q "portal-practice-focus-badge" app-coach-rebels-portals-v10.js
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name KCRebels
+          git config user.email actions@users.noreply.github.com
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m 'Retry player portal permission before showing PIN'
+          git push
