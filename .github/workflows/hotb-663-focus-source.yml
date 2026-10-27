@@ -1,0 +1,48 @@
+name: HotB 663 Focus Source
+on:
+  push:
+    paths:
+      - '.github/workflows/hotb-663-focus-source.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix Focus source for active practice
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+          old="""function playerPracticePortalPayload(name,activatedAt=null,clockOverride=null){\n const schedule=practicePlan.schedule[name]||[];\n const player=practicePlayerByName(name),recoveredSchedule=practicePlan.recoveredPlayerSchedules?.[name],portalSchedule=schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:recoveredSchedule?.[index]?.assignment||practiceEntryText(entry,practicePlan,index)}));\n const assigned=new Map();\n portalSchedule.forEach(entry=>{const drill=portalAssignmentDrillName(entry.assignment);if(!drill||assigned.has(drill))return;const station=String(entry.assignment).match(/^Drill Station (\\d+)/i);assigned.set(drill,station?`Drill Station ${station[1]}`:/^Machine\\b/i.test(entry.assignment)?'Machine':/^Front Toss\\b/i.test(entry.assignment)?'Front Toss':'Assigned Drill')});\n const drillAssignments=[...assigned].map(([name,location])=>({name,location})),assignedDrills=drillAssignments.map(item=>item.name);\n return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,blockCount:practicePlan.times?.length||10,activatedAt:activatedAt||new Date().toISOString(),clock:clockOverride||{status:'not-started',startedAt:null,endedAt:null},schedule:portalSchedule,drills:assignedDrills,drillAssignments};\n}"""
+          new="""function playerPracticePortalPayload(name,activatedAt=null,clockOverride=null){\n const schedule=practicePlan.schedule[name]||[];\n const player=practicePlayerByName(name),recoveredSchedule=practicePlan.recoveredPlayerSchedules?.[name],portalSchedule=schedule.map((entry,index)=>({block:index+1,time:`${practicePlan.times[index].start}–${practicePlan.times[index].end}`,assignment:recoveredSchedule?.[index]?.assignment||practiceEntryText(entry,practicePlan,index)}));\n const assigned=new Map();\n portalSchedule.forEach(entry=>{const drill=portalAssignmentDrillName(entry.assignment);if(!drill||assigned.has(drill))return;const station=String(entry.assignment).match(/^Drill Station (\\d+)/i);assigned.set(drill,station?`Drill Station ${station[1]}`:/^Machine\\b/i.test(entry.assignment)?'Machine':/^Front Toss\\b/i.test(entry.assignment)?'Front Toss':'Assigned Drill')});\n const drillAssignments=[...assigned].map(([name,location])=>({name,location})),assignedDrills=drillAssignments.map(item=>item.name);\n const publishedAt=String(db.playerFocusLastReviewed?.[name]||''),archive=playerFocusArchive(name),publishedFocus=(publishedAt&&archive.find(item=>String(item?.publishedAt||'')===publishedAt))||archive.slice().sort((a,b)=>String(b?.publishedAt||b?.archivedAt||'').localeCompare(String(a?.publishedAt||a?.archivedAt||'')))[0]||null,focusDrills=Array.isArray(publishedFocus?.drills)?publishedFocus.drills.map(item=>typeof item==='string'?item:item?.name||item?.drill||'').filter(Boolean):[];\n return {id:practicePlan.portalDraftId,title:'This Week’s Hitting Practice',playerName:practiceFirstName(name),role:practiceRole(player||{name,positions:''}),startLabel:practicePlan.times?.[0]?.start||practicePlan.startTime,blockMinutes:practicePlan.blockMinutes,blockCount:practicePlan.times?.length||10,activatedAt:activatedAt||new Date().toISOString(),clock:clockOverride||{status:'not-started',startedAt:null,endedAt:null},schedule:portalSchedule,drills:assignedDrills,drillAssignments,focusDrills};\n}"""
+          if old not in s:
+              raise SystemExit('playerPracticePortalPayload anchor not found')
+          s=s.replace(old,new,1)
+          old2="focusDrills=Array.isArray(portalData?.focus?.drills)?portalData.focus.drills:[]"
+          new2="focusDrills=[...(Array.isArray(portalData?.focus?.drills)?portalData.focus.drills:[]),...(Array.isArray(portalData?.activePractice?.focusDrills)?portalData.activePractice.focusDrills:[])]"
+          if old2 not in s:
+              raise SystemExit('focusDrills display anchor not found')
+          s=s.replace(old2,new2,1)
+          p.write_text(s)
+
+          p=Path('index.html')
+          s=p.read_text()
+          s=s.replace('app-coach-rebels-portals-v10.js?v=20261027-portal661','app-coach-rebels-portals-v10.js?v=20261027-portal663')
+          s=s.replace('app-coach-rebels-portals-v10.js?v=20261027-portal659','app-coach-rebels-portals-v10.js?v=20261027-portal663')
+          p.write_text(s)
+          PY
+          node --check app-coach-rebels-portals-v10.js
+          grep -q 'focusDrills};' app-coach-rebels-portals-v10.js
+          grep -q 'activePractice?.focusDrills' app-coach-rebels-portals-v10.js
+          grep -q 'portal663' index.html
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name 'KCRebels'
+          git config user.email 'actions@users.noreply.github.com'
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m 'Carry published player Focus drills into active practice portals'
+          git push
