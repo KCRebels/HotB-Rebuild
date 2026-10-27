@@ -1,0 +1,46 @@
+name: HotB 650 Player Practice Focus Badge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hotb-650-player-focus-badge.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Add player Focus badge loader safely
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          needle="   await loadPortalScript('player-eval-surgical-match.js?v=20260924-playereval618','P37-EVALPOPUPS');"
+          add="\n   await loadPortalScript('player-practice-focus-badge-v1.js?v=20261027-focus650','P38-FOCUSBADGE');"
+          if 'player-practice-focus-badge-v1.js' not in s:
+              if needle not in s:
+                  raise SystemExit('expected portal loader anchor not found')
+              s=s.replace(needle,needle+add,1)
+              p.write_text(s)
+          PY
+      - name: Verify patch is narrow
+        run: |
+          grep -q "player-practice-focus-badge-v1.js?v=20261027-focus650" index.html
+          git diff --check
+          git diff -- index.html
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "KCRebels"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "Load player-side practice FOCUS badges"
+          git push
