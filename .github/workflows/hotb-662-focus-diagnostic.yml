@@ -1,0 +1,17 @@
+name: HotB 662 Focus Diagnostic
+on:
+  push:
+    paths:
+      - '.github/workflows/hotb-662-focus-diagnostic.yml'
+  workflow_dispatch:
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect focus and practice portal data paths
+        run: |
+          echo '--- playerFocusPortalPayload ---'
+          grep -n -A45 -B5 "function playerFocusPortalPayload" app-coach-rebels-portals-v10.js || true
+          echo '--- activation / activePractice / drillAssignments ---'
+          grep -n -E -A8 -B8 "activePractice|drillAssignments|focusDrills|playerFocusPortalPayload" app-coach-rebels-portals-v10.js | head -n 700 || true
