@@ -3,15 +3,15 @@
  if(typeof module==='object'&&module.exports)module.exports=api;
  else root.HotBPracticeScheduler=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
- const DEFAULT_BLOCK_COUNT=10,MAX_BLOCK_COUNT=11,BLOCK_MINUTES=12;
+ const DEFAULT_BLOCK_COUNT=10,MAX_BLOCK_COUNT=15,BLOCK_MINUTES=12;
+ const validDuration=value=>{const duration=Number(value)||120;return duration>=60&&duration<=180&&duration%BLOCK_MINUTES===0?duration:120};
  const fixedActivities=['Stretch','Tee Work'];
  const pad=value=>String(value).padStart(2,'0');
  function blockTimes(startTime='18:00',durationMinutes=120){
-  const requested=Number(durationMinutes)||120,isResolutionExtension=requested===132;
-  const BLOCK_COUNT=isResolutionExtension?MAX_BLOCK_COUNT:DEFAULT_BLOCK_COUNT;
+  const duration=validDuration(durationMinutes),BLOCK_COUNT=duration/BLOCK_MINUTES;
   const [hour,minute]=String(startTime||'18:00').split(':').map(Number);
   const start=(Number.isFinite(hour)?hour:18)*60+(Number.isFinite(minute)?minute:0);
-  const duration=isResolutionExtension?132:Math.max(60,Math.min(180,Math.round(requested/10)*10)),blockMinutes=duration/BLOCK_COUNT;
+  const blockMinutes=BLOCK_MINUTES;
   const label=minutes=>{
    const normalized=(minutes+1440)%1440,h=Math.floor(normalized/60),m=normalized%60;
    const displayHour=h%12||12,period=h<12?'a':'p';
@@ -20,8 +20,7 @@
   return Array.from({length:BLOCK_COUNT},(_,index)=>({block:index+1,start:label(start+index*blockMinutes),end:label(start+(index+1)*blockMinutes)}));
  }
  function buildSchedule(players,startTime='18:00',durationMinutes=120,options={}){
-  const requested=Number(durationMinutes)||120,isResolutionExtension=requested===132;
-  const BLOCK_COUNT=isResolutionExtension?MAX_BLOCK_COUNT:DEFAULT_BLOCK_COUNT;
+  const duration=validDuration(durationMinutes),BLOCK_COUNT=duration/BLOCK_MINUTES;
   const attendees=(players||[]).filter(player=>player&&player.name).map(player=>{
    const from=Math.max(0,Math.min(BLOCK_COUNT,Number(player.availableFromBlock)||0));
    const until=Math.max(from,Math.min(BLOCK_COUNT,Number.isFinite(Number(player.availableUntilBlock))?Number(player.availableUntilBlock):BLOCK_COUNT));
@@ -34,7 +33,7 @@
    return !Number.isInteger(from)||!Number.isInteger(until)||from<0||until<0||from>BLOCK_COUNT||until>BLOCK_COUNT||from>until;
   }).map(player=>player.name);
   const duplicateNames=[...new Set(attendees.map(player=>player.name).filter((name,index,names)=>names.indexOf(name)!==index))];
-  const duration=isResolutionExtension?132:Math.max(60,Math.min(180,Math.round(requested/10)*10)),blockMinutes=duration/BLOCK_COUNT;
+  const blockMinutes=BLOCK_MINUTES;
   const times=blockTimes(startTime,duration),warnings=[],fallbackWarnings=[];
   const schedule=Object.fromEntries(attendees.map(player=>[player.name,Array.from({length:BLOCK_COUNT},(_,block)=>block<player.availableFromBlock||block>=player.availableUntilBlock?{activity:'Not Present'}:null)]));
   const teeBlocks={};
@@ -488,7 +487,7 @@
  }
  function validate(plan){
   const errors=[],BLOCK_COUNT=Number(plan?.times?.length)||DEFAULT_BLOCK_COUNT;
-  if(!plan||![DEFAULT_BLOCK_COUNT,MAX_BLOCK_COUNT].includes(BLOCK_COUNT))errors.push('Schedule must contain ten blocks, or eleven when the emergency extension is approved.');
+  if(!plan||BLOCK_COUNT<5||BLOCK_COUNT>MAX_BLOCK_COUNT)errors.push('Schedule has an unsupported number of practice blocks.');
   if(!plan||!Array.isArray(plan.players)||!plan.schedule||typeof plan.schedule!=='object'){errors.push('Practice roster or schedule data is invalid.');return [...new Set(errors)]}
   const playerNames=plan.players.map(player=>player?.name).filter(Boolean);
   if(playerNames.length!==plan.players.length)errors.push('Every attending player must have a name before HotB can verify the practice.');
@@ -676,5 +675,5 @@
   Object.entries(pitcherBlockCounts).forEach(([name,count])=>{if(count>2)errors.push(`${name} exceeds the two-block live pitching limit.`)});
   return [...new Set(errors)];
  }
- return {BLOCK_COUNT:DEFAULT_BLOCK_COUNT,DEFAULT_BLOCK_COUNT,MAX_BLOCK_COUNT,BLOCK_MINUTES,blockTimes,buildSchedule,validate};
+ return {BLOCK_COUNT:DEFAULT_BLOCK_COUNT,DEFAULT_BLOCK_COUNT,MAX_BLOCK_COUNT,BLOCK_MINUTES,validDuration,blockTimes,buildSchedule,validate};
 });
