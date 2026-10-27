@@ -47,3 +47,4 @@ jobs:
           git add app-coach-rebels-portals-v10.js index.html
           git commit -m 'Fix practice time picker duration and activation'
           git push
+# trigger
