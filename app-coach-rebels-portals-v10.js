@@ -4910,7 +4910,7 @@ function bind(){
    // Resolution commit preserves the verified attendee order as transaction data.
    // This keeps plan.players, setup.selectedNames and persisted recovery aligned.
    if(expectedNames.length!==actualNames.length||actualNames.some((name,index)=>name!==expectedNames[index]))return failProof('player-order');
-   const expectedBlocks=Number(expected.durationMinutes)===132?11:10;
+   const expectedBlocks=(Number(expected.durationMinutes)||120)/12;
    if(!Array.isArray(plan.times)||plan.times.length!==expectedBlocks)return failProof('times-count');
    const scheduleKeys=Object.keys(plan.schedule||{}),scheduleSet=new Set(scheduleKeys);
    if(scheduleKeys.length!==scheduleSet.size||scheduleSet.size!==expectedSet.size||expectedNames.some((name,index)=>scheduleKeys[index]!==name))return failProof('schedule-key-order');
