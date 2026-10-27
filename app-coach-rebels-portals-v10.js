@@ -1280,7 +1280,8 @@ function waitForPortalAuthState(timeout=8000){
 async function loadPlayerPortal(){
  if(!portalToken)return;
  const requestedPortalToken=portalToken,loadGeneration=++portalLoadGeneration;
- if(!cloudAuth||!cloudStore){portalBusy=false;portalData=null;portalMessage='HotB is still connecting to the player portal service. Please wait a moment and reopen this link.';if(route==='portal')render();return;}
+ const schedulePortalRetry=()=>{const prev=window.__HOTB_PORTAL_RETRY_STATE__||{token:'',count:0};const state=prev.token===requestedPortalToken?prev:{token:requestedPortalToken,count:0};if(state.count>=3)return false;state.count+=1;window.__HOTB_PORTAL_RETRY_STATE__=state;portalBusy=true;portalData=null;portalMessage='Opening your portal…';if(route==='portal')render();setTimeout(()=>{if(portalToken===requestedPortalToken)loadPlayerPortal()},400*state.count);return true};
+ if(!cloudAuth||!cloudStore){if(schedulePortalRetry())return;portalBusy=false;portalData=null;portalMessage='HotB could not reach the player portal service. Please check the connection and reopen the link.';if(route==='portal')render();return;}
  // A reload or token change must never leave the previous portal document
  // listening in the background. That old listener could otherwise repaint
  // stale practice data after a failed read or while PIN entry is shown.
@@ -1317,10 +1318,10 @@ async function loadPlayerPortal(){
    }
   }catch(error){
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
+   const authTimedOut=String(error?.message||'')==='portal-auth-timeout';
+   if(authTimedOut&&schedulePortalRetry())return;
    portalBusy=false;
-   portalMessage=String(error?.message||'')==='portal-auth-timeout'
-    ?'HotB could not reach the player portal sign-in service. Please reopen the link.'
-    :'Player access is not active yet. The coach must finish Firebase portal setup.';
+   portalMessage=authTimedOut?'HotB could not reach the player portal sign-in service. Please reopen the link.':'Player access is not active yet. The coach must finish Firebase portal setup.';
    if(route==='portal')render();
    return;
   }
@@ -1364,6 +1365,7 @@ async function loadPlayerPortal(){
    new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-read-timeout')),8000))
   ]);
   if(snapshot.exists){
+   window.__HOTB_PORTAL_RETRY_STATE__={token:requestedPortalToken,count:0};
    if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
    const loaded={id:snapshot.id,...snapshot.data()};
    // A portal URL must never display a cloud document whose identity does not
@@ -1451,6 +1453,7 @@ async function loadPlayerPortal(){
   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
   portalData=null;
   const code=String(error?.code||'');
+  if((String(error?.message||'')==='portal-read-timeout'||code==='unavailable')&&schedulePortalRetry())return;
   if(String(error?.message||'')==='portal-read-timeout')portalMessage='HotB could not reach the player portal. Please reopen the link.';
   else if(code==='permission-denied'&&!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
   else if(code==='unavailable')portalMessage='HotB could not reach the player portal service. Please check the connection and reopen the link.';
