@@ -78,6 +78,13 @@ if old in s:
 elif new not in s:
     raise SystemExit('coach duration selector anchor missing')
 
+old = "const expectedBlocks=Number(expected.durationMinutes)===132?11:10;"
+new = "const expectedBlocks=(Number(expected.durationMinutes)||120)/12;"
+if old in s:
+    s = s.replace(old, new, 1)
+elif new not in s:
+    raise SystemExit('coach expected block-count anchor missing')
+
 p.write_text(s, encoding='utf-8')
 
 # Cache-bust the current live scheduler and coach bundle references.
