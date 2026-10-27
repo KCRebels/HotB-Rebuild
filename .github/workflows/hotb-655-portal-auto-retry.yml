@@ -1,0 +1,67 @@
+name: HotB 655 Portal Auto Retry
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/hotb-655-portal-auto-retry.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch portal loading and verify
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+          def one(a,b,n):
+            global s
+            if a in s:
+              s=s.replace(a,b,1)
+            elif b not in s:
+              raise SystemExit(n)
+
+          one(
+            " const requestedPortalToken=portalToken,loadGeneration=++portalLoadGeneration;\n if(!cloudAuth||!cloudStore){portalBusy=false;portalData=null;portalMessage='HotB is still connecting to the player portal service. Please wait a moment and reopen this link.';if(route==='portal')render();return;}",
+            " const requestedPortalToken=portalToken,loadGeneration=++portalLoadGeneration;\n const schedulePortalRetry=()=>{const prev=window.__HOTB_PORTAL_RETRY_STATE__||{token:'',count:0};const state=prev.token===requestedPortalToken?prev:{token:requestedPortalToken,count:0};if(state.count>=3)return false;state.count+=1;window.__HOTB_PORTAL_RETRY_STATE__=state;portalBusy=true;portalData=null;portalMessage='Opening your portal…';if(route==='portal')render();setTimeout(()=>{if(portalToken===requestedPortalToken)loadPlayerPortal()},400*state.count);return true};\n if(!cloudAuth||!cloudStore){if(schedulePortalRetry())return;portalBusy=false;portalData=null;portalMessage='HotB could not reach the player portal service. Please check the connection and reopen the link.';if(route==='portal')render();return;}",
+            'portal service retry anchor'
+          )
+
+          one(
+            "   portalBusy=false;\n   portalMessage=String(error?.message||'')==='portal-auth-timeout'\n    ?'HotB could not reach the player portal sign-in service. Please reopen the link.'\n    :'Player access is not active yet. The coach must finish Firebase portal setup.';\n   if(route==='portal')render();\n   return;",
+            "   const authTimedOut=String(error?.message||'')==='portal-auth-timeout';\n   if(authTimedOut&&schedulePortalRetry())return;\n   portalBusy=false;\n   portalMessage=authTimedOut?'HotB could not reach the player portal sign-in service. Please reopen the link.':'Player access is not active yet. The coach must finish Firebase portal setup.';\n   if(route==='portal')render();\n   return;",
+            'portal auth retry anchor'
+          )
+
+          one(
+            "  if(String(error?.message||'')==='portal-read-timeout')portalMessage='HotB could not reach the player portal. Please reopen the link.';\n  else if(code==='permission-denied'&&!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';\n  else if(code==='unavailable')portalMessage='HotB could not reach the player portal service. Please check the connection and reopen the link.';",
+            "  if((String(error?.message||'')==='portal-read-timeout'||code==='unavailable')&&schedulePortalRetry())return;\n  if(String(error?.message||'')==='portal-read-timeout')portalMessage='HotB could not reach the player portal. Please reopen the link.';\n  else if(code==='permission-denied'&&!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';\n  else if(code==='unavailable')portalMessage='HotB could not reach the player portal service. Please check the connection and reopen the link.';",
+            'portal read retry anchor'
+          )
+
+          one(
+            "  if(snapshot.exists){\n   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;",
+            "  if(snapshot.exists){\n   window.__HOTB_PORTAL_RETRY_STATE__={token:requestedPortalToken,count:0};\n   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;",
+            'portal retry reset anchor'
+          )
+
+          p.write_text(s)
+
+          q=Path('index.html')
+          x=q.read_text()
+          x=x.replace('app-coach-rebels-portals-v10.js?v=20261027-practice654','app-coach-rebels-portals-v10.js?v=20261027-portal655')
+          q.write_text(x)
+          PY
+          node --check app-coach-rebels-portals-v10.js
+          grep -q "__HOTB_PORTAL_RETRY_STATE__" app-coach-rebels-portals-v10.js
+          grep -q "app-coach-rebels-portals-v10.js?v=20261027-portal655" index.html
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name KCRebels
+          git config user.email actions@users.noreply.github.com
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m 'Retry player portal loading before showing PIN screen'
+          git push
