@@ -1,0 +1,115 @@
+name: HotB 652 Practice Controls and Activation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hotb-652-practice-controls-activation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch practice controls, duration handling, and stale activation flow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text(encoding='utf-8')
+
+          # 1) Do not let asynchronous cloud/recovery renders destroy an open native
+          # iOS time/select picker while the coach is changing master setup controls.
+          old="function render(){\n captureGameUndo();"
+          new="function render(){\n if(route==='practice'&&practiceSection==='setup'&&window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__){\n  clearTimeout(window.__HOTB_PRACTICE_SETUP_DEFERRED_RENDER__);\n  window.__HOTB_PRACTICE_SETUP_DEFERRED_RENDER__=setTimeout(()=>{if(!window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__)render()},250);\n  return;\n }\n captureGameUndo();"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('render guard anchor missing')
+
+          old=" $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});\n $('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});"
+          new=" const protectPracticeMasterControl=control=>{if(!control)return;const begin=()=>{window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__=true};const end=()=>{window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__=false;clearTimeout(window.__HOTB_PRACTICE_SETUP_DEFERRED_RENDER__)};control.addEventListener('pointerdown',begin);control.addEventListener('focus',begin);control.addEventListener('blur',()=>setTimeout(end,0))};\n protectPracticeMasterControl($('#practiceStartTime'));protectPracticeMasterControl($('#practiceDuration'));\n $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});\n $('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('practice control handler anchor missing')
+
+          # 2) Setup drafts must preserve every valid 12-minute master duration.
+          old=" if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;"
+          new=" const draftDuration=Number(practiceSetupState.durationMinutes);if(!(draftDuration>=60&&draftDuration<=180&&draftDuration%12===0))practiceSetupState.durationMinutes=120;"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('draft duration normalization anchor missing')
+
+          # 3) Manual builds may use any valid 12-minute duration, including 132.
+          old="  // Emergency Block 11 is a verified Resolution-only state. A normal/manual build\n  // must never inherit 132 minutes from stale DOM, restored form state, or an\n  // interrupted apply transaction.\n  if(durationMinutes===132&&!practiceResolutionApplyDraftId){\n   // If an apply is active, leave its ownership intact and let the outer verifier\n   // restore the verified 120-minute snapshot. Manual stale Block 11 state is still\n   // normalized immediately and can never be persisted as a normal setup draft.\n   if(resolutionApplyBuild)return;\n   alert('Block 11 can only be added by Practice Resolution after HotB verifies it for this exact practice.');\n   const durationControl=$('#practiceDuration');if(durationControl)durationControl.value='120';\n   practiceSetupState.durationMinutes=120;\n   persistPracticeDraft();\n   render();\n   return;\n  }\n  if(durationMinutes!==120&&durationMinutes!==132){\n   if(resolutionApplyBuild)return;\n   alert('HotB can only build the normal 120-minute practice or a verified 132-minute Practice Resolution.');\n   return;\n  }"
+          new="  if(!(durationMinutes>=60&&durationMinutes<=180&&durationMinutes%12===0)){\n   if(resolutionApplyBuild)return;\n   alert('Practice duration must use 12-minute block intervals.');\n   return;\n  }"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('manual duration gate anchor missing')
+
+          # Generalize Resolution block-count validation to the same master duration rule.
+          s=s.replace("const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===120?10:duration===132?11:0", "const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration>=60&&duration<=180&&duration%12===0?duration/12:0",1)
+          s=s.replace("if(duration!==120)return fail('duration');", "if(!(duration>=60&&duration<=180&&duration%12===0))return fail('duration');",1)
+
+          # 4) A different old local portal pointer should not hide Activate. The
+          # activation transaction already reads every portal and only auto-clears a
+          # unanimous NOT-STARTED stale publication; running/mixed states still fail hard.
+          old=" if(db.activePortalPractice?.id){alert(db.activePortalPractice.id===practicePlan.portalDraftId?'This exact practice is already active on the player and coach portals. HotB will not republish it or reset its live clock.':'Another practice is still active on the player and coach portals. End or deactivate that practice before activating this one.');return}"
+          new=" if(db.activePortalPractice?.id===practicePlan.portalDraftId){alert('This exact practice is already active on the player and coach portals. HotB will not republish it or reset its live clock.');return}"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('activation local pointer guard anchor missing')
+
+          old="<section class=\"practice-portal-publish no-print\"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Previous Practice Still Active':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':portalsActive?'End or deactivate the previous practice before publishing this schedule.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class=\"btn ${currentPortalsActive?'':'black'}\" id=\"${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}\" ${currentPortalsActive||chosenComplete&&!portalsActive?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Finish Active Practice First':'Activate Player Plans'}</button>"
+          new="<section class=\"practice-portal-publish no-print\"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class=\"btn ${currentPortalsActive?'':'black'}\" id=\"${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}\" ${currentPortalsActive||chosenComplete?'':'disabled'}>${currentPortalsActive?'Deactivate':'Activate Player Plans'}</button>"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('activation UI anchor missing')
+
+          # When activation safely clears one unanimous stale NOT-STARTED publication,
+          # clear the matching local pointer too so the new practice becomes authoritative.
+          anchor="   if(!safeStale)throw new Error('portal-activation-live-practice-conflict');\n   const staleId=conflictIds[0],staleBatch=cloudStore.batch();"
+          repl="   if(!safeStale)throw new Error('portal-activation-live-practice-conflict');\n   const staleId=conflictIds[0],staleBatch=cloudStore.batch();"
+          if anchor not in s:
+              raise SystemExit('stale activation anchor missing')
+          # Add local-pointer cleanup after the stale remote clear verification block.
+          verify_anchor="   if(staleVerification.some(cleared=>!cleared))throw new Error('portal-activation-stale-clear-verification-failed');"
+          verify_repl=verify_anchor+"\n   if(db.activePortalPractice?.id===staleId){db.activePortalPractice=null;save()}"
+          if verify_anchor in s:
+              s=s.replace(verify_anchor,verify_repl,1)
+          elif verify_repl not in s:
+              raise SystemExit('stale verification anchor missing')
+
+          p.write_text(s,encoding='utf-8')
+
+          # Cache-bust the coach bundle so the Home Screen app does not keep the old UI.
+          p=Path('index.html');x=p.read_text(encoding='utf-8')
+          x=x.replace('app-coach-rebels-portals-v10.js?v=20261027-duration647','app-coach-rebels-portals-v10.js?v=20261027-practice652')
+          p.write_text(x,encoding='utf-8')
+          PY
+      - name: Verify JavaScript and patch markers
+        run: |
+          node --check app-coach-rebels-portals-v10.js
+          grep -q "20261027-practice652" index.html
+          grep -q "Practice duration must use 12-minute block intervals" app-coach-rebels-portals-v10.js
+          grep -q "__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__" app-coach-rebels-portals-v10.js
+          git diff --check
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "KCRebels"
+          git config user.email "actions@users.noreply.github.com"
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m "Fix practice master controls and activation flow"
+          git push
