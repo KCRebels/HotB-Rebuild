@@ -24,14 +24,7 @@ jobs:
           grep -q 'duration%blockMinutes===0' app-coach-rebels-portals-v10.js
           grep -q 'duration%BLOCK_MINUTES===0' practice-scheduler.js
           grep -q '20261027-duration647' index.html
-          node - <<'NODE'
-          const scheduler=require('./practice-scheduler.js');
-          for(const minutes of [60,72,84,96,108,120,132,144,156,168,180]){
-            if(scheduler.validDuration(minutes)!==minutes)throw new Error(`Expected ${minutes} to be valid`);
-            if(scheduler.blockTimes('17:30',minutes).length!==minutes/12)throw new Error(`Wrong block count for ${minutes}`);
-          }
-          if(scheduler.validDuration(135)!==120)throw new Error('135 minutes must be rejected/fall back to 120');
-          NODE
+          node -e "const s=require('./practice-scheduler.js'); for(const m of [60,72,84,96,108,120,132,144,156,168,180]){if(s.validDuration(m)!==m)throw new Error('invalid '+m);if(s.blockTimes('17:30',m).length!==m/12)throw new Error('blocks '+m)} if(s.validDuration(135)!==120)throw new Error('135 accepted')"
       - name: Commit
         run: |
           git config user.name 'github-actions[bot]'
