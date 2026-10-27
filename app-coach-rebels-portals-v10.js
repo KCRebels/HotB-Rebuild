@@ -2363,6 +2363,7 @@ function bindDateFilters(prefix){
  }
 }
 function render(){
+ if(route==='practice'&&practiceSection==='setup'&&window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__){clearTimeout(window.__HOTB_PRACTICE_SETUP_DEFERRED_RENDER__);window.__HOTB_PRACTICE_SETUP_DEFERRED_RENDER__=setTimeout(()=>{if(!window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__)render()},250);return}
  captureGameUndo();
  if(portalClockTimer){clearInterval(portalClockTimer);portalClockTimer=null}
  const app=document.getElementById('app');
@@ -3430,7 +3431,7 @@ async function activatePlayerPlans(){
  cloudUser=activationUser;
  if(!practicePlan||practiceChosenDrills.length!==practicePlan.drillStations){alert('Choose all practice drills before activating player plans.');return}
  if(practiceClock.finished){alert('This practice is already finished and cannot be activated again. Build a new practice to publish new player plans.');return}
- if(db.activePortalPractice?.id){alert(db.activePortalPractice.id===practicePlan.portalDraftId?'This exact practice is already active on the player and coach portals. HotB will not republish it or reset its live clock.':'Another practice is still active on the player and coach portals. End or deactivate that practice before activating this one.');return}
+ if(db.activePortalPractice?.id===practicePlan.portalDraftId){alert('This exact practice is already active on the player and coach portals. HotB will not republish it or reset its live clock.');return}
  if(window.HotBPracticeScheduler?.validate){const errors=window.HotBPracticeScheduler.validate(practicePlan);if(errors.length){alert(`The practice plans cannot be activated because this schedule failed its safety checks:\n\n${errors.join('\n\n')}`);return}}
  const planBlockCount=practicePlan.times?.length||10,attending=new Set(practicePlan.players.filter(player=>(player.availableFromBlock??0)<(player.availableUntilBlock??planBlockCount)).map(player=>player.name)),jenkins=db.roster.filter(player=>player.isTeamJenkins&&attending.has(player.name)),missing=db.roster.filter(player=>!player.isTeamJenkins&&attending.has(player.name)&&!player.portalId);
  if(missing.length){alert(`Create Player Portals first. Missing: ${missing.map(player=>practiceFirstName(player.name)).join(', ')}.`);return}
@@ -3565,7 +3566,7 @@ function practicePage(){
   <section class="practice-live-control no-print"><div class="practice-clock-actions">${practiceClock.running||practiceClock.finished?'':`<button class="btn red" id="startPracticeClock">Start</button>`}${practiceClock.finished?'':practiceClock.running?`<button class="btn" type="button" disabled aria-disabled="true">Edit</button>`:`<button class="btn" id="editPracticePlayers">Edit</button>`}${practiceClock.running?`<button class="btn" id="skipPracticeBlock">Skip</button>`:''}<button class="btn black" id="endPracticeClock">DONE!</button></div><div class="practice-live-clock" id="practiceLiveClock" ${practiceClock.running||practiceClock.finished?'':'hidden'}><div><span>Block</span><b id="practiceCurrentBlock">${practiceClock.finished?'DONE!':`1 of ${practicePlan.times?.length||10}`}</b></div><div><span>Time Left</span><b id="practiceTimeLeft">${practiceClock.finished?'0:00':`${Math.max(1,practicePlan.blockMinutes-1)}:00`}</b></div></div></section>
   <section class="practice-delivery-focus no-print"><div><span>BUILT-IN HITTING</span><h2>Machine + Front Toss Focus</h2><p>Choose Standard or a library drill. This changes the existing rotation—it does not add another block.</p></div><div class="practice-delivery-focus-fields">${practiceFocusSelector('Machine',practiceClock.running||practiceClock.finished||currentPortalsActive)}${practiceFocusSelector('Front Toss',practiceClock.running||practiceClock.finished||currentPortalsActive)}</div></section>
   <section class="practice-selected-drills no-print"><div><span>DRILL STATIONS</span><h2>${chosenComplete?'Practice Drills Selected':`Choose ${practicePlan.drillStations} Practice Drills`}</h2>${chosenComplete?`<ol>${practiceChosenDrills.map((drill,index)=>`<li><b>${index+1}</b><span>Drill Station ${index+1} — ${esc(drill.name)}</span></li>`).join('')}</ol>`:'<p>Select the actual drills before printing the coach schedule or player cards.</p>'}</div>${practiceClock.running||practiceClock.finished||currentPortalsActive?'':`<button class="btn ${chosenComplete?'':'red'}" id="choosePracticeDrills">${chosenComplete?'Change Drills':'Choose Drills'}</button>`}</section>
-  <section class="practice-portal-publish no-print"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':portalsActive?'Previous Practice Still Active':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':portalsActive?'End or deactivate the previous practice before publishing this schedule.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${currentPortalsActive||chosenComplete&&!portalsActive?'':'disabled'}>${currentPortalsActive?'Deactivate':portalsActive?'Finish Active Practice First':'Activate Player Plans'}</button>${currentPortalsActive?'<button class="btn black" id="syncActiveJenkinsPlans">Sync Jenkins Plans</button>':''}</section>
+  <section class="practice-portal-publish no-print"><div><span>PLAYER + COACH PORTALS</span><h2>${currentPortalsActive?'Practice Is Active':'Activate This Practice'}</h2><p>${currentPortalsActive?'Attending players and the configured coach can view their plans now.':'Publish each attending player’s rotation and the coach’s duty plan after reviewing the schedule.'}</p></div><button class="btn ${currentPortalsActive?'':'black'}" id="${currentPortalsActive?'deactivatePlayerPlans':'activatePlayerPlans'}" ${currentPortalsActive||chosenComplete?'':'disabled'}>${currentPortalsActive?'Deactivate':'Activate Player Plans'}</button>${currentPortalsActive?'<button class="btn black" id="syncActiveJenkinsPlans">Sync Jenkins Plans</button>':''}</section>
   ${currentPortalsActive&&(practiceGuestPlayers().length||practiceGuestCoaches().length)?`<section class="practice-guest-links no-print"><span>TEMPORARY GUEST LINKS</span><h2>Share Guest Practice Access</h2>${practiceGuestPlayers().filter(guest=>practicePlan.schedule[guest.name]).map(guest=>`<article><div><b>${esc(guest.name)}</b><small>Guest Player · expires when practice ends</small></div><button class="btn" data-share-practice-guest="${esc(guest.guestId)}">Share</button></article>`).join('')}${practiceGuestCoaches().map(guest=>`<article><div><b>${esc(guest.name)}</b><small>Guest Coach · view only</small></div><button class="btn" data-share-practice-guest="${esc(guest.guestId)}">Share</button></article>`).join('')}</section>`:''}
   ${resourceWarnings.map(warning=>`<div class="practice-resource-warning no-print"><b>Resource Check</b><p>${esc(warning)}</p></div>`).join('')}
   <div class="practice-actions practice-actions-three no-print"><button class="btn ${practiceCoachOpen?'active':''}" id="togglePracticeCoach" aria-pressed="${practiceCoachOpen}">Coach</button><button class="btn ${practiceCardsOpen?'active':''}" id="togglePracticeCards" aria-pressed="${practiceCardsOpen}">Player</button><button class="btn black" id="printPracticeCards" ${chosenComplete?'':'disabled'}>Print</button></div>
@@ -5769,7 +5770,7 @@ function persistPracticeDraft(){
  }
  // Setup drafts never persist the temporary 132-minute apply state. A verified
  // Resolution snapshot itself is also defined as the failed 120-minute source.
- if(Number(practiceSetupState.durationMinutes)!==120)practiceSetupState.durationMinutes=120;
+ const draftDuration=Number(practiceSetupState.durationMinutes);if(!(draftDuration>=60&&draftDuration<=180&&draftDuration%12===0))practiceSetupState.durationMinutes=120;
  let resolutionToPersist=null;
  if(practiceResolutionSnapshotIsCurrentAndValid(practiceResolution)){
   // Resolution 532: WebKit/PWA structuredClone has proved less reliable here than
@@ -6489,6 +6490,7 @@ function bindPractice(){
   if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}
   persistPracticeDraft();
  }));
+ const protectPracticeMasterControl=c=>{if(!c)return;const on=()=>window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__=true,off=()=>{window.__HOTB_PRACTICE_SETUP_CONTROL_ACTIVE__=false;clearTimeout(window.__HOTB_PRACTICE_SETUP_DEFERRED_RENDER__)};c.addEventListener('pointerdown',on);c.addEventListener('focus',on);c.addEventListener('blur',()=>setTimeout(off,0))};protectPracticeMasterControl($('#practiceStartTime'));protectPracticeMasterControl($('#practiceDuration'));
  $('#practiceStartTime')?.addEventListener('change',event=>{if(!event.target.value)return;const [hour,minute]=event.target.value.split(':').map(Number),displayHour=hour%12||12;$('#practiceStartTimeDisplay').textContent=`${displayHour}:${String(minute).padStart(2,'0')}${hour<12?'a':'p'}`;refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});
  $('#endPracticeDraft')?.addEventListener('click',endPracticeDraft);
@@ -6543,26 +6545,7 @@ function bindPractice(){
   practiceSetupState.selectedNames=attendees.map(player=>player.name);
   practiceSetupState.startTime=startTime;
   practiceSetupState.durationMinutes=durationMinutes;
-  // Emergency Block 11 is a verified Resolution-only state. A normal/manual build
-  // must never inherit 132 minutes from stale DOM, restored form state, or an
-  // interrupted apply transaction.
-  if(durationMinutes===132&&!practiceResolutionApplyDraftId){
-   // If an apply is active, leave its ownership intact and let the outer verifier
-   // restore the verified 120-minute snapshot. Manual stale Block 11 state is still
-   // normalized immediately and can never be persisted as a normal setup draft.
-   if(resolutionApplyBuild)return;
-   alert('Block 11 can only be added by Practice Resolution after HotB verifies it for this exact practice.');
-   const durationControl=$('#practiceDuration');if(durationControl)durationControl.value='120';
-   practiceSetupState.durationMinutes=120;
-   persistPracticeDraft();
-   render();
-   return;
-  }
-  if(durationMinutes!==120&&durationMinutes!==132){
-   if(resolutionApplyBuild)return;
-   alert('HotB can only build the normal 120-minute practice or a verified 132-minute Practice Resolution.');
-   return;
-  }
+  if(!(durationMinutes>=60&&durationMinutes<=180&&durationMinutes%12===0)){if(resolutionApplyBuild)return;alert('Practice duration must use 12-minute block intervals.');return}
   roster.forEach((player,index)=>storePracticeAccommodation(index));
   // The transaction begins from the exact canonical setup actually submitted to
   // the scheduler, not from the pre-normalization form representation.
@@ -6779,12 +6762,12 @@ function bindPractice(){
      if(!r||r!==practiceResolution)return fail('global-transaction');
      if(typeof r.signature!=='string'||!r.signature||r.signature!==currentPracticeResolutionSignature())return fail('source-signature');
      if(typeof r.decisionSignature!=='string'||!r.decisionSignature||r.decisionSignature!==practiceResolutionDecisionSignature(r))return fail('decision-signature');
-     const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration===120?10:duration===132?11:0,names=players.map(player=>player?.name),verifiedNames=new Set(names);
+     const players=Array.isArray(r.practicePlayers)?r.practicePlayers:[],duration=Number(r.durationMinutes),blockCount=duration>=60&&duration<=180&&duration%12===0?duration/12:0,names=players.map(player=>player?.name),verifiedNames=new Set(names);
      if(!blockCount||!players.length||names.length!==verifiedNames.size)return fail('verified-identity');
      if(typeof r.canExtend!=='boolean'||r.noPitchersMode!==null)return fail('resolution-shape');
      const clockMinutes=value=>{const m=String(value||'').match(/^(\d{2}):(\d{2})$/);if(!m)return null;const h=Number(m[1]),min=Number(m[2]);return h<24&&min<60?h*60+min:null};
      if(clockMinutes(r.startTime)===null||String(r.startTime)!==String(practiceSetupState.startTime||''))return fail('start-time');
-     if(duration!==120)return fail('duration');
+     if(!(duration>=60&&duration<=180&&duration%12===0))return fail('duration');
      for(const player of players){
       if(!player||String(player.name||'').trim()!==String(player.name||'')||!String(player.name||''))return fail('player-name');
       if(typeof player.isPitcher!=='boolean'||typeof player.isCatcher!=='boolean'||typeof player.isGuest!=='boolean'||typeof player.prePracticeComplete!=='boolean')return fail('player-role-shape['+player.name+']');
