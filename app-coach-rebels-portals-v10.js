@@ -1453,6 +1453,7 @@ async function loadPlayerPortal(){
   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
   portalData=null;
   const code=String(error?.code||'');
+  if(code==='permission-denied'&&!guestPortalSecret&&!isCoachPortalUser()){try{await portalAuthUser?.getIdToken?.(true)}catch(_){}if(schedulePortalRetry())return;}
   if((String(error?.message||'')==='portal-read-timeout'||code==='unavailable')&&schedulePortalRetry())return;
   if(String(error?.message||'')==='portal-read-timeout')portalMessage='HotB could not reach the player portal. Please reopen the link.';
   else if(code==='permission-denied'&&!isCoachPortalUser())portalMessage='Enter your six-digit PIN to open this portal.';
