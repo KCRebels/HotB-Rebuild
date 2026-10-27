@@ -21,27 +21,29 @@ jobs:
           import re
           p=Path('app-coach-rebels-portals-v10.js')
           s=p.read_text()
+
           old="function playerPracticePortalPayload(name,activatedAt=null,clockOverride=null){"
           new="function playerPracticePortalPayload(name,activatedAt=null,clockOverride=null,focusDrillsOverride=null){"
           if old not in s: raise SystemExit('payload signature anchor missing')
           s=s.replace(old,new,1)
+
           old2=" const publishedAt=String(db.playerFocusLastReviewed?.[name]||''),archive=playerFocusArchive(name),publishedFocus=(publishedAt&&archive.find(item=>String(item?.publishedAt||'')===publishedAt))||archive.slice().sort((a,b)=>String(b?.publishedAt||b?.archivedAt||'').localeCompare(String(a?.publishedAt||a?.archivedAt||'')))[0]||null,focusDrills=Array.isArray(publishedFocus?.drills)?publishedFocus.drills.map(item=>typeof item==='string'?item:item?.name||item?.drill||'').filter(Boolean):[];"
           new2=" const publishedAt=String(db.playerFocusLastReviewed?.[name]||''),archive=playerFocusArchive(name),publishedFocus=(publishedAt&&archive.find(item=>String(item?.publishedAt||'')===publishedAt))||archive.slice().sort((a,b)=>String(b?.publishedAt||b?.archivedAt||'').localeCompare(String(a?.publishedAt||a?.archivedAt||'')))[0]||null,localFocusDrills=Array.isArray(publishedFocus?.drills)?publishedFocus.drills.map(item=>typeof item==='string'?item:item?.name||item?.drill||'').filter(Boolean):[],focusDrills=Array.isArray(focusDrillsOverride)?focusDrillsOverride:localFocusDrills;"
           if old2 not in s: raise SystemExit('local focus source anchor missing')
           s=s.replace(old2,new2,1)
-          pattern=r"\s*permanentPlayers\.forEach\(player=>batch\.update\(portalDoc\(player\.portalId\),\{activePractice:\{\.\.\.playerPracticePortalPayload\(player\.name,activationTimestamp\),clock:\{status:'not-started',startedAt:null,endedAt:null\}\},updatedAt:firebase\.firestore\.FieldValue\.serverTimestamp\(\)\}\)\);"
-          replacement="\n  permanentPlayers.forEach(player=>{const activationDoc=activationDocs.find(({target})=>target.id===player.portalId),remote=activationDoc?.snapshot?.exists?activationDoc.snapshot.data()||{}:{},remoteFocusDrills=Array.isArray(remote?.focus?.drills)?remote.focus.drills.map(item=>typeof item==='string'?item:item?.name||item?.drill||'').filter(Boolean):[],activePractice=playerPracticePortalPayload(player.name,activationTimestamp,null,remoteFocusDrills);batch.update(portalDoc(player.portalId),{activePractice:{...activePractice,clock:{status:'not-started',startedAt:null,endedAt:null}},updatedAt:firebase.firestore.FieldValue.serverTimestamp()})});"
-          s2,n=re.subn(pattern,replacement,s,count=1)
-          if n!=1: raise SystemExit('activation publish anchor missing')
-          s=s2
+
+          lines=s.splitlines()
+          needle="permanentPlayers.forEach(player=>batch.update(portalDoc(player.portalId)"
+          replacement="  permanentPlayers.forEach(player=>{const activationDoc=activationDocs.find(({target})=>target.id===player.portalId),remote=activationDoc?.snapshot?.exists?activationDoc.snapshot.data()||{}:{},remoteFocusDrills=Array.isArray(remote?.focus?.drills)?remote.focus.drills.map(item=>typeof item==='string'?item:item?.name||item?.drill||'').filter(Boolean):[],activePractice=playerPracticePortalPayload(player.name,activationTimestamp,null,remoteFocusDrills);batch.update(portalDoc(player.portalId),{activePractice:{...activePractice,clock:{status:'not-started',startedAt:null,endedAt:null}},updatedAt:firebase.firestore.FieldValue.serverTimestamp()})});"
+          matches=[i for i,line in enumerate(lines) if needle in line]
+          if len(matches)!=1: raise SystemExit(f'activation publish anchor count={len(matches)}')
+          lines[matches[0]]=replacement
+          s='\n'.join(lines)+'\n'
           p.write_text(s)
 
           idx=Path('index.html')
           t=idx.read_text()
-          if '20261027-portal663' in t:
-              t=t.replace('20261027-portal663','20261027-portal664')
-          else:
-              t=re.sub(r'20261027-portal\d+', '20261027-portal664', t, count=1)
+          t=re.sub(r'20261027-portal\d+', '20261027-portal664', t, count=1)
           idx.write_text(t)
           PY
           node --check app-coach-rebels-portals-v10.js
