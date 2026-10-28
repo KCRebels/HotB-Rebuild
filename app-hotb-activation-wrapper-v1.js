@@ -1,5 +1,5 @@
 (()=>{
- const sourceUrl='app-coach-rebels-portals-v10.js?v=20261027-activate-direct-674&fresh='+Date.now();
+ const sourceUrl='app-coach-rebels-portals-v10.js?v=20261028-practice-reset-675&fresh='+Date.now();
  const load=async()=>{
   try{
    const response=await fetch(sourceUrl,{cache:'no-store'});
@@ -34,17 +34,35 @@
    const deactivateNew=`db.activePortalPractice=null;\n setTimeout(()=>{try{if(db.activePracticeSession&&practicePlan)persistPracticeSession();else save()}catch(error){console.warn('HotB deferred deactivation persistence failed',error)}},0);\n}`;
    if(source.includes(deactivateOld))source=source.replace(deactivateOld,deactivateNew);
 
-   if(!source.includes('HotB deferred activation persistence failed')||!source.includes('HotB deferred recovered-activation persistence failed')||!source.includes('HotB deferred deactivation persistence failed')||!source.includes('portal-activation-preflight-timeout')||!source.includes('portal-activation-commit-timeout')||!source.includes('portal-deactivation-preflight-timeout')||!source.includes('portal-deactivation-commit-timeout'))throw new Error('activation-wrapper-patch-anchor');
+   // Makenna's normal reset state is late/no pitching warmup, but a deliberate
+   // master time/duration edit is allowed to turn warmup back on for that practice.
+   const makennaWarmupOld=`requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?false:saved.requiresPitchWarmup!==false):false`;
+   const makennaWarmupNew=`requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?saved.requiresPitchWarmup===true:saved.requiresPitchWarmup!==false):false`;
+   if(source.includes(makennaWarmupOld))source=source.replace(makennaWarmupOld,makennaWarmupNew);
+
+   const refreshOld=`function refreshPracticeAccommodationDefaults(){\n const start=$('#practiceStartTime')?.value||'17:30',duration=Number($('#practiceDuration')?.value)||120,end=practiceEndValue(start,duration);\n $$('[data-accommodation-arrival]').forEach(input=>{if(input.dataset.custom!=='true'){const player=practiceAttendanceRoster()[Number(input.dataset.accommodationArrival)];input.value=player?.name==='Makenna Whitaker'?practiceTimeValue((practiceTimeMinutes(start)??0)+45):start}});\n $$('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true')input.value=end});\n practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));\n}`;
+   const refreshNew=`function refreshPracticeAccommodationDefaults(){\n const start=$('#practiceStartTime')?.value||'17:30',duration=Number($('#practiceDuration')?.value)||120,end=practiceEndValue(start,duration);\n $$('[data-accommodation-arrival]').forEach(input=>{const player=practiceAttendanceRoster()[Number(input.dataset.accommodationArrival)];if(player?.name==='Makenna Whitaker'){input.value=start;input.dataset.custom='true'}else if(input.dataset.custom!=='true')input.value=start});\n $$('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true')input.value=end});\n const makennaIndex=practiceAttendanceRoster().findIndex(player=>player.name==='Makenna Whitaker');\n if(makennaIndex>=0){const pitch=$('[data-accommodation-pitch="'+makennaIndex+'"]'),warmup=$('[data-accommodation-warmup="'+makennaIndex+'"]');if(pitch)pitch.checked=true;if(warmup){warmup.disabled=false;warmup.checked=true}}\n practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));\n}`;
+   if(source.includes(refreshOld))source=source.replace(refreshOld,refreshNew);
+
+   const buttonsOld=`<div class="practice-build-bottom-actions" style="display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:10px;margin-top:14px;margin-bottom:110px"><button class="btn" id="closePracticeSetup">Close</button><button class="btn red" id="savePracticeSetup" style="background:#c71920!important;color:#fff!important;border-color:#c71920!important">Save</button><button class="btn black" id="generatePractice">Build Practice</button></div>`;
+   const buttonsNew=`<div class="practice-build-bottom-actions" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-top:14px;margin-bottom:110px"><button class="btn" id="closePracticeSetup">Close</button><button class="btn red" id="savePracticeSetup" style="background:#c71920!important;color:#fff!important;border-color:#c71920!important">Save</button><button class="btn black" id="generatePractice">Build</button><button class="btn" id="resetPracticeSetup">Reset</button></div>`;
+   if(source.includes(buttonsOld))source=source.replace(buttonsOld,buttonsNew);
+
+   const durationHandler=`$('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});`;
+   const resetHandler=`${durationHandler}\n $('#resetPracticeSetup')?.addEventListener('click',()=>{\n  practiceSetupState={...practiceSetupState,selectedNames:practiceAttendanceRoster().filter(player=>!['Brynna Peter','Claire Jack'].includes(player.name)&&!player.isPracticeGuest).map(player=>player.name),startTime:'17:30',durationMinutes:120,accommodations:{'Makenna Whitaker':{arrival:'18:15',requiresPitchWarmup:false}}};\n  practiceResolution=null;if(modal==='practiceResolution')modal=null;\n  persistPracticeDraft();render();window.scrollTo(0,0);\n });`;
+   if(source.includes(durationHandler)&&!source.includes("$('#resetPracticeSetup')?.addEventListener"))source=source.replace(durationHandler,resetHandler);
+
+   if(!source.includes('HotB deferred activation persistence failed')||!source.includes('HotB deferred recovered-activation persistence failed')||!source.includes('HotB deferred deactivation persistence failed')||!source.includes('portal-activation-preflight-timeout')||!source.includes('portal-activation-commit-timeout')||!source.includes('portal-deactivation-preflight-timeout')||!source.includes('portal-deactivation-commit-timeout')||!source.includes('id="resetPracticeSetup"')||!source.includes("$('#resetPracticeSetup')?.addEventListener")||!source.includes("isMakenna?saved.requiresPitchWarmup===true"))throw new Error('activation-wrapper-patch-anchor');
 
    const blob=new Blob([source],{type:'text/javascript'}),url=URL.createObjectURL(blob),script=document.createElement('script');
    script.src=url;script.async=false;
-   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='674'};
+   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='675'};
    script.onerror=()=>{URL.revokeObjectURL(url);throw new Error('activation-wrapper-execute')};
    document.body.appendChild(script);
   }catch(error){
    console.error('HotB activation wrapper failed',error);
    const app=document.getElementById('app');
-   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The activation update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H674</p></section></main></div>';
+   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The HotB update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H675</p></section></main></div>';
   }
  };
  load();
