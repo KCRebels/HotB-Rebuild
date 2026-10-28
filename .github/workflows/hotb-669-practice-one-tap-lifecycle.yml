@@ -1,66 +1,10 @@
-name: HotB Activate Commit First
+name: HotB 669 Practice One Tap Lifecycle (Archived)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/hotb-669-practice-one-tap-lifecycle.yml'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  patch:
+  archived:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Patch activation state handling
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('app-coach-rebels-portals-v10.js')
-          s=p.read_text(encoding='utf-8')
-          old="""   persistPracticeSession();practicePortalActionBusy=false;render();return;
-"""
-          new="""   practicePortalActionBusy=false;render();
-   setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('HotB deferred recovered-activation persistence failed',error)}},0);
-   return;
-"""
-          if old not in s: raise SystemExit('missing recovered activation anchor')
-          s=s.replace(old,new,1)
-          old="""  db.activePortalPractice=pendingPortalPractice;
-  try{persistPracticeSession()}
-  catch(error){
-   // Keep the verified publication pointer in memory so the catch path can route
-   // to recovery instead of treating a successful Firebase activation as failed.
-   if(String(error?.message||'').includes('device-storage-quota-exceeded'))throw error;
-   throw error;
-  }
-  practicePortalActionBusy=false;render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
-"""
-          new="""  db.activePortalPractice=pendingPortalPractice;
-  practicePortalActionBusy=false;render();
-  setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('HotB deferred activation persistence failed',error)}},0);
-  alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
-"""
-          if old not in s: raise SystemExit('missing activation success anchor')
-          s=s.replace(old,new,1)
-          p.write_text(s,encoding='utf-8')
-          PY
-      - name: Verify
-        run: |
-          node --check app-coach-rebels-portals-v10.js
-          grep -q "deferred activation persistence failed" app-coach-rebels-portals-v10.js
-          grep -q "deferred recovered-activation persistence failed" app-coach-rebels-portals-v10.js
-          git diff --check
-      - name: Commit fix
-        run: |
-          if git diff --quiet; then exit 0; fi
-          git config user.name KCRebels
-          git config user.email actions@users.noreply.github.com
-          git add app-coach-rebels-portals-v10.js
-          git commit -m 'Keep successful practice activation active after cloud commit'
-          git push
+      - run: echo "Archived one-off HotB 669 workflow. No automatic push runs."
