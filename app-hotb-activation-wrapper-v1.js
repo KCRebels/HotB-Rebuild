@@ -1,5 +1,5 @@
 (()=>{
- const sourceUrl='app-coach-rebels-portals-v10.js?v=20261027-activate-direct-671&fresh='+Date.now();
+ const sourceUrl='app-coach-rebels-portals-v10.js?v=20261027-activate-direct-672&fresh='+Date.now();
  const load=async()=>{
   try{
    const response=await fetch(sourceUrl,{cache:'no-store'});
@@ -14,17 +14,23 @@
    const successNew=`db.activePortalPractice=pendingPortalPractice;\n  practicePortalActionBusy=false;render();\n  setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('HotB deferred activation persistence failed',error)}},0);`;
    if(source.includes(successOld))source=source.replace(successOld,successNew);
 
-   if(!source.includes('HotB deferred activation persistence failed')||!source.includes('HotB deferred recovered-activation persistence failed'))throw new Error('activation-wrapper-patch-anchor');
+   // Deactivation has the same failure mode in reverse: once Firebase accepts the
+   // cleanup, a local-storage write must never make the UI look active again.
+   const deactivateOld=`db.activePortalPractice=null;\n if(db.activePracticeSession&&practicePlan)persistPracticeSession();else save();\n}`;
+   const deactivateNew=`db.activePortalPractice=null;\n setTimeout(()=>{try{if(db.activePracticeSession&&practicePlan)persistPracticeSession();else save()}catch(error){console.warn('HotB deferred deactivation persistence failed',error)}},0);\n}`;
+   if(source.includes(deactivateOld))source=source.replace(deactivateOld,deactivateNew);
+
+   if(!source.includes('HotB deferred activation persistence failed')||!source.includes('HotB deferred recovered-activation persistence failed')||!source.includes('HotB deferred deactivation persistence failed'))throw new Error('activation-wrapper-patch-anchor');
 
    const blob=new Blob([source],{type:'text/javascript'}),url=URL.createObjectURL(blob),script=document.createElement('script');
    script.src=url;script.async=false;
-   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='671'};
+   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='672'};
    script.onerror=()=>{URL.revokeObjectURL(url);throw new Error('activation-wrapper-execute')};
    document.body.appendChild(script);
   }catch(error){
    console.error('HotB activation wrapper failed',error);
    const app=document.getElementById('app');
-   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The activation update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H671</p></section></main></div>';
+   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The activation update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H672</p></section></main></div>';
   }
  };
  load();
