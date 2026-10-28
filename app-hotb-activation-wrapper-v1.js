@@ -1,5 +1,5 @@
 (()=>{
- const sourceUrl='app-coach-rebels-portals-v10.js?v=20261028-done-cleanup-681&fresh='+Date.now();
+ const sourceUrl='app-coach-rebels-portals-v10.js?v=20261028-save-draft-682&fresh='+Date.now();
  const load=async()=>{
   try{
    const response=await fetch(sourceUrl,{cache:'no-store'});
@@ -53,6 +53,10 @@
    source=source.replace(`Practice was saved, but the player plans could not be removed. Check your connection, then tap DONE! again.`,`Practice ended, but HotB could not clear the player and coach portals. Check your connection, then tap DONE! again.`);
    source=source.replace(`Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in through Cloud Backup, then tap DONE! again.`,`Practice ended, but HotB could not clear the player and coach portals because Cloud Backup is not signed in. Sign in, then tap DONE! again.`);
 
+   const saveSetupOld=`$('#savePracticeSetup')?.addEventListener('click',()=>{\n  practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));\n  if(persistPracticeDraft()!==true){alert('HotB could not save this practice setup. Try again.');return}\n  practiceSetupOpenSnapshot=null;practiceSection='setup';go('home');\n });`;
+   const saveSetupNew=`$('#savePracticeSetup')?.addEventListener('click',()=>{\n  practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));\n  const previousPlan=practicePlan;practicePlan=null;\n  if(persistPracticeDraft()!==true){practicePlan=previousPlan;alert('HotB could not save this practice setup. Try again.');return}\n  practiceSetupOpenSnapshot=null;practiceSection='setup';go('home');\n });`;
+   if(source.includes(saveSetupOld))source=source.replace(saveSetupOld,saveSetupNew);
+
    const makennaWarmupOld=`requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?false:saved.requiresPitchWarmup!==false):false`;
    const makennaWarmupNew=`requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?saved.requiresPitchWarmup===true:saved.requiresPitchWarmup!==false):false`;
    if(source.includes(makennaWarmupOld))source=source.replace(makennaWarmupOld,makennaWarmupNew);
@@ -69,18 +73,18 @@
    const resetHandler=`${durationHandler}\n $('#resetPracticeSetup')?.addEventListener('click',event=>{\n  event.preventDefault();\n  const regionalDefaults=practiceAttendanceRoster().filter(player=>!player.isTeamJenkins&&!player.isPracticeGuest&&!player.isGuest&&!['Brynna Peter','Claire Jack'].includes(player.name)).map(player=>player.name);\n  practiceSetupState={...practiceSetupState,selectedNames:regionalDefaults,startTime:'17:30',durationMinutes:120,accommodations:{'Makenna Whitaker':{arrival:'18:15',requiresPitchWarmup:false}}};\n  practiceResolution=null;if(modal==='practiceResolution')modal=null;\n  render();persistPracticeDraft();window.scrollTo(0,0);\n });`;
    if(source.includes(durationHandler)&&!source.includes("$('#resetPracticeSetup')?.addEventListener"))source=source.replace(durationHandler,resetHandler);
 
-   const required=['HotB deferred activation persistence failed','portal-activation-preflight-timeout','portal-deactivation-preflight-timeout','HotB active-state recovery persistence failed','id="resetPracticeSetup"'];
-   if(required.some(marker=>!source.includes(marker)))console.warn('HotB 681 optional patch anchor missing');
+   const required=['HotB deferred activation persistence failed','portal-activation-preflight-timeout','portal-deactivation-preflight-timeout','HotB active-state recovery persistence failed','id="resetPracticeSetup"','const previousPlan=practicePlan;practicePlan=null'];
+   if(required.some(marker=>!source.includes(marker)))console.warn('HotB 682 optional patch anchor missing');
 
    const blob=new Blob([source],{type:'text/javascript'}),url=URL.createObjectURL(blob),script=document.createElement('script');
    script.src=url;script.async=false;
-   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='681'};
+   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='682'};
    script.onerror=()=>{URL.revokeObjectURL(url);throw new Error('activation-wrapper-execute')};
    document.body.appendChild(script);
   }catch(error){
    console.error('HotB activation wrapper failed',error);
    const app=document.getElementById('app');
-   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The HotB update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H681</p></section></main></div>';
+   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The HotB update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H682</p></section></main></div>';
   }
  };
  load();
