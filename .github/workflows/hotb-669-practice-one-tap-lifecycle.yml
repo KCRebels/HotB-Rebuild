@@ -33,24 +33,9 @@ jobs:
               elif new not in s:
                   raise SystemExit(f'missing anchor: {label}')
 
-          # One action owns the portal lifecycle button until the async operation
-          # has either succeeded or failed. This prevents a second tap from racing
-          # a still-completing Activate/Deactivate transaction.
-          one(
-              'async function activatePlayerPlans(){',
-              'let practicePortalActionBusy=false;\nasync function activatePlayerPlans(){',
-              'portal busy state'
-          )
-          one(
-              " const button=$('#activatePlayerPlans');if(button){button.disabled=true;button.textContent='Activating…'}",
-              " if(practicePortalActionBusy)return;practicePortalActionBusy=true;\n const button=$('#activatePlayerPlans');if(button){button.disabled=true;button.textContent='Activating…'}",
-              'activate busy lock'
-          )
+          one('async function activatePlayerPlans(){','let practicePortalActionBusy=false;\nasync function activatePlayerPlans(){','portal busy state')
+          one(" const button=$('#activatePlayerPlans');if(button){button.disabled=true;button.textContent='Activating…'}"," if(practicePortalActionBusy)return;practicePortalActionBusy=true;\n const button=$('#activatePlayerPlans');if(button){button.disabled=true;button.textContent='Activating…'}",'activate busy lock')
 
-          # If Firebase already contains this exact publication on every intended
-          # target, that is the successful result of an earlier Activate whose local
-          # acknowledgement was lost. Reconcile local state in place instead of
-          # telling the coach to Recover or requiring a second workflow.
           old="  if(sameIdActive.length)throw new Error(sameIdActive.length===activationTargets.length?'portal-activation-existing-publication':'portal-activation-partial-existing-publication');"
           new="""  if(sameIdActive.length){
    if(sameIdActive.length!==activationTargets.length)throw new Error('portal-activation-partial-existing-publication');
@@ -59,22 +44,9 @@ jobs:
    persistPracticeSession();practicePortalActionBusy=false;render();return;
   }"""
           one(old,new,'existing publication reconciliation')
+          one("  render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);","  practicePortalActionBusy=false;render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);",'activate success unlock')
+          one(" }catch(error){\n  if(button){button.disabled=false;button.textContent='Activate Player Plans'}"," }catch(error){\n  practicePortalActionBusy=false;if(button){button.disabled=false;button.textContent='Activate Player Plans'}",'activate failure unlock')
 
-          one(
-              "  render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);",
-              "  practicePortalActionBusy=false;render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);",
-              'activate success unlock'
-          )
-          one(
-              " }catch(error){\n  if(button){button.disabled=false;button.textContent='Activate Player Plans'}",
-              " }catch(error){\n  practicePortalActionBusy=false;if(button){button.disabled=false;button.textContent='Activate Player Plans'}",
-              'activate failure unlock'
-          )
-
-          # Firestore batch.commit() is atomic. Once it resolves, the practice is
-          # removed from every queued portal. Do not make the coach wait on a second
-          # round of reads before updating the local button state; those reads were
-          # the source of the apparent failed first tap.
           pat=re.compile(r"( existingCleanup\.filter\(item=>item&&!item\.alreadyCleared\)\.forEach\(item=>batch\.update\(portalDoc\(item\.target\.id\),item\.target\.data\)\);\n if\(existingCleanup\.some\(item=>item&&!item\.alreadyCleared\)\)await batch\.commit\(\);\n)( // Confirm the ended practice is actually gone from every portal before\n // clearing the coach's local active-practice reference\.\n const verifyIds=\[\.\.\.new Set\(\[.*?\n if\(verification\.some\(cleared=>!cleared\)\)throw new Error\('portal-clear-verification-failed'\);\n)( db\.activePortalPractice=null;\n if\(db\.activePracticeSession&&practicePlan\)persistPracticeSession\(\);else save\(\);)",re.S)
           m=pat.search(s)
           if m:
@@ -82,30 +54,17 @@ jobs:
           elif "The atomic cloud commit is the deactivation acknowledgement" not in s:
               raise SystemExit('missing anchor: deactivation verification block')
 
-          one(
-              "async function deactivatePlayerPlans(){\n if(practiceClock.running){alert('This practice is currently running. Use DONE! to end the practice and remove the live player and coach plans together.');return}\n if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId||!confirm('Remove this active practice from the player and coach portals?'))return;\n const button=$('#deactivatePlayerPlans');if(button)button.disabled=true;\n try{await clearActivePlayerPlans();render();alert('Player practice plans are no longer active.')}\n catch(error){if(button)button.disabled=false;alert('The active player plans could not be removed.')}\n}",
-              "async function deactivatePlayerPlans(){\n if(practiceClock.running){alert('This practice is currently running. Use DONE! to end the practice and remove the live player and coach plans together.');return}\n if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId||!confirm('Remove this active practice from the player and coach portals?'))return;\n if(practicePortalActionBusy)return;practicePortalActionBusy=true;\n const button=$('#deactivatePlayerPlans');if(button){button.disabled=true;button.textContent='Deactivating…'}\n try{await clearActivePlayerPlans();practicePortalActionBusy=false;render();alert('Player practice plans are no longer active.')}\n catch(error){practicePortalActionBusy=false;if(button){button.disabled=false;button.textContent='Deactivate'}alert('The active player plans could not be removed.')}\n}",
-              'deactivate one tap'
-          )
+          one("async function deactivatePlayerPlans(){\n if(practiceClock.running){alert('This practice is currently running. Use DONE! to end the practice and remove the live player and coach plans together.');return}\n if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId||!confirm('Remove this active practice from the player and coach portals?'))return;\n const button=$('#deactivatePlayerPlans');if(button)button.disabled=true;\n try{await clearActivePlayerPlans();render();alert('Player practice plans are no longer active.')}\n catch(error){if(button)button.disabled=false;alert('The active player plans could not be removed.')}\n}","async function deactivatePlayerPlans(){\n if(practiceClock.running){alert('This practice is currently running. Use DONE! to end the practice and remove the live player and coach plans together.');return}\n if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId||!confirm('Remove this active practice from the player and coach portals?'))return;\n if(practicePortalActionBusy)return;practicePortalActionBusy=true;\n const button=$('#deactivatePlayerPlans');if(button){button.disabled=true;button.textContent='Deactivating…'}\n try{await clearActivePlayerPlans();practicePortalActionBusy=false;render();alert('Player practice plans are no longer active.')}\n catch(error){practicePortalActionBusy=false;if(button){button.disabled=false;button.textContent='Deactivate'}alert('The active player plans could not be removed.')}\n}",'deactivate one tap')
 
-          # Edit means edit THIS practice. Carry its publication identity through
-          # attendance/drill rebuild instead of minting a different practice ID.
           old="$('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();const accommodations="
           new="$('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();practiceSetupState.editingPortalDraftId=practicePlan?.portalDraftId||practiceSetupState.editingPortalDraftId||'';const accommodations="
           one(old,new,'edit carries practice identity')
-          one(
-              '   practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();',
-              "   practicePlan.portalDraftId=resolutionBuildDraftId||practiceSetupState.editingPortalDraftId||crypto.randomUUID();delete practiceSetupState.editingPortalDraftId;",
-              'rebuilt plan reuses edit identity'
-          )
+          one('   practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();',"   practicePlan.portalDraftId=resolutionBuildDraftId||practiceSetupState.editingPortalDraftId||crypto.randomUUID();delete practiceSetupState.editingPortalDraftId;",'rebuilt plan reuses edit identity')
 
           p.write_text(s,encoding='utf-8')
-
-          q=Path('index.html')
-          x=q.read_text(encoding='utf-8')
+          q=Path('index.html');x=q.read_text(encoding='utf-8')
           x2,n=re.subn(r'app-coach-rebels-portals-v10\.js\?v=[^\"\']+', 'app-coach-rebels-portals-v10.js?v=20261027-practice669', x, count=1)
-          if n!=1 and '20261027-practice669' not in x:
-              raise SystemExit('missing index bundle cachebuster')
+          if n!=1 and '20261027-practice669' not in x:raise SystemExit('missing index bundle cachebuster')
           q.write_text(x2 if n==1 else x,encoding='utf-8')
           PY
       - name: Verify patch
@@ -124,3 +83,4 @@ jobs:
           git add app-coach-rebels-portals-v10.js index.html
           git commit -m 'Fix one-tap practice activate deactivate edit lifecycle'
           git push
+# trigger
