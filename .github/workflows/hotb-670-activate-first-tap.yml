@@ -1,0 +1,47 @@
+name: HotB 670 First Tap Activation
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/hotb-670-activate-first-tap.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+          a="persistPracticeSession();practicePortalActionBusy=false;render();return;"
+          b="practicePortalActionBusy=false;render();setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('Deferred recovered activation save failed',error)}},0);return;"
+          if a not in s: raise SystemExit('missing recovery anchor')
+          s=s.replace(a,b,1)
+          a="""db.activePortalPractice=pendingPortalPractice;
+  try{persistPracticeSession()}
+  catch(error){
+   // Keep the verified publication pointer in memory so the catch path can route
+   // to recovery instead of treating a successful Firebase activation as failed.
+   if(String(error?.message||'').includes('device-storage-quota-exceeded'))throw error;
+   throw error;
+  }
+  practicePortalActionBusy=false;render();"""
+          b="""db.activePortalPractice=pendingPortalPractice;
+  practicePortalActionBusy=false;render();
+  setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('Deferred activation save failed',error)}},0);"""
+          if a not in s: raise SystemExit('missing success anchor')
+          s=s.replace(a,b,1)
+          p.write_text(s)
+          PY
+          node --check app-coach-rebels-portals-v10.js
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name KCRebels
+          git config user.email actions@users.noreply.github.com
+          git add app-coach-rebels-portals-v10.js
+          git diff --cached --quiet || git commit -m 'Make practice activation stay active after first tap'
+          git push
