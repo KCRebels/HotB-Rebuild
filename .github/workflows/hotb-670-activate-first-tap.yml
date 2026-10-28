@@ -1,16 +1,21 @@
 name: HotB 670 First Tap Activation
+
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/hotb-670-activate-first-tap.yml']
+    paths:
+      - '.github/workflows/hotb-670-activate-first-tap.yml'
+  workflow_dispatch:
+
 permissions:
   contents: write
+
 jobs:
   patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch
+      - name: Patch activation
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -18,8 +23,10 @@ jobs:
           s=p.read_text()
           a="persistPracticeSession();practicePortalActionBusy=false;render();return;"
           b="practicePortalActionBusy=false;render();setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('Deferred recovered activation save failed',error)}},0);return;"
-          if a not in s: raise SystemExit('missing recovery anchor')
-          s=s.replace(a,b,1)
+          if a in s:
+              s=s.replace(a,b,1)
+          elif 'Deferred recovered activation save failed' not in s:
+              raise SystemExit('missing recovery anchor')
           a="""db.activePortalPractice=pendingPortalPractice;
   try{persistPracticeSession()}
   catch(error){
@@ -32,8 +39,10 @@ jobs:
           b="""db.activePortalPractice=pendingPortalPractice;
   practicePortalActionBusy=false;render();
   setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('Deferred activation save failed',error)}},0);"""
-          if a not in s: raise SystemExit('missing success anchor')
-          s=s.replace(a,b,1)
+          if a in s:
+              s=s.replace(a,b,1)
+          elif 'Deferred activation save failed' not in s:
+              raise SystemExit('missing success anchor')
           p.write_text(s)
           PY
           node --check app-coach-rebels-portals-v10.js
