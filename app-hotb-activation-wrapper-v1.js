@@ -1,5 +1,5 @@
 (()=>{
- const sourceUrl='app-coach-rebels-portals-v10.js?v=20261028-practice-reset-677&fresh='+Date.now();
+ const sourceUrl='app-coach-rebels-portals-v10.js?v=20261028-practice-reset-678&fresh='+Date.now();
  const load=async()=>{
   try{
    const response=await fetch(sourceUrl,{cache:'no-store'});
@@ -10,7 +10,7 @@
    const recoveredNew="practicePortalActionBusy=false;render();setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('HotB deferred recovered-activation persistence failed',error)}},0);return;";
    if(source.includes(recoveredOld))source=source.replace(recoveredOld,recoveredNew);
 
-   const successOld=`db.activePortalPractice=pendingPortalPractice;\n  try{persistPracticeSession()}\n  catch(error){\n   // Keep the verified publication pointer in memory so the catch path can route\n   // to recovery instead of treating a successful Firebase activation as failed.\n   if(String(error?.message||'').includes('device-storage-quota-exceeded'))throw error;\n   throw error;\n  }\n  practicePortalActionBusy=false;render();`;
+   const successOld=`db.activePortalPractice=pendingPortalPractice;\n  try{persistPracticeSession()}\n  catch(error){\n   if(String(error?.message||'').includes('device-storage-quota-exceeded'))throw error;\n   throw error;\n  }\n  practicePortalActionBusy=false;render();`;
    const successNew=`db.activePortalPractice=pendingPortalPractice;\n  practicePortalActionBusy=false;render();\n  setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('HotB deferred activation persistence failed',error)}},0);`;
    if(source.includes(successOld))source=source.replace(successOld,successNew);
 
@@ -34,8 +34,6 @@
    const deactivateNew=`db.activePortalPractice=null;\n setTimeout(()=>{try{if(db.activePracticeSession&&practicePlan)persistPracticeSession();else save()}catch(error){console.warn('HotB deferred deactivation persistence failed',error)}},0);\n}`;
    if(source.includes(deactivateOld))source=source.replace(deactivateOld,deactivateNew);
 
-   // Makenna's normal reset state is late/no pitching warmup, but a deliberate
-   // master time/duration edit is allowed to turn warmup back on for that practice.
    const makennaWarmupOld=`requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?false:saved.requiresPitchWarmup!==false):false`;
    const makennaWarmupNew=`requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?saved.requiresPitchWarmup===true:saved.requiresPitchWarmup!==false):false`;
    if(source.includes(makennaWarmupOld))source=source.replace(makennaWarmupOld,makennaWarmupNew);
@@ -49,20 +47,20 @@
    if(source.includes(buttonsOld))source=source.replace(buttonsOld,buttonsNew);
 
    const durationHandler=`$('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});`;
-   const resetHandler=`${durationHandler}\n $('#resetPracticeSetup')?.addEventListener('click',event=>{\n  event.preventDefault();\n  const regionalDefaults=practiceAttendanceRoster().filter(player=>!player.isTeamJenkins&&!player.isPracticeGuest&&!player.isGuest&&!['Brynna Peter','Claire Jack'].includes(player.name)).map(player=>player.name);\n  practiceSetupState={...practiceSetupState,selectedNames:regionalDefaults,startTime:'17:30',durationMinutes:120,accommodations:{'Makenna Whitaker':{arrival:'18:15',requiresPitchWarmup:false}}};\n  practiceResolution=null;if(modal==='practiceResolution')modal=null;\n  render();persistPracticeDraft();window.scrollTo(0,0);\n });`;
+   const resetHandler=`${durationHandler}\n $('#resetPracticeSetup')?.addEventListener('click',event=>{\n  event.preventDefault();\n  const roster=practiceAttendanceRoster();\n  const regionalDefaults=roster.filter(player=>!player.isTeamJenkins&&!player.isPracticeGuest&&!player.isGuest&&!['Brynna Peter','Claire Jack'].includes(player.name)).map(player=>player.name);\n  const regionalSet=new Set(regionalDefaults);\n  practiceSetupState={...practiceSetupState,selectedNames:regionalDefaults,startTime:'17:30',durationMinutes:120,accommodations:{'Makenna Whitaker':{arrival:'18:15',requiresPitchWarmup:false}}};\n  practiceResolution=null;if(modal==='practiceResolution')modal=null;\n  const start=$('#practiceStartTime'),duration=$('#practiceDuration');\n  if(start){start.value='17:30';start.dataset.hotbPreviousStart='17:30'}\n  if(duration){duration.value='120';duration.dataset.hotbPreviousDuration='120'}\n  const startDisplay=$('#practiceStartTimeDisplay');if(startDisplay)startDisplay.textContent='5:30p';\n  const attendanceState={};\n  $$('[data-practice-player]').forEach(input=>{const player=roster[Number(input.dataset.practicePlayer)];if(!player)return;const checked=regionalSet.has(player.name);input.checked=checked;attendanceState[player.name]=checked});\n  try{sessionStorage.setItem('hotb-practice-attendance-manual-v649',JSON.stringify(attendanceState))}catch(_){}\n  $$('[data-accommodation-arrival]').forEach(input=>{const player=roster[Number(input.dataset.accommodationArrival)];input.value=player?.name==='Makenna Whitaker'?'18:15':'17:30';input.dataset.custom=player?.name==='Makenna Whitaker'?'true':'false';const display=input.parentElement?.querySelector('.practice-accommodation-time-display');if(display)display.textContent=player?.name==='Makenna Whitaker'?'6:15p':'5:30p'});\n  $$('[data-accommodation-departure]').forEach(input=>{input.value='19:30';input.dataset.custom='false';const display=input.parentElement?.querySelector('.practice-accommodation-time-display');if(display)display.textContent='7:30p'});\n  const makennaIndex=roster.findIndex(player=>player.name==='Makenna Whitaker');\n  if(makennaIndex>=0){const pitch=$('[data-accommodation-pitch="'+makennaIndex+'"]'),warmup=$('[data-accommodation-warmup="'+makennaIndex+'"]');if(pitch){pitch.checked=true;pitch.disabled=false}if(warmup){warmup.checked=false;warmup.disabled=false}}\n  roster.forEach((player,index)=>storePracticeAccommodation(index));\n  persistPracticeDraft();\n  window.scrollTo(0,0);\n });`;
    if(source.includes(durationHandler)&&!source.includes("$('#resetPracticeSetup')?.addEventListener"))source=source.replace(durationHandler,resetHandler);
 
-   if(!source.includes('HotB deferred activation persistence failed')||!source.includes('HotB deferred recovered-activation persistence failed')||!source.includes('HotB deferred deactivation persistence failed')||!source.includes('portal-activation-preflight-timeout')||!source.includes('portal-activation-commit-timeout')||!source.includes('portal-deactivation-preflight-timeout')||!source.includes('portal-deactivation-commit-timeout')||!source.includes('id="resetPracticeSetup"')||!source.includes("$('#resetPracticeSetup')?.addEventListener")||!source.includes("isMakenna?saved.requiresPitchWarmup===true")||!source.includes('!player.isTeamJenkins')||!source.includes('render();persistPracticeDraft();window.scrollTo(0,0)'))throw new Error('activation-wrapper-patch-anchor');
+   if(!source.includes('HotB deferred activation persistence failed')||!source.includes('HotB deferred recovered-activation persistence failed')||!source.includes('HotB deferred deactivation persistence failed')||!source.includes('portal-activation-preflight-timeout')||!source.includes('portal-activation-commit-timeout')||!source.includes('portal-deactivation-preflight-timeout')||!source.includes('portal-deactivation-commit-timeout')||!source.includes('id="resetPracticeSetup"')||!source.includes("$('#resetPracticeSetup')?.addEventListener")||!source.includes("isMakenna?saved.requiresPitchWarmup===true")||!source.includes('hotb-practice-attendance-manual-v649'))throw new Error('activation-wrapper-patch-anchor');
 
    const blob=new Blob([source],{type:'text/javascript'}),url=URL.createObjectURL(blob),script=document.createElement('script');
    script.src=url;script.async=false;
-   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='677'};
+   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='678'};
    script.onerror=()=>{URL.revokeObjectURL(url);throw new Error('activation-wrapper-execute')};
    document.body.appendChild(script);
   }catch(error){
    console.error('HotB activation wrapper failed',error);
    const app=document.getElementById('app');
-   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The HotB update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H677</p></section></main></div>';
+   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The HotB update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H678</p></section></main></div>';
   }
  };
  load();
