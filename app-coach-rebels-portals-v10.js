@@ -3101,29 +3101,7 @@ async function clearActivePlayerPlans(){
  }));
  existingCleanup.filter(item=>item&&!item.alreadyCleared).forEach(item=>batch.update(portalDoc(item.target.id),item.target.data));
  if(existingCleanup.some(item=>item&&!item.alreadyCleared))await batch.commit();
- // Confirm the ended practice is actually gone from every portal before
- // clearing the coach's local active-practice reference.
- const verifyIds=[...new Set([
-  ...persistedPlayerPortals.map(entry=>entry.portalId),
-  ...db.roster.filter(player=>player.portalId&&activeNames.has(player.name)).map(player=>player.portalId),
-  coachPortalId,
-  jenkinsCoachPortalId,
-  ...guestPortalIds
- ].filter(Boolean))];
- if(!verifyIds.length)throw new Error('portal-clear-no-targets');
- const verification=await Promise.all(verifyIds.map(async id=>{
-  const snapshot=await portalDoc(id).get();
-  if(!snapshot.exists)return true;
-  const remote=snapshot.data()||{};
-  if(remote.activePractice)return false;
-  // Temporary guest links must be expired at cleanup. Jenkins links are
-  // intentionally reusable and return to waiting instead of expiring.
-  if(guestPortalIds.has(id))return remote.expired===true&&remote.accessStatus==='ended';
-  const persisted=persistedPlayerPortals.find(entry=>entry.portalId===id),rosterPlayer=db.roster.find(player=>player.portalId===id&&activeNames.has(player.name));
-  if(persisted?.isTeamJenkins||rosterPlayer?.isTeamJenkins)return remote.portalType==='jenkinsPlayer'&&remote.accessStatus==='waiting'&&remote.expired===false;
-  return true;
- }));
- if(verification.some(cleared=>!cleared))throw new Error('portal-clear-verification-failed');
+ // The atomic cloud commit is the deactivation acknowledgement. Update local state immediately.
  db.activePortalPractice=null;
  if(db.activePracticeSession&&practicePlan)persistPracticeSession();else save();
 }
@@ -3412,6 +3390,7 @@ async function syncActiveJenkinsPlans(){
  }
 }
 
+let practicePortalActionBusy=false;
 async function activatePlayerPlans(){
  restoreVerifiedJenkinsPortalButtons();
  for(const player of db.roster.filter(p=>p.isTeamJenkins)){try{const saved=JSON.parse(localStorage.getItem('hotbJenkinsPortalCredentialsV1')||'{}')[player.name];if(saved){player.portalId=player.portalId||saved.portalId;player.portalSecret=player.portalSecret||saved.portalSecret}}catch(_){}}
@@ -3440,6 +3419,7 @@ async function activatePlayerPlans(){
  if(window.HotBPracticeScheduler?.validate){const errors=window.HotBPracticeScheduler.validate(practicePlan);if(errors.length){alert(`The practice plans cannot be activated because this schedule failed its safety checks:\n\n${errors.join('\n\n')}`);return}}
  const planBlockCount=practicePlan.times?.length||10,attending=new Set(practicePlan.players.filter(player=>(player.availableFromBlock??0)<(player.availableUntilBlock??planBlockCount)).map(player=>player.name)),jenkins=db.roster.filter(player=>player.isTeamJenkins&&attending.has(player.name)),missing=db.roster.filter(player=>!player.isTeamJenkins&&attending.has(player.name)&&!player.portalId);
  if(missing.length){alert(`Create Player Portals first. Missing: ${missing.map(player=>practiceFirstName(player.name)).join(', ')}.`);return}
+ if(practicePortalActionBusy)return;practicePortalActionBusy=true;
  const button=$('#activatePlayerPlans');if(button){button.disabled=true;button.textContent='Activating…'}
  try{
   const activationTimestamp=new Date().toISOString();
@@ -3489,7 +3469,12 @@ async function activatePlayerPlans(){
   // This is the signature of an activation whose local acknowledgement was lost
   // (or an older partial state). Republishing would reset its live clock to
   // Not Started. Stop and route through recovery instead.
-  if(sameIdActive.length)throw new Error(sameIdActive.length===activationTargets.length?'portal-activation-existing-publication':'portal-activation-partial-existing-publication');
+  if(sameIdActive.length){
+   if(sameIdActive.length!==activationTargets.length)throw new Error('portal-activation-partial-existing-publication');
+   const recoveredTimestamp=sameIdActive.map(item=>item?.snapshot?.data?.()?.activePractice?.activatedAt).find(Boolean)||new Date().toISOString();
+   db.activePortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:recoveredTimestamp,players:[...attending],playerPortals:db.roster.filter(player=>attending.has(player.name)&&player.portalId).map(player=>({name:player.name,portalId:player.portalId,isTeamJenkins:!!player.isTeamJenkins})),guestPlayerPortalIds:practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).map(guest=>guest.portalId),guestCoachPortalIds:practiceGuestCoaches().filter(guest=>guest.portalId).map(guest=>guest.portalId),jenkinsCoachPortalId:db.jenkinsCoachPortal?.portalId||'',coachPortalId:db.coachPortal?.portalId||''};
+   persistPracticeSession();practicePortalActionBusy=false;render();return;
+  }
   permanentPlayers.forEach(player=>{const activationDoc=activationDocs.find(({target})=>target.id===player.portalId),remote=activationDoc?.snapshot?.exists?activationDoc.snapshot.data()||{}:{},activePractice={...playerPracticePortalPayload(player.name,activationTimestamp),clock:{status:'not-started',startedAt:null,endedAt:null}};if(Array.isArray(remote?.focus?.drills))activePractice.focusDrills=remote.focus.drills.map(item=>typeof item==='string'?item:item?.name||item?.drill||'').filter(Boolean);batch.update(portalDoc(player.portalId),{activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})});
   jenkinsPlayers.forEach(player=>batch.update(portalDoc(player.portalId),jenkinsPortalResetPayload(player,playerPracticePortalPayload(player.name,activationTimestamp),'active')));
   if(db.coachPortal?.portalId){const activePractice={...coachPracticePortalPayload(activationTimestamp),coachName:db.coachPortal.name||'Coach'};batch.update(portalDoc(db.coachPortal.portalId),{activePractice,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})}
@@ -3520,9 +3505,9 @@ async function activatePlayerPlans(){
    if(String(error?.message||'').includes('device-storage-quota-exceeded'))throw error;
    throw error;
   }
-  render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
+  practicePortalActionBusy=false;render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
  }catch(error){
-  if(button){button.disabled=false;button.textContent='Activate Player Plans'}
+  practicePortalActionBusy=false;if(button){button.disabled=false;button.textContent='Activate Player Plans'}
   const rawCode=String(error?.code||error?.message||error||'unknown');
   const code=rawCode==='22'&&error?.message?String(error.message):rawCode;
   console.error('HotB player-plan activation failed',error);
@@ -3540,9 +3525,10 @@ async function activatePlayerPlans(){
 async function deactivatePlayerPlans(){
  if(practiceClock.running){alert('This practice is currently running. Use DONE! to end the practice and remove the live player and coach plans together.');return}
  if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId||!confirm('Remove this active practice from the player and coach portals?'))return;
- const button=$('#deactivatePlayerPlans');if(button)button.disabled=true;
- try{await clearActivePlayerPlans();render();alert('Player practice plans are no longer active.')}
- catch(error){if(button)button.disabled=false;alert('The active player plans could not be removed.')}
+ if(practicePortalActionBusy)return;practicePortalActionBusy=true;
+ const button=$('#deactivatePlayerPlans');if(button){button.disabled=true;button.textContent='Deactivating…'}
+ try{await clearActivePlayerPlans();practicePortalActionBusy=false;render();alert('Player practice plans are no longer active.')}
+ catch(error){practicePortalActionBusy=false;if(button){button.disabled=false;button.textContent='Deactivate'}alert('The active player plans could not be removed.')}
 }
 function practiceDrillPicker(){
  const needed=practicePlan.drillStations,drills=practiceSelectableDrills(),filters=['All Drills',...new Set(drills.map(drill=>drill.category).filter(Boolean))],query=practicePickerQuery.trim().toLowerCase();
@@ -6958,7 +6944,7 @@ function bindPractice(){
    return;
   }
   try{
-   practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();
+   practicePlan.portalDraftId=resolutionBuildDraftId||practiceSetupState.editingPortalDraftId||crypto.randomUUID();delete practiceSetupState.editingPortalDraftId;
    practicePlan.machineFocus='Standard';
    practicePlan.frontTossFocus='Standard';
   }catch(error){
@@ -7006,7 +6992,7 @@ function bindPractice(){
   
   publishPracticeBuildFrame('practice-plan-publish',()=>{render();setPracticeBuildControlsLocked(false);window.scrollTo(0,0)});
  });
- $('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',limitations:practiceSetupState.accommodations?.[player.name]?.limitations||'',prePracticeComplete:!!player.prePracticeComplete,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={...practiceSetupState,selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;practiceSection='setup';persistPracticeDraft();render();window.scrollTo(0,0)});
+ $('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();practiceSetupState.editingPortalDraftId=practicePlan?.portalDraftId||practiceSetupState.editingPortalDraftId||'';const accommodations=Object.fromEntries(practicePlan.players.map(player=>[player.name,{arrival:player.arrivalTime!==practicePlan.startTime?player.arrivalTime:'',departure:player.departureTime!==practiceEndValue(practicePlan.startTime,practicePlan.durationMinutes)?player.departureTime:'',limitations:practiceSetupState.accommodations?.[player.name]?.limitations||'',prePracticeComplete:!!player.prePracticeComplete,canPitch:player.canPitch,requiresPitchWarmup:player.requiresPitchWarmup,canCatch:player.canCatch}]));practiceSetupState={...practiceSetupState,selectedNames:practicePlan.players.map(player=>player.name),startTime:practicePlan.startTime,durationMinutes:practicePlan.durationMinutes,accommodations};practicePlan=null;practiceSection='setup';persistPracticeDraft();render();window.scrollTo(0,0)});
  $('#togglePracticeCoach')?.addEventListener('click',()=>{practiceCoachOpen=!practiceCoachOpen;if(practiceCoachOpen)practiceCardsOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#togglePracticeCards')?.addEventListener('click',()=>{practiceCardsOpen=!practiceCardsOpen;if(practiceCardsOpen)practiceCoachOpen=false;render();window.scrollTo(0,0);if(practiceClock.running)updatePracticeClock()});
  $('#startPracticeClock')?.addEventListener('click',()=>{
