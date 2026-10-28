@@ -20,7 +20,25 @@ function write(db){localStorage.setItem(DBKEY,JSON.stringify(db))}
 function practiceOnlyPlayer(existing,profile){const next={...profile,side:existing?.side||'R',isGuest:true,isTeamJenkins:true,teamName:TEAM,isPracticeGuest:false};['portalId','portalSecret'].forEach(key=>{if(existing?.[key])next[key]=existing[key]});return next}
 function seed(){const db=read();if(!db||!Array.isArray(db.roster))return;let changed=false;players.forEach(profile=>{const index=db.roster.findIndex(x=>x.name===profile.name),next=practiceOnlyPlayer(index>=0?db.roster[index]:null,profile);if(index<0){db.roster.push(next);changed=true}else if(JSON.stringify(next)!==JSON.stringify(db.roster[index])){db.roster[index]=next;changed=true}});if(changed)write(db)}
 function groupAttendance(){const box=document.querySelector('.practice-setup .practice-attendance');if(!box||box.dataset.jenkinsGrouped)return;const rows=[...box.querySelectorAll(':scope > .practice-attendance-row')];if(!rows.length)return;const firstJ=rows.find(r=>names.has(r.querySelector('b')?.textContent?.trim()));if(!firstJ)return;const h=document.createElement('div');h.className='team-jenkins-heading';h.textContent=TEAM.toUpperCase();box.insertBefore(h,firstJ);rows.filter(r=>names.has(r.querySelector('b')?.textContent?.trim())).forEach(r=>r.classList.add('team-jenkins-player'));box.dataset.jenkinsGrouped='1'}
+function patchScheduler(){
+ const scheduler=window.HotBPracticeScheduler;
+ if(!scheduler||scheduler.__jenkinsReadyAtJoinTime||typeof scheduler.buildSchedule!=='function')return false;
+ const original=scheduler.buildSchedule;
+ scheduler.buildSchedule=function(inputPlayers,startTime,durationMinutes,options){
+  const adjusted=(Array.isArray(inputPlayers)?inputPlayers:[]).map(player=>{
+   if(!player||!player.isTeamJenkins)return player;
+   const from=Number(player.availableFromBlock)||0;
+   return from>0?{...player,prePracticeComplete:true}:player;
+  });
+  return original.call(this,adjusted,startTime,durationMinutes,options);
+ };
+ scheduler.__jenkinsReadyAtJoinTime=true;
+ return true;
+}
 seed();
+patchScheduler();
+setTimeout(patchScheduler,0);
+setTimeout(patchScheduler,500);
 const style=document.createElement('style');style.textContent='.team-jenkins-heading{font-size:12px;font-weight:900;letter-spacing:.12em;color:#b5121b;padding:16px 4px 7px;border-top:2px solid #111;border-bottom:2px solid #111;margin-top:12px;margin-bottom:4px}.practice-attendance-row.team-jenkins-player{background:#f1f3f5!important;border-color:#c6cdd3!important}';document.head.appendChild(style);
-const observer=new MutationObserver(groupAttendance);observer.observe(document.documentElement,{childList:true,subtree:true});window.addEventListener('load',groupAttendance);
+const observer=new MutationObserver(()=>{groupAttendance();patchScheduler()});observer.observe(document.documentElement,{childList:true,subtree:true});window.addEventListener('load',()=>{groupAttendance();patchScheduler()});
 })();
