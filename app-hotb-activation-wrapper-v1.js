@@ -1,5 +1,5 @@
 (()=>{
- const sourceUrl='app-coach-rebels-portals-v10.js?v=20261028-practice-reset-676&fresh='+Date.now();
+ const sourceUrl='app-coach-rebels-portals-v10.js?v=20261028-practice-reset-677&fresh='+Date.now();
  const load=async()=>{
   try{
    const response=await fetch(sourceUrl,{cache:'no-store'});
@@ -45,24 +45,24 @@
    if(source.includes(refreshOld))source=source.replace(refreshOld,refreshNew);
 
    const buttonsOld=`<div class="practice-build-bottom-actions" style="display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:10px;margin-top:14px;margin-bottom:110px"><button class="btn" id="closePracticeSetup">Close</button><button class="btn red" id="savePracticeSetup" style="background:#c71920!important;color:#fff!important;border-color:#c71920!important">Save</button><button class="btn black" id="generatePractice">Build Practice</button></div>`;
-   const buttonsNew=`<div class="practice-build-bottom-actions" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-top:14px;margin-bottom:110px"><button class="btn" id="closePracticeSetup">Close</button><button class="btn red" id="savePracticeSetup" style="background:#c71920!important;color:#fff!important;border-color:#c71920!important">Save</button><button class="btn black" id="generatePractice">Build</button><button class="btn" id="resetPracticeSetup">Reset</button></div>`;
+   const buttonsNew=`<div class="practice-build-bottom-actions" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-top:14px;margin-bottom:110px"><button class="btn" id="closePracticeSetup">Close</button><button class="btn red" id="savePracticeSetup" style="background:#c71920!important;color:#fff!important;border-color:#c71920!important">Save</button><button class="btn black" id="generatePractice">Build</button><button class="btn" type="button" id="resetPracticeSetup">Reset</button></div>`;
    if(source.includes(buttonsOld))source=source.replace(buttonsOld,buttonsNew);
 
    const durationHandler=`$('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});`;
-   const resetHandler=`${durationHandler}\n $('#resetPracticeSetup')?.addEventListener('click',()=>{\n  const regionalDefaults=practiceAttendanceRoster().filter(player=>!player.isTeamJenkins&&!player.isPracticeGuest&&!player.isGuest&&!['Brynna Peter','Claire Jack'].includes(player.name)).map(player=>player.name);\n  practiceSetupState={...practiceSetupState,selectedNames:regionalDefaults,startTime:'17:30',durationMinutes:120,accommodations:{'Makenna Whitaker':{arrival:'18:15',requiresPitchWarmup:false}}};\n  practiceResolution=null;if(modal==='practiceResolution')modal=null;\n  persistPracticeDraft();render();window.scrollTo(0,0);\n });`;
+   const resetHandler=`${durationHandler}\n $('#resetPracticeSetup')?.addEventListener('click',event=>{\n  event.preventDefault();\n  const regionalDefaults=practiceAttendanceRoster().filter(player=>!player.isTeamJenkins&&!player.isPracticeGuest&&!player.isGuest&&!['Brynna Peter','Claire Jack'].includes(player.name)).map(player=>player.name);\n  practiceSetupState={...practiceSetupState,selectedNames:regionalDefaults,startTime:'17:30',durationMinutes:120,accommodations:{'Makenna Whitaker':{arrival:'18:15',requiresPitchWarmup:false}}};\n  practiceResolution=null;if(modal==='practiceResolution')modal=null;\n  render();persistPracticeDraft();window.scrollTo(0,0);\n });`;
    if(source.includes(durationHandler)&&!source.includes("$('#resetPracticeSetup')?.addEventListener"))source=source.replace(durationHandler,resetHandler);
 
-   if(!source.includes('HotB deferred activation persistence failed')||!source.includes('HotB deferred recovered-activation persistence failed')||!source.includes('HotB deferred deactivation persistence failed')||!source.includes('portal-activation-preflight-timeout')||!source.includes('portal-activation-commit-timeout')||!source.includes('portal-deactivation-preflight-timeout')||!source.includes('portal-deactivation-commit-timeout')||!source.includes('id="resetPracticeSetup"')||!source.includes("$('#resetPracticeSetup')?.addEventListener")||!source.includes("isMakenna?saved.requiresPitchWarmup===true")||!source.includes('!player.isTeamJenkins'))throw new Error('activation-wrapper-patch-anchor');
+   if(!source.includes('HotB deferred activation persistence failed')||!source.includes('HotB deferred recovered-activation persistence failed')||!source.includes('HotB deferred deactivation persistence failed')||!source.includes('portal-activation-preflight-timeout')||!source.includes('portal-activation-commit-timeout')||!source.includes('portal-deactivation-preflight-timeout')||!source.includes('portal-deactivation-commit-timeout')||!source.includes('id="resetPracticeSetup"')||!source.includes("$('#resetPracticeSetup')?.addEventListener")||!source.includes("isMakenna?saved.requiresPitchWarmup===true")||!source.includes('!player.isTeamJenkins')||!source.includes('render();persistPracticeDraft();window.scrollTo(0,0)'))throw new Error('activation-wrapper-patch-anchor');
 
    const blob=new Blob([source],{type:'text/javascript'}),url=URL.createObjectURL(blob),script=document.createElement('script');
    script.src=url;script.async=false;
-   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='676'};
+   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='677'};
    script.onerror=()=>{URL.revokeObjectURL(url);throw new Error('activation-wrapper-execute')};
    document.body.appendChild(script);
   }catch(error){
    console.error('HotB activation wrapper failed',error);
    const app=document.getElementById('app');
-   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The HotB update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H676</p></section></main></div>';
+   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The HotB update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H677</p></section></main></div>';
   }
  };
  load();
