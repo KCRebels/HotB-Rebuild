@@ -1,4 +1,4 @@
-name: HotB 669 Practice One-Tap Lifecycle
+name: HotB Activate Commit First
 
 on:
   push:
@@ -17,60 +17,50 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Patch one-tap practice lifecycle
+      - name: Patch activation state handling
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
           p=Path('app-coach-rebels-portals-v10.js')
           s=p.read_text(encoding='utf-8')
-          def one(old,new,label):
-              global s
-              if old in s:
-                  s=s.replace(old,new,1)
-              elif new not in s:
-                  raise SystemExit('missing anchor: '+label)
-          one('async function activatePlayerPlans(){','let practicePortalActionBusy=false;\nasync function activatePlayerPlans(){','portal busy state')
-          one(" const button=$('#activatePlayerPlans');if(button){button.disabled=true;button.textContent='Activating…'}"," if(practicePortalActionBusy)return;practicePortalActionBusy=true;\n const button=$('#activatePlayerPlans');if(button){button.disabled=true;button.textContent='Activating…'}",'activate busy lock')
-          old="  if(sameIdActive.length)throw new Error(sameIdActive.length===activationTargets.length?'portal-activation-existing-publication':'portal-activation-partial-existing-publication');"
-          new="  if(sameIdActive.length){\n   if(sameIdActive.length!==activationTargets.length)throw new Error('portal-activation-partial-existing-publication');\n   const recoveredTimestamp=sameIdActive.map(item=>item?.snapshot?.data?.()?.activePractice?.activatedAt).find(Boolean)||new Date().toISOString();\n   db.activePortalPractice={active:true,id:practicePlan.portalDraftId,activatedAt:recoveredTimestamp,players:[...attending],playerPortals:db.roster.filter(player=>attending.has(player.name)&&player.portalId).map(player=>({name:player.name,portalId:player.portalId,isTeamJenkins:!!player.isTeamJenkins})),guestPlayerPortalIds:practiceGuestPlayers().filter(guest=>attending.has(guest.name)&&guest.portalId).map(guest=>guest.portalId),guestCoachPortalIds:practiceGuestCoaches().filter(guest=>guest.portalId).map(guest=>guest.portalId),jenkinsCoachPortalId:db.jenkinsCoachPortal?.portalId||'',coachPortalId:db.coachPortal?.portalId||''};\n   persistPracticeSession();practicePortalActionBusy=false;render();return;\n  }"
-          one(old,new,'existing publication reconciliation')
-          one("  render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);","  practicePortalActionBusy=false;render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);",'activate success unlock')
-          one(" }catch(error){\n  if(button){button.disabled=false;button.textContent='Activate Player Plans'}"," }catch(error){\n  practicePortalActionBusy=false;if(button){button.disabled=false;button.textContent='Activate Player Plans'}",'activate failure unlock')
-          pat=re.compile(r"( existingCleanup\.filter\(item=>item&&!item\.alreadyCleared\)\.forEach\(item=>batch\.update\(portalDoc\(item\.target\.id\),item\.target\.data\)\);\n if\(existingCleanup\.some\(item=>item&&!item\.alreadyCleared\)\)await batch\.commit\(\);\n)( // Confirm the ended practice is actually gone from every portal before\n // clearing the coach's local active-practice reference\.\n const verifyIds=\[\.\.\.new Set\(\[.*?\n if\(verification\.some\(cleared=>!cleared\)\)throw new Error\('portal-clear-verification-failed'\);\n)( db\.activePortalPractice=null;\n if\(db\.activePracticeSession&&practicePlan\)persistPracticeSession\(\);else save\(\);)",re.S)
-          m=pat.search(s)
-          if m:
-              s=s[:m.start()]+m.group(1)+" // The atomic cloud commit is the deactivation acknowledgement. Update local state immediately.\n"+m.group(3)+s[m.end():]
-          elif 'The atomic cloud commit is the deactivation acknowledgement' not in s:
-              raise SystemExit('missing anchor: deactivation verification block')
-          old="async function deactivatePlayerPlans(){\n if(practiceClock.running){alert('This practice is currently running. Use DONE! to end the practice and remove the live player and coach plans together.');return}\n if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId||!confirm('Remove this active practice from the player and coach portals?'))return;\n const button=$('#deactivatePlayerPlans');if(button)button.disabled=true;\n try{await clearActivePlayerPlans();render();alert('Player practice plans are no longer active.')}\n catch(error){if(button)button.disabled=false;alert('The active player plans could not be removed.')}\n}"
-          new="async function deactivatePlayerPlans(){\n if(practiceClock.running){alert('This practice is currently running. Use DONE! to end the practice and remove the live player and coach plans together.');return}\n if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId||!confirm('Remove this active practice from the player and coach portals?'))return;\n if(practicePortalActionBusy)return;practicePortalActionBusy=true;\n const button=$('#deactivatePlayerPlans');if(button){button.disabled=true;button.textContent='Deactivating…'}\n try{await clearActivePlayerPlans();practicePortalActionBusy=false;render();alert('Player practice plans are no longer active.')}\n catch(error){practicePortalActionBusy=false;if(button){button.disabled=false;button.textContent='Deactivate'}alert('The active player plans could not be removed.')}\n}"
-          one(old,new,'deactivate one tap')
-          old="$('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();const accommodations="
-          new="$('#editPracticePlayers')?.addEventListener('click',()=>{if(db.activePortalPractice?.id===practicePlan?.portalDraftId){alert('Deactivate the player and coach portal plans before editing attendance or rebuilding this practice.');return}stopPracticeClock();practiceSetupState.editingPortalDraftId=practicePlan?.portalDraftId||practiceSetupState.editingPortalDraftId||'';const accommodations="
-          one(old,new,'edit carries practice identity')
-          one('   practicePlan.portalDraftId=resolutionBuildDraftId||crypto.randomUUID();',"   practicePlan.portalDraftId=resolutionBuildDraftId||practiceSetupState.editingPortalDraftId||crypto.randomUUID();delete practiceSetupState.editingPortalDraftId;",'rebuilt plan reuses edit identity')
+          old="""   persistPracticeSession();practicePortalActionBusy=false;render();return;
+"""
+          new="""   practicePortalActionBusy=false;render();
+   setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('HotB deferred recovered-activation persistence failed',error)}},0);
+   return;
+"""
+          if old not in s: raise SystemExit('missing recovered activation anchor')
+          s=s.replace(old,new,1)
+          old="""  db.activePortalPractice=pendingPortalPractice;
+  try{persistPracticeSession()}
+  catch(error){
+   // Keep the verified publication pointer in memory so the catch path can route
+   // to recovery instead of treating a successful Firebase activation as failed.
+   if(String(error?.message||'').includes('device-storage-quota-exceeded'))throw error;
+   throw error;
+  }
+  practicePortalActionBusy=false;render();alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
+"""
+          new="""  db.activePortalPractice=pendingPortalPractice;
+  practicePortalActionBusy=false;render();
+  setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('HotB deferred activation persistence failed',error)}},0);
+  alert(`Plans activated for ${attending.size} ${attending.size===1?'player':'players'}${db.coachPortal?.portalId?' and 1 coach':''}${practiceGuestCoaches().length?` and ${practiceGuestCoaches().length} guest coach${practiceGuestCoaches().length===1?'':'es'}`:''}.`);
+"""
+          if old not in s: raise SystemExit('missing activation success anchor')
+          s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
-          q=Path('index.html')
-          x=q.read_text(encoding='utf-8')
-          x2,n=re.subn(r'app-coach-rebels-portals-v10\.js\?v=[^\"\']+', 'app-coach-rebels-portals-v10.js?v=20261027-practice669', x, count=1)
-          if n!=1 and '20261027-practice669' not in x:
-              raise SystemExit('missing index bundle cachebuster')
-          q.write_text(x2 if n==1 else x,encoding='utf-8')
           PY
-      - name: Verify patch
+      - name: Verify
         run: |
           node --check app-coach-rebels-portals-v10.js
-          grep -q "practicePortalActionBusy" app-coach-rebels-portals-v10.js
-          grep -q "editingPortalDraftId" app-coach-rebels-portals-v10.js
-          grep -q "atomic cloud commit is the deactivation acknowledgement" app-coach-rebels-portals-v10.js
-          grep -q "20261027-practice669" index.html
+          grep -q "deferred activation persistence failed" app-coach-rebels-portals-v10.js
+          grep -q "deferred recovered-activation persistence failed" app-coach-rebels-portals-v10.js
           git diff --check
-      - name: Commit production fix
+      - name: Commit fix
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name KCRebels
           git config user.email actions@users.noreply.github.com
-          git add app-coach-rebels-portals-v10.js index.html
-          git commit -m 'Fix one-tap practice activate deactivate edit lifecycle'
+          git add app-coach-rebels-portals-v10.js
+          git commit -m 'Keep successful practice activation active after cloud commit'
           git push
