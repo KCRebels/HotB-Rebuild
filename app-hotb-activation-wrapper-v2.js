@@ -8,8 +8,8 @@
   if(anchor<0||start<0||end<0)throw new Error('stale-conflict-patch-anchor');
   const replacement=`if(conflicting.length){
  const unsafe=conflicting.filter(({snapshot})=>{
-  const active=snapshot.data()?.activePractice,clock=active?.clock||{};
-  return !active||(clock.status&&clock.status!=='not-started')||!!clock.startedAt||!!clock.endedAt;
+  const active=snapshot.data()?.activePractice,clock=active?.clock||{},status=String(clock.status||'');
+  return !active||status==='running'||(!!clock.startedAt&&!clock.endedAt&&status!=='finished');
  });
  if(unsafe.length)throw new Error('portal-activation-live-practice-conflict');
  const staleBatch=cloudStore.batch();
@@ -41,9 +41,9 @@
   return new Response(patched,{status:response.status,statusText:response.statusText,headers:response.headers});
  };
  const script=document.createElement('script');
- script.src='app-hotb-activation-wrapper-v1.js?v=20261028-stale-conflict-683&fresh='+Date.now();
+ script.src='app-hotb-activation-wrapper-v1.js?v=20261028-stale-conflict-685&fresh='+Date.now();
  script.async=false;
- script.onload=()=>{window.fetch=originalFetch;window.__HOTB_STALE_CONFLICT_PATCH__='683'};
+ script.onload=()=>{window.fetch=originalFetch;window.__HOTB_STALE_CONFLICT_PATCH__='685'};
  script.onerror=()=>{window.fetch=originalFetch;throw new Error('stale-conflict-wrapper-load')};
  document.body.appendChild(script);
 })();
