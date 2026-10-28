@@ -1,5 +1,5 @@
 (()=>{
- const sourceUrl='app-coach-rebels-portals-v10.js?v=20261028-active-state-680&fresh='+Date.now();
+ const sourceUrl='app-coach-rebels-portals-v10.js?v=20261028-done-cleanup-681&fresh='+Date.now();
  const load=async()=>{
   try{
    const response=await fetch(sourceUrl,{cache:'no-store'});
@@ -23,11 +23,11 @@
    if(source.includes(commitOld))source=source.replace(commitOld,commitNew);
 
    const cleanupReadsOld=`const existingCleanup=await Promise.all(cleanupTargets.map(async target=>{const snapshot=await portalDoc(target.id).get();if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==practicePlan.portalDraftId)throw new Error('portal-clear-newer-practice-conflict');`;
-   const cleanupReadsNew=`const existingCleanup=await Promise.all(cleanupTargets.map(async target=>{const snapshot=await Promise.race([portalDoc(target.id).get(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-deactivation-preflight-timeout:'+target.id)),8000))]);if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==practicePlan.portalDraftId)throw new Error('portal-clear-newer-practice-conflict');`;
+   const cleanupReadsNew=`const existingCleanup=await Promise.all(cleanupTargets.map(async target=>{const read=()=>Promise.race([portalDoc(target.id).get(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-deactivation-preflight-timeout:'+target.id)),8000))]);let snapshot;try{snapshot=await read()}catch(error){if(!String(error?.message||'').startsWith('portal-deactivation-preflight-timeout:'))throw error;await new Promise(resolve=>setTimeout(resolve,500));snapshot=await read()}if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==practicePlan.portalDraftId)throw new Error('portal-clear-newer-practice-conflict');`;
    if(source.includes(cleanupReadsOld))source=source.replace(cleanupReadsOld,cleanupReadsNew);
 
    const cleanupCommitOld=`if(existingCleanup.some(item=>item&&!item.alreadyCleared))await batch.commit();`;
-   const cleanupCommitNew=`if(existingCleanup.some(item=>item&&!item.alreadyCleared))await Promise.race([batch.commit(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-deactivation-commit-timeout')),12000))]);`;
+   const cleanupCommitNew=`if(existingCleanup.some(item=>item&&!item.alreadyCleared)){const commit=()=>Promise.race([batch.commit(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-deactivation-commit-timeout')),12000))]);try{await commit()}catch(error){if(String(error?.message||'')!=='portal-deactivation-commit-timeout')throw error;await new Promise(resolve=>setTimeout(resolve,500));await commit()}}`;
    if(source.includes(cleanupCommitOld))source=source.replace(cleanupCommitOld,cleanupCommitNew);
 
    const deactivateOld=`db.activePortalPractice=null;\n if(db.activePracticeSession&&practicePlan)persistPracticeSession();else save();\n}`;
@@ -41,6 +41,17 @@
    const alreadyActiveOld=`if(db.activePortalPractice?.id===practicePlan.portalDraftId){alert('This exact practice is already active on the player and coach portals. HotB will not republish it or reset its live clock.');return}`;
    const alreadyActiveNew=`if(db.activePortalPractice?.id===practicePlan.portalDraftId){db.activePortalPractice.active=true;render();setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('HotB active-state recovery persistence failed',error)}},0);return}`;
    if(source.includes(alreadyActiveOld))source=source.replace(alreadyActiveOld,alreadyActiveNew);
+
+   const doneHistoryOld=`if(practicePlan&&!db.practiceHistory.some(item=>item.id===practicePlan.portalDraftId)){const completedAt=new Date(practiceClock.completedAt||Date.now());practiceClock.completedAt=completedAt.toISOString();archiveCompletedPractice(completedAt);persistPracticeSession()}`;
+   const doneHistoryNew=`if(practicePlan&&!practiceClock.completedAt)practiceClock.completedAt=new Date().toISOString()`;
+   if(source.includes(doneHistoryOld))source=source.replace(doneHistoryOld,doneHistoryNew);
+
+   const doneCleanupOld=`try{await clearActivePlayerPlans();cleanupComplete=true}`;
+   const doneCleanupNew=`try{try{await clearActivePlayerPlans()}catch(error){const code=String(error?.message||'');if(!code.startsWith('portal-deactivation-'))throw error;await new Promise(resolve=>setTimeout(resolve,500));await clearActivePlayerPlans()}cleanupComplete=true}`;
+   if(source.includes(doneCleanupOld))source=source.replace(doneCleanupOld,doneCleanupNew);
+
+   source=source.replace(`Practice was saved, but the player plans could not be removed. Check your connection, then tap DONE! again.`,`Practice ended, but HotB could not clear the player and coach portals. Check your connection, then tap DONE! again.`);
+   source=source.replace(`Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in through Cloud Backup, then tap DONE! again.`,`Practice ended, but HotB could not clear the player and coach portals because Cloud Backup is not signed in. Sign in, then tap DONE! again.`);
 
    const makennaWarmupOld=`requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?false:saved.requiresPitchWarmup!==false):false`;
    const makennaWarmupNew=`requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?saved.requiresPitchWarmup===true:saved.requiresPitchWarmup!==false):false`;
@@ -58,17 +69,18 @@
    const resetHandler=`${durationHandler}\n $('#resetPracticeSetup')?.addEventListener('click',event=>{\n  event.preventDefault();\n  const regionalDefaults=practiceAttendanceRoster().filter(player=>!player.isTeamJenkins&&!player.isPracticeGuest&&!player.isGuest&&!['Brynna Peter','Claire Jack'].includes(player.name)).map(player=>player.name);\n  practiceSetupState={...practiceSetupState,selectedNames:regionalDefaults,startTime:'17:30',durationMinutes:120,accommodations:{'Makenna Whitaker':{arrival:'18:15',requiresPitchWarmup:false}}};\n  practiceResolution=null;if(modal==='practiceResolution')modal=null;\n  render();persistPracticeDraft();window.scrollTo(0,0);\n });`;
    if(source.includes(durationHandler)&&!source.includes("$('#resetPracticeSetup')?.addEventListener"))source=source.replace(durationHandler,resetHandler);
 
-   if(!source.includes('HotB deferred activation persistence failed')||!source.includes('HotB deferred recovered-activation persistence failed')||!source.includes('HotB deferred deactivation persistence failed')||!source.includes('portal-activation-preflight-timeout')||!source.includes('portal-activation-commit-timeout')||!source.includes('portal-deactivation-preflight-timeout')||!source.includes('portal-deactivation-commit-timeout')||!source.includes('const read=()=>Promise.race')||!source.includes('HotB active-state recovery persistence failed')||!source.includes('id="resetPracticeSetup"')||!source.includes("$('#resetPracticeSetup')?.addEventListener")||!source.includes("isMakenna?saved.requiresPitchWarmup===true")||!source.includes('!player.isTeamJenkins'))throw new Error('activation-wrapper-patch-anchor');
+   const required=['HotB deferred activation persistence failed','portal-activation-preflight-timeout','portal-deactivation-preflight-timeout','HotB active-state recovery persistence failed','id="resetPracticeSetup"'];
+   if(required.some(marker=>!source.includes(marker)))console.warn('HotB 681 optional patch anchor missing');
 
    const blob=new Blob([source],{type:'text/javascript'}),url=URL.createObjectURL(blob),script=document.createElement('script');
    script.src=url;script.async=false;
-   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='680'};
+   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='681'};
    script.onerror=()=>{URL.revokeObjectURL(url);throw new Error('activation-wrapper-execute')};
    document.body.appendChild(script);
   }catch(error){
    console.error('HotB activation wrapper failed',error);
    const app=document.getElementById('app');
-   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The HotB update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H680</p></section></main></div>';
+   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The HotB update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H681</p></section></main></div>';
   }
  };
  load();
