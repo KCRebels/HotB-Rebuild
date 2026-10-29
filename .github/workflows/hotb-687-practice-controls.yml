@@ -1,0 +1,100 @@
+name: HotB 687 Practice Controls
+on:
+  push:
+    paths:
+      - '.github/workflows/hotb-687-practice-controls.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch practice controls
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+
+          save_btn='<button class="btn red" id="savePracticeSetup" style="background:#c71920!important;color:#fff!important;border-color:#c71920!important">Save</button>'
+          if save_btn not in s:
+              raise SystemExit('practice Save button not found')
+          s=s.replace(save_btn,'',1)
+          s=s.replace('grid-template-columns:1fr 1fr 1.5fr;gap:10px;margin-top:14px;margin-bottom:110px','grid-template-columns:1fr 1.5fr;gap:10px;margin-top:14px;margin-bottom:110px',1)
+
+          old="""async function deactivatePlayerPlans(){
+ if(practiceClock.running){alert('This practice is currently running. Use DONE! to end the practice and remove the live player and coach plans together.');return}
+ if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId||!confirm('Remove this active practice from the player and coach portals?'))return;
+ if(practicePortalActionBusy)return;practicePortalActionBusy=true;
+ const button=$('#deactivatePlayerPlans');if(button){button.disabled=true;button.textContent='Deactivating…'}
+ try{await clearActivePlayerPlans();practicePortalActionBusy=false;render();alert('Player practice plans are no longer active.')}
+ catch(error){practicePortalActionBusy=false;if(button){button.disabled=false;button.textContent='Deactivate'}alert('The active player plans could not be removed.')}
+}"""
+          new="""async function deactivatePlayerPlans(){
+ if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId||!confirm(practiceClock.running?'Deactivate this live practice? The player and coach portal plans will be removed and the practice clock will return to Not Started.':'Remove this active practice from the player and coach portals?'))return;
+ if(practicePortalActionBusy)return;practicePortalActionBusy=true;
+ const button=$('#deactivatePlayerPlans');if(button){button.disabled=true;button.textContent='Deactivating…'}
+ const wasRunning=practiceClock.running;
+ try{
+  await clearActivePlayerPlans();
+  if(wasRunning){
+   if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
+   if('speechSynthesis'in window)window.speechSynthesis.cancel();
+   practiceClock={running:false,finished:false,endAnnounced:false,startAt:null,lastBlock:0,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null,elapsedOffsetMs:0};
+   persistPracticeSession();
+  }
+  practicePortalActionBusy=false;render();alert('Player and coach practice plans are deactivated.')
+ }
+ catch(error){practicePortalActionBusy=false;if(button){button.disabled=false;button.textContent='Deactivate'}alert('The active player plans could not be removed.')}
+}"""
+          if old not in s:
+              raise SystemExit('deactivate function not found')
+          s=s.replace(old,new,1)
+
+          old_done="""if(!automatic){
+  // DONE should feel finished to the coach immediately. Leave the live-practice
+  // workspace now; the exact plan and activePortalPractice remain in memory while
+  // the verified portal cleanup transaction completes in the background.
+  practiceSection='setup';practiceCoachOpen=false;practiceCardsOpen=false;modal=null;
+  render();window.scrollTo(0,0);
+  // Do not block the click handler on Firestore cleanup. The transaction below
+  // still owns cleanup, but the coach is already back at Build Practice.
+  await new Promise(resolve=>setTimeout(resolve,0));
+ }else render();"""
+          new_done="""if(!automatic){
+  // DONE is immediate for the coach. Keep the completed plan in memory only so
+  // portal cleanup can finish safely, but leave the practice workspace at once.
+  practiceCoachOpen=false;practiceCardsOpen=false;modal=null;
+  go('home');window.scrollTo(0,0);
+  // Yield once so Home paints before any cloud verification/cleanup continues.
+  await new Promise(resolve=>setTimeout(resolve,0));
+ }else render();"""
+          if old_done not in s:
+              raise SystemExit('DONE immediate-close block not found')
+          s=s.replace(old_done,new_done,1)
+          p.write_text(s)
+
+          # Bump coach bundle cache key so iPhone PWA loads the patch.
+          idx=Path('index.html')
+          h=idx.read_text()
+          old_key='app-coach-rebels-portals-v10.js?v=20261027-practice669'
+          if old_key not in h:
+              raise SystemExit('coach bundle cache key not found')
+          h=h.replace(old_key,'app-coach-rebels-portals-v10.js?v=20261028-practice687',1)
+          idx.write_text(h)
+          PY
+      - name: Verify patch
+        run: |
+          grep -q 'id="savePracticeSetup"' app-coach-rebels-portals-v10.js && exit 1 || true
+          grep -q "go('home');window.scrollTo(0,0);" app-coach-rebels-portals-v10.js
+          grep -q 'Player and coach practice plans are deactivated.' app-coach-rebels-portals-v10.js
+          grep -q '20261028-practice687' index.html
+      - name: Commit patch
+        run: |
+          git config user.name 'HotB Patch Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m 'HotB 687 fix practice controls'
+          git push
