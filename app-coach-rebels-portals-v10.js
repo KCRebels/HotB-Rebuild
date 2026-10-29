@@ -2965,7 +2965,7 @@ function practiceSetup(){
  <div class="practice-attendance practice-rebels-attendance">${db.roster.filter(player=>!player.isTeamJenkins).map(player=>practiceAttendanceRow(player,db.roster.indexOf(player),selected,startTime,duration,endTime)).join('')}</div>
  <section class="team-jenkins-practice-section"><div class="team-jenkins-heading">TEAM JENKINS</div><div class="practice-attendance team-jenkins-attendance">${db.roster.filter(player=>player.isTeamJenkins).map(player=>practiceAttendanceRow(player,db.roster.indexOf(player),selected,startTime,duration,endTime)).join('')}</div></section>
  <section class="practice-guests"><button type="button" class="practice-guests-toggle" id="togglePracticeGuests" aria-expanded="${!!practiceSetupState.guestsOpen}"><span>Guests (${guests.length+guestCoaches.length})</span><b>${practiceSetupState.guestsOpen?'−':'+'}</b></button>${practiceSetupState.guestsOpen?`<div class="practice-guests-body"><h3>Guest Players</h3>${guests.length?`<div class="practice-attendance">${guests.map((player,index)=>`${practiceAttendanceRow(player,db.roster.length+index,selected,startTime,duration,endTime)}<div class="practice-guest-access"><small>${esc(player.phone)}</small><span><button type="button" data-text-practice-guest="${esc(player.guestId)}">Text</button><button type="button" class="practice-guest-share" data-share-setup-guest="${esc(player.guestId)}">Share</button></span></div>`).join('')}</div>`:'<p class="practice-guest-empty">No guest players added.</p>'}<div class="practice-guest-form"><input class="input" id="guestPlayerFirstName" placeholder="First name" aria-label="Guest player first name"><select class="input" id="guestPlayerRole" aria-label="Guest player role"><option>Position Player</option><option>Pitcher</option><option>Catcher</option></select><input class="input" id="guestPlayerPhone" type="tel" inputmode="tel" placeholder="Cell number" aria-label="Guest player cell number"><button class="btn black" id="addGuestPlayer">Add Guest Player</button></div><h3>Guest Coaches</h3>${guestCoaches.map(coach=>`<div class="practice-guest-coach"><div><b>${esc(coach.name)}</b><small>${esc(coach.phone)}</small></div><span><button type="button" class="practice-guest-text" data-text-practice-guest="${esc(coach.guestId)}">Text</button><button type="button" class="practice-guest-share" data-share-setup-guest="${esc(coach.guestId)}">Share</button><button type="button" data-remove-guest-coach="${esc(coach.guestId)}">Remove</button></span></div>`).join('')||'<p class="practice-guest-empty">No guest coaches added.</p>'}<div class="practice-guest-form practice-guest-coach-form"><input class="input" id="guestCoachName" placeholder="Coach name" aria-label="Guest coach name"><input class="input" id="guestCoachPhone" type="tel" inputmode="tel" placeholder="Cell number" aria-label="Guest coach cell number"><button class="btn black" id="addGuestCoach">Add Guest Coach</button></div></div>`:''}</section>
- <div class="practice-build-bottom-actions" style="display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:10px;margin-top:14px;margin-bottom:110px"><button class="btn" id="closePracticeSetup">Close</button><button class="btn red" id="savePracticeSetup" style="background:#c71920!important;color:#fff!important;border-color:#c71920!important">Save</button><button class="btn black" id="generatePractice">Build Practice</button></div></div>${reportsTestNav()}`;
+ <div class="practice-build-bottom-actions" style="display:grid;grid-template-columns:1fr 1.5fr;gap:10px;margin-top:14px;margin-bottom:110px"><button class="btn" id="closePracticeSetup">Close</button><button class="btn black" id="generatePractice">Build Practice</button></div></div>${reportsTestNav()}`;
 }
 function practiceCoachView(plan){
  if(Array.isArray(plan.recoveredCoachSchedule)&&plan.recoveredCoachSchedule.length)return `<section class="practice-coach no-print"><h2>Coach View</h2>${plan.recoveredCoachSchedule.map((entry,index)=>`<article class="practice-block"><header><b>Block ${entry.block||index+1}</b><span>${esc(entry.time||'')}</span></header><div><p><strong>${esc(entry.assignment||'Equipment / Float')}</strong></p></div></article>`).join('')}</section>`;
@@ -3523,11 +3523,20 @@ async function activatePlayerPlans(){
  }
 }
 async function deactivatePlayerPlans(){
- if(practiceClock.running){alert('This practice is currently running. Use DONE! to end the practice and remove the live player and coach plans together.');return}
- if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId||!confirm('Remove this active practice from the player and coach portals?'))return;
+ if(!cloudUser||!cloudStore||!practicePlan||db.activePortalPractice?.id!==practicePlan.portalDraftId||!confirm(practiceClock.running?'Deactivate this live practice? The player and coach portal plans will be removed and the practice clock will return to Not Started.':'Remove this active practice from the player and coach portals?'))return;
  if(practicePortalActionBusy)return;practicePortalActionBusy=true;
  const button=$('#deactivatePlayerPlans');if(button){button.disabled=true;button.textContent='Deactivating…'}
- try{await clearActivePlayerPlans();practicePortalActionBusy=false;render();alert('Player practice plans are no longer active.')}
+ const wasRunning=practiceClock.running;
+ try{
+  await clearActivePlayerPlans();
+  if(wasRunning){
+   if(practiceClockTimer)clearInterval(practiceClockTimer);practiceClockTimer=null;
+   if('speechSynthesis'in window)window.speechSynthesis.cancel();
+   practiceClock={running:false,finished:false,endAnnounced:false,startAt:null,lastBlock:0,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null,elapsedOffsetMs:0};
+   persistPracticeSession();
+  }
+  practicePortalActionBusy=false;render();alert('Player and coach practice plans are deactivated.')
+ }
  catch(error){practicePortalActionBusy=false;if(button){button.disabled=false;button.textContent='Deactivate'}alert('The active player plans could not be removed.')}
 }
 function practiceDrillPicker(){
@@ -6140,13 +6149,11 @@ async function finishPracticeClock(automatic=false){
  // back to the regular Build Practice screen now instead of leaving a tappable DONE button that
  // can enter the old retry/Closing path.
  if(!automatic){
-  // DONE should feel finished to the coach immediately. Leave the live-practice
-  // workspace now; the exact plan and activePortalPractice remain in memory while
-  // the verified portal cleanup transaction completes in the background.
-  practiceSection='setup';practiceCoachOpen=false;practiceCardsOpen=false;modal=null;
-  render();window.scrollTo(0,0);
-  // Do not block the click handler on Firestore cleanup. The transaction below
-  // still owns cleanup, but the coach is already back at Build Practice.
+  // DONE is immediate for the coach. Keep the completed plan in memory only so
+  // portal cleanup can finish safely, but leave the practice workspace at once.
+  practiceCoachOpen=false;practiceCardsOpen=false;modal=null;
+  go('home');window.scrollTo(0,0);
+  // Yield once so Home paints before any cloud verification/cleanup continues.
   await new Promise(resolve=>setTimeout(resolve,0));
  }else render();
  // Publish the finished clock before removing activePractice. This gives every
