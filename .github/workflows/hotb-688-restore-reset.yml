@@ -1,0 +1,48 @@
+name: HotB 688 Restore Practice Reset
+on:
+  push:
+    paths:
+      - '.github/workflows/hotb-688-restore-reset.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore Reset without Save
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app-coach-rebels-portals-v10.js')
+          s=p.read_text()
+          old='<div class="practice-build-bottom-actions" style="display:grid;grid-template-columns:1fr 1.5fr;gap:10px;margin-top:14px;margin-bottom:110px"><button class="btn" id="closePracticeSetup">Close</button><button class="btn black" id="generatePractice">Build Practice</button></div>'
+          new='<div class="practice-build-bottom-actions" style="display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:10px;margin-top:14px;margin-bottom:110px"><button class="btn" id="closePracticeSetup">Close</button><button class="btn black" id="generatePractice">Build Practice</button><button class="btn" id="resetPracticeSetup">Reset</button></div>'
+          if old not in s:
+              raise SystemExit('current practice action strip not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          idx=Path('index.html')
+          h=idx.read_text()
+          old_key='app-coach-rebels-portals-v10.js?v=20261028-practice687'
+          if old_key not in h:
+              raise SystemExit('687 coach bundle key not found')
+          h=h.replace(old_key,'app-coach-rebels-portals-v10.js?v=20261028-practice688',1)
+          idx.write_text(h)
+          PY
+      - name: Verify Reset and retained 687 controls
+        run: |
+          grep -q 'id="resetPracticeSetup"' app-coach-rebels-portals-v10.js
+          grep -q 'id="savePracticeSetup"' app-coach-rebels-portals-v10.js && exit 1 || true
+          grep -q 'Player and coach practice plans are deactivated.' app-coach-rebels-portals-v10.js
+          grep -q "go('home');window.scrollTo(0,0);" app-coach-rebels-portals-v10.js
+          grep -q '20261028-practice688' index.html
+      - name: Commit patch
+        run: |
+          git config user.name 'HotB Patch Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add app-coach-rebels-portals-v10.js index.html
+          git commit -m 'HotB 688 restore practice Reset'
+          git push
