@@ -1,3 +1,4 @@
+# trigger-2
 name: HotB 687 Practice Controls
 on:
   push:
@@ -76,7 +77,6 @@ jobs:
           s=s.replace(old_done,new_done,1)
           p.write_text(s)
 
-          # Bump coach bundle cache key so iPhone PWA loads the patch.
           idx=Path('index.html')
           h=idx.read_text()
           old_key='app-coach-rebels-portals-v10.js?v=20261027-practice669'
