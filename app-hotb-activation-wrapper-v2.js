@@ -30,7 +30,20 @@
  }));
  if(staleVerify.some(ok=>!ok))throw new Error('portal-activation-stale-cleanup-failed');
 }`;
-  return source.slice(0,start)+replacement+source.slice(end);
+  let patched=source.slice(0,start)+replacement+source.slice(end);
+
+  // Keep automatic player-portal refreshes from repainting New Game while the
+  // coach is entering opponent, pitcher, or batting order. Background sync may
+  // continue, but only Home/Portal (or a manual refresh) is allowed to render.
+  const portalStart=patched.indexOf('async function setupPlayerPortals(fromButton=false){');
+  const portalEnd=patched.indexOf('\nasync function setupCoachPortal(){',portalStart);
+  if(portalStart<0||portalEnd<0)throw new Error('new-game-render-guard-anchor');
+  let portalBlock=patched.slice(portalStart,portalEnd);
+  portalBlock=portalBlock.replace("cloudBusy=true;portalMessage='Refreshing player records…';render();","cloudBusy=true;portalMessage='Refreshing player records…';if(fromButton||route==='home'||route==='portal')render();");
+  portalBlock=portalBlock.replace("portalMessage=`Refreshing player records… ${i+1} of ${publishablePlayers.length}`;render();","portalMessage=`Refreshing player records… ${i+1} of ${publishablePlayers.length}`;if(fromButton||route==='home'||route==='portal')render();");
+  portalBlock=portalBlock.replace("cloudBusy=false;render();","cloudBusy=false;if(fromButton||route==='home'||route==='portal')render();");
+  patched=patched.slice(0,portalStart)+portalBlock+patched.slice(portalEnd);
+  return patched;
  };
  window.fetch=async(input,init)=>{
   const url=typeof input==='string'?input:input?.url||'';
@@ -43,7 +56,7 @@
  const script=document.createElement('script');
  script.src='app-hotb-activation-wrapper-v1.js?v=20261028-stale-conflict-685&fresh='+Date.now();
  script.async=false;
- script.onload=()=>{window.fetch=originalFetch;window.__HOTB_STALE_CONFLICT_PATCH__='685'};
+ script.onload=()=>{window.fetch=originalFetch;window.__HOTB_STALE_CONFLICT_PATCH__='685';window.__HOTB_NEW_GAME_RENDER_GUARD__='20261031-1700'};
  script.onerror=()=>{window.fetch=originalFetch;throw new Error('stale-conflict-wrapper-load')};
  document.body.appendChild(script);
 })();
