@@ -18,3 +18,35 @@
  }
  return{localDateKey,cleanup};
 });
+
+/* Reports game picker: keep the picker above HotB's bottom navigation and let its contents scroll. */
+(function(){
+ if(typeof document==='undefined')return;
+ const id='hotb-reports-game-picker-mobile-fix';
+ if(document.getElementById(id))return;
+ const style=document.createElement('style');
+ style.id=id;
+ style.textContent=`
+ .games-selection-modal{
+   max-height:calc(100dvh - 118px)!important;
+   overflow-y:auto!important;
+   overscroll-behavior:contain!important;
+   -webkit-overflow-scrolling:touch!important;
+   padding-bottom:0!important;
+ }
+ .games-selection-modal .game-selection-footer{
+   position:sticky!important;
+   bottom:0!important;
+   z-index:8!important;
+   margin-left:-1px!important;
+   margin-right:-1px!important;
+   padding:12px 0 max(12px,env(safe-area-inset-bottom))!important;
+   background:#fff!important;
+   border-top:1px solid #d9deda!important;
+ }
+ @media(max-width:560px){
+   .games-selection-modal{max-height:calc(100dvh - 108px)!important;}
+ }
+ `;
+ document.head.appendChild(style);
+})();
