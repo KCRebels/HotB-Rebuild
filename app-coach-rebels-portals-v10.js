@@ -1450,6 +1450,39 @@ async function loadPlayerPortal(){
          if(nextData.evaluationSnapshotHash&&verifiedHash!==nextData.evaluationSnapshotHash)throw new Error('history-integrity-check-failed');
          const complete=JSON.parse(reconstructed);
          if(!Array.isArray(complete.savedGames)||!Array.isArray(complete.roster))throw new Error('history-format-invalid');
+         if(nextData.evaluationStorageFormat==='per-game-v1'){
+          if(!Array.isArray(complete.gameRefs))throw new Error('history-game-index-missing');
+          const gameCollection=portalDoc(requestedPortalToken).collection('evaluationGames');
+          const hydrated=[];
+          for(let i=0;i<complete.gameRefs.length;i+=4){
+           const hashes=complete.gameRefs.slice(i,i+4);
+           const docs=await Promise.all(hashes.map(hash=>gameCollection.doc(hash).get()));
+           for(let j=0;j<docs.length;j++){
+            const hash=hashes[j],record=docs[j].data();
+            if(!docs[j].exists||record?.hash!==hash)throw new Error('saved-game-missing:'+i+':'+j);
+            let gameText=record.text;
+            if(Number(record.parts)>0){
+             const gameParts=[];
+             for(let k=0;k<record.parts;k+=4){
+              const indexes=Array.from({length:Math.min(4,record.parts-k)},(_,n)=>k+n);
+              const fragments=await Promise.all(indexes.map(index=>gameCollection.doc(hash).collection('chunks').doc(String(index).padStart(5,'0')).get()));
+              for(let n=0;n<fragments.length;n++){
+               if(!fragments[n].exists||fragments[n].data()?.index!==indexes[n])throw new Error('saved-game-chunk-missing');
+               gameParts[indexes[n]]=fragments[n].data().text;
+              }
+             }
+             gameText=gameParts.join('');
+            }
+            if(typeof gameText!=='string')throw new Error('saved-game-content-missing');
+            const gameDigest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(gameText)));
+            const actual=[...gameDigest].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+            if(actual!==hash)throw new Error('saved-game-integrity-check-failed');
+            hydrated.push(JSON.parse(gameText));
+           }
+          }
+          complete.savedGames=hydrated;
+          delete complete.gameRefs;
+         }
          if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken||portalData?.evaluationSnapshotVersion!==version)return;
          portalEvaluationCache={token:requestedPortalToken,version,data:complete};
          portalData.evaluationData=complete;portalMessage='';
