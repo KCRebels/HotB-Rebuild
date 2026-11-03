@@ -1017,6 +1017,8 @@ let focusDrillReplaceIndex=-1,focusDrillQuery='',megFocusArchiveOpen=false;
 let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null},practiceClockTimer=null,practiceEndSpeech=Promise.resolve(),portalClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudAuthReady=false,cloudBusy=false,cloudMessage='',cloudBackupTimer=null,playerEvalSyncTimer=null,playerPortalRefreshPending=false;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
+let portalEvaluationCache={token:'',version:'',data:null};
+let portalEvaluationPendingKey='';
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLoadGeneration=0,portalLibraryReturnView='library';
 function portalFocusPublishedKey(){const raw=portalData?.focus?.publishedAt;return raw?String(raw):''}
 function portalFocusViewedKey(){return portalToken?`hotb_focus_viewed_${portalToken}`:''}
@@ -1419,6 +1421,90 @@ async function loadPlayerPortal(){
      // that as a new practice snapshot and discard every local drill/view sentinel.
      const publicationChanged=previousPracticeId===nextPracticeId&&!!nextPracticeId&&previousActivation!==nextActivation;
      portalData=nextData;portalMessage='';
+     if(nextData.portalType==='player'&&nextData.evaluationSnapshotVersion){
+      // Do not expose the empty index document as the player's complete evaluation.
+      portalData.evaluationData=null;
+      window.__HOTB_PORTAL_EVAL_DB__=null;
+     }
+     // Hydrate only a fully verified, committed evaluation snapshot. Clock-only
+     // updates reuse the cached snapshot; incomplete reads never show partial games.
+     if(nextData.portalType==='player'&&nextData.evaluationSnapshotVersion){
+      const version=nextData.evaluationSnapshotVersion,count=Number(nextData.evaluationSnapshotChunkCount)||0;
+      if(portalEvaluationCache.token===requestedPortalToken&&portalEvaluationCache.version===version&&portalEvaluationCache.data){
+       portalData.evaluationData=portalEvaluationCache.data;
+      }else if(count>0&&count<1500){
+       const loadKey=requestedPortalToken+'::'+version;
+       if(portalEvaluationPendingKey!==loadKey){
+       portalEvaluationPendingKey=loadKey;
+       portalMessage='Loading complete hitting history…';
+       (async()=>{
+        try{
+         const collection=portalDoc(requestedPortalToken).collection('evaluationSnapshots').doc(version).collection('chunks');
+         const parts=[];
+         for(let i=0;i<count;i+=4){
+          const indices=Array.from({length:Math.min(4,count-i)},(_,j)=>i+j);
+          const docs=await Promise.all(indices.map(index=>collection.doc(String(index).padStart(5,'0')).get()));
+          for(let j=0;j<docs.length;j++){
+           const entry=docs[j].data();
+           if(!docs[j].exists||entry?.index!==indices[j]||typeof entry.text!=='string')throw new Error('incomplete-history-chunk:'+indices[j]);
+           parts[indices[j]]=entry.text;
+          }
+         }
+         const reconstructed=parts.join('');
+         const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(reconstructed)));
+         const verifiedHash=[...digest].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+         if(nextData.evaluationSnapshotHash&&verifiedHash!==nextData.evaluationSnapshotHash)throw new Error('history-integrity-check-failed');
+         const complete=JSON.parse(reconstructed);
+         if(!Array.isArray(complete.savedGames)||!Array.isArray(complete.roster))throw new Error('history-format-invalid');
+         if(nextData.evaluationStorageFormat==='per-game-v1'){
+          if(!Array.isArray(complete.gameRefs))throw new Error('history-game-index-missing');
+          const gameCollection=portalDoc(requestedPortalToken).collection('evaluationGames');
+          const hydrated=[];
+          for(let i=0;i<complete.gameRefs.length;i+=4){
+           const hashes=complete.gameRefs.slice(i,i+4);
+           const docs=await Promise.all(hashes.map(hash=>gameCollection.doc(hash).get()));
+           for(let j=0;j<docs.length;j++){
+            const hash=hashes[j],record=docs[j].data();
+            if(!docs[j].exists||record?.hash!==hash)throw new Error('saved-game-missing:'+i+':'+j);
+            let gameText=record.text;
+            if(Number(record.parts)>0){
+             const gameParts=[];
+             for(let k=0;k<record.parts;k+=4){
+              const indexes=Array.from({length:Math.min(4,record.parts-k)},(_,n)=>k+n);
+              const fragments=await Promise.all(indexes.map(index=>gameCollection.doc(hash).collection('chunks').doc(String(index).padStart(5,'0')).get()));
+              for(let n=0;n<fragments.length;n++){
+               if(!fragments[n].exists||fragments[n].data()?.index!==indexes[n])throw new Error('saved-game-chunk-missing');
+               gameParts[indexes[n]]=fragments[n].data().text;
+              }
+             }
+             gameText=gameParts.join('');
+            }
+            if(typeof gameText!=='string')throw new Error('saved-game-content-missing');
+            const gameDigest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(gameText)));
+            const actual=[...gameDigest].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+            if(actual!==hash)throw new Error('saved-game-integrity-check-failed');
+            hydrated.push(JSON.parse(gameText));
+           }
+          }
+          complete.savedGames=hydrated;
+          delete complete.gameRefs;
+         }
+         if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken||portalData?.evaluationSnapshotVersion!==version)return;
+         portalEvaluationCache={token:requestedPortalToken,version,data:complete};
+         portalData.evaluationData=complete;portalMessage='';
+         if(route==='portal')render();
+        }catch(error){
+         if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken||portalData?.evaluationSnapshotVersion!==version)return;
+         console.warn('Player hitting history could not load',error);
+         portalMessage='Hitting history could not load completely. Reopen the portal to retry.';
+         if(route==='portal')render();
+        }
+       })().finally(()=>{if(portalEvaluationPendingKey===loadKey)portalEvaluationPendingKey=''});
+       }
+      }else{
+       portalMessage='Hitting history manifest is incomplete. Ask the coach to refresh.';
+      }
+     }
      // Clock-only writes (Start/Skip/DONE) keep the same practice ID. Refresh the
      // visible clock immediately from the new snapshot before the broader render.
      if(route==='portal')updatePortalPracticeClock();
@@ -1570,6 +1656,64 @@ function schedulePlayerEvaluationPortalSync(delay=2200){
   await syncPlayerEvaluationPortals();
  },delay);
 }
+// Stage bounded evaluation records before changing the active player portal version.
+// Immutable per-game records are reused across evaluations. A revision
+// contains only the profile/stat summary and hashes of the required game docs.
+async function publishPlayerEvaluationSnapshot(player){
+ const payload=playerEvaluationPortalPayload(player.name),doc=portalDoc(player.portalId);
+ const sha=async value=>{const bytes=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));return [...bytes].map(b=>b.toString(16).padStart(2,'0')).join('')};
+ const records=[];
+ for(const game of payload.savedGames||[]){
+  const json=JSON.stringify(game),hash=await sha(json);
+  records.push({hash,json});
+ }
+ const summary={...payload,savedGames:[],gameRefs:records.map(record=>record.hash)};
+ const json=JSON.stringify(summary),hash=await sha(json),docBefore=(await doc.get()).data()||{};
+ if(docBefore.evaluationSnapshotVersion&&docBefore.evaluationSnapshotHash===hash)return {version:docBefore.evaluationSnapshotVersion,unchanged:true};
+ // Use content hashes as immutable record IDs: an unchanged game is never reuploaded.
+ const gameCollection=doc.collection('evaluationGames');
+ for(const record of records){
+  const ref=gameCollection.doc(record.hash),existing=await ref.get();
+  if(existing.exists){
+   if(existing.data()?.hash!==record.hash)throw new Error('saved-game-hash-conflict');
+   continue;
+  }
+  // Large individual games receive bounded child documents as well.
+  const pieces=[];for(let i=0;i<record.json.length;i+=40000)pieces.push(record.json.slice(i,i+40000));
+  if(pieces.length===1){
+   await ref.set({hash:record.hash,text:record.json,parts:0});
+   const verified=await ref.get();
+   if(verified.data()?.text!==record.json)throw new Error('saved-game-verification-failed');
+  }else{
+   const chunks=ref.collection('chunks');
+   for(let i=0;i<pieces.length;i+=3){
+    const batch=cloudStore.batch();
+    for(let j=i;j<Math.min(i+3,pieces.length);j++)batch.set(chunks.doc(String(j).padStart(5,'0')),{index:j,text:pieces[j]});
+    await batch.commit();
+   }
+   for(let i=0;i<pieces.length;i++){
+    const result=await chunks.doc(String(i).padStart(5,'0')).get();
+    if(!result.exists||result.data()?.text!==pieces[i])throw new Error('saved-game-chunk-verification-failed');
+   }
+   await ref.set({hash:record.hash,parts:pieces.length});
+  }
+ }
+ // Publish a complete manifest only after every referenced game is verified.
+ const parts=[];for(let i=0;i<json.length;i+=40000)parts.push(json.slice(i,i+40000));
+ const version=Date.now()+'-'+newPortalId().slice(0,9),collection=doc.collection('evaluationSnapshots').doc(version).collection('chunks');
+ for(let i=0;i<parts.length;i+=3){
+  const batch=cloudStore.batch();
+  for(let j=i;j<Math.min(i+3,parts.length);j++)batch.set(collection.doc(String(j).padStart(5,'0')),{index:j,text:parts[j]});
+  await batch.commit();
+ }
+ for(let i=0;i<parts.length;i++){
+  const checked=await collection.doc(String(i).padStart(5,'0')).get();
+  if(!checked.exists||checked.data()?.text!==parts[i])throw new Error('evaluation-chunk-verification-failed:'+i);
+ }
+ const small={roster:(payload.roster||[]).map(p=>({name:p.name,jersey:p.jersey,grad:p.grad})),savedGames:[],currentGame:null,evaluationSeason:payload.evaluationSeason,evaluationFilterLabel:payload.evaluationFilterLabel};
+ await doc.update({portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData:small,evaluationSnapshotVersion:version,evaluationSnapshotChunkCount:parts.length,evaluationSnapshotHash:hash,evaluationStorageFormat:'per-game-v1',evaluationVersion:version+'-'+player.name,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+ return {version,chunks:parts.length,games:records.length};
+}
 async function syncPlayerEvaluationPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return false;
  const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId),coachPortalId=db.coachPortal?.portalId||'';
@@ -1578,18 +1722,7 @@ async function syncPlayerEvaluationPortals(){
   // Use the same small-batch write path as the proven manual Player Portal
   // refresh. Scrimmage/stat changes must publish the freshly recalculated
   // evaluation payload, not depend on a pre-read of every portal document.
-  for(let i=0;i<players.length;i+=3){
-   const group=players.slice(i,i+3),batch=cloudStore.batch(),version=Date.now();
-   group.forEach(player=>batch.update(portalDoc(player.portalId),{
-    portalType:'player',
-    playerName:player.name,
-    firstName:practiceFirstName(player.name),
-    evaluationData:playerEvaluationPortalPayload(player.name),
-    evaluationVersion:`${version}-${player.name}`,
-    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-   }));
-   await batch.commit();
-  }
+  for(const player of players)await publishPlayerEvaluationSnapshot(player);
   if(coachPortalId){
    const batch=cloudStore.batch();
    batch.update(portalDoc(coachPortalId),{evaluationData:coachEvaluationPortalPayload(),evaluationVersion:`${Date.now()}-coach`,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
@@ -1719,9 +1852,9 @@ async function setupPlayerPortals(fromButton=false){
   const failedPortalReasons=[];
   const refreshReason=error=>{const code=String(error?.code||'').replace(/^(firestore\/|FirebaseError:\s*)/i,'').slice(0,70),msg=String(error?.message||'');if(/timeout/i.test(msg))return 'Timed out waiting for cloud';if(code==='not-found')return 'Portal record missing from cloud';if(code==='permission-denied')return 'Cloud permission denied';if(code==='unauthenticated')return 'Cloud session expired';if(code==='resource-exhausted')return 'Cloud quota or rate limit';if(code==='unavailable')return 'Cloud service unavailable';if(code==='failed-precondition')return 'Cloud update precondition failed';if(code==='invalid-argument')return 'Cloud rejected the update data';return code?'Cloud error: '+code:'Cloud update failed (see console)'};
   for(let i=0;i<publishablePlayers.length;i++){
-   const player=publishablePlayers[i],evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
+   const player=publishablePlayers[i];
    try{
-    await timed(portalDoc(player.portalId).update({portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}),'player-portal-write:'+player.name,20000);
+    await publishPlayerEvaluationSnapshot(player);
    }catch(error){
     failedPortalRefreshes.push(player.name);
     failedPortalReasons.push(player.name+': '+refreshReason(error));
