@@ -1017,6 +1017,7 @@ let focusDrillReplaceIndex=-1,focusDrillQuery='',megFocusArchiveOpen=false;
 let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,lastBlock:1,lastTwoMinuteBlock:0,lastTransitionBlock:0,completedAt:null},practiceClockTimer=null,practiceEndSpeech=Promise.resolve(),portalClockTimer=null;
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudAuthReady=false,cloudBusy=false,cloudMessage='',cloudBackupTimer=null,playerEvalSyncTimer=null,playerPortalRefreshPending=false;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
+let portalEvaluationCache={token:'',version:'',data:null};
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLoadGeneration=0,portalLibraryReturnView='library';
 function portalFocusPublishedKey(){const raw=portalData?.focus?.publishedAt;return raw?String(raw):''}
 function portalFocusViewedKey(){return portalToken?`hotb_focus_viewed_${portalToken}`:''}
@@ -1419,6 +1420,44 @@ async function loadPlayerPortal(){
      // that as a new practice snapshot and discard every local drill/view sentinel.
      const publicationChanged=previousPracticeId===nextPracticeId&&!!nextPracticeId&&previousActivation!==nextActivation;
      portalData=nextData;portalMessage='';
+     // Hydrate only a fully verified, committed evaluation snapshot. Clock-only
+     // updates reuse the cached snapshot; incomplete reads never show partial games.
+     if(nextData.portalType==='player'&&nextData.evaluationSnapshotVersion){
+      const version=nextData.evaluationSnapshotVersion,count=Number(nextData.evaluationSnapshotChunkCount)||0;
+      if(portalEvaluationCache.token===requestedPortalToken&&portalEvaluationCache.version===version&&portalEvaluationCache.data){
+       portalData.evaluationData=portalEvaluationCache.data;
+      }else if(count>0&&count<1500){
+       const currentData=portalData;
+       portalMessage='Loading complete hitting history…';
+       (async()=>{
+        try{
+         const collection=portalDoc(requestedPortalToken).collection('evaluationSnapshots').doc(version).collection('chunks');
+         const parts=[];
+         for(let i=0;i<count;i+=4){
+          const indices=Array.from({length:Math.min(4,count-i)},(_,j)=>i+j);
+          const docs=await Promise.all(indices.map(index=>collection.doc(String(index).padStart(5,'0')).get()));
+          for(let j=0;j<docs.length;j++){
+           const entry=docs[j].data();
+           if(!docs[j].exists||entry?.index!==indices[j]||typeof entry.text!=='string')throw new Error('incomplete-history-chunk:'+indices[j]);
+           parts[indices[j]]=entry.text;
+          }
+         }
+         const complete=JSON.parse(parts.join(''));
+         if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken||portalData?.evaluationSnapshotVersion!==version)return;
+         portalEvaluationCache={token:requestedPortalToken,version,data:complete};
+         portalData.evaluationData=complete;portalMessage='';
+         if(route==='portal')render();
+        }catch(error){
+         if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken||portalData?.evaluationSnapshotVersion!==version)return;
+         console.warn('Player hitting history could not load',error);
+         portalMessage='Hitting history could not load completely. Reopen the portal to retry.';
+         if(route==='portal')render();
+        }
+       })();
+      }else{
+       portalMessage='Hitting history manifest is incomplete. Ask the coach to refresh.';
+      }
+     }
      // Clock-only writes (Start/Skip/DONE) keep the same practice ID. Refresh the
      // visible clock immediately from the new snapshot before the broader render.
      if(route==='portal')updatePortalPracticeClock();
