@@ -1716,12 +1716,15 @@ async function setupPlayerPortals(fromButton=false){
   // Refresh each permanent portal independently so one stale or missing portal
   // cannot block the rest of the roster from receiving current stats.
   const failedPortalRefreshes=[];
+  const failedPortalReasons=[];
+  const refreshReason=error=>{const code=String(error?.code||'').replace(/^(firestore\/|FirebaseError:\s*)/i,'').slice(0,70),msg=String(error?.message||'');if(/timeout/i.test(msg))return 'Timed out waiting for cloud';if(code==='not-found')return 'Portal record missing from cloud';if(code==='permission-denied')return 'Cloud permission denied';if(code==='unauthenticated')return 'Cloud session expired';if(code==='resource-exhausted')return 'Cloud quota or rate limit';if(code==='unavailable')return 'Cloud service unavailable';if(code==='failed-precondition')return 'Cloud update precondition failed';if(code==='invalid-argument')return 'Cloud rejected the update data';return code?'Cloud error: '+code:'Cloud update failed (see console)'};
   for(let i=0;i<publishablePlayers.length;i++){
    const player=publishablePlayers[i],evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
    try{
     await timed(portalDoc(player.portalId).update({portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}),'player-portal-write:'+player.name,20000);
    }catch(error){
     failedPortalRefreshes.push(player.name);
+    failedPortalReasons.push(player.name+': '+refreshReason(error));
     console.warn('Player portal refresh failed for '+player.name,error);
    }
    portalMessage=`Refreshing player records… ${i+1} of ${publishablePlayers.length}`;render();
@@ -1733,8 +1736,8 @@ async function setupPlayerPortals(fromButton=false){
   // Existing identity/type safety was already checked before the batch write.
   db.route=route;localStorage.setItem(DBKEY,JSON.stringify(db));
   if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
-  const notUpdated=[...missingPortalNames,...failedPortalRefreshes];
-  portalMessage=notUpdated.length?`Player records refreshed for ${publishablePlayers.length-failedPortalRefreshes.length} players. Could not refresh: ${notUpdated.join(', ')}.`:`Player records refreshed, including My Evaluation (${activeDateFilterLabel()}). Existing permanent links were kept.`;
+  const notUpdated=[...missingPortalNames.map(name=>name+': Permanent portal ID missing on this device'),...failedPortalReasons];
+  portalMessage=notUpdated.length?`Player records refreshed for ${publishablePlayers.length-failedPortalRefreshes.length} players. Failed updates — ${notUpdated.join(' | ')}. Existing portal links were not changed.`:`Player records refreshed, including My Evaluation (${activeDateFilterLabel()}). Existing permanent links were kept.`;
   scheduleCloudBackup();
  }catch(error){
   originals.forEach(({player,portalId,portalPin,portalPinHash})=>{if(portalId===undefined)delete player.portalId;else player.portalId=portalId;if(portalPin===undefined)delete player.portalPin;else player.portalPin=portalPin;if(portalPinHash===undefined)delete player.portalPinHash;else player.portalPinHash=portalPinHash});
