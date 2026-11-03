@@ -81,6 +81,24 @@ service cloud.firestore {
             )
           )
         );
+
+      // Player-specific, immutable evaluation revisions are stored in bounded
+      // chunks. Players may read only their own claimed permanent portal.
+      match /evaluationSnapshots/{revision}/chunks/{chunkId} {
+        allow read: if isCoach()
+          || (
+            signedIn()
+            && (
+              get(/databases/$(database)/documents/playerPortals/$(portalId)).data.ownerUid == request.auth.uid
+              || (
+                get(/databases/$(database)/documents/playerPortals/$(portalId)).data.keys().hasAny(['authorizedUids'])
+                && get(/databases/$(database)/documents/playerPortals/$(portalId)).data.authorizedUids.hasAny([request.auth.uid])
+              )
+            )
+          );
+        allow create, update, delete: if isCoach();
+      }
+
     }
 
     match /recruitingProfiles/{profileId} {
