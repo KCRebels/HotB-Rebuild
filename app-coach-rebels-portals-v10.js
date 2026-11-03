@@ -1633,7 +1633,8 @@ async function publishPlayerEvaluationSnapshot(player){
   const checked=await collection.doc(String(i).padStart(5,'0')).get();
   if(!checked.exists||checked.data()?.text!==parts[i])throw new Error('evaluation-chunk-verification-failed:'+i);
  }
- const summary={...payload,savedGames:[]},previous=oldSnapshot.evaluationSnapshotVersion||'';
+ const summary={roster:(payload.roster||[]).map(p=>({name:p.name,jersey:p.jersey,grad:p.grad})),savedGames:[],currentGame:null,evaluationSeason:payload.evaluationSeason,evaluationFilterLabel:payload.evaluationFilterLabel};
+ const previous=oldSnapshot.evaluationSnapshotVersion||'';
  await doc.update({
   portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),
   evaluationData:summary,evaluationSnapshotVersion:version,evaluationSnapshotChunkCount:parts.length,evaluationSnapshotHash:hash,
