@@ -1420,6 +1420,11 @@ async function loadPlayerPortal(){
      // that as a new practice snapshot and discard every local drill/view sentinel.
      const publicationChanged=previousPracticeId===nextPracticeId&&!!nextPracticeId&&previousActivation!==nextActivation;
      portalData=nextData;portalMessage='';
+     if(nextData.portalType==='player'&&nextData.evaluationSnapshotVersion){
+      // Do not expose the empty index document as the player's complete evaluation.
+      portalData.evaluationData=null;
+      window.__HOTB_PORTAL_EVAL_DB__=null;
+     }
      // Hydrate only a fully verified, committed evaluation snapshot. Clock-only
      // updates reuse the cached snapshot; incomplete reads never show partial games.
      if(nextData.portalType==='player'&&nextData.evaluationSnapshotVersion){
