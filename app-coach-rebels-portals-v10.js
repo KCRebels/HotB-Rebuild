@@ -1018,6 +1018,7 @@ let practiceClock={running:false,finished:false,endAnnounced:false,startAt:0,las
 let cloudAuth=null,cloudStore=null,cloudUser=null,cloudAuthReady=false,cloudBusy=false,cloudMessage='',cloudBackupTimer=null,playerEvalSyncTimer=null,playerPortalRefreshPending=false;
 let cloudLastBackup=localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)?new Date(localStorage.getItem(CLOUD_LAST_SUCCESS_KEY)):null,cloudSnapshotCount=0;
 let portalEvaluationCache={token:'',version:'',data:null};
+let portalEvaluationPendingKey='';
 let portalAuthUser=null,portalData=null,portalBusy=!!portalToken,portalMessage='',portalView='home',portalSelectedDrill='',portalDrillQuery='',portalDrillResults=[],portalUnsubscribe=null,portalLoadGeneration=0,portalLibraryReturnView='library';
 function portalFocusPublishedKey(){const raw=portalData?.focus?.publishedAt;return raw?String(raw):''}
 function portalFocusViewedKey(){return portalToken?`hotb_focus_viewed_${portalToken}`:''}
@@ -1426,7 +1427,9 @@ async function loadPlayerPortal(){
       if(portalEvaluationCache.token===requestedPortalToken&&portalEvaluationCache.version===version&&portalEvaluationCache.data){
        portalData.evaluationData=portalEvaluationCache.data;
       }else if(count>0&&count<1500){
-       const currentData=portalData;
+       const loadKey=requestedPortalToken+'::'+version;
+       if(portalEvaluationPendingKey!==loadKey){
+       portalEvaluationPendingKey=loadKey;
        portalMessage='Loading complete hitting history…';
        (async()=>{
         try{
@@ -1452,7 +1455,8 @@ async function loadPlayerPortal(){
          portalMessage='Hitting history could not load completely. Reopen the portal to retry.';
          if(route==='portal')render();
         }
-       })();
+       })().finally(()=>{if(portalEvaluationPendingKey===loadKey)portalEvaluationPendingKey=''});
+       }
       }else{
        portalMessage='Hitting history manifest is incomplete. Ask the coach to refresh.';
       }
