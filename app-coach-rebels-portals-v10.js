@@ -1444,7 +1444,12 @@ async function loadPlayerPortal(){
            parts[indices[j]]=entry.text;
           }
          }
-         const complete=JSON.parse(parts.join(''));
+         const reconstructed=parts.join('');
+         const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(reconstructed)));
+         const verifiedHash=[...digest].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+         if(nextData.evaluationSnapshotHash&&verifiedHash!==nextData.evaluationSnapshotHash)throw new Error('history-integrity-check-failed');
+         const complete=JSON.parse(reconstructed);
+         if(!Array.isArray(complete.savedGames)||!Array.isArray(complete.roster))throw new Error('history-format-invalid');
          if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken||portalData?.evaluationSnapshotVersion!==version)return;
          portalEvaluationCache={token:requestedPortalToken,version,data:complete};
          portalData.evaluationData=complete;portalMessage='';
