@@ -1141,10 +1141,9 @@ async function initCloud(){
     if(route==='home'||route==='portal')render();
     try{await loadCloudStatus()}catch(_){cloudMessage='Signed in. Cloud status will retry automatically.'}
     if(localStorage.getItem(CLOUD_PENDING_KEY)==='true')scheduleCloudBackup();
-    // Permanent player portals are cloud snapshots, so refresh them whenever the
-    // authenticated coach app opens. This repairs any stale weekend stats and
-    // makes future portal data self-healing after an interrupted game-end sync.
-    if(db.roster.some(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId))playerPortalRefreshPending=true;
+    // Do not refresh all player portal documents on every coach-app launch.
+    // Manual Refresh Player Records and explicit saved-game changes remain available.
+    // An automatic startup write was repeatedly retrying rejected player payloads.
     if(playerPortalRefreshPending)setTimeout(()=>setupPlayerPortals(false),0);
     setTimeout(recoverPublishedPlayerFocusReviewDates,0);
    }
@@ -1717,14 +1716,15 @@ async function setupPlayerPortals(fromButton=false){
   // cannot block the rest of the roster from receiving current stats.
   const failedPortalRefreshes=[];
   const failedPortalReasons=[];
-  const refreshReason=error=>{const code=String(error?.code||'').replace(/^(firestore\/|FirebaseError:\s*)/i,'').slice(0,70),msg=String(error?.message||'');if(/timeout/i.test(msg))return 'Timed out waiting for cloud';if(code==='not-found')return 'Portal record missing from cloud';if(code==='permission-denied')return 'Cloud permission denied';if(code==='unauthenticated')return 'Cloud session expired';if(code==='resource-exhausted')return 'Cloud quota or rate limit';if(code==='unavailable')return 'Cloud service unavailable';if(code==='failed-precondition')return 'Cloud update precondition failed';if(code==='invalid-argument')return 'Cloud rejected the update data';return code?'Cloud error: '+code:'Cloud update failed (see console)'};
+  const refreshReason=error=>{const code=String(error?.code||'').replace(/^(firestore\/|FirebaseError:\s*)/i,'').slice(0,70),msg=String(error?.message||'');if(/timeout/i.test(msg))return 'Timed out waiting for cloud';if(code==='not-found')return 'Portal record missing from cloud';if(code==='permission-denied')return 'Cloud permission denied';if(code==='unauthenticated')return 'Cloud session expired';if(code==='resource-exhausted')return 'Cloud quota or rate limit';if(code==='unavailable')return 'Cloud service unavailable';if(code==='failed-precondition')return 'Cloud update precondition failed';if(code==='invalid-argument')return 'Cloud rejected update: '+msg.replace(/^FirebaseError:\s*/,'').replace(/\b[a-zA-Z0-9_-]{35,}\b/g,'[id]').slice(0,210);return code?'Cloud error: '+code+' '+msg.slice(0,110):'Cloud update failed: '+msg.slice(0,130)};
   for(let i=0;i<publishablePlayers.length;i++){
    const player=publishablePlayers[i],evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
    try{
     await timed(portalDoc(player.portalId).update({portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}),'player-portal-write:'+player.name,20000);
    }catch(error){
     failedPortalRefreshes.push(player.name);
-    failedPortalReasons.push(player.name+': '+refreshReason(error));
+    const payloadBytes=new TextEncoder().encode(JSON.stringify(evaluationData)).length;
+    failedPortalReasons.push(player.name+': '+refreshReason(error)+' (payload '+Math.round(payloadBytes/1024)+' KB)');
     console.warn('Player portal refresh failed for '+player.name,error);
    }
    portalMessage=`Refreshing player records… ${i+1} of ${publishablePlayers.length}`;render();
