@@ -1618,6 +1618,10 @@ async function publishPlayerEvaluationSnapshot(player){
  const payload=playerEvaluationPortalPayload(player.name),json=JSON.stringify(payload);
  const parts=[];for(let i=0;i<json.length;i+=45000)parts.push(json.slice(i,i+45000));
  const version=Date.now()+'-'+newPortalId().slice(0,9),doc=portalDoc(player.portalId);
+ const hashBytes=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(json)));
+ const hash=[...hashBytes].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+ const oldSnapshot=(await doc.get()).data()||{};
+ if(oldSnapshot.evaluationSnapshotVersion&&oldSnapshot.evaluationSnapshotHash===hash)return {version:oldSnapshot.evaluationSnapshotVersion,chunks:Number(oldSnapshot.evaluationSnapshotChunkCount)||0,unchanged:true};
  const collection=doc.collection('evaluationSnapshots').doc(version).collection('chunks');
  for(let i=0;i<parts.length;i+=3){
   const batch=cloudStore.batch();
@@ -1629,10 +1633,10 @@ async function publishPlayerEvaluationSnapshot(player){
   const checked=await collection.doc(String(i).padStart(5,'0')).get();
   if(!checked.exists||checked.data()?.text!==parts[i])throw new Error('evaluation-chunk-verification-failed:'+i);
  }
- const summary={...payload,savedGames:[]},previous=(await doc.get()).data()?.evaluationSnapshotVersion||'';
+ const summary={...payload,savedGames:[]},previous=oldSnapshot.evaluationSnapshotVersion||'';
  await doc.update({
   portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),
-  evaluationData:summary,evaluationSnapshotVersion:version,evaluationSnapshotChunkCount:parts.length,
+  evaluationData:summary,evaluationSnapshotVersion:version,evaluationSnapshotChunkCount:parts.length,evaluationSnapshotHash:hash,
   evaluationVersion:version+'-'+player.name,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
  });
  // Do not delete old history on upload failure; after success, retain older
