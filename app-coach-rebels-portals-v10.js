@@ -1569,6 +1569,33 @@ function schedulePlayerEvaluationPortalSync(delay=2200){
   await syncPlayerEvaluationPortals();
  },delay);
 }
+// Player evaluation history is written in bounded, versioned cloud chunks.
+// Never change the portal's active version until every chunk has been verified.
+async function publishPlayerEvaluationSnapshot(player){
+ const payload=playerEvaluationPortalPayload(player.name),json=JSON.stringify(payload);
+ const parts=[];for(let i=0;i<json.length;i+=45000)parts.push(json.slice(i,i+45000));
+ const version=Date.now()+'-'+newPortalId().slice(0,9),doc=portalDoc(player.portalId);
+ const collection=doc.collection('evaluationSnapshots').doc(version).collection('chunks');
+ for(let i=0;i<parts.length;i+=3){
+  const batch=cloudStore.batch();
+  for(let j=i;j<Math.min(i+3,parts.length);j++)batch.set(collection.doc(String(j).padStart(5,'0')),{index:j,text:parts[j]});
+  await batch.commit();
+ }
+ // Verify the entire staged snapshot before switching the reader.
+ for(let i=0;i<parts.length;i++){
+  const checked=await collection.doc(String(i).padStart(5,'0')).get();
+  if(!checked.exists||checked.data()?.text!==parts[i])throw new Error('evaluation-chunk-verification-failed:'+i);
+ }
+ const summary={...payload,savedGames:[]},previous=(await doc.get()).data()?.evaluationSnapshotVersion||'';
+ await doc.update({
+  portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),
+  evaluationData:summary,evaluationSnapshotVersion:version,evaluationSnapshotChunkCount:parts.length,
+  evaluationVersion:version+'-'+player.name,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+ });
+ // Do not delete old history on upload failure; after success, retain older
+ // revisions until dedicated retention/rollback verification is implemented.
+ return {version,chunks:parts.length,previous};
+}
 async function syncPlayerEvaluationPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return false;
  const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId),coachPortalId=db.coachPortal?.portalId||'';
@@ -1577,18 +1604,7 @@ async function syncPlayerEvaluationPortals(){
   // Use the same small-batch write path as the proven manual Player Portal
   // refresh. Scrimmage/stat changes must publish the freshly recalculated
   // evaluation payload, not depend on a pre-read of every portal document.
-  for(let i=0;i<players.length;i+=3){
-   const group=players.slice(i,i+3),batch=cloudStore.batch(),version=Date.now();
-   group.forEach(player=>batch.update(portalDoc(player.portalId),{
-    portalType:'player',
-    playerName:player.name,
-    firstName:practiceFirstName(player.name),
-    evaluationData:playerEvaluationPortalPayload(player.name),
-    evaluationVersion:`${version}-${player.name}`,
-    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-   }));
-   await batch.commit();
-  }
+  for(const player of players)await publishPlayerEvaluationSnapshot(player);
   if(coachPortalId){
    const batch=cloudStore.batch();
    batch.update(portalDoc(coachPortalId),{evaluationData:coachEvaluationPortalPayload(),evaluationVersion:`${Date.now()}-coach`,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
@@ -1718,13 +1734,12 @@ async function setupPlayerPortals(fromButton=false){
   const failedPortalReasons=[];
   const refreshReason=error=>{const code=String(error?.code||'').replace(/^(firestore\/|FirebaseError:\s*)/i,'').slice(0,70),msg=String(error?.message||'');if(/timeout/i.test(msg))return 'Timed out waiting for cloud';if(code==='not-found')return 'Portal record missing from cloud';if(code==='permission-denied')return 'Cloud permission denied';if(code==='unauthenticated')return 'Cloud session expired';if(code==='resource-exhausted')return 'Cloud quota or rate limit';if(code==='unavailable')return 'Cloud service unavailable';if(code==='failed-precondition')return 'Cloud update precondition failed';if(code==='invalid-argument')return 'Cloud rejected update: '+msg.replace(/^FirebaseError:\s*/,'').replace(/\b[a-zA-Z0-9_-]{35,}\b/g,'[id]').slice(0,210);return code?'Cloud error: '+code+' '+msg.slice(0,110):'Cloud update failed: '+msg.slice(0,130)};
   for(let i=0;i<publishablePlayers.length;i++){
-   const player=publishablePlayers[i],evaluationData=playerEvaluationPortalPayload(player.name),evaluationVersion=`${Date.now()}-${player.name}`;
+   const player=publishablePlayers[i];
    try{
-    await timed(portalDoc(player.portalId).update({portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData,evaluationVersion,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}),'player-portal-write:'+player.name,20000);
+    await publishPlayerEvaluationSnapshot(player);
    }catch(error){
     failedPortalRefreshes.push(player.name);
-    const payloadBytes=new TextEncoder().encode(JSON.stringify(evaluationData)).length;
-    failedPortalReasons.push(player.name+': '+refreshReason(error)+' (payload '+Math.round(payloadBytes/1024)+' KB)');
+    failedPortalReasons.push(player.name+': '+refreshReason(error));
     console.warn('Player portal refresh failed for '+player.name,error);
    }
    portalMessage=`Refreshing player records… ${i+1} of ${publishablePlayers.length}`;render();
