@@ -1619,35 +1619,62 @@ function schedulePlayerEvaluationPortalSync(delay=2200){
 }
 // Player evaluation history is written in bounded, versioned cloud chunks.
 // Never change the portal's active version until every chunk has been verified.
+// Immutable per-game records are reused across evaluations. A revision
+// contains only the profile/stat summary and hashes of the required game docs.
 async function publishPlayerEvaluationSnapshot(player){
- const payload=playerEvaluationPortalPayload(player.name),json=JSON.stringify(payload);
- const parts=[];for(let i=0;i<json.length;i+=45000)parts.push(json.slice(i,i+45000));
- const version=Date.now()+'-'+newPortalId().slice(0,9),doc=portalDoc(player.portalId);
- const hashBytes=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(json)));
- const hash=[...hashBytes].map(byte=>byte.toString(16).padStart(2,'0')).join('');
- const oldSnapshot=(await doc.get()).data()||{};
- if(oldSnapshot.evaluationSnapshotVersion&&oldSnapshot.evaluationSnapshotHash===hash)return {version:oldSnapshot.evaluationSnapshotVersion,chunks:Number(oldSnapshot.evaluationSnapshotChunkCount)||0,unchanged:true};
- const collection=doc.collection('evaluationSnapshots').doc(version).collection('chunks');
+ const payload=playerEvaluationPortalPayload(player.name),doc=portalDoc(player.portalId);
+ const sha=async value=>{const bytes=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));return [...bytes].map(b=>b.toString(16).padStart(2,'0')).join('')};
+ const records=[];
+ for(const game of payload.savedGames||[]){
+  const json=JSON.stringify(game),hash=await sha(json);
+  records.push({hash,json});
+ }
+ const summary={...payload,savedGames:[],gameRefs:records.map(record=>record.hash)};
+ const json=JSON.stringify(summary),hash=await sha(json),docBefore=(await doc.get()).data()||{};
+ if(docBefore.evaluationSnapshotVersion&&docBefore.evaluationSnapshotHash===hash)return {version:docBefore.evaluationSnapshotVersion,unchanged:true};
+ // Use content hashes as immutable record IDs: an unchanged game is never reuploaded.
+ const gameCollection=doc.collection('evaluationGames');
+ for(const record of records){
+  const ref=gameCollection.doc(record.hash),existing=await ref.get();
+  if(existing.exists){
+   if(existing.data()?.hash!==record.hash)throw new Error('saved-game-hash-conflict');
+   continue;
+  }
+  // Large individual games receive bounded child documents as well.
+  const pieces=[];for(let i=0;i<record.json.length;i+=40000)pieces.push(record.json.slice(i,i+40000));
+  if(pieces.length===1){
+   await ref.set({hash:record.hash,text:record.json,parts:0});
+   const verified=await ref.get();
+   if(verified.data()?.text!==record.json)throw new Error('saved-game-verification-failed');
+  }else{
+   const chunks=ref.collection('chunks');
+   for(let i=0;i<pieces.length;i+=3){
+    const batch=cloudStore.batch();
+    for(let j=i;j<Math.min(i+3,pieces.length);j++)batch.set(chunks.doc(String(j).padStart(5,'0')),{index:j,text:pieces[j]});
+    await batch.commit();
+   }
+   for(let i=0;i<pieces.length;i++){
+    const result=await chunks.doc(String(i).padStart(5,'0')).get();
+    if(!result.exists||result.data()?.text!==pieces[i])throw new Error('saved-game-chunk-verification-failed');
+   }
+   await ref.set({hash:record.hash,parts:pieces.length});
+  }
+ }
+ // Publish a complete manifest only after every referenced game is verified.
+ const parts=[];for(let i=0;i<json.length;i+=40000)parts.push(json.slice(i,i+40000));
+ const version=Date.now()+'-'+newPortalId().slice(0,9),collection=doc.collection('evaluationSnapshots').doc(version).collection('chunks');
  for(let i=0;i<parts.length;i+=3){
   const batch=cloudStore.batch();
   for(let j=i;j<Math.min(i+3,parts.length);j++)batch.set(collection.doc(String(j).padStart(5,'0')),{index:j,text:parts[j]});
   await batch.commit();
  }
- // Verify the entire staged snapshot before switching the reader.
  for(let i=0;i<parts.length;i++){
   const checked=await collection.doc(String(i).padStart(5,'0')).get();
   if(!checked.exists||checked.data()?.text!==parts[i])throw new Error('evaluation-chunk-verification-failed:'+i);
  }
- const summary={roster:(payload.roster||[]).map(p=>({name:p.name,jersey:p.jersey,grad:p.grad})),savedGames:[],currentGame:null,evaluationSeason:payload.evaluationSeason,evaluationFilterLabel:payload.evaluationFilterLabel};
- const previous=oldSnapshot.evaluationSnapshotVersion||'';
- await doc.update({
-  portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),
-  evaluationData:summary,evaluationSnapshotVersion:version,evaluationSnapshotChunkCount:parts.length,evaluationSnapshotHash:hash,
-  evaluationVersion:version+'-'+player.name,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
- });
- // Do not delete old history on upload failure; after success, retain older
- // revisions until dedicated retention/rollback verification is implemented.
- return {version,chunks:parts.length,previous};
+ const small={roster:(payload.roster||[]).map(p=>({name:p.name,jersey:p.jersey,grad:p.grad})),savedGames:[],currentGame:null,evaluationSeason:payload.evaluationSeason,evaluationFilterLabel:payload.evaluationFilterLabel};
+ await doc.update({portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData:small,evaluationSnapshotVersion:version,evaluationSnapshotChunkCount:parts.length,evaluationSnapshotHash:hash,evaluationStorageFormat:'per-game-v1',evaluationVersion:version+'-'+player.name,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+ return {version,chunks:parts.length,games:records.length};
 }
 async function syncPlayerEvaluationPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return false;
