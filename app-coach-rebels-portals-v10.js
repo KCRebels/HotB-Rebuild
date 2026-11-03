@@ -4219,11 +4219,11 @@ function evalView(){
  const ms=measurementTypes(player);
  const metricHead=(metric,label=metric)=>`<div class="eval-tile-head"><button class="metric-title" data-guide="${metric}">${label}</button><button class="metric-all" data-ranking="${metric}">ALL</button></div>`;
  const resultMetric=player?(slapHitter?{label:'IPA%',key:'ipaPct',value:s.ipaPct}:snapshot.resultMetric):HotBEvaluationStats.evaluationResultRate(null,s),resultRate=[resultMetric.label,s.PA?pct0(resultMetric.value):'—',resultMetric.key];
- const performanceTile=([label,value,key])=>{
+ const performanceTile=([label,value,key],index)=>{
   const statKey=key==='contact'?'contactPct':key==='K'?'kPct':key,guide=['AVG','OBP','SLG','CONTACT','K%'].includes(label);
-  const rating=s.PA>=25&&!['hhbPct','qabPct','ipaPct'].includes(statKey)?grade(s[statKey],key):'';
+  const rating=s.PA>=25&&['AVG','OBP','SLG','contact','K'].includes(key)?grade(s[statKey],key):'';
   const tileRanking=['AVG','OBP','CONTACT','K%'].includes(label)?` data-hitting-ranking-tile="${statKey}"`:'';
-  return `<div class="perf ${rating}"${tileRanking}><b>${value}</b><div class="perf-label-row">${guide?`<button class="perf-metric" data-guide="${label}">${label}</button>`:`<span class="perf-metric">${label}</span>`}<button class="perf-all" data-hitting-ranking="${statKey}">ALL</button></div></div>`;
+  return `<div class="perf ${rating}" style="order:${index+1}!important"${tileRanking}><b>${value}</b><div class="perf-label-row">${guide?`<button class="perf-metric" data-guide="${label}">${label}</button>`:`<span class="perf-metric">${label}</span>`}${key==='KBB'?'':`<button class="perf-all" data-hitting-ranking="${statKey}">ALL</button>`}</div></div>`;
  };
  return `<div class="eval-head">${evaluationReadOnly?`<button class="btn eval-nav" id="portalBack">Portal</button>`:`<span class="page-head-spacer"></span>`}<div class="eval-title"><h1>Evaluation</h1></div><div class="eval-contact-actions"></div></div>
  <label class="eval-player-filter"><span>Player</span><select class="player-select" id="evalSelect"><option>Team</option>${competitionRoster().map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label>
@@ -4236,7 +4236,7 @@ function evalView(){
   <div class="eval-tile">${slapHitter?metricHead('Reach%'):metricHead('Execution','HP%')}<div class="value">${slapHitter?(reach===null?'—%':pct0(reach)):(execution===null?'—%':pct0(execution))}</div><div class="note">${slapHitter?'Reached Base':'Hitting Plan'}</div></div>
  </div>
  <div class="performance"><div class="performance-head"><h2>Hitting Results</h2><div class="performance-sample"><span>${esc(activeDateFilterLabel())}</span><b>${s.PA} PA</b></div></div><div class="perf-grid">
- ${[['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['CONTACT',pct0(s.contactPct),'contact'],['K%',pct0(s.kPct),'K'],resultRate].map(performanceTile).join('')}
+ ${[['PA',String(s.PA),'PA'],['AVG',round3(s.AVG),'AVG'],['OBP',round3(s.OBP),'OBP'],['SLG',round3(s.SLG),'SLG'],['Hits',String(s.H),'H'],['RBI',String(s.RBI),'RBI'],resultRate,['CONTACT',pct0(s.contactPct),'contact'],['K/BB',`${s.K}/${s.BB}`,'KBB']].map(performanceTile).join('')}
  </div></div>
  ${player&&isPitcherProfile(player)?`<section class="pitcher-performance"><div class="pitcher-performance-head"><h2>Pitching Results <span class="small">GAMECHANGER</span></h2>${evaluationReadOnly?'':`<button class="btn black" id="uploadPitchingStats">UPLOAD</button><input id="pitchingStatsFile" type="file" accept=".xlsx,.xls,.csv" hidden>`}</div><div class="pitcher-stat-grid">
   ${[['IP','pitcherIP'],['ERA','pitcherERA'],['WHIP','pitcherWHIP'],['K/BB','pitcherKBB'],['OBA','pitcherOBA'],['STRIKE %','pitcherStrikePct']].map(([label,key])=>`<button class="pitcher-stat" data-pitch-ranking="${key}"><b>${esc(player[key]||'—')}</b><span>${label}</span></button>`).join('')}
@@ -4325,6 +4325,7 @@ function evalRankingModal(metric){
 }
 function hittingRankingModal(metric){
  const definitions={
+  PA:{label:'PA',key:'PA',format:String},H:{label:'Hits',key:'H',format:String},RBI:{label:'RBI',key:'RBI',format:String},
   AVG:{label:'AVG',key:'AVG',format:round3},OBP:{label:'OBP',key:'OBP',format:round3},SLG:{label:'SLG',key:'SLG',format:round3},
   contactPct:{label:'CONTACT',key:'contactPct',format:pct0},kPct:{label:'K%',key:'kPct',format:pct0,lowerIsBetter:true},
   hhbPct:{label:'HHB%',key:'hhbPct',format:pct0},qabPct:{label:'QAB%',key:'qabPct',format:pct1},ipaPct:{label:'IPA%',key:'ipaPct',format:pct0}
