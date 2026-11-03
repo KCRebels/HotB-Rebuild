@@ -15,6 +15,19 @@ const css=document.createElement('style');css.id='hotb-player-portal-polish';css
 
 .pem-report-filters{display:grid;gap:8px;margin:8px 0 12px}.pem-game-select{min-height:60px;border:1px solid #333;border-radius:8px;background:#fff;color:#111;padding:10px;display:grid;grid-template-columns:1fr auto;text-align:left}.pem-game-select small{font-size:12px;font-weight:850}.pem-game-select b{grid-row:2;font-size:15px}.pem-game-select span{grid-column:2;grid-row:1/3;align-self:center;font-size:22px}.pem-filter-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}.pem-filter-pair label,.pem-filter-opponent{display:grid;gap:4px;font-size:12px;font-weight:850}.pem-filter-pair select,.pem-filter-pair input,.pem-filter-opponent select{width:100%;min-width:0;min-height:44px;box-sizing:border-box;border:1px solid #aeb4be;border-radius:8px;padding:7px;color:#111;background:#fff;font-size:16px}.pem-filter-summary{color:#667085;font-size:12px}.pem-game-picker .pem-box{background:#fff;color:#111}.pem-game-picker .pem-box h2{font-size:18px}.pem-game-picker .pem-box button{min-height:42px;padding:8px;border:1px solid #333;border-radius:8px;background:#fff;color:#111;font-weight:800}.pem-game-actions{display:flex;gap:8px;margin:10px 0}.pem-game-list{max-height:230px;overflow:auto;border:1px solid #ccc;border-radius:8px}.pem-game-list label{display:flex;align-items:center;gap:8px;padding:9px;font-size:14px}.pem-game-list input{height:20px;width:20px}.pem-game-picker .pem-game-apply{width:100%;margin:10px 0;background:#111!important;color:#fff!important}.pem-save-group{display:flex;gap:6px;margin:8px 0}.pem-save-group input{flex:1;min-width:0}.pem-game-picker input,.pem-game-picker select{font-size:16px;min-height:42px;border:1px solid #aaa;border-radius:7px;padding:5px}.pem-game-picker .pem-box>label{display:grid;gap:6px;margin:8px 0;font-size:13px;font-weight:850}
 
+
+/* Match the coach's game-picker mobile geometry without its data-cleanup module. */
+.pem-game-picker .games-selection-modal{
+ max-height:calc(100dvh - 118px)!important;overflow-y:auto!important;
+ overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;padding-bottom:0!important;
+}
+.pem-game-picker .game-selection-footer{
+ position:sticky!important;bottom:0!important;z-index:8!important;
+ margin-left:-1px!important;margin-right:-1px!important;
+ padding:12px 0 max(12px,env(safe-area-inset-bottom))!important;
+ background:#fff!important;border-top:1px solid #d9deda!important;
+}
+@media(max-width:560px){.pem-game-picker .games-selection-modal{max-height:calc(100dvh - 108px)!important;}}
 `;document.head.appendChild(css);
 const app=()=>document.getElementById('app');
 const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
