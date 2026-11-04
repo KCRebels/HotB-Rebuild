@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>HotB Startup Recovery</title>
+<style>body{font:16px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:#f2f5f4;color:#111827;padding:32px 20px;line-height:1.5}.panel{max-width:520px;margin:60px auto;background:white;border:1px solid #cdd4d0;border-radius:16px;padding:24px}h1{font-size:24px}button{background:#bd1723;color:#fff;border:0;border-radius:10px;padding:15px 20px;font:700 16px system-ui;width:100%}p{margin:14px 0}#status{font-weight:600}</style></head>
+<body><main class="panel"><h1>HotB Startup Recovery</h1><p>This repairs the app's downloaded program files only. It does not delete game records, player data, or local backups.</p><button id="repair" type="button">Repair and Open HotB</button><p id="status" role="status"></p></main>
+<script>
+document.getElementById('repair').addEventListener('click',async()=>{
+ const button=document.getElementById('repair'),status=document.getElementById('status');
+ button.disabled=true;status.textContent='Resetting the HotB program cache…';
+ try{
+  if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();for(const reg of regs){if(reg.scope.startsWith(new URL('./',location.href).href))await reg.unregister()}}
+  if('caches' in window){const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith('hotb-app-')).map(k=>caches.delete(k)))}
+  status.textContent='Opening HotB with a fresh program download…';
+  location.replace('./index.html?hotb-recovery=20261103&fresh='+Date.now());
+ }catch(error){status.textContent='Recovery could not complete: '+String(error?.message||error);button.disabled=false}
+});
+</script></body></html>
