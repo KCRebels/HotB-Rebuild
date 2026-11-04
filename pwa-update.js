@@ -5,7 +5,7 @@
  const append=Element.prototype.appendChild;
  Element.prototype.appendChild=function(node){
   try{
-   if(node?.tagName==='SCRIPT'&&String(node.src||'').includes('app-coach-rebels-portals-v10.js'))node.src='app-hotb-activation-wrapper-v2.js?v=20261028-685&fresh='+Date.now();
+   if(!window.__HOTB_DIRECT_BUNDLE_FALLBACK__&&node?.tagName==='SCRIPT'&&String(node.src||'').includes('app-coach-rebels-portals-v10.js'))node.src='app-hotb-activation-wrapper-v2.js?v=20261028-685&fresh='+Date.now();
   }catch(_){}
   return append.call(this,node);
  };
