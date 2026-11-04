@@ -1,0 +1,50 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const document={querySelector:()=>null};
+const context=vm.createContext({window:{},document});
+vm.runInContext(fs.readFileSync('drill-library.js','utf8'),context);
+const source=fs.readFileSync('observation-publish-v2.js','utf8').replace('window.HotBObservationPublish=','window.testMarkup={panelMarkup,pickerMarkup,invalidateIfChanged};window.HotBObservationPublish=');
+vm.runInContext(source,context);
+const api=context.window.HotBObservationPublish;
+(async()=>{
+ api.begin({mode:'focus',playerName:'Claire Jack',note:'Work on a controlled load.'});
+ assert.ok(context.window.testMarkup.panelMarkup().includes('data-observation-add-drill'));
+ assert.equal(api.chooseDrill('Front Toss'),true);
+ assert.equal(api.chooseDrill('Coach Load Drill'),true);
+ assert.equal(api.chooseDrill('Knob to Ball',0),true);
+ assert.equal(api.chooseDrill('knob to ball'),false,'duplicate names must not be added');
+ assert.deepEqual(Array.from(api.snapshot().selectedDrills),['Knob to Ball','Coach Load Drill']);
+ api.chooseDrill('Skater Drill');
+ assert.equal(api.chooseDrill('Tire'),false,'three-drill limit');
+ api.removeDrill(1);
+ assert.deepEqual(Array.from(api.snapshot().selectedDrills),['Knob to Ball','Skater Drill']);
+ // A changed checkbox must preserve a manually composed plan.
+ const changed={querySelectorAll:()=>[{dataset:{observationOption:'Casting'}}],querySelector:()=>({value:'New note'})};
+ context.window.testMarkup.invalidateIfChanged(changed);
+ assert.deepEqual(Array.from(api.snapshot().selectedDrills),['Knob to Ball','Skater Drill']);
+ assert.equal(api.snapshot().draft.tags[0],'Casting');
+ const markup=context.window.testMarkup.panelMarkup();
+ assert.match(markup,/data-observation-remove/);
+ assert.match(markup,/data-observation-publish-action >Publish/,'manual plan can publish without Suggest Drills');
+ let submitted;
+ context.window.HotBObservationPublishBridge={preflight:async()=>({ok:true}),publish:async input=>{submitted=input;return{ok:true}}};
+ await api.publish();
+ assert.deepEqual(Array.from(submitted.drills),['Knob to Ball','Skater Drill']);
+ api.begin({mode:'focus',playerName:'Claire Jack',note:'Custom practice plan'});
+ api.chooseDrill('Coach drill');
+ context.window.HotBObservationPublishBridge.preflight=async()=>({ok:false,message:'Offline'});
+ await assert.rejects(()=>api.publish(),/Offline/);
+ assert.equal(api.snapshot().selectedDrills[0],'Coach drill');
+ assert.equal(api.snapshot().draft.note,'Custom practice plan');
+
+ // The coach-page editor must support a blank plan and preserve custom names.
+ const app=fs.readFileSync('app-coach-rebels-portals-v10.js','utf8');
+ Object.assign(context,{db:{roster:[{name:'Claire Jack'}],coachObservations:[],playerFocusDrillOverrides:{'Claire Jack::weekend':[]}},practiceFocusPlayer:'Claire Jack',practiceFocusRange:'weekend',focusDrillReplaceIndex:-1,focusDrillQuery:'',playerFocusGames:()=>[],esc:value=>String(value)});
+ for(const [start,end] of [['function focusDrillKey(','const VERIFIED_REBELS_PORTALS'],['function manageFocusDrillsModal(','function focusPublishPreviewModal(']])vm.runInContext(app.slice(app.indexOf(start),app.indexOf(end)),context);
+ vm.runInContext('function recommendPortalDrills(){return []}',context);
+ assert.match(context.manageFocusDrillsModal(),/id="addFocusDrill" >Add Drill/);
+ context.db.playerFocusDrillOverrides['Claire Jack::weekend']=['My custom drill'];
+ assert.equal(context.focusSuggestedDrills('')[0].name,'My custom drill');
+ context.focusDrillReplaceIndex=0;
+ assert.match(context.manageFocusDrillsModal(),/id="focusCustomDrillName"/);
+ console.log('Manual add, edit, remove, draft retention, publish, and coach editor checks passed.');
+})().catch(error=>{console.error(error);process.exitCode=1});
