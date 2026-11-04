@@ -1,5 +1,5 @@
 /* Loads the unchanged HotB observation module plus the permanent assistant-coach Focus indicator. */
-document.write('<script src="coach-observations-core-v1.js?v=20261009-focus-coach-2"><\/script><script src="assistant-coach-focus-v2.js?v=20261009-focus-coach-2"><\/script>');
+document.write('<script src="coach-observations-core-v1.js?v=20261009-focus-coach-2"><\/script><script src="assistant-coach-focus-v2.js?v=20261104-focus-controls"><\/script>');
 
 /* Keep the bottom of the coach Observation editor comfortably above HotB's fixed navigation. */
 (()=>{

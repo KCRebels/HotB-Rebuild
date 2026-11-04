@@ -2994,7 +2994,7 @@ function playerFocusPortalPayload(playerName=practiceFocusPlayer,range=practiceF
  const observed=window.HotBCoachObservations?.summarize(games,selected.name,standalone)||{patterns:[],rows:[]};
  const focusItems=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>item.label)].filter((item,index,list)=>item&&list.indexOf(item)===index).slice(0,3);
  const query=[...observed.patterns.map(item=>item.tag),...(analysis.issues||[]).map(item=>`${item.label} ${item.focus||''}`)].join(' ');
- const drills=!playerHasNewFocusObservation(playerName,observed)?[]:focusSuggestedDrills(query,playerName,range).map(drill=>drill.name);
+ const drills=focusSuggestedDrills(query,playerName,range).map(drill=>drill.name);
  const latestNote=(observed.rows||[]).filter(item=>item.note).sort((a,b)=>Number(b.createdAt||b.updatedAt||0)-Number(a.createdAt||a.updatedAt||0))[0]?.note||'';
  // Keep the preview stable after a portal-ID recovery/save. save() re-renders the
  // screen, so preserve the visible Focus evidence until the publish finishes.
