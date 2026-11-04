@@ -2582,6 +2582,7 @@ function portalProblemWords(query){
  return [...new Set(expanded.filter(word=>word.length>2))];
 }
 function recommendPortalDrills(query){
+ if(window.HotBObservationPublish?.recommendDrills){const library=window.HotBDrillLibrary||[];return window.HotBObservationPublish.recommendDrills(query,4).map(name=>library.find(drill=>drill.name===name)).filter(Boolean)}
  const terms=portalProblemWords(query),drills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[];
  if(!terms.length)return [];
  return drills.map(drill=>{
