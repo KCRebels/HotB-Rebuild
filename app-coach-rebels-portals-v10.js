@@ -7286,17 +7286,17 @@ function bindTestNavigation(){
 function bindReportsPage(){
  bindTestNavigation();
  const matching=()=>filteredSavedGamesForManagement().filter(g=>reportScrimmageScope==='include'||(reportScrimmageScope==='only'?!!g.scrimmage:!g.scrimmage));
- const visibleSelected=()=>$('[data-report-select-game]:checked').map(input=>input.dataset.reportSelectGame);
+ const visibleSelected=()=>$$('[data-report-select-game]:checked').map(input=>input.dataset.reportSelectGame);
  $('#reportScrimmageScope')?.addEventListener('change',event=>{reportScrimmageScope=event.target.value;reportSelectionTouched=false;reportSelectedGameIds=[];render()});
- $('[data-report-select-game]').forEach(input=>input.addEventListener('change',()=>{reportSelectionTouched=true;reportSelectedGameIds=visibleSelected();render()}));
+ $$('[data-report-select-game]').forEach(input=>input.addEventListener('change',()=>{reportSelectionTouched=true;reportSelectedGameIds=visibleSelected();render()}));
  $('#selectVisibleReportGames')?.addEventListener('click',()=>{reportSelectionTouched=true;reportSelectedGameIds=matching().map(g=>g.id);render()});
  $('#clearVisibleReportGames')?.addEventListener('click',()=>{reportSelectionTouched=true;reportSelectedGameIds=[];render()});
  $('#buildSelectedReport')?.addEventListener('click',()=>{const eligible=matching().map(g=>g.id);reportSelectedGameIds=reportSelectionTouched?reportSelectedGameIds.filter(id=>eligible.includes(id)):eligible;if(!reportSelectedGameIds.length)return;reportMode='selection';reportOpponent='All Opponents';reportFilterHitter='All Hitters';modal='reports';render()});
  $('#saveReportsGroup')?.addEventListener('click',()=>{const eligible=matching().map(g=>g.id);reportSelectedGameIds=reportSelectionTouched?reportSelectedGameIds.filter(id=>eligible.includes(id)):eligible;if(!reportSelectedGameIds.length)return;modal='gameGroup:new';render()});
- $('[data-open-group]').forEach(button=>button.onclick=()=>{reportGroupId=button.dataset.openGroup;reportMode='group';reportOpponent='All Opponents';modal='reports';render()});
- $('[data-edit-group]').forEach(button=>button.onclick=()=>{modal='gameGroup:'+button.dataset.editGroup;render()});
- $('[data-rename-group]').forEach(button=>button.onclick=()=>{const group=db.gameGroups.find(item=>item.id===button.dataset.renameGroup),name=prompt('Group name',group?.name||'')?.trim();if(!group||!name)return;group.name=name;save();render()});
- $('[data-delete-group]').forEach(button=>button.onclick=()=>{const group=db.gameGroups.find(item=>item.id===button.dataset.deleteGroup);if(!group||!confirm('Delete the game group “'+group.name+'”? Saved games will not be deleted.'))return;db.gameGroups=db.gameGroups.filter(item=>item.id!==group.id);save();render()});
+ $$('[data-open-group]').forEach(button=>button.onclick=()=>{reportGroupId=button.dataset.openGroup;reportMode='group';reportOpponent='All Opponents';modal='reports';render()});
+ $$('[data-edit-group]').forEach(button=>button.onclick=()=>{modal='gameGroup:'+button.dataset.editGroup;render()});
+ $$('[data-rename-group]').forEach(button=>button.onclick=()=>{const group=db.gameGroups.find(item=>item.id===button.dataset.renameGroup),name=prompt('Group name',group?.name||'')?.trim();if(!group||!name)return;group.name=name;save();render()});
+ $$('[data-delete-group]').forEach(button=>button.onclick=()=>{const group=db.gameGroups.find(item=>item.id===button.dataset.deleteGroup);if(!group||!confirm('Delete the game group “'+group.name+'”? Saved games will not be deleted.'))return;db.gameGroups=db.gameGroups.filter(item=>item.id!==group.id);save();render()});
  bindDateFilters('saved');
  document.querySelectorAll('[data-scrimmage-game]').forEach(scrimmageToggle=>{scrimmageToggle.onchange=()=>{const game=db.savedGames.find(item=>item.id===scrimmageToggle.dataset.scrimmageGame);if(!game)return;game.scrimmage=!!scrimmageToggle.checked;reportSelectedGameIds=reportSelectedGameIds.filter(id=>id!==game.id);if(reportGameId===game.id)reportGameId=null;save();playerPortalRefreshPending=true;render();setTimeout(()=>setupPlayerPortals(false),0)}});
  $$('[data-view-game]').forEach(button=>button.onclick=()=>{reportGameId=button.dataset.viewGame;reportMode='game';reportFilterHitter='All Hitters';reportOpponent='All Opponents';modal='reports';render()});
