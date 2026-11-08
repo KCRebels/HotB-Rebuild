@@ -4011,7 +4011,7 @@ function reportBaseGames(){
 }
 function reportGames(){
  const games=reportBaseGames();
- const dated=reportMode==='current'?games:games.filter(gameMatchesDateFilter);
+ const dated=(reportMode==='saved')?games.filter(gameMatchesDateFilter):games; // An explicit game/group/selection must not be filtered a second time.
  return reportOpponent==='All Opponents'?dated:dated.filter(game=>game.opponent===reportOpponent);
 }
 function reportContext(games){
@@ -4342,7 +4342,7 @@ function hittingRankingModal(metric){
   contactPct:{label:'CONTACT',key:'contactPct',format:pct0},kPct:{label:'K%',key:'kPct',format:pct0,lowerIsBetter:true},
   hhbPct:{label:'HHB%',key:'hhbPct',format:pct0},qabPct:{label:'QAB%',key:'qabPct',format:pct1},ipaPct:{label:'IPA%',key:'ipaPct',format:pct0}
  };
- const competitionNames=new Set(competitionRoster().map(item=>item.name)),definition=definitions[metric]||definitions.AVG,teamPas=filteredPAs().filter(pa=>competitionNames.has(pa.hitter));
+ const competitionNames=new Set(competitionRoster().map(item=>item.name)),definition=definitions[metric]||definitions.AVG,teamPas=(route==='reports'&&['selection','group','game','saved'].includes(reportMode)?reportGames().flatMap(game=>game.plateAppearances||[]):filteredPAs()).filter(pa=>competitionNames.has(pa.hitter));
  const rows=competitionRoster().map(player=>{const stats=HotBEvaluationStats.statsForPAs(teamPas.filter(pa=>pa.hitter===player.name));return {player,stats,value:stats.PA?stats[definition.key]:null}}).sort((a,b)=>{
   if(a.value===null&&b.value===null)return a.player.name.localeCompare(b.player.name);
   if(a.value===null)return 1;if(b.value===null)return-1;
