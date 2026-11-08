@@ -4040,7 +4040,7 @@ function reportModal(){
  ${reportMode==='saved'?dateFilterControls('report'):''}
  <div class="report-filter-grid"><label>Player<select class="input" id="reportHitter"><option>All Hitters</option>${competitionRoster().map(r=>`<option ${reportFilterHitter===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label><label>Opponent<select class="input" id="reportOpponent"><option>All Opponents</option>${opponents.map(name=>`<option ${reportOpponent===name?'selected':''}>${esc(name)}</option>`).join('')}</select></label></div>
  ${reportGamesButton(games)}
- <div class="report-stat-grid">${[['PA',s.PA],['AVG',round3(s.AVG)],['OBP',round3(s.OBP)],['SLG',round3(s.SLG)],['OPS',round3(s.OPS)],['HITS',s.H],['RBI',s.RBI],['CONTACT',pct0(s.contactPct)],['K/BB',`${s.K}/${s.BB}`],['HHB',s.HHB],['WEAK',s.WEAK]].map(([k,v])=>`<div class="report-stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
+ <div class="report-stat-grid">${[['PA',s.PA],['AVG',round3(s.AVG)],['OBP',round3(s.OBP)],['SLG',round3(s.SLG)],['OPS',round3(s.OPS)],['HITS',s.H],['RBI',s.RBI],['CONTACT',pct0(s.contactPct)],['K/BB',`${s.K}/${s.BB}`],['HHB',s.HHB]].map(([k,v])=>`<div class="report-stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
  <h3 class="count-performance-title"><b>COUNT PERFORMANCE</b><span class="count-key hit">H</span><span class="count-separator">|</span><span class="count-key out">H4O</span><span class="count-separator">|</span><span class="count-key strikeout">K</span><span class="count-separator">|</span><span class="count-key average">AVE</span></h3>
  <div class="count-grid">${['0-0','0-2','1-2','2-2','3-2','6+'].map(c=>countCard(filtered,c)).join('')}</div>
  ${outcomeReport(filtered)}${zoneReport()}
