@@ -1871,7 +1871,7 @@ async function setupPlayerPortals(fromButton=false){
   for(let i=0;i<publishablePlayers.length;i+=3){
    await Promise.all(publishablePlayers.slice(i,i+3).map(refreshOne));
   }
-  if(failedPortalRefreshes.length===publishablePlayers.length)throw new Error('all-player-portal-writes-failed');
+  if(failedPortalRefreshes.length===publishablePlayers.length){portalMessage=`Player refresh failed for all ${publishablePlayers.length} players. First errors: ${failedPortalReasons.slice(0,3).join(' | ')}. Existing links and saved data were not changed.`;cloudBusy=false;render();return}
   // The batch commit is the authoritative success point. A second round of
   // Firestore reads is not required to publish these records and was causing
   // false failures on iPhone Safari even after the write had completed.
