@@ -1857,7 +1857,7 @@ async function setupPlayerPortals(fromButton=false){
   let completedPortalRefreshes=0;
   const refreshOne=async player=>{
    try{
-    await timed(publishPlayerEvaluationSnapshot(player),'player-evaluation-'+player.name,20000);
+    await timed(publishPlayerEvaluationSnapshot(player),'player-evaluation-'+player.name,90000);
    }catch(error){
     failedPortalRefreshes.push(player.name);
     failedPortalReasons.push(player.name+': '+refreshReason(error));
