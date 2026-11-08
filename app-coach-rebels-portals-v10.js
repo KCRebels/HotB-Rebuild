@@ -1851,16 +1851,25 @@ async function setupPlayerPortals(fromButton=false){
   const failedPortalRefreshes=[];
   const failedPortalReasons=[];
   const refreshReason=error=>{const code=String(error?.code||'').replace(/^(firestore\/|FirebaseError:\s*)/i,'').slice(0,70),msg=String(error?.message||'');if(/timeout/i.test(msg))return 'Timed out waiting for cloud';if(code==='not-found')return 'Portal record missing from cloud';if(code==='permission-denied')return 'Cloud permission denied';if(code==='unauthenticated')return 'Cloud session expired';if(code==='resource-exhausted')return 'Cloud quota or rate limit';if(code==='unavailable')return 'Cloud service unavailable';if(code==='failed-precondition')return 'Cloud update precondition failed';if(code==='invalid-argument')return 'Cloud rejected update: '+msg.replace(/^FirebaseError:\s*/,'').replace(/\b[a-zA-Z0-9_-]{35,}\b/g,'[id]').slice(0,210);return code?'Cloud error: '+code+' '+msg.slice(0,110):'Cloud update failed: '+msg.slice(0,130)};
-  for(let i=0;i<publishablePlayers.length;i++){
-   const player=publishablePlayers[i];
+  // Each player is independent. Bound wait times so one unavailable Firestore
+  // request cannot leave Refresh Player Records running indefinitely.
+  // Keep concurrency limited to avoid flooding mobile/cloud connections.
+  let completedPortalRefreshes=0;
+  const refreshOne=async player=>{
    try{
-    await publishPlayerEvaluationSnapshot(player);
+    await timed(publishPlayerEvaluationSnapshot(player),'player-evaluation-'+player.name,20000);
    }catch(error){
     failedPortalRefreshes.push(player.name);
     failedPortalReasons.push(player.name+': '+refreshReason(error));
     console.warn('Player portal refresh failed for '+player.name,error);
+   }finally{
+    completedPortalRefreshes++;
+    portalMessage=`Refreshing player records… ${completedPortalRefreshes} of ${publishablePlayers.length}`;
+    render();
    }
-   portalMessage=`Refreshing player records… ${i+1} of ${publishablePlayers.length}`;render();
+  };
+  for(let i=0;i<publishablePlayers.length;i+=3){
+   await Promise.all(publishablePlayers.slice(i,i+3).map(refreshOne));
   }
   if(failedPortalRefreshes.length===publishablePlayers.length)throw new Error('all-player-portal-writes-failed');
   // The batch commit is the authoritative success point. A second round of
