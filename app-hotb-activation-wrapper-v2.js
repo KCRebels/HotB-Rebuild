@@ -54,7 +54,7 @@
   return new Response(patched,{status:response.status,statusText:response.statusText,headers:response.headers});
  };
  const script=document.createElement('script');
- script.src='app-hotb-activation-wrapper-v1.js?v=20261028-stale-conflict-685&fresh='+Date.now();
+ script.src='app-hotb-activation-wrapper-v1.js?v=20261108-startup-cache1';
  script.async=false;
  script.onload=()=>{window.fetch=originalFetch;window.__HOTB_STALE_CONFLICT_PATCH__='685';window.__HOTB_NEW_GAME_RENDER_GUARD__='20261031-1700'};
  script.onerror=()=>{window.fetch=originalFetch;throw new Error('stale-conflict-wrapper-load')};
