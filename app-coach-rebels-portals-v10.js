@@ -22,6 +22,7 @@ const defaultRoster = [
  {name:'Brynna Peter',side:'R',jersey:'11',grad:'2028',positions:'SS | UT',gpa:'3.78',interest:'Occupational Therapy',school:'Chanute HS',photo:'Brynna.jpg',hittingPracticeAttendanceEligible:false},
  {name:'Claire Jack',side:'R',jersey:'25',grad:'2029',positions:'CIF | OF',gpa:'4.0',interest:'Biology',school:'Pratt HS',photo:'player-photos/claire-2026.jpg',hittingPracticeAttendanceEligible:false},
  {name:'Hailey Marsh',side:'SL',jersey:'23',grad:'2029',positions:'CF | OF',gpa:'4.0',interest:'Dentist',school:'Louisburg HS',photo:'Hailey.jpg'},
+ {name:'Katelyn Tilghman',side:'R',jersey:'',grad:'',positions:'C',gpa:'',interest:'',school:''},
  {name:'Lakyn Farley',side:'R',jersey:'8',grad:'2028',positions:'RHP | OF',gpa:'4.0',interest:'Sports Medicine',school:'Fort Scott HS',photo:'player-photos/lakyn-2026.jpg'},
  {name:'Lydia Copeland',side:'R',jersey:'27',grad:'2028',positions:'C | CIF',gpa:'4.0',interest:'Child Psychology',school:'Louisburg HS',photo:'player-photos/lydia-2026.jpg'},
  {name:'Maia Waddell',side:'SL',jersey:'1',grad:'2028',positions:'2B | OF',gpa:'4.1',interest:'Criminal Justice / Film',school:'Olathe NW HS',photo:'Maia.jpg'},
@@ -29,7 +30,6 @@ const defaultRoster = [
  {name:'Maleah Pena',side:'R',jersey:'20',grad:'2028',positions:'3B | 1B',gpa:'3.52',interest:'Sports Medicine',school:'Olathe NW HS',photo:'Maleah.jpg'},
  {name:'Mattingly Hardy',side:'R',jersey:'99',grad:'2029',positions:'OF | UT',gpa:'3.81',interest:'Biology',school:'Pembroke Hill HS',photo:'player-photos/mattingly-2026.jpg'},
  {name:'Megan Ryan',side:'R',jersey:'22',grad:'2028',positions:'RHP | UT',gpa:'4.0',interest:'Engineering',school:'Rock Creek HS',photo:'player-photos/megan-2026.jpg'},
- {name:'Katelyn Tilghman',side:'R',jersey:'',grad:'',positions:'C',gpa:'',interest:'',school:''},
  {name:'Tayte Stepps',side:'R',jersey:'00',grad:'2029',positions:'C | OF',gpa:'3.9',interest:'Nursing',school:'Fort Scott HS',photo:'player-photos/tayte-2026.jpg'}
 ];
 const playerPhotoUpdatesV1={
