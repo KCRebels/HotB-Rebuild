@@ -2809,7 +2809,7 @@ function playerPortalPage(){
  if(!portalData.activePractice&&portalLibraryReturnView==='practice'){portalView='home';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library'}
  if(portalView==='practice')return portalPracticeView();
  if(portalView==='focus')return portalFocusView();
- if(portalView==='evaluation'){const fallback=portalPlayerEvaluationView();if(typeof window.HotBPlayerEvaluationRender==='function'){queueMicrotask(()=>{if(route==='portal'&&portalView==='evaluation')window.HotBPlayerEvaluationRender()})}return fallback;}
+ if(portalView==='evaluation'){const fallback=portalPlayerEvaluationView();if(portalData?.evaluationData&&portalData?.playerName&&typeof window.HotBPlayerEvaluationRender==='function'){queueMicrotask(()=>{if(route==='portal'&&portalView==='evaluation'&&portalData?.evaluationData&&portalData?.playerName)window.HotBPlayerEvaluationRender()})}return fallback;}
  if(portalView==='library')return portalLibraryView();
  if(portalView==='ask')return portalAskView();
  return portalDashboardView();
