@@ -1336,6 +1336,20 @@ async function loadPlayerPortal(){
   }
  }
  if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
+ // Permanent private links carry their claim code in the URL. If Safari restored
+ // a non-anonymous player session, switch to the anonymous claim identity that
+ // Firestore rules require, instead of falling through to manual PIN entry.
+ if(guestPortalSecret&&!isCoachPortalUser()&&!portalAuthUser?.isAnonymous){
+  try{
+   const credential=await cloudAuth.signInAnonymously();
+   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
+   portalAuthUser=credential?.user||cloudAuth.currentUser||null;
+  }catch(error){
+   if(loadGeneration!==portalLoadGeneration||portalToken!==requestedPortalToken)return;
+   portalBusy=false;portalMessage='HotB could not reconnect this private link. Please reopen it.';
+   if(route==='portal')render();return;
+  }
+ }
  if(guestPortalSecret&&!isCoachPortalUser()){
   try{
    const proof=await portalHash(requestedPortalToken,guestPortalSecret);
