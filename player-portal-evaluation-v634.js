@@ -36,7 +36,7 @@ const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt
 function header(){return `<header class="hbp-head"><button class="hbp-back" id="pemBack">Back</button><h1>Evaluation</h1></header>`}function shell(body){return `<div class="hbp-shell">${header()}<main class="hbp-main eval-match">${body}</main></div>`}
 let heat='ALL',heatMode='COUNT';
 const matF={season:'',range:'full',start:'',end:'',mode:'all',selected:[],group:'',groups:[],opponent:'all',scrimmages:'exclude'};
-const enhancedPortalPlayers=new Set(["Aniesa Rohleder","Brooklyn Gering","Brynna Peter","Claire Jack","Hailey Marsh","Lakyn Farley","Lydia Copeland","Maia Waddell","Makenna Whitaker","Maleah Pena","Mattingly Hardy","Megan Ryan","Tayte Stepps"]);
+const enhancedPortalPlayers=new Set(["Aniesa Rohleder","Brooklyn Gering","Brynna Peter","Claire Jack","Hailey Marsh","Katelyn Tilghman","Lakyn Farley","Lydia Copeland","Maia Waddell","Makenna Whitaker","Maleah Pena","Mattingly Hardy","Megan Ryan","Tayte Stepps"]);
 function matEnabled(){return enhancedPortalPlayers.has(String(window.__HOTB_PORTAL_PLAYER_NAME__||'').trim())}
 function matGroupsKey(){const who=String(window.__HOTB_PORTAL_PLAYER_NAME__||'').trim();return who==='Mattingly Hardy'?'hotb-mattingly-groups-v1':'hotb-player-groups-v1:'+who}
 function matMeta(value){const d=new Date(value),m=d.getMonth()+1,day=d.getDate(),y=d.getFullYear();if(!Number.isFinite(d.getTime()))return {season:'',part:''};const start=m>=9?y:y-1;return {season:start+'–'+String(start+1).slice(-2),part:m>=9&&m<=11?'fall':m===6||m===7||(m===8&&day===1)||(m===5&&day>=20)?'summer':'other'}}
