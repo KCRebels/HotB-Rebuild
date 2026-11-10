@@ -1660,3 +1660,8 @@ body:has(.eval-head) .athletic-head h2{
 
 /* Fixed six-line Coach Observation note field; intentionally no auto-resize JS. */
 .observation-note textarea{height:9em;min-height:9em;max-height:9em;overflow-y:auto}
+
+/* Keep Player Information save action above the fixed mobile bottom navigation. */
+.modal-backdrop:has(.player-info-modal){z-index:10000;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+.modal-backdrop .player-info-modal{box-sizing:border-box;max-height:calc(100dvh - 28px - env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+.modal-backdrop .player-info-modal .info-save{min-height:48px;margin-bottom:4px}
