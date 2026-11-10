@@ -21,7 +21,10 @@ service cloud.firestore {
 
     match /playerPortals/{portalId} {
       allow create, delete: if isCoach();
-      allow read: if isCoach()
+      // The random 144-bit portalId is the private player link's access key.
+      // Direct document GET is allowed, but portal enumeration remains coach-only.
+      allow get: if isCoach()
+        || (signedIn() && resource.data.portalType == 'player')
         || (
           signedIn()
           && (
@@ -36,6 +39,7 @@ service cloud.firestore {
             )
           )
         );
+      allow list: if isCoach();
       allow update: if isCoach()
         || (
           signedIn()
@@ -88,7 +92,8 @@ service cloud.firestore {
           || (
             signedIn()
             && (
-              get(/databases/$(database)/documents/playerPortals/$(portalId)).data.ownerUid == request.auth.uid
+              get(/databases/$(database)/documents/playerPortals/$(portalId)).data.portalType == 'player'
+              || get(/databases/$(database)/documents/playerPortals/$(portalId)).data.ownerUid == request.auth.uid
               || (
                 get(/databases/$(database)/documents/playerPortals/$(portalId)).data.keys().hasAny(['authorizedUids'])
                 && get(/databases/$(database)/documents/playerPortals/$(portalId)).data.authorizedUids.hasAny([request.auth.uid])
@@ -101,7 +106,8 @@ service cloud.firestore {
             || (
               signedIn()
               && (
-                get(/databases/$(database)/documents/playerPortals/$(portalId)).data.ownerUid == request.auth.uid
+                get(/databases/$(database)/documents/playerPortals/$(portalId)).data.portalType == 'player'
+              || get(/databases/$(database)/documents/playerPortals/$(portalId)).data.ownerUid == request.auth.uid
                 || (
                   get(/databases/$(database)/documents/playerPortals/$(portalId)).data.keys().hasAny(['authorizedUids'])
                   && get(/databases/$(database)/documents/playerPortals/$(portalId)).data.authorizedUids.hasAny([request.auth.uid])
@@ -119,7 +125,8 @@ service cloud.firestore {
           || (
             signedIn()
             && (
-              get(/databases/$(database)/documents/playerPortals/$(portalId)).data.ownerUid == request.auth.uid
+              get(/databases/$(database)/documents/playerPortals/$(portalId)).data.portalType == 'player'
+              || get(/databases/$(database)/documents/playerPortals/$(portalId)).data.ownerUid == request.auth.uid
               || (
                 get(/databases/$(database)/documents/playerPortals/$(portalId)).data.keys().hasAny(['authorizedUids'])
                 && get(/databases/$(database)/documents/playerPortals/$(portalId)).data.authorizedUids.hasAny([request.auth.uid])
