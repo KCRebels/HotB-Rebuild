@@ -2415,7 +2415,7 @@ function portalPlayerEvaluationView(){
 function isKatelynPortalLayout(){
  const first=String(portalData?.firstName||'').trim().toLowerCase();
  const player=String(portalData?.playerName||'').trim().toLowerCase();
- return first==='katelyn'||/^katelyn(?:\\s|$)/.test(player);
+ return first==='katelyn'||player==='katelyn'||player.startsWith('katelyn ');
 }
 function portalLibraryView(){
  const allDrills=Array.isArray(window.HotBDrillLibrary)?window.HotBDrillLibrary:[],practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData?.portalType),practiceEnded=practiceOnly&&portalPracticeClockValues(portalData?.activePractice).block==='DONE!',allowed=practiceOnly?new Set(practiceEnded?[]:portalData?.activePractice?.drills||[]):null,drills=allowed?allDrills.filter(drill=>allowed.has(drill.name)):allDrills,selected=drills.find(drill=>drill.name===portalSelectedDrill);
