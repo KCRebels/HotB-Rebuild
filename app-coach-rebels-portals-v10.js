@@ -29,6 +29,7 @@ const defaultRoster = [
  {name:'Maleah Pena',side:'R',jersey:'20',grad:'2028',positions:'3B | 1B',gpa:'3.52',interest:'Sports Medicine',school:'Olathe NW HS',photo:'Maleah.jpg'},
  {name:'Mattingly Hardy',side:'R',jersey:'99',grad:'2029',positions:'OF | UT',gpa:'3.81',interest:'Biology',school:'Pembroke Hill HS',photo:'player-photos/mattingly-2026.jpg'},
  {name:'Megan Ryan',side:'R',jersey:'22',grad:'2028',positions:'RHP | UT',gpa:'4.0',interest:'Engineering',school:'Rock Creek HS',photo:'player-photos/megan-2026.jpg'},
+ {name:'Katelyn Tilghman',side:'R',jersey:'',grad:'',positions:'C',gpa:'',interest:'',school:''},
  {name:'Tayte Stepps',side:'R',jersey:'00',grad:'2029',positions:'C | OF',gpa:'3.9',interest:'Nursing',school:'Fort Scott HS',photo:'player-photos/tayte-2026.jpg'}
 ];
 const playerPhotoUpdatesV1={
