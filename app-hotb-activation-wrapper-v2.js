@@ -1,62 +1,16 @@
+/* HotB startup compatibility loader. Older cached pages may still request
+   either activation-wrapper URL. Load the same coach bundle directly instead
+   of fetching and executing a rewritten Blob (the H684 failure path). */
 (()=>{
- const originalFetch=window.fetch.bind(window);
- const patchSource=source=>{
-  const anchor=source.indexOf("const conflicting=activationDocs.filter");
-  const start=source.indexOf("if(conflicting.length){",anchor);
-  const endMarker="\n  // A matching practice ID already in Firebase";
-  const end=source.indexOf(endMarker,start);
-  if(anchor<0||start<0||end<0)throw new Error('stale-conflict-patch-anchor');
-  const replacement=`if(conflicting.length){
- const unsafe=conflicting.filter(({snapshot})=>{
-  const active=snapshot.data()?.activePractice,clock=active?.clock||{},status=String(clock.status||'');
-  return !active||status==='running'||(!!clock.startedAt&&!clock.endedAt&&status!=='finished');
- });
- if(unsafe.length)throw new Error('portal-activation-live-practice-conflict');
- const staleBatch=cloudStore.batch();
- for(const {target,snapshot} of conflicting){
-  const remote=snapshot.exists?snapshot.data():null;
-  if(!remote?.activePractice?.id)continue;
-  const data=target.type==='jenkinsPlayer'
-   ?jenkinsPortalCleanupPayload(db.roster.find(item=>item.portalId===target.id),{name:target.name,portalId:target.id,isTeamJenkins:true})
-   :['guestPlayer','guestCoach'].includes(target.type)
-    ?{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}
-    :{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
-  staleBatch.update(portalDoc(target.id),data);
- }
- await staleBatch.commit();
- const staleVerify=await Promise.all(conflicting.map(async ({target})=>{
-  const snap=await portalDoc(target.id).get();
-  return !snap.exists||!snap.data()?.activePractice?.id;
- }));
- if(staleVerify.some(ok=>!ok))throw new Error('portal-activation-stale-cleanup-failed');
-}`;
-  let patched=source.slice(0,start)+replacement+source.slice(end);
-
-  // Keep automatic player-portal refreshes from repainting New Game while the
-  // coach is entering opponent, pitcher, or batting order. Background sync may
-  // continue, but only Home/Portal (or a manual refresh) is allowed to render.
-  const portalStart=patched.indexOf('async function setupPlayerPortals(fromButton=false){');
-  const portalEnd=patched.indexOf('\nasync function setupCoachPortal(){',portalStart);
-  if(portalStart<0||portalEnd<0)throw new Error('new-game-render-guard-anchor');
-  let portalBlock=patched.slice(portalStart,portalEnd);
-  portalBlock=portalBlock.replace("cloudBusy=true;portalMessage='Refreshing player records…';render();","cloudBusy=true;portalMessage='Refreshing player records…';if(fromButton||route==='home'||route==='portal')render();");
-  portalBlock=portalBlock.replace("portalMessage=`Refreshing player records… ${i+1} of ${publishablePlayers.length}`;render();","portalMessage=`Refreshing player records… ${i+1} of ${publishablePlayers.length}`;if(fromButton||route==='home'||route==='portal')render();");
-  portalBlock=portalBlock.replace("cloudBusy=false;render();","cloudBusy=false;if(fromButton||route==='home'||route==='portal')render();");
-  patched=patched.slice(0,portalStart)+portalBlock+patched.slice(portalEnd);
-  return patched;
- };
- window.fetch=async(input,init)=>{
-  const url=typeof input==='string'?input:input?.url||'';
-  const response=await originalFetch(input,init);
-  if(!url.includes('app-coach-rebels-portals-v10.js'))return response;
-  const source=await response.text();
-  const patched=patchSource(source);
-  return new Response(patched,{status:response.status,statusText:response.statusText,headers:response.headers});
- };
+ if(window.__HOTB_COACH_BUNDLE_REQUESTED__)return;
+ window.__HOTB_COACH_BUNDLE_REQUESTED__=true;
+ window.__HOTB_DIRECT_BUNDLE_FALLBACK__=true;
  const script=document.createElement('script');
- script.src='app-hotb-activation-wrapper-v1.js?v=20261115-h684-recovery';
+ script.src='app-coach-rebels-portals-v10.js?v=20261115-h684-safe-startup-693&fresh='+Date.now();
  script.async=false;
- script.onload=()=>{window.fetch=originalFetch;window.__HOTB_STALE_CONFLICT_PATCH__='685';window.__HOTB_NEW_GAME_RENDER_GUARD__='20261031-1700'};
- script.onerror=()=>{window.fetch=originalFetch;throw new Error('stale-conflict-wrapper-load')};
+ script.onerror=()=>{
+  const app=document.getElementById('app');
+  if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><strong>HotB Startup Error</strong><p>The coach program could not be downloaded. Verify network access and reopen HotB.</p><p>Error code: H200-DIRECT</p></main></div>';
+ };
  document.body.appendChild(script);
 })();
