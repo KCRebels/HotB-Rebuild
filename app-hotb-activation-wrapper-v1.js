@@ -1,105 +1,16 @@
+/* HotB startup compatibility loader. Older cached pages may still request
+   either activation-wrapper URL. Load the same coach bundle directly instead
+   of fetching and executing a rewritten Blob (the H684 failure path). */
 (()=>{
- const sourceUrl='app-coach-rebels-portals-v10.js?v=20261028-save-draft-682&fresh='+Date.now();
- const load=async()=>{
-  try{
-   const response=await fetch(sourceUrl,{cache:'no-store'});
-   if(!response.ok)throw new Error('activation-wrapper-source-'+response.status);
-   let source=await response.text();
-
-   const recoveredOld="persistPracticeSession();practicePortalActionBusy=false;render();return;";
-   const recoveredNew="practicePortalActionBusy=false;render();setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('HotB deferred recovered-activation persistence failed',error)}},0);return;";
-   if(source.includes(recoveredOld))source=source.replace(recoveredOld,recoveredNew);
-
-   const successOld=`db.activePortalPractice=pendingPortalPractice;\n  try{persistPracticeSession()}\n  catch(error){\n   // Keep the verified publication pointer in memory so the catch path can route\n   // to recovery instead of treating a successful Firebase activation as failed.\n   if(String(error?.message||'').includes('device-storage-quota-exceeded'))throw error;\n   throw error;\n  }\n  practicePortalActionBusy=false;render();`;
-   const successNew=`db.activePortalPractice=pendingPortalPractice;\n  practicePortalActionBusy=false;render();\n  setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('HotB deferred activation persistence failed',error)}},0);`;
-   if(source.includes(successOld))source=source.replace(successOld,successNew);
-
-   const preflightOld=`const activationDocs=await Promise.all(activationTargets.map(async target=>({target,snapshot:await portalDoc(target.id).get()})));`;
-   const preflightNew=`const activationDocs=await Promise.all(activationTargets.map(async target=>{const read=()=>Promise.race([portalDoc(target.id).get(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-activation-preflight-timeout:'+target.id)),8000))]);let snapshot;try{snapshot=await read()}catch(error){if(!String(error?.message||'').startsWith('portal-activation-preflight-timeout:'))throw error;await new Promise(resolve=>setTimeout(resolve,500));snapshot=await read()}return{target,snapshot}}));`;
-   if(source.includes(preflightOld))source=source.replace(preflightOld,preflightNew);
-
-   const staleOld=`if(conflicting.length){\n   const conflictIds=[...new Set(conflicting.map(({snapshot})=>snapshot.data()?.activePractice?.id).filter(Boolean))];\n   const safeStale=conflictIds.length===1&&conflicting.every(({snapshot})=>{const active=snapshot.data()?.activePractice,clock=active?.clock||{};return active&&(!clock.status||clock.status==='not-started')&&!clock.startedAt&&!clock.endedAt});\n   if(!safeStale)throw new Error('portal-activation-live-practice-conflict');\n   const staleId=conflictIds[0],staleBatch=cloudStore.batch();\n   for(const {target,snapshot} of activationDocs){\n    const remote=snapshot.exists?snapshot.data():null;\n    if(remote?.activePractice?.id!==staleId)continue;\n    const data=target.type==='jenkinsPlayer'?jenkinsPortalCleanupPayload(db.roster.find(item=>item.portalId===target.id),{name:target.name,portalId:target.id,isTeamJenkins:true}):['guestPlayer','guestCoach'].includes(target.type)?{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}:{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};\n    staleBatch.update(portalDoc(target.id),data);\n   }\n   await staleBatch.commit();\n   const staleVerify=await Promise.all(conflicting.map(async ({target})=>{const snap=await portalDoc(target.id).get();return !snap.exists||snap.data()?.activePractice?.id!==staleId}));\n   if(staleVerify.some(ok=>!ok))throw new Error('portal-activation-stale-cleanup-failed');\n  }`;
-   const staleNew=`if(conflicting.length){\n   const unsafe=conflicting.filter(({snapshot})=>{const active=snapshot.data()?.activePractice,clock=active?.clock||{};return !active||(clock.status&&clock.status!=='not-started')||!!clock.startedAt||!!clock.endedAt});\n   if(unsafe.length)throw new Error('portal-activation-live-practice-conflict');\n   const staleBatch=cloudStore.batch();\n   for(const {target,snapshot} of conflicting){\n    const remote=snapshot.exists?snapshot.data():null;\n    if(!remote?.activePractice?.id)continue;\n    const data=target.type==='jenkinsPlayer'?jenkinsPortalCleanupPayload(db.roster.find(item=>item.portalId===target.id),{name:target.name,portalId:target.id,isTeamJenkins:true}):['guestPlayer','guestCoach'].includes(target.type)?{activePractice:null,expired:true,accessStatus:'ended',endedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}:{activePractice:null,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};\n    staleBatch.update(portalDoc(target.id),data);\n   }\n   await staleBatch.commit();\n   const staleVerify=await Promise.all(conflicting.map(async ({target})=>{const snap=await portalDoc(target.id).get();return !snap.exists||!snap.data()?.activePractice?.id}));\n   if(staleVerify.some(ok=>!ok))throw new Error('portal-activation-stale-cleanup-failed');\n  }`;
-   if(source.includes(staleOld))source=source.replace(staleOld,staleNew);
-
-   const commitOld=`// Do not mark the practice locally active until Firebase has accepted every portal update.\n  try{await batch.commit()}\n  catch(error){throw error}`;
-   const commitNew=`// Do not mark the practice locally active until Firebase has accepted every portal update.\n  try{await Promise.race([batch.commit(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-activation-commit-timeout')),12000))])}\n  catch(error){throw error}`;
-   if(source.includes(commitOld))source=source.replace(commitOld,commitNew);
-
-   const cleanupReadsOld=`const existingCleanup=await Promise.all(cleanupTargets.map(async target=>{const snapshot=await portalDoc(target.id).get();if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==practicePlan.portalDraftId)throw new Error('portal-clear-newer-practice-conflict');`;
-   const cleanupReadsNew=`const existingCleanup=await Promise.all(cleanupTargets.map(async target=>{const read=()=>Promise.race([portalDoc(target.id).get(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-deactivation-preflight-timeout:'+target.id)),8000))]);let snapshot;try{snapshot=await read()}catch(error){if(!String(error?.message||'').startsWith('portal-deactivation-preflight-timeout:'))throw error;await new Promise(resolve=>setTimeout(resolve,500));snapshot=await read()}if(!snapshot.exists)return null;const remote=snapshot.data()||{},remotePracticeId=remote.activePractice?.id||'';if(remotePracticeId&&remotePracticeId!==practicePlan.portalDraftId)throw new Error('portal-clear-newer-practice-conflict');`;
-   if(source.includes(cleanupReadsOld))source=source.replace(cleanupReadsOld,cleanupReadsNew);
-
-   const cleanupCommitOld=`if(existingCleanup.some(item=>item&&!item.alreadyCleared))await batch.commit();`;
-   const cleanupCommitNew=`if(existingCleanup.some(item=>item&&!item.alreadyCleared)){const commit=()=>Promise.race([batch.commit(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('portal-deactivation-commit-timeout')),12000))]);try{await commit()}catch(error){if(String(error?.message||'')!=='portal-deactivation-commit-timeout')throw error;await new Promise(resolve=>setTimeout(resolve,500));await commit()}}`;
-   if(source.includes(cleanupCommitOld))source=source.replace(cleanupCommitOld,cleanupCommitNew);
-
-   const deactivateOld=`db.activePortalPractice=null;\n if(db.activePracticeSession&&practicePlan)persistPracticeSession();else save();\n}`;
-   const deactivateNew=`db.activePortalPractice=null;\n setTimeout(()=>{try{if(db.activePracticeSession&&practicePlan)persistPracticeSession();else save()}catch(error){console.warn('HotB deferred deactivation persistence failed',error)}},0);\n}`;
-   if(source.includes(deactivateOld))source=source.replace(deactivateOld,deactivateNew);
-
-   const activeRenderOld=`portalsActive=!!db.activePortalPractice?.active,currentPortalsActive=portalsActive&&db.activePortalPractice.id===practicePlan.portalDraftId;`;
-   const activeRenderNew=`portalsActive=!!db.activePortalPractice,currentPortalsActive=portalsActive&&db.activePortalPractice.id===practicePlan.portalDraftId;`;
-   if(source.includes(activeRenderOld))source=source.replace(activeRenderOld,activeRenderNew);
-
-   const alreadyActiveOld=`if(db.activePortalPractice?.id===practicePlan.portalDraftId){alert('This exact practice is already active on the player and coach portals. HotB will not republish it or reset its live clock.');return}`;
-   const alreadyActiveNew=`if(db.activePortalPractice?.id===practicePlan.portalDraftId){db.activePortalPractice.active=true;render();setTimeout(()=>{try{persistPracticeSession()}catch(error){console.warn('HotB active-state recovery persistence failed',error)}},0);return}`;
-   if(source.includes(alreadyActiveOld))source=source.replace(alreadyActiveOld,alreadyActiveNew);
-
-   const doneHistoryOld=`if(practicePlan&&!db.practiceHistory.some(item=>item.id===practicePlan.portalDraftId)){const completedAt=new Date(practiceClock.completedAt||Date.now());practiceClock.completedAt=completedAt.toISOString();archiveCompletedPractice(completedAt);persistPracticeSession()}`;
-   const doneHistoryNew=`if(practicePlan&&!practiceClock.completedAt)practiceClock.completedAt=new Date().toISOString()`;
-   if(source.includes(doneHistoryOld))source=source.replace(doneHistoryOld,doneHistoryNew);
-
-   const doneCleanupOld=`try{await clearActivePlayerPlans();cleanupComplete=true}`;
-   const doneCleanupNew=`try{try{await clearActivePlayerPlans()}catch(error){const code=String(error?.message||'');if(!code.startsWith('portal-deactivation-'))throw error;await new Promise(resolve=>setTimeout(resolve,500));await clearActivePlayerPlans()}cleanupComplete=true}`;
-   if(source.includes(doneCleanupOld))source=source.replace(doneCleanupOld,doneCleanupNew);
-
-   source=source.replace(`Practice was saved, but the player plans could not be removed. Check your connection, then tap DONE! again.`,`Practice ended, but HotB could not clear the player and coach portals. Check your connection, then tap DONE! again.`);
-   source=source.replace(`Practice was saved, but the player plans could not be removed because Cloud Backup is not signed in. Sign in through Cloud Backup, then tap DONE! again.`,`Practice ended, but HotB could not clear the player and coach portals because Cloud Backup is not signed in. Sign in, then tap DONE! again.`);
-
-   const saveSetupOld=`$('#savePracticeSetup')?.addEventListener('click',()=>{\n  practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));\n  if(persistPracticeDraft()!==true){alert('HotB could not save this practice setup. Try again.');return}\n  practiceSetupOpenSnapshot=null;practiceSection='setup';go('home');\n });`;
-   const saveSetupNew=`$('#savePracticeSetup')?.addEventListener('click',()=>{\n  practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));\n  const previousPlan=practicePlan;practicePlan=null;\n  if(persistPracticeDraft()!==true){practicePlan=previousPlan;alert('HotB could not save this practice setup. Try again.');return}\n  practiceSetupOpenSnapshot=null;practiceSection='setup';go('home');\n });`;
-   if(source.includes(saveSetupOld))source=source.replace(saveSetupOld,saveSetupNew);
-
-   const makennaWarmupOld=`requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?false:saved.requiresPitchWarmup!==false):false`;
-   const makennaWarmupNew=`requiresPitchWarmup:isPitcherProfile(player)?(isMakenna?saved.requiresPitchWarmup===true:saved.requiresPitchWarmup!==false):false`;
-   if(source.includes(makennaWarmupOld))source=source.replace(makennaWarmupOld,makennaWarmupNew);
-
-   const refreshOld=`function refreshPracticeAccommodationDefaults(){\n const start=$('#practiceStartTime')?.value||'17:30',duration=Number($('#practiceDuration')?.value)||120,end=practiceEndValue(start,duration);\n $$('[data-accommodation-arrival]').forEach(input=>{if(input.dataset.custom!=='true'){const player=practiceAttendanceRoster()[Number(input.dataset.accommodationArrival)];input.value=player?.name==='Makenna Whitaker'?practiceTimeValue((practiceTimeMinutes(start)??0)+45):start}});\n $$('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true')input.value=end});\n practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));\n}`;
-   const refreshNew=`function refreshPracticeAccommodationDefaults(){\n const start=$('#practiceStartTime')?.value||'17:30',duration=Number($('#practiceDuration')?.value)||120,end=practiceEndValue(start,duration);\n $$('[data-accommodation-arrival]').forEach(input=>{const player=practiceAttendanceRoster()[Number(input.dataset.accommodationArrival)];if(player?.name==='Makenna Whitaker'){input.value=start;input.dataset.custom='true'}else if(input.dataset.custom!=='true')input.value=start});\n $$('[data-accommodation-departure]').forEach(input=>{if(input.dataset.custom!=='true')input.value=end});\n const makennaIndex=practiceAttendanceRoster().findIndex(player=>player.name==='Makenna Whitaker');\n if(makennaIndex>=0){const pitch=$('[data-accommodation-pitch="'+makennaIndex+'"]'),warmup=$('[data-accommodation-warmup="'+makennaIndex+'"]');if(pitch)pitch.checked=true;if(warmup){warmup.disabled=false;warmup.checked=true}}\n practiceAttendanceRoster().forEach((player,index)=>storePracticeAccommodation(index));\n}`;
-   if(source.includes(refreshOld))source=source.replace(refreshOld,refreshNew);
-
-   const buttonsOld=`<div class="practice-build-bottom-actions" style="display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:10px;margin-top:14px;margin-bottom:110px"><button class="btn" id="closePracticeSetup">Close</button><button class="btn red" id="savePracticeSetup" style="background:#c71920!important;color:#fff!important;border-color:#c71920!important">Save</button><button class="btn black" id="generatePractice">Build Practice</button></div>`;
-   const buttonsNew=`<div class="practice-build-bottom-actions" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-top:14px;margin-bottom:110px"><button class="btn" id="closePracticeSetup">Close</button><button class="btn red" id="savePracticeSetup" style="background:#c71920!important;color:#fff!important;border-color:#c71920!important">Save</button><button class="btn black" id="generatePractice">Build</button><button class="btn" type="button" id="resetPracticeSetup">Reset</button></div>`;
-   if(source.includes(buttonsOld))source=source.replace(buttonsOld,buttonsNew);
-
-   const durationHandler=`$('#practiceDuration')?.addEventListener('change',()=>{refreshPracticeAccommodationDefaults();if(practiceResolution){practiceResolution=null;if(modal==='practiceResolution')modal=null}persistPracticeDraft()});`;
-   const resetHandler=`${durationHandler}\n $('#resetPracticeSetup')?.addEventListener('click',event=>{\n  event.preventDefault();\n  const regionalDefaults=practiceAttendanceRoster().filter(player=>!player.isTeamJenkins&&!player.isPracticeGuest&&!player.isGuest&&!['Brynna Peter','Claire Jack'].includes(player.name)).map(player=>player.name);\n  practiceSetupState={...practiceSetupState,selectedNames:regionalDefaults,startTime:'17:30',durationMinutes:120,accommodations:{'Makenna Whitaker':{arrival:'18:15',requiresPitchWarmup:false}}};\n  practiceResolution=null;if(modal==='practiceResolution')modal=null;\n  render();persistPracticeDraft();window.scrollTo(0,0);\n });`;
-   if(source.includes(durationHandler)&&!source.includes("$('#resetPracticeSetup')?.addEventListener"))source=source.replace(durationHandler,resetHandler);
-
-   const required=['HotB deferred activation persistence failed','portal-activation-preflight-timeout','portal-deactivation-preflight-timeout','HotB active-state recovery persistence failed','id="resetPracticeSetup"','const previousPlan=practicePlan;practicePlan=null'];
-   if(required.some(marker=>!source.includes(marker)))console.warn('HotB 684 optional patch anchor missing');
-
-   const blob=new Blob([source],{type:'text/javascript'}),url=URL.createObjectURL(blob),script=document.createElement('script');
-   script.src=url;script.async=false;
-   script.onload=()=>{URL.revokeObjectURL(url);window.__HOTB_ACTIVATION_DIRECT_PATCH__='684'};
-   script.onerror=()=>{URL.revokeObjectURL(url);throw new Error('activation-wrapper-execute')};
-   document.body.appendChild(script);
-  }catch(error){
-   console.error('HotB activation wrapper failed; attempting unmodified coach bundle',error);
-   // The coach program must remain launchable even if a wrapper fetch, patch
-   // anchor, or Blob execution fails. A plain script tag bypasses window.fetch.
-   window.__HOTB_DIRECT_BUNDLE_FALLBACK__=true;
-   const fallback=document.createElement('script');
-   fallback.src='app-coach-rebels-portals-v10.js?v=20261115-h684-direct-fallback&fresh='+Date.now();
-   fallback.async=false;
-   fallback.onload=()=>{window.__HOTB_H684_RECOVERED__=true};
-   fallback.onerror=()=>{
-    const app=document.getElementById('app');
-    if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The coach app and its direct fallback could not load. Check the connection, then reopen HotB.</p><p style="margin:8px 0 0">Error code: H684-DIRECT</p></section></main></div>';
-   };
-   document.body.appendChild(fallback);
-  }
+ if(window.__HOTB_COACH_BUNDLE_REQUESTED__)return;
+ window.__HOTB_COACH_BUNDLE_REQUESTED__=true;
+ window.__HOTB_DIRECT_BUNDLE_FALLBACK__=true;
+ const script=document.createElement('script');
+ script.src='app-coach-rebels-portals-v10.js?v=20261115-h684-safe-startup-693&fresh='+Date.now();
+ script.async=false;
+ script.onerror=()=>{
+  const app=document.getElementById('app');
+  if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><strong>HotB Startup Error</strong><p>The coach program could not be downloaded. Verify network access and reopen HotB.</p><p>Error code: H200-DIRECT</p></main></div>';
  };
- load();
+ document.body.appendChild(script);
 })();
