@@ -17,9 +17,19 @@
    if(data.focus&&(data.focus.publishedAt||data.focus.archivedAt)&&!items.some(x=>String(x?.publishedAt||x?.archivedAt||'')===String(data.focus.publishedAt||data.focus.archivedAt)))items.push(data.focus);
    const section=modal.querySelector('section');if(!section)return;
    const existing=new Set([...section.querySelectorAll('[data-hotb-published]')].map(b=>String(b.dataset.hotbPublished||'')));
+   const normalize=s=>String(s||'').trim().replace(/\\s+/g,' ').toLowerCase();
+   const meaningful=item=>(Array.isArray(item?.observationOptions)&&item.observationOptions.some(t=>normalize(t)))||!!normalize(item?.coachNote);
+   const contentKey=item=>{const t=stamp(item);return t?Math.floor(t/60000)+'|'+(Array.isArray(item?.observationOptions)?item.observationOptions.map(normalize).filter(Boolean).sort().join('~'):'')+'|'+normalize(item?.coachNote):''};
+   const seenContent=new Set();
+   // The coach's local list already renders published entries. Keep cloud-only rows
+   // unique, and never display empty published snapshots as observations.
+   [...section.querySelectorAll('[data-hotb-kind="published"]')].forEach(button=>existing.add(String(button.dataset.hotbPublished||'')));
    items.sort((a,b)=>stamp(b)-stamp(a)).forEach(item=>{
-    const published=String(item?.publishedAt||item?.archivedAt||'');if(!published||existing.has(published))return;
-    const article=document.createElement('article');article.style.cssText='border:1px solid #d9dede;border-radius:14px;padding:14px;margin:10px 0';
+    const published=String(item?.publishedAt||item?.archivedAt||'');
+    if(!published||existing.has(published)||!meaningful(item))return;
+    const key=contentKey(item);if(key&&seenContent.has(key))return;
+    if(key)seenContent.add(key);
+    const article=document.createElement('article');article.dataset.hotbPublished=published;article.style.cssText='border:1px solid #d9dede;border-radius:14px;padding:14px;margin:10px 0';
     const date=stamp(item)?new Date(stamp(item)).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'No date';
     const tags=(Array.isArray(item?.observationOptions)?item.observationOptions:[]).filter(Boolean).map(t=>`<span style="display:inline-block;border:1px solid #d9dede;border-radius:999px;padding:4px 8px;margin:3px 4px 0 0;font-size:12px">${esc(t)}</span>`).join('');
     const note=String(item?.coachNote||'').trim();
