@@ -86,9 +86,19 @@
    script.onerror=()=>{URL.revokeObjectURL(url);throw new Error('activation-wrapper-execute')};
    document.body.appendChild(script);
   }catch(error){
-   console.error('HotB activation wrapper failed',error);
-   const app=document.getElementById('app');
-   if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The HotB update could not load. Close HotB and reopen it once.</p><p style="margin:8px 0 0">Error code: H684</p></section></main></div>';
+   console.error('HotB activation wrapper failed; attempting unmodified coach bundle',error);
+   // The coach program must remain launchable even if a wrapper fetch, patch
+   // anchor, or Blob execution fails. A plain script tag bypasses window.fetch.
+   window.__HOTB_DIRECT_BUNDLE_FALLBACK__=true;
+   const fallback=document.createElement('script');
+   fallback.src='app-coach-rebels-portals-v10.js?v=20261115-h684-direct-fallback&fresh='+Date.now();
+   fallback.async=false;
+   fallback.onload=()=>{window.__HOTB_H684_RECOVERED__=true};
+   fallback.onerror=()=>{
+    const app=document.getElementById('app');
+    if(app)app.innerHTML='<div class="app"><main style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><section style="max-width:520px;margin:40px auto;background:#fff;border:2px solid #d4d9d7;border-radius:18px;padding:24px"><strong>HotB Startup Error</strong><p style="margin:8px 0 0">The coach app and its direct fallback could not load. Check the connection, then reopen HotB.</p><p style="margin:8px 0 0">Error code: H684-DIRECT</p></section></main></div>';
+   };
+   document.body.appendChild(fallback);
   }
  };
  load();
