@@ -9,9 +9,9 @@
  async function loadCloud(){
   const modal=document.getElementById('hotbFocusManageRepair'),name=nameNow();
   if(!modal||!name||!window.firebase?.firestore||loading.has(modal))return;
-  loading.add(modal);
   const db=readDb(),player=(db.roster||[]).find(x=>x?.name===name),portalId=player?.portalId;
   if(!portalId)return;
+  loading.add(modal);
   try{
    const ref=window.firebase.firestore().collection('playerPortals').doc(portalId),snap=await ref.get();
    if(!snap.exists)return;
