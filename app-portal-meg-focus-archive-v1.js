@@ -2942,11 +2942,16 @@ function portalPracticeClockValues(practice=portalData?.activePractice,now=Date.
 function updatePortalPracticeClock(){
  const values=portalPracticeClockValues(portalData?.activePractice),block=$('#portalCurrentBlock'),left=$('#portalTimeLeft');
  if(values.ended&&!portalData._localPracticeEnded){
-  // Render the expired state once so old schedule/drill controls disappear
-  // immediately instead of waiting for the next Firebase snapshot. Permanent
-  // players return home; practice-only links render their dedicated ended view.
-  portalData._localPracticeEnded=true;portalView='home';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
-  render();return;
+  // An expired practice must NEVER navigate a permanent player away from
+  // My Focus or My Evaluation. A Firestore snapshot replaces portalData and
+  // may lose this local flag, even when the practice was already finished.
+  portalData._localPracticeEnded=true;
+  const practiceOnly=['guestPlayer','guestCoach','jenkinsPlayer'].includes(portalData.portalType);
+  const onPractice=portalView==='practice'||(portalView==='library'&&portalLibraryReturnView==='practice');
+  if(practiceOnly||onPractice){
+   portalView='home';portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
+   render();return;
+  }
  }
  if(block)block.textContent=values.block;if(left)left.textContent=values.left;
  const clockShell=left?.closest('.portal-live-clock'),timeTile=left?.parentElement;
@@ -2957,7 +2962,7 @@ function updatePortalPracticeClock(){
   // The coach cleanup write may arrive a moment later; stop presenting live
   // assignments once the synchronized practice duration has elapsed.
   portalSelectedDrill='';portalDrillQuery='';portalLibraryReturnView='library';
-  if(portalView==='library')portalView='practice';
+  if(portalView==='library'&&portalLibraryReturnView==='practice')portalView='practice';
  }
  const nextEntry=values.transition?(portalData?.activePractice?.schedule||[]).find(entry=>Number(entry.block)===Number(values.currentBlock)+1):null;
  if(nextPanel&&nextButton){
