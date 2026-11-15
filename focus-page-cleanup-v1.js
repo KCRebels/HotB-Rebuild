@@ -11,7 +11,23 @@
  const publishedId=(name,row)=>`published-focus:${name}:${String(row?.publishedAt||row?.archivedAt||stamp(row))}`;
  const range=mode=>{const now=new Date(),end=new Date(now);end.setHours(23,59,59,999);let start;if(mode==='two-weeks')start=new Date(now.getFullYear(),now.getMonth(),now.getDate()-13);else{const d=now.getDay(),back=d===0?2:d===6?1:d===5?0:d+2;start=new Date(now.getFullYear(),now.getMonth(),now.getDate()-back)}start.setHours(0,0,0,0);return{start:start.getTime(),end:end.getTime()}};
  const inRange=(row,mode)=>{const t=stamp(row),r=range(mode);return !!t&&t>=r.start&&t<=r.end};
- function allRows(db,name){const rows=[];(db.coachObservations||[]).filter(x=>x?.playerName===name).forEach(x=>rows.push({...x,_kind:'standalone'}));(db.savedGames||[]).forEach(game=>(game?.observations||[]).filter(x=>x?.playerName===name).forEach(x=>rows.push({...x,gameId:game.id,gameDate:game.date,_kind:'game'})));archiveFor(db,name).forEach(x=>rows.push({id:publishedId(name,x),playerName:name,tags:Array.isArray(x?.observationOptions)?x.observationOptions:[],note:String(x?.coachNote||''),observedAt:x?.publishedAt||x?.archivedAt,focusPublishedAt:x?.publishedAt||x?.archivedAt,publishedFocus:true,_kind:'published'}));const seen=new Set();return rows.filter(x=>{const key=x.id||[x._kind,stamp(x),norm(x.note),(x.tags||[]).map(norm).join('|')].join('::');if(seen.has(key))return false;seen.add(key);return true}).sort((a,b)=>stamp(b)-stamp(a))}
+ function allRows(db,name){
+  const rows=[];
+  (db.coachObservations||[]).filter(x=>x?.playerName===name).forEach(x=>rows.push({...x,_kind:'standalone'}));
+  (db.savedGames||[]).forEach(game=>(game?.observations||[]).filter(x=>x?.playerName===name).forEach(x=>rows.push({...x,gameId:game.id,gameDate:game.date,_kind:'game'})));
+  archiveFor(db,name).forEach(x=>rows.push({id:publishedId(name,x),playerName:name,tags:Array.isArray(x?.observationOptions)?x.observationOptions:[],note:String(x?.coachNote||''),observedAt:x?.publishedAt||x?.archivedAt,focusPublishedAt:x?.publishedAt||x?.archivedAt,publishedFocus:true,_kind:'published'}));
+  const seenIds=new Set(),seenContent=new Set();
+  return rows.filter(x=>{
+   const tags=[...new Set((Array.isArray(x.tags)?x.tags:[]).map(norm).filter(Boolean))].sort();
+   const note=norm(x.note);
+   if(!tags.length&&!note)return false;
+   const t=stamp(x),source=x.gameId?'game:'+x.gameId:'player';
+   const key=t?source+'|'+Math.floor(t/60000)+'|'+tags.join('~')+'|'+note:'';
+   const id=String(x.id||'').trim();
+   if((id&&seenIds.has(id))||(key&&seenContent.has(key)))return false;
+   if(id)seenIds.add(id);if(key)seenContent.add(key);return true;
+  }).sort((a,b)=>stamp(b)-stamp(a));
+ }
  function paintNotOpenedRed(){document.querySelectorAll('.practice-focus-roster *').forEach(el=>{const text=el.textContent.trim().replace(/\s+/g,' ').toUpperCase();if((text==='NOT OPENED'||text==='NOT OPENED YET')&&el.children.length===0)el.style.setProperty('color','#c71920','important')})}
  function selectedMode(){return document.querySelector('[data-focus-range].active')?.dataset.focusRange||'weekend'}
  function paintCount(){const main=document.querySelector('.practice-feature-page'),name=playerName();if(!main||!name||name==='Choose A Player')return;const count=allRows(state(),name).filter(x=>inRange(x,selectedMode())).length;[...main.querySelectorAll('*')].forEach(label=>{if(label.children.length||label.textContent.trim().toUpperCase()!=='COACH OBSERVATIONS')return;const box=label.parentElement;if(!box)return;const number=box.querySelector('b,strong,[data-count]');if(number&&number!==label)number.textContent=String(count)})}
