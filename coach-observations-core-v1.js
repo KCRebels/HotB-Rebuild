@@ -111,9 +111,26 @@
   return (rows||[]).filter(item=>{const time=new Date(item.observedAt||item.date||item.createdAt||item.updatedAt||0).getTime();return Number.isFinite(time)&&time>=bounds.start&&time<=bounds.end});
  }
  function summarize(games,playerName,standalone=[]){
-  const rows=[...(games||[]).flatMap(game=>observations(game).filter(item=>item.playerName===playerName).map(item=>({...item,gameId:game.id,gameDate:game.date}))),...(standalone||[]).filter(item=>item.playerName===playerName)];
+  const all=[...(games||[]).flatMap(game=>observations(game).filter(item=>item.playerName===playerName).map(item=>({...item,gameId:game.id,gameDate:game.date}))),...(standalone||[]).filter(item=>item.playerName===playerName)];
+  const seenIds=new Set(),seenContents=new Set(),rows=[];
+  const normal=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
+  all.forEach(row=>{
+   const tags=[...new Set((Array.isArray(row.tags)?row.tags:[]).map(normal).filter(Boolean))].sort();
+   const note=normal(row.note);
+   if(!tags.length&&!note)return;
+   const scope=String(row.gameId||'standalone'),id=String(row.id||'').trim();
+   const idKey=id?scope+'|'+id:'';
+   const dateValue=row.observedAt||row.gameDate||row.createdAt||row.updatedAt||0;
+   const time=typeof dateValue==='number'?dateValue:Date.parse(dateValue);
+   const minute=Number.isFinite(time)&&time>0?Math.floor(time/60000):null;
+   const contentKey=minute===null?'':scope+'|'+minute+'|'+tags.join('~')+'|'+note;
+   if((idKey&&seenIds.has(idKey))||(contentKey&&seenContents.has(contentKey)))return;
+   if(idKey)seenIds.add(idKey);
+   if(contentKey)seenContents.add(contentKey);
+   rows.push(row);
+  });
   const counts=new Map();
-  rows.forEach(row=>(row.tags||[]).forEach(tag=>counts.set(tag,(counts.get(tag)||0)+1)));
+  rows.forEach(row=>[...new Set((Array.isArray(row.tags)?row.tags:[]).map(x=>String(x||'').trim()).filter(Boolean))].forEach(tag=>counts.set(tag,(counts.get(tag)||0)+1)));
   const patterns=[...counts].map(([tag,count])=>({tag,count,status:count>=3?'Strong recurring pattern':count===2?'Recurring pattern':'One-time observation'})).sort((a,b)=>b.count-a.count||a.tag.localeCompare(b.tag));
   return{rows,patterns,total:rows.length};
  }
