@@ -1,14 +1,10 @@
 (()=> {
- const BUILD_VERSION='2026.11.15.h684-691';window.HOTB_BUILD_VERSION=BUILD_VERSION;const params=new URLSearchParams(location.search);
+ const BUILD_VERSION='2026.11.15.direct-692';window.HOTB_BUILD_VERSION=BUILD_VERSION;const params=new URLSearchParams(location.search);
  const load=(tag,attrs)=>{const e=document.createElement(tag);Object.assign(e,attrs);document.head.appendChild(e)};
  if(params.has('portal')){load('script',{src:'player-focus-opened-portal-v1.js?v=20261010-600',async:false});load('script',{src:'portal-focus-delete-exact-v2.js?v=20261010-600',async:false});load('script',{src:'player-portal-trends-approved.js?v=20261017-allplayers1',async:false});return}
- const append=Element.prototype.appendChild;
- Element.prototype.appendChild=function(node){
-  try{
-   if(!window.__HOTB_DIRECT_BUNDLE_FALLBACK__&&node?.tagName==='SCRIPT'&&String(node.src||'').includes('app-coach-rebels-portals-v10.js'))node.src='app-hotb-activation-wrapper-v2.js?v=20261115-h684-recovery';
-  }catch(_){}
-  return append.call(this,node);
- };
+ // Load the coach bundle directly. The former activation wrapper generated
+ // H684 whenever its fetched source/Blob patch pipeline failed on iOS.
+ window.__HOTB_DIRECT_BUNDLE_FALLBACK__=true;
  const forceHome=()=>{try{const key='hotbRebuildDbV1',db=JSON.parse(localStorage.getItem(key)||'null');if(db&&typeof db==='object'&&db.route!=='home'){db.route='home';localStorage.setItem(key,JSON.stringify(db))}}catch(_){}};
  if(!params.has('screen'))forceHome();
 
