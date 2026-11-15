@@ -3,11 +3,13 @@
  const DBKEY='hotbRebuildDbV1';
  const readDb=()=>{try{return JSON.parse(localStorage.getItem(DBKEY)||'{}')||{}}catch(_){return{}}};
  const nameNow=()=>document.querySelector('.practice-feature-lead h2')?.textContent?.trim()||'';
+ const loading=new WeakSet();
  const stamp=x=>Date.parse(x?.publishedAt||x?.archivedAt||x?.observedAt||0)||0;
  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[m]));
  async function loadCloud(){
   const modal=document.getElementById('hotbFocusManageRepair'),name=nameNow();
-  if(!modal||!name||!window.firebase?.firestore)return;
+  if(!modal||!name||!window.firebase?.firestore||loading.has(modal))return;
+  loading.add(modal);
   const db=readDb(),player=(db.roster||[]).find(x=>x?.name===name),portalId=player?.portalId;
   if(!portalId)return;
   try{
@@ -17,7 +19,7 @@
    if(data.focus&&(data.focus.publishedAt||data.focus.archivedAt)&&!items.some(x=>String(x?.publishedAt||x?.archivedAt||'')===String(data.focus.publishedAt||data.focus.archivedAt)))items.push(data.focus);
    const section=modal.querySelector('section');if(!section)return;
    const existing=new Set([...section.querySelectorAll('[data-hotb-published]')].map(b=>String(b.dataset.hotbPublished||'')));
-   const normalize=s=>String(s||'').trim().replace(/\\s+/g,' ').toLowerCase();
+   const normalize=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
    const meaningful=item=>(Array.isArray(item?.observationOptions)&&item.observationOptions.some(t=>normalize(t)))||!!normalize(item?.coachNote);
    const contentKey=item=>{const t=stamp(item);return t?Math.floor(t/60000)+'|'+(Array.isArray(item?.observationOptions)?item.observationOptions.map(normalize).filter(Boolean).sort().join('~'):'')+'|'+normalize(item?.coachNote):''};
    const seenContent=new Set();
@@ -45,7 +47,7 @@
      await ref.set(update,{merge:true});button.closest('article')?.remove();
     }catch(error){console.error('HotB cloud Focus delete failed',error);button.disabled=false;button.textContent='Delete';alert('HotB could not remove that player-portal observation. Please retry while online.')}
    });
-  }catch(error){console.error('HotB cloud Focus history load failed',error)}
+  }catch(error){console.error('HotB cloud Focus history load failed',error)}finally{loading.delete(modal)}
  }
  const observer=new MutationObserver(()=>{if(document.getElementById('hotbFocusManageRepair'))setTimeout(loadCloud,0)});
  observer.observe(document.documentElement,{childList:true,subtree:true});
