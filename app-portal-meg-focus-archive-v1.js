@@ -2753,11 +2753,21 @@ function portalPracticeView(){
  return `${portalHeader('My Practice',true)}<main class="portal-page">${practice?`<section class="portal-welcome active"><span>ACTIVE PRACTICE</span><h2>${esc(practice.title||'This Week’s Practice')}</h2><p>${esc(practice.startLabel||'')} · ${Math.max(1,(Number(practice.blockMinutes)||12)-1)} minutes + 1-minute rotate</p></section><section class="portal-live-clock"><div><span>BLOCK</span><b id="portalCurrentBlock">${esc(clock.block)}</b></div><div><span>TIME LEFT</span><b id="portalTimeLeft">${esc(clock.left)}</b></div></section><section class="portal-practice-next" id="portalPracticeNext" hidden><button id="portalPracticeNextButton" data-portal-practice-drill=""><span id="portalPracticeNextHeading">NEXT</span><strong id="portalPracticeNextDetail"></strong><small>Tap for drill instructions</small></button></section><article class="practice-player-card portal-player-card"><header><h2>${esc(first)}${role?` <small>(${esc(role)})</small>`:''}</h2></header><ol>${(practice.schedule||[]).map(entry=>`<li data-portal-block="${entry.block}"><b>B${entry.block}</b><span class="card-time">${esc(entry.time)}</span>${portalPracticeAssignment(entry)}</li>`).join('')}</ol></article>`:`<section class="portal-empty"><span>MY PRACTICE</span><h2>No Active Practice</h2><p>Your coach has not activated a practice plan for you right now.</p></section>`}</main>`;
 }
 function portalFocusBody(focus){
- return focus?`<section class="portal-welcome"><span>MY PLAYER FOCUS</span><h2>${esc(focus.title||'Current Hitting Focus')}</h2><p>${esc(focus.summary||'')}</p></section><section class="portal-focus-content">${focus.needsWork?`<div><span>NEEDS WORK</span><b>${esc(focus.needsWork)}</b></div>`:''}${focus.coachNote?`<div><span>COACH NOTE</span><b>${esc(focus.coachNote)}</b></div>`:''}${focus.drills?.length?`<div><span>DRILL PLAN</span><b>${esc(focus.drills.join(' · '))}</b></div>`:''}</section>`:`<section class="portal-empty"><span>MY FOCUS</span><h2>No Focus Plan Yet</h2><p>Your private two-week hitting analysis has not been published. No other player’s information is available from this portal.</p></section>`;
+ if(!focus||typeof focus!=='object')return '<section class="portal-empty"><span>MY FOCUS</span><h2>No Focus Plan Yet</h2><p>Your coach has not published a Focus plan to this portal yet.</p></section>';
+ const title=String(focus.title||'Current Hitting Focus'),summary=String(focus.summary||'');
+ const needs=Array.isArray(focus.needsWork)?focus.needsWork.filter(Boolean).join(' · '):String(focus.needsWork||'');
+ const note=String(focus.coachNote||'');
+ const drills=Array.isArray(focus.drills)?focus.drills.filter(Boolean).map(String):typeof focus.drills==='string'?[focus.drills].filter(Boolean):[];
+ return `<section class="portal-welcome"><span>MY PLAYER FOCUS</span><h2>${esc(title)}</h2><p>${esc(summary)}</p></section><section class="portal-focus-content">${needs?`<div><span>NEEDS WORK</span><b>${esc(needs)}</b></div>`:''}${note?`<div><span>COACH NOTE</span><b>${esc(note)}</b></div>`:''}${drills.length?`<div><span>DRILL PLAN</span><b>${esc(drills.join(' · '))}</b></div>`:''}</section>`;
 }
 function portalFocusView(){
- markPortalFocusViewed();
- return `${portalHeader('My Focus',true)}<main class="portal-page">${portalFocusBody(portalData?.focus)}</main>`;
+ // A receipt failure must never prevent the player from reading a published plan.
+ try{markPortalFocusViewed()}catch(error){console.warn('HotB focus opened receipt deferred',error)}
+ try{return `${portalHeader('My Focus',true)}<main class="portal-page">${portalFocusBody(portalData?.focus)}</main>`}
+ catch(error){
+  console.error('HotB player Focus rendering error',error);
+  return `${portalHeader('My Focus',true)}<main class="portal-page"><section class="portal-empty"><span>MY FOCUS</span><h2>Focus Could Not Display</h2><p>HotB could not display this Focus. Your saved plan has not been changed.</p></section></main>`;
+ }
 }
 function portalPlayerEvaluationView(){
  const payload=portalData?.evaluationData,playerName=portalData?.playerName||'';
