@@ -996,6 +996,7 @@ let reportGameId=null,reportSelectedGameIds=[],reportSelectionTouched=false,repo
 let reportSelectedPaId=null;
 let selectedSeason=currentSeasonLabel(), dateFilterMode='full', customDateStart='', customDateEnd='';
 let evalPlayer='Team',evaluationReadOnly=false;
+let evalScrimmageScope='exclude',evalSelectionTouched=false,evalSelectedGameIds=[],evalGamesOpen=false;
 let pendingPitchingImport=null;
 let recordType='';
 let infoPlayerIndex=0,infoPlayerName='';
@@ -2527,6 +2528,52 @@ function gameMatchesDateFilter(game){
  return meta.segment===({fall:'Fall',summer:'Summer',offseason:'Off Season'}[dateFilterMode]);
 }
 function filteredGames(includeCurrent=true){return statGames(includeCurrent).filter(gameMatchesDateFilter)}
+// Evaluation uses the same date and scrimmage criteria as Reports, but maintains
+// its own game selection so building a report never changes Evaluation.
+function evalEligibleSavedGames(){
+ return db.savedGames.filter(game=>gameMatchesDateFilter(game)&&
+  (evalScrimmageScope==='include'||(evalScrimmageScope==='only'?!!game.scrimmage:!game.scrimmage)))
+  .sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime());
+}
+function evalFilteredGames(){
+ const eligible=evalEligibleSavedGames();
+ const selected=evalSelectionTouched?new Set(evalSelectedGameIds):null;
+ const saved=selected?eligible.filter(game=>selected.has(game.id)):eligible;
+ // Preserve the previous live-game evaluation behavior until individual saved
+ // games are explicitly selected. Match scrimmage scope for current games too.
+ const live=db.currentGame;
+ const current=!selected&&live&&gameMatchesDateFilter(live)&&
+  (evalScrimmageScope==='include'||(evalScrimmageScope==='only'?!!live.scrimmage:!live.scrimmage))?[live]:[];
+ return [...saved,...current];
+}
+function evalReportStyleFilters(){
+ const games=evalEligibleSavedGames();
+ const selected=evalSelectionTouched?evalSelectedGameIds.filter(id=>games.some(game=>game.id===id)):games.map(game=>game.id);
+ const option=(value,label)=>`<option value="${value}" ${evalScrimmageScope===value?'selected':''}>${label}</option>`;
+ return `<div class="eval-report-filters">
+ <div class="report-one-page-filters">${dateFilterControls('evalReport')}<label style="display:block;margin:10px 0">Scrimmages <select class="input" id="evalScrimmageScope">${option('exclude','Exclude Scrimmages')}${option('include','Include Scrimmages')}${option('only','Scrimmages Only')}</select></label></div>
+ <div class="game-selection-footer" style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
+ <button type="button" class="btn" id="evalSelectMatching">Select All Matching</button>
+ <button type="button" class="btn" id="evalClearMatching">Clear Selection</button>
+ <button type="button" class="btn" id="evalToggleGames" aria-expanded="${evalGamesOpen?'true':'false'}">Choose Games (${selected.length})</button></div>
+ <p style="margin:6px 0 12px">${selected.length} selected of ${games.length} matching saved games.</p>
+ ${evalGamesOpen?`<div class="saved-game-list">${games.length?games.map(g=>{const meta=seasonMeta(g.date);return `<label class="saved-game-card" style="display:flex;gap:10px;align-items:center"><input type="checkbox" data-eval-game="${g.id}" ${selected.includes(g.id)?'checked':''} aria-label="Include ${esc(g.opponent||'Opponent')} in Evaluation"><span><b>${new Date(g.date).toLocaleDateString()} · ${esc(g.opponent||'Opponent')}</b><span style="display:block">${esc(meta.season)} · ${esc(meta.segment)} · ${(g.plateAppearances||[]).length} PA${g.scrimmage?' · SCRIMMAGE':''}</span></span></label>`}).join(''):'No saved games match this date range.'}</div>`:''}
+ </div>`;
+}
+function bindEvalReportFilters(){
+ bindDateFilters('evalReport');
+ document.getElementById('evalScrimmageScope')?.addEventListener('change',e=>{evalScrimmageScope=e.target.value;evalSelectionTouched=false;evalSelectedGameIds=[];render()});
+ document.getElementById('evalSelectMatching')?.addEventListener('click',()=>{evalSelectionTouched=true;evalSelectedGameIds=evalEligibleSavedGames().map(g=>g.id);render()});
+ document.getElementById('evalClearMatching')?.addEventListener('click',()=>{evalSelectionTouched=true;evalSelectedGameIds=[];render()});
+ document.getElementById('evalToggleGames')?.addEventListener('click',()=>{evalGamesOpen=!evalGamesOpen;render()});
+ document.querySelectorAll('[data-eval-game]').forEach(input=>input.addEventListener('change',()=>{
+  const eligible=evalEligibleSavedGames().map(g=>g.id);
+  const selected=evalSelectionTouched?evalSelectedGameIds.filter(id=>eligible.includes(id)):eligible;
+  evalSelectedGameIds=input.checked?[...new Set([...selected,input.dataset.evalGame])]:selected.filter(id=>id!==input.dataset.evalGame);
+  evalSelectionTouched=true;render();
+ }));
+}
+
 function filteredSavedGamesForManagement(){return [...db.savedGames].filter(gameMatchesDateFilter).sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime())}
 function filteredPAs(includeCurrent=true){return filteredGames(includeCurrent).flatMap(game=>game.plateAppearances||[])}
 
@@ -4272,7 +4319,7 @@ function grade(value,metric){
 function evalView(){
  const player=evalPlayer==='Team'?null:hitterObj(evalPlayer);
  const practiceAttendanceResult=player?practiceAttendance(player):null,practiceRate=practiceAttendanceResult?.percentage??null,practiceRateLabel=practiceAttendanceResult&&!practiceAttendanceResult.eligible?'N/A':practiceRate===null?'':`${practiceRate}%`;
- const evalGames=filteredGames(),competitionNames=new Set(competitionRoster().map(item=>item.name)),teamPas=evalGames.flatMap(game=>game.plateAppearances||[]).filter(pa=>competitionNames.has(pa.hitter));
+ const evalGames=evalFilteredGames(),competitionNames=new Set(competitionRoster().map(item=>item.name)),teamPas=evalGames.flatMap(game=>game.plateAppearances||[]).filter(pa=>competitionNames.has(pa.hitter));
  const pas=teamPas.filter(p=>!player||p.hitter===player.name);
  const evalDb={savedGames:evalGames,currentGame:null,roster:db.roster};
  const snapshot=player?HotBEvaluationStats.evaluationSnapshot(evalDb,player.name):null;
@@ -4298,7 +4345,7 @@ function evalView(){
  };
  return `<div class="eval-head">${evaluationReadOnly?`<button class="btn eval-nav" id="portalBack">Portal</button>`:`<span class="page-head-spacer"></span>`}<div class="eval-title"><h1>Evaluation</h1></div><div class="eval-contact-actions"></div></div>
  <label class="eval-player-filter"><span>Player</span><select class="player-select" id="evalSelect"><option>Team</option>${competitionRoster().map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label>
- ${dateFilterControls('eval')}
+ ${evalReportStyleFilters()}
  ${player?`<div class="player-card player-profile ${practiceRateLabel?'has-practice-rate':''}"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div>${practiceRateLabel?`<div class="player-practice-rate">${practiceRateLabel}</div>`:''}</div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
@@ -7683,7 +7730,7 @@ function bindEval(){
   const url=`https://rebelsscout.com/${scoutSlug}/`;
   window.open(url,'_blank','noopener');
  });
- try{bindDateFilters('eval')}catch(error){console.error('HotB Evaluation date-filter binding failed without disabling Evaluation controls',error)}
+ try{bindEvalReportFilters()}catch(error){console.error('HotB Evaluation report-style filter binding failed without disabling Evaluation controls',error)}
  const recordMeasureButton=$('#recordMeasure2');
  if(recordMeasureButton)recordMeasureButton.onclick=()=>{recordType='';modal='record';render()};
  $$('[data-measure]').forEach(x=>x.onclick=()=>{recordType=x.dataset.measure;modal='record';render()});
