@@ -1665,3 +1665,37 @@ body:has(.eval-head) .athletic-head h2{
 .modal-backdrop:has(.player-info-modal){z-index:10000;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
 .modal-backdrop .player-info-modal{box-sizing:border-box;max-height:calc(100dvh - 28px - env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
 .modal-backdrop .player-info-modal .info-save{min-height:48px;margin-bottom:4px}
+
+/* 2026-11-23: Consistent left/right inset throughout coach Evaluation. */
+.eval-app{box-sizing:border-box}
+.eval-app>.eval-player-filter .player-select{
+ box-sizing:border-box;width:calc(100% - 32px);max-width:calc(100% - 32px);margin-left:16px;margin-right:16px;
+}
+.eval-app>.eval-player-filter>span{margin-left:16px;margin-right:16px}
+.eval-app>.eval-report-filters{
+ box-sizing:border-box;width:calc(100% - 32px);max-width:calc(100% - 32px);
+ margin:12px 16px 16px;min-width:0;
+}
+.eval-app .eval-report-filters .date-filter-controls{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+ width:100%;margin:0;box-sizing:border-box;
+}
+.eval-app .eval-report-filters .date-filter-controls>*,
+.eval-app .eval-report-filters select{box-sizing:border-box;min-width:0;max-width:100%}
+.eval-app .eval-report-filters .game-selection-footer{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:8px!important;margin:12px 0!important;padding:0!important;position:static!important;
+ width:100%;box-sizing:border-box;
+}
+.eval-app .eval-report-filters .game-selection-footer>.btn{
+ box-sizing:border-box;min-width:0;width:100%;max-width:100%;padding:10px 5px;
+ white-space:normal;overflow-wrap:break-word;
+}
+.eval-app .eval-report-filters .saved-game-list{min-width:0;width:100%;box-sizing:border-box}
+.eval-app .eval-report-filters .saved-game-card{box-sizing:border-box;min-width:0;max-width:100%}
+.eval-app>.player-card{margin-left:16px;margin-right:16px}
+.eval-app>.eval-tiles{margin-left:16px;margin-right:16px}
+.eval-app>.performance{margin-left:16px;margin-right:16px}
+@media(max-width:370px){
+ .eval-app .eval-report-filters .game-selection-footer>.btn{font-size:12px;padding:8px 3px}
+}
