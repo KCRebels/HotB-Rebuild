@@ -2058,7 +2058,11 @@ async function backupToCloud(automatic=false){
   await batch.commit();if(!daily.exists){cloudSnapshotCount++;pruneDailySnapshots(root).catch(()=>{})}
   localStorage.setItem(CLOUD_ENABLED_KEY,'true');localStorage.setItem(CLOUD_PENDING_KEY,'false');localStorage.removeItem(CLOUD_ERROR_KEY);cloudLastBackup=new Date();localStorage.setItem(CLOUD_LAST_SUCCESS_KEY,cloudLastBackup.toISOString());cloudMessage=automatic?'':'Cloud backup completed.';
  }catch(error){localStorage.setItem(CLOUD_PENDING_KEY,'true');localStorage.setItem(CLOUD_ERROR_KEY,new Date().toISOString());cloudMessage='Backup needs attention. Your phone data is safe; HotB will retry when it is online.'}
- cloudBusy=false;if(route==='home')render();
+ cloudBusy=false;
+ // A successful protected backup is the authoritative time to refresh the
+ // public Scout aggregate. Failure never blocks HotB backup or coach work.
+ if(localStorage.getItem(CLOUD_PENDING_KEY)==='false')publishAniesaScoutStats().catch(error=>console.warn('Scout public snapshot update failed',error));
+ if(route==='home')render();
 }
 async function restoreFromCloud(){
  if(!cloudUser||cloudBusy||!confirm('Replace the data on this device with the latest cloud backup? Your current device data will be replaced.'))return;
