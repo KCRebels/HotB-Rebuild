@@ -1716,6 +1716,31 @@ async function publishPlayerEvaluationSnapshot(player){
  await doc.update({portalType:'player',playerName:player.name,firstName:practiceFirstName(player.name),evaluationData:small,evaluationSnapshotVersion:version,evaluationSnapshotChunkCount:parts.length,evaluationSnapshotHash:hash,evaluationStorageFormat:'per-game-v1',evaluationVersion:version+'-'+player.name,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
  return {version,chunks:parts.length,games:records.length};
 }
+// Publish only aggregate, public-facing metrics. Never expose game records,
+ // coaching notes, player portal credentials or personally identifying contact data.
+async function publishAniesaScoutStats(){
+ if(!cloudUser||!cloudStore||!window.HotBEvaluationStats)return false;
+ const playerName='Aniesa Rohleder',season=currentSeasonLabel();
+ const games=(db.savedGames||[]).filter(g=>!g.scrimmage&&seasonMeta(g.date).season===season&&seasonMeta(g.date).segment!=='Dead Period');
+ const playerPas=games.flatMap(g=>g.plateAppearances||[]).filter(pa=>pa.hitter===playerName);
+ const snapshot=HotBEvaluationStats.evaluationSnapshot({savedGames:games,currentGame:null,roster:db.roster},playerName);
+ const stats=snapshot.stats;
+ // Do not publish an empty/partial local database over a known valid snapshot.
+ if(!stats||!stats.PA)return false;
+ const decisionRaw=snapshot.decision?.rate??snapshot.decision?.decisionRate??snapshot.decision?.percentage;
+ const decision=Number.isFinite(Number(decisionRaw))?Number(decisionRaw):null;
+ const data={
+  playerName,season,source:'HotB',status:'published',
+  publishedAt:firebase.firestore.FieldValue.serverTimestamp(),
+  gameCount:games.filter(g=>(g.plateAppearances||[]).some(pa=>pa.hitter===playerName)).length,
+  PA:stats.PA,AVG:stats.AVG,OBP:stats.OBP,kPct:stats.kPct,hhbPct:stats.hhbPct,
+  decisionPct:decision===null?null:(decision>1?decision/100:decision),
+  // Deliberately omit ABA until both first-pitch and two-strike fields can be
+  // verified against the exact source module's output format.
+ };
+ await cloudStore.collection('recruitingProfiles').doc('aniesa-rohleder').set(data,{merge:true});
+ return true;
+}
 async function syncPlayerEvaluationPortals(){
  if(!cloudUser||!cloudStore||cloudBusy)return false;
  const players=db.roster.filter(player=>!player.isGuest&&!player.isTeamJenkins&&player.portalId),coachPortalId=db.coachPortal?.portalId||'';
@@ -1730,6 +1755,7 @@ async function syncPlayerEvaluationPortals(){
    batch.update(portalDoc(coachPortalId),{evaluationData:coachEvaluationPortalPayload(),evaluationVersion:`${Date.now()}-coach`,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
    await batch.commit();
   }
+  try{await publishAniesaScoutStats()}catch(scoutError){console.warn('Rebels Scout public stat publish failed',scoutError)}
   return true;
  }catch(error){console.warn('Evaluation portal sync failed',error);return false}
 }
