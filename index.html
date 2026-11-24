@@ -281,6 +281,7 @@ background:#fff!important;color:#111827!important;border:2px solid #c71920!impor
   if('caches' in window)caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('hotb-app-')).map(key=>caches.delete(key)))).catch(()=>{});
 }catch(_){}})();
 </script>
+<script src="scout-athletic-seed.js?v=20261123-all-rebels"></script>
 <script src="pwa-update.js?v=20261115-direct-692"></script><script>
 (()=>{try{
  if(!new URLSearchParams(location.search).has('portal'))return;
@@ -407,5 +408,5 @@ if(!new URLSearchParams(location.search).has('portal')){
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();
 })();
 </script>
-<script src="scout-athletic-bests.js?v=20261123-aniesa-bests"></script>
+
 </body></html>
