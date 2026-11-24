@@ -1722,7 +1722,7 @@ async function publishScoutPublicProfiles(){
  if(!cloudUser||!cloudStore||!window.HotBEvaluationStats)return false;
  const season=currentSeasonLabel();
  const games=(db.savedGames||[]).filter(g=>!g.scrimmage&&seasonMeta(g.date).season===season&&seasonMeta(g.date).segment!=='Dead Period');
- const publishable=db.roster.filter(p=>!p.isGuest&&!p.isTeamJenkins&&p.name&&p.portalId);
+ const publishable=db.roster.filter(p=>!p.isGuest&&!p.isTeamJenkins&&p.name);
  for(const player of publishable){
   const slug=String(player.name).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   const bests={};
@@ -2069,7 +2069,7 @@ async function backupToCloud(automatic=false){
  cloudBusy=false;
  // A successful protected backup is the authoritative time to refresh the
  // public Scout aggregate. Failure never blocks HotB backup or coach work.
- if(localStorage.getItem(CLOUD_PENDING_KEY)==='false')publishAniesaScoutStats().catch(error=>console.warn('Scout public snapshot update failed',error));
+ if(localStorage.getItem(CLOUD_PENDING_KEY)==='false')publishScoutPublicProfiles().catch(error=>console.warn('Scout public snapshot update failed',error));
  if(route==='home')render();
 }
 async function restoreFromCloud(){
