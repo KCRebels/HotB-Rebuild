@@ -7853,9 +7853,9 @@ function bindRecord(){
 // Historical Scout -> HotB migration runs once on the authenticated coach app.
 // Missing records are added with their original dates; existing attempts stay intact.
 function importScoutAthleticHistory(){
- if(portalToken||db.scoutAthleticImportVersion===1)return;
+ if(portalToken||Number(db.scoutAthleticImportVersion)>=2)return;
  const seed=window.HOTB_SCOUT_ATHLETIC_SEED;
- if(!Array.isArray(seed)||seed.length!==29)return;
+ if(!Array.isArray(seed)||seed.length!==30)return;
  db.measurements=Array.isArray(db.measurements)?db.measurements:[];
  const players=new Set((db.roster||[]).map(player=>player.name));
  let added=0;
@@ -7866,7 +7866,7 @@ function importScoutAthleticHistory(){
   db.measurements.push({id:crypto.randomUUID(),player:m.player,type:m.type,value:m.value,date:m.date,source:'Rebels Scout',verified:true});
   added++;
  }
- db.scoutAthleticImportVersion=1;
+ db.scoutAthleticImportVersion=2;
  if(added)console.info('Imported '+added+' historical Rebels Scout athletic measurements into HotB');
  save();
 }
