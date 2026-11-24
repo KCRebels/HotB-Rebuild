@@ -1733,7 +1733,15 @@ async function publishScoutPublicProfiles(){
    const best=rows.reduce((a,b)=>isTime?(Number(a.value)<=Number(b.value)?a:b):(Number(a.value)>=Number(b.value)?a:b));
    bests[type]={value:Number(best.value),date:String(best.date||''),source:String(best.source||'HotB')};
   }
-  const data={playerName:player.name,source:'HotB',status:'published',season,athleticBests:bests,publishedAt:firebase.firestore.FieldValue.serverTimestamp(),
+  // Pitching summaries are entered/imported into HotB from GameChanger.
+  // Keep their display values exactly as stored; do not recompute or invent them.
+  const pitchingKeys={IP:'pitcherIP',ERA:'pitcherERA',WHIP:'pitcherWHIP','K/BB':'pitcherKBB',OBA:'pitcherOBA','STRIKE %':'pitcherStrikePct'};
+  const pitching={};
+  for(const [label,key] of Object.entries(pitchingKeys)){
+   const raw=player[key];
+   if(raw!==undefined&&raw!==null&&String(raw).trim()!=='')pitching[label]=String(raw);
+  }
+  const data={playerName:player.name,source:'HotB',status:'published',season,athleticBests:bests,pitching,publishedAt:firebase.firestore.FieldValue.serverTimestamp(),
    // Clear obsolete season totals when no valid games exist; merge must not leave
    // last season's figures masquerading as current stats.
    PA:null,AVG:null,OBP:null,kPct:null,hhbPct:null,decisionPct:null,
