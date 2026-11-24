@@ -996,6 +996,7 @@ let reportGameId=null,reportSelectedGameIds=[],reportSelectionTouched=false,repo
 let reportSelectedPaId=null;
 let selectedSeason=currentSeasonLabel(), dateFilterMode='full', customDateStart='', customDateEnd='';
 let evalPlayer='Team',evaluationReadOnly=false;
+let scoutSyncMessage='';
 let evalScrimmageScope='exclude',evalSelectionTouched=false,evalSelectedGameIds=[],evalGamesOpen=false;
 let pendingPitchingImport=null;
 let recordType='';
@@ -4408,6 +4409,7 @@ function evalView(){
  return `<div class="eval-head">${evaluationReadOnly?`<button class="btn eval-nav" id="portalBack">Portal</button>`:`<span class="page-head-spacer"></span>`}<div class="eval-title"><h1>Evaluation</h1></div><div class="eval-contact-actions"></div></div>
  <label class="eval-player-filter"><span>Player</span><select class="player-select" id="evalSelect"><option>Team</option>${competitionRoster().map(r=>`<option ${evalPlayer===r.name?'selected':''}>${esc(r.name)}</option>`).join('')}</select></label>
  ${evalReportStyleFilters()}
+ ${!evaluationReadOnly&&evalPlayer==='Team'?`<div style="margin:6px 16px 14px"><button class="btn black" id="syncScoutNow" type="button">Sync & Verify Rebels Scout</button><div id="scoutSyncStatus" style="font-size:13px;margin-top:7px" role="status">${esc(scoutSyncMessage)}</div></div>`:''}
  ${player?`<div class="player-card player-profile ${practiceRateLabel?'has-practice-rate':''}"><div class="grad-year">${esc(player.grad)}</div><div class="player-photo">${player.photo?`<img src="${encodeURI(player.photo)}" alt="${esc(player.name)}">`:esc(player.name.split(' ').map(x=>x[0]).join(''))}</div><div class="player-info"><div class="name">${esc(player.name)}</div><div class="meta"><span>#${esc(player.jersey)}</span> | ${esc(player.positions)} | GPA ${esc(player.gpa)}</div><div class="interest">${esc(player.interest)} <span>| ${esc(player.school)}</span></div></div>${practiceRateLabel?`<div class="player-practice-rate">${practiceRateLabel}</div>`:''}</div>`:
  `<div class="player-card team-profile"><div class="player-photo team-photo"><img src="Rebels%20REG%20White%20with%20red%20wing%20-%20REGIONAL.png" alt="KC Rebels"></div><div class="player-info"><div class="name">KC Rebels</div><div class="meta">${pas.length} saved plate appearances</div></div></div>`}
  <div class="eval-tiles">
@@ -7766,6 +7768,33 @@ function exportCsv(){
  const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`HotB_${reportMode}_report.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function bindEval(){
+ $('#syncScoutNow')?.addEventListener('click',async()=>{
+  const button=$('#syncScoutNow'),status=$('#scoutSyncStatus');
+  if(!cloudUser||!cloudStore){scoutSyncMessage='Sign in to HotB Cloud Backup first.';if(status)status.textContent=scoutSyncMessage;return}
+  if(cloudBusy){scoutSyncMessage='Cloud backup is busy. Try again when it finishes.';if(status)status.textContent=scoutSyncMessage;return}
+  button.disabled=true;
+  if(status)status.textContent='Publishing public totals to Firebase…';
+  try{
+   const expected=db.roster.filter(p=>!p.isGuest&&!p.isTeamJenkins&&p.name);
+   if(!expected.length)throw new Error('No players available');
+   const published=await publishScoutPublicProfiles();
+   if(!published)throw new Error('Publication not completed');
+   const failures=[];
+   for(const p of expected){
+    const slug=String(p.name).normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    const doc=await cloudStore.collection('recruitingProfiles').doc(slug).get();
+    if(!doc.exists||doc.data()?.source!=='HotB'||doc.data()?.playerName!==p.name){
+     failures.push(p.name);continue;
+    }
+    const expectedTypes=measurementTypes(p).filter(type=>(db.measurements||[]).some(row=>row.player===p.name&&row.type===type));
+    const saved=doc.data()?.athleticBests||{};
+    if(expectedTypes.some(type=>!Number.isFinite(Number(saved[type]?.value))))failures.push(p.name);
+   }
+   scoutSyncMessage=failures.length?'Not verified for: '+failures.join(', '):'Verified '+expected.length+' player profiles in Firebase.';
+  }catch(error){scoutSyncMessage='Scout sync failed: '+String(error?.message||error).slice(0,120)}
+  if(status)status.textContent=scoutSyncMessage;
+  button.disabled=false;
+ });
  const evalSelect=$('#evalSelect');
  if(evalSelect)evalSelect.onchange=e=>{evalPlayer=e.target.value;modal=null;render()};
  const appRoot=$('#app');
