@@ -1733,7 +1733,12 @@ async function publishScoutPublicProfiles(){
    const best=rows.reduce((a,b)=>isTime?(Number(a.value)<=Number(b.value)?a:b):(Number(a.value)>=Number(b.value)?a:b));
    bests[type]={value:Number(best.value),date:String(best.date||''),source:String(best.source||'HotB')};
   }
-  const data={playerName:player.name,source:'HotB',status:'published',season,athleticBests:bests,publishedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const data={playerName:player.name,source:'HotB',status:'published',season,athleticBests:bests,publishedAt:firebase.firestore.FieldValue.serverTimestamp(),
+   // Clear obsolete season totals when no valid games exist; merge must not leave
+   // last season's figures masquerading as current stats.
+   PA:null,AVG:null,OBP:null,kPct:null,hhbPct:null,decisionPct:null,
+   abaFirstPct:null,abaTwoPct:null,decisionBreakdown:null,abaFirstBreakdown:null,abaTwoBreakdown:null,
+   gameCount:0,statsAsOf:null};
   const hasCurrentGames=games.some(g=>(g.plateAppearances||[]).some(pa=>pa.hitter===player.name));
   if(hasCurrentGames){
    const snapshot=HotBEvaluationStats.evaluationSnapshot({savedGames:games,currentGame:null,roster:db.roster},player.name);
@@ -1741,8 +1746,19 @@ async function publishScoutPublicProfiles(){
    if(stats&&stats.PA){
     Object.assign(data,{PA:stats.PA,AVG:stats.AVG,OBP:stats.OBP,kPct:stats.kPct,hhbPct:stats.hhbPct,
        gameCount:games.filter(g=>(g.plateAppearances||[]).some(pa=>pa.hitter===player.name)).length});
-    const raw=snapshot.decision?.rate??snapshot.decision?.decisionRate??snapshot.decision?.percentage;
-    if(raw!==undefined&&raw!==null&&Number.isFinite(Number(raw)))data.decisionPct=Number(raw)>1?Number(raw)/100:Number(raw);
+    data.statsAsOf=games.filter(g=>(g.plateAppearances||[]).some(pa=>pa.hitter===player.name)).map(g=>g.date).sort().at(-1)||null;
+    const decision=window.HotBDecisionQuality?.summary?.(games,player.name,db.roster);
+    if(decision&&Number.isFinite(decision.rate)){
+     data.decisionPct=decision.rate;
+     data.decisionBreakdown={attempts:decision.attempts,GOOD:decision.counts?.GOOD||0,MINOR:decision.counts?.MINOR||0,POOR:decision.counts?.POOR||0,NOT_SCORED:decision.counts?.NOT_SCORED||0};
+    }
+    const approach=window.HotBAtBatApproach?.summarize?.(player.name,games);
+    if(approach){
+     if(Number.isFinite(approach.first?.rate))data.abaFirstPct=approach.first.rate;
+     if(Number.isFinite(approach.two?.rate))data.abaTwoPct=approach.two.rate;
+     if(approach.first?.counts)data.abaFirstBreakdown={n:approach.first.n,...approach.first.counts};
+     if(approach.two?.counts)data.abaTwoBreakdown={n:approach.two.n,...approach.two.counts};
+    }
    }
   }
   await cloudStore.collection('recruitingProfiles').doc(slug).set(data,{merge:true});
