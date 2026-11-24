@@ -7781,7 +7781,7 @@ function bindEval(){
    if(!published)throw new Error('Publication not completed');
    const failures=[];
    for(const p of expected){
-    const slug=String(p.name).normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    const slug=String(p.name).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
     const doc=await cloudStore.collection('recruitingProfiles').doc(slug).get();
     if(!doc.exists||doc.data()?.source!=='HotB'||doc.data()?.playerName!==p.name){
      failures.push(p.name);continue;
