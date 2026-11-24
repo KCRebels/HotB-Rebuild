@@ -61,6 +61,49 @@ const pitchingStatUpdatesV2={
  'Megan Ryan':{pitcherIP:'7',pitcherERA:'5',pitcherWHIP:'2.143',pitcherKBB:'1.667',pitcherOBA:'.364',pitcherStrikePct:'58.45%'}
 };
 
+const pitchingStatUpdatesV3={
+ "Brooklyn Gering": {
+  "pitcherIP": "17.1",
+  "pitcherERA": "4.442",
+  "pitcherWHIP": "1.615",
+  "pitcherKBB": "1.750",
+  "pitcherOBA": ".270",
+  "pitcherStrikePct": "63.90%"
+ },
+ "Aniesa Rohleder": {
+  "pitcherIP": "16.1",
+  "pitcherERA": "7.714",
+  "pitcherWHIP": "2.939",
+  "pitcherKBB": "1.429",
+  "pitcherOBA": ".446",
+  "pitcherStrikePct": "64.08%"
+ },
+ "Megan Ryan": {
+  "pitcherIP": "11.0",
+  "pitcherERA": "2.545",
+  "pitcherWHIP": "1.909",
+  "pitcherKBB": "2.500",
+  "pitcherOBA": ".333",
+  "pitcherStrikePct": "64.80%"
+ },
+ "Lakyn Farley": {
+  "pitcherIP": "10.0",
+  "pitcherERA": "12.60",
+  "pitcherWHIP": "2.600",
+  "pitcherKBB": ".600",
+  "pitcherOBA": ".420",
+  "pitcherStrikePct": "62.15%"
+ },
+ "Makenna Whitaker": {
+  "pitcherIP": "1.1",
+  "pitcherERA": "15.75",
+  "pitcherWHIP": "4.500",
+  "pitcherKBB": ".000",
+  "pitcherOBA": ".200",
+  "pitcherStrikePct": "36.17%"
+ }
+};
+
 const defaultCoaches = [
  {
   "coachName": "Steve Babinski",
@@ -965,6 +1008,14 @@ if((db.pitchingStatsVersion||0)<1){
 if((db.pitchingStatsVersion||0)<2){
  db.roster.forEach(player=>{if(pitchingStatUpdatesV2[player.name])Object.assign(player,pitchingStatUpdatesV2[player.name])});
  db.pitchingStatsVersion=2;
+ localStorage.setItem(DBKEY,JSON.stringify(db));
+ if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
+}
+if((db.pitchingStatsVersion||0)<3&&!portalToken){
+ // User-supplied GameChanger CSV: pitching columns only, five named pitchers.
+ // This is a one-time migration; later coach edits must not be overwritten.
+ db.roster.forEach(player=>{const fields=pitchingStatUpdatesV3[player.name];if(fields)Object.assign(player,fields)});
+ db.pitchingStatsVersion=3;
  localStorage.setItem(DBKEY,JSON.stringify(db));
  if(localStorage.getItem(CLOUD_ENABLED_KEY)==='true')localStorage.setItem(CLOUD_PENDING_KEY,'true');
 }
