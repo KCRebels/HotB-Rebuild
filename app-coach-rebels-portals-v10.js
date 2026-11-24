@@ -1718,27 +1718,35 @@ async function publishPlayerEvaluationSnapshot(player){
 }
 // Publish only aggregate, public-facing metrics. Never expose game records,
  // coaching notes, player portal credentials or personally identifying contact data.
-async function publishAniesaScoutStats(){
+async function publishScoutPublicProfiles(){
  if(!cloudUser||!cloudStore||!window.HotBEvaluationStats)return false;
- const playerName='Aniesa Rohleder',season=currentSeasonLabel();
+ const season=currentSeasonLabel();
  const games=(db.savedGames||[]).filter(g=>!g.scrimmage&&seasonMeta(g.date).season===season&&seasonMeta(g.date).segment!=='Dead Period');
- const playerPas=games.flatMap(g=>g.plateAppearances||[]).filter(pa=>pa.hitter===playerName);
- const snapshot=HotBEvaluationStats.evaluationSnapshot({savedGames:games,currentGame:null,roster:db.roster},playerName);
- const stats=snapshot.stats;
- // Do not publish an empty/partial local database over a known valid snapshot.
- if(!stats||!stats.PA)return false;
- const decisionRaw=snapshot.decision?.rate??snapshot.decision?.decisionRate??snapshot.decision?.percentage;
- const decision=Number.isFinite(Number(decisionRaw))?Number(decisionRaw):null;
- const data={
-  playerName,season,source:'HotB',status:'published',
-  publishedAt:firebase.firestore.FieldValue.serverTimestamp(),
-  gameCount:games.filter(g=>(g.plateAppearances||[]).some(pa=>pa.hitter===playerName)).length,
-  PA:stats.PA,AVG:stats.AVG,OBP:stats.OBP,kPct:stats.kPct,hhbPct:stats.hhbPct,
-  decisionPct:decision===null?null:(decision>1?decision/100:decision),
-  // Deliberately omit ABA until both first-pitch and two-strike fields can be
-  // verified against the exact source module's output format.
- };
- await cloudStore.collection('recruitingProfiles').doc('aniesa-rohleder').set(data,{merge:true});
+ const publishable=db.roster.filter(p=>!p.isGuest&&!p.isTeamJenkins&&p.name&&p.portalId);
+ for(const player of publishable){
+  const slug=String(player.name).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const bests={};
+  for(const type of measurementTypes(player)){
+   const rows=(db.measurements||[]).filter(row=>row.player===player.name&&row.type===type&&Number.isFinite(Number(row.value)));
+   if(!rows.length)continue;
+   const isTime=['Home to First','Pop Time'].includes(type);
+   const best=rows.reduce((a,b)=>isTime?(Number(a.value)<=Number(b.value)?a:b):(Number(a.value)>=Number(b.value)?a:b));
+   bests[type]={value:Number(best.value),date:String(best.date||''),source:String(best.source||'HotB')};
+  }
+  const data={playerName:player.name,source:'HotB',status:'published',season,athleticBests:bests,publishedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const hasCurrentGames=games.some(g=>(g.plateAppearances||[]).some(pa=>pa.hitter===player.name));
+  if(hasCurrentGames){
+   const snapshot=HotBEvaluationStats.evaluationSnapshot({savedGames:games,currentGame:null,roster:db.roster},player.name);
+   const stats=snapshot.stats;
+   if(stats&&stats.PA){
+    Object.assign(data,{PA:stats.PA,AVG:stats.AVG,OBP:stats.OBP,kPct:stats.kPct,hhbPct:stats.hhbPct,
+       gameCount:games.filter(g=>(g.plateAppearances||[]).some(pa=>pa.hitter===player.name)).length});
+    const raw=snapshot.decision?.rate??snapshot.decision?.decisionRate??snapshot.decision?.percentage;
+    if(raw!==undefined&&raw!==null&&Number.isFinite(Number(raw)))data.decisionPct=Number(raw)>1?Number(raw)/100:Number(raw);
+   }
+  }
+  await cloudStore.collection('recruitingProfiles').doc(slug).set(data,{merge:true});
+ }
  return true;
 }
 async function syncPlayerEvaluationPortals(){
@@ -1755,7 +1763,7 @@ async function syncPlayerEvaluationPortals(){
    batch.update(portalDoc(coachPortalId),{evaluationData:coachEvaluationPortalPayload(),evaluationVersion:`${Date.now()}-coach`,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
    await batch.commit();
   }
-  try{await publishAniesaScoutStats()}catch(scoutError){console.warn('Rebels Scout public stat publish failed',scoutError)}
+  try{await publishScoutPublicProfiles()}catch(scoutError){console.warn('Rebels Scout public profile publish failed',scoutError)}
   return true;
  }catch(error){console.warn('Evaluation portal sync failed',error);return false}
 }
@@ -7842,6 +7850,27 @@ function bindRecord(){
   resetTimer();modal=null;recordType='';render();
  };
 }
+// Historical Scout -> HotB migration runs once on the authenticated coach app.
+// Missing records are added with their original dates; existing attempts stay intact.
+function importScoutAthleticHistory(){
+ if(portalToken||db.scoutAthleticImportVersion===1)return;
+ const seed=window.HOTB_SCOUT_ATHLETIC_SEED;
+ if(!Array.isArray(seed)||seed.length!==29)return;
+ db.measurements=Array.isArray(db.measurements)?db.measurements:[];
+ const players=new Set((db.roster||[]).map(player=>player.name));
+ let added=0;
+ for(const m of seed){
+  if(!players.has(m.player)||!Number.isFinite(m.value)||m.value<=0)continue;
+  const exists=db.measurements.some(row=>row.player===m.player&&row.type===m.type&&Number(row.value)===m.value&&row.date===m.date);
+  if(exists)continue;
+  db.measurements.push({id:crypto.randomUUID(),player:m.player,type:m.type,value:m.value,date:m.date,source:'Rebels Scout',verified:true});
+  added++;
+ }
+ db.scoutAthleticImportVersion=1;
+ if(added)console.info('Imported '+added+' historical Rebels Scout athletic measurements into HotB');
+ save();
+}
+try{importScoutAthleticHistory()}catch(error){console.error('Scout athletic history import could not complete',error)}
 try{render()}
 catch(error){
  console.error('HotB initial render failed',error);
