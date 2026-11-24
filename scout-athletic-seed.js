@@ -1,5 +1,5 @@
 /* One-time, lossless import of preexisting Rebels Scout athletic measurements.
-   Brooklyn's '23%' Fastball entry is intentionally excluded as an invalid velocity. */
+   Brooklyn's fastball is verified as 57 mph per coach correction. */
 window.HOTB_SCOUT_ATHLETIC_SEED=[
  {
   "player": "Brynna Peter",
@@ -146,6 +146,14 @@ window.HOTB_SCOUT_ATHLETIC_SEED=[
   "slug": "aniesa-rohleder"
  },
  {
+  "player": "Brooklyn Gering",
+  "type": "Fastball",
+  "value": 57,
+  "date": "2026-08-01",
+  "source": "Rebels Scout",
+  "slug": "brooklyn-gering"
+ },
+{
   "player": "Brooklyn Gering",
   "type": "Changeup",
   "value": 48,
